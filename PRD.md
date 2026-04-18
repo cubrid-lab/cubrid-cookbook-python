@@ -1,10 +1,10 @@
-# PRD: cubrid-python-cookbook — Use-Case-Centric Python Examples for CUBRID
+# PRD: cubrid-cookbook-python — Use-Case-Centric Python Examples for CUBRID
 
 ## 1. Overview
 
-**Project**: cubrid-python-cookbook
+**Project**: cubrid-cookbook-python
 **Status**: Active (continuously updated)
-**Repository**: [github.com/cubrid-labs/cubrid-python-cookbook](https://github.com/cubrid-labs/cubrid-python-cookbook)
+**Repository**: [github.com/cubrid-labs/cubrid-cookbook-python](https://github.com/cubrid-labs/cubrid-cookbook-python)
 **License**: MIT
 
 ### 1.1 Problem Statement
@@ -52,7 +52,7 @@ A use-case-centric Python cookbook organized by developer intent:
 ### 2.1 Project Structure
 
 ```
-cubrid-python-cookbook/
+cubrid-cookbook-python/
 ├── quickstart/
 │   └── 5min-fastapi/          # Docker + FastAPI in 5 minutes
 ├── migration/
@@ -206,8 +206,8 @@ Projects that succeeded partly through example-heavy documentation:
 | **SQLAlchemy** | Extensive ORM cookbook and tutorial |
 | **Pandas** | "10 Minutes to pandas" lowered entry barrier |
 
-The cubrid-python-cookbook follows the same philosophy: **examples are not supplementary — they are the primary documentation.**
+The cubrid-cookbook-python follows the same philosophy: **examples are not supplementary — they are the primary documentation.**
 
 ---
 
-*Last updated: March 2026 · cubrid-python-cookbook*
+*Last updated: March 2026 · cubrid-cookbook-python*

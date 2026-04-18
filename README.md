@@ -124,7 +124,7 @@ docker compose up -d
 ## Project Structure
 
 ```
-cubrid-python-cookbook/
+cubrid-cookbook-python/
 ├── quickstart/
 │   └── 5min-fastapi/          # Docker + FastAPI in 5 minutes
 ├── migration/

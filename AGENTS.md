@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`cubrid-python-cookbook` provides use-case-centric, production-style Python examples for CUBRID.
+`cubrid-cookbook-python` provides use-case-centric, production-style Python examples for CUBRID.
 
 ## Read First
 - `README.md`
@@ -46,7 +46,7 @@ fundamentals/      → Step-by-step reference for core operations
 
 ### Role
 
-cubrid-python-cookbook provides copy-and-run examples for Python developers adopting CUBRID.
+cubrid-cookbook-python provides copy-and-run examples for Python developers adopting CUBRID.
 All examples must be independently runnable against CUBRID 11.2 via Docker.
 
 ### Key Sections
