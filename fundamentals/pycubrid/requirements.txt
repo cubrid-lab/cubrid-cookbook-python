@@ -1,0 +1,1 @@
+pycubrid @ git+https://github.com/cubrid-labs/pycubrid.git@main

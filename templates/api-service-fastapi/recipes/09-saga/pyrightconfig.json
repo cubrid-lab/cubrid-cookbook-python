@@ -1,0 +1,13 @@
+{
+  "typeCheckingMode": "off",
+  "reportImplicitRelativeImport": "none",
+  "reportDeprecated": "none",
+  "reportUnannotatedClassAttribute": "none",
+  "reportCallInDefaultInitializer": "none",
+  "reportUnusedCallResult": "none",
+  "reportUnusedFunction": "none",
+  "reportAny": "none",
+  "reportExplicitAny": "none",
+  "reportUnknownParameterType": "none",
+  "reportMissingParameterType": "none"
+}

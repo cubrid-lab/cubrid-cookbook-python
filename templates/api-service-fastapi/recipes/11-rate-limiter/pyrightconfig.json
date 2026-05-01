@@ -1,0 +1,18 @@
+{
+  "typeCheckingMode": "basic",
+  "reportImplicitRelativeImport": "none",
+  "reportDeprecated": "none",
+  "reportCallInDefaultInitializer": "none",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        "."
+      ]
+    }
+  ],
+  "include": [
+    "*.py",
+    "tests/**/*.py"
+  ]
+}

@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pycubrid
+sqlalchemy-cubrid
+httpx
+pytest

@@ -1,0 +1,4 @@
+pandas>=2.0
+sqlalchemy>=2.0
+pycubrid>=1.3.2
+sqlalchemy-cubrid>=1.4.2
