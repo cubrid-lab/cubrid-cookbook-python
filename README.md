@@ -3,10 +3,10 @@
 **Production-ready Python examples for CUBRID** — from first connection to production API, with migration guides, performance patterns, and common pitfalls.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CUBRID 11.2](https://img.shields.io/badge/CUBRID-11.2-green.svg)](https://www.cubrid.org/)
+[![CUBRID 11.2 | 11.4](https://img.shields.io/badge/CUBRID-11.2%20%7C%2011.4-green.svg)](SUPPORT_MATRIX.md)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
-![pycubrid](https://img.shields.io/badge/pycubrid-v0.6.0-blue)
-![sqlalchemy-cubrid](https://img.shields.io/badge/sqlalchemy--cubrid-v2.1.1-blue)
+![pycubrid](https://img.shields.io/badge/pycubrid-%E2%89%A51.3.2-blue)
+![sqlalchemy-cubrid](https://img.shields.io/badge/sqlalchemy--cubrid-%E2%89%A50.3.0-blue)
 ![status](https://img.shields.io/badge/status-active%20development-yellow)
 
 ---
