@@ -29,7 +29,7 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 
 | Component | Version | Status |
 |-----------|---------|--------|
-| pycubrid | ≥ 1.3.2 | ✅ Required |
+| pycubrid | ≥ 1.6.1 | ✅ Required |
 | sqlalchemy-cubrid | ≥ 1.0 | ✅ Required for SQLAlchemy recipes |
 | SQLAlchemy | 2.0–2.2 | ✅ |
 | Flask | ≥ 3.0 | ✅ |
@@ -45,14 +45,15 @@ All recipes tested against CUBRID 11.2 and 11.4:
 
 | Category | Recipes | CUBRID 11.2 | CUBRID 11.4 |
 |----------|---------|-------------|-------------|
-| pycubrid fundamentals | 14 | ✅ All pass | ✅ All pass |
-| SQLAlchemy fundamentals | 6 | ✅ All pass | ✅ All pass |
+| pycubrid fundamentals | 16 | ✅ All pass | ✅ All pass |
+| SQLAlchemy fundamentals | 7 | ✅ All pass | ✅ All pass |
 | Pandas fundamentals | 6 | ✅ All pass | ✅ All pass |
 | Flask templates | 11 | ✅ All pass | ✅ All pass |
 | FastAPI templates | 12 | ✅ All pass | ✅ All pass |
 | Streamlit templates | 5 | ✅ All pass | ✅ All pass |
 | Django template | 1 | ✅ Pass | ✅ Pass |
-| **Total** | **55** | **✅** | **✅** |
+| Async + Alembic + JSON + Isolation | 4 | ✅ All pass | ✅ All pass |
+| **Total** | **58** | **✅** | **✅** |
 
 ## Known Limitations by Version
 

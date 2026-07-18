@@ -5,8 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CUBRID 11.2 | 11.4](https://img.shields.io/badge/CUBRID-11.2%20%7C%2011.4-green.svg)](SUPPORT_MATRIX.md)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
-![pycubrid](https://img.shields.io/badge/pycubrid-%E2%89%A51.3.2-blue)
-![sqlalchemy-cubrid](https://img.shields.io/badge/sqlalchemy--cubrid-%E2%89%A51.0-blue)
+![pycubrid](https://img.shields.io/badge/pycubrid-%E2%89%A51.6.1-blue)
+![sqlalchemy-cubrid](https://img.shields.io/badge/sqlalchemy--cubrid-%E2%89%A51.6.0-blue)
 ![status](https://img.shields.io/badge/status-active%20development-yellow)
 
 ---
@@ -79,6 +79,10 @@ Step-by-step reference for every core operation:
 | [Error handling](fundamentals/error-handling/) | Exception types, retry patterns |
 | [LOB handling](fundamentals/lob-handling/) | BLOB/CLOB operations |
 | [ORM basics](fundamentals/orm-basics/) | SQLAlchemy engine, core, ORM, relationships |
+| [Async I/O](fundamentals/async/) | pycubrid.aio and SQLAlchemy async engine |
+| [Alembic migrations](fundamentals/alembic/) | Programmatic migration setup with CubridImpl |
+| [JSON type CRUD](fundamentals/json/) | Native JSON columns, JSON_EXTRACT/UNQUOTE patterns |
+| [Isolation levels](fundamentals/isolation-levels/) | 6 CUBRID levels, dirty-read demonstration |
 
 ---
 

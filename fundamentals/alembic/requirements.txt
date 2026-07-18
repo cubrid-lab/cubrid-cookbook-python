@@ -1,0 +1,5 @@
+# Alembic migration support for CUBRID
+alembic>=1.13
+sqlalchemy-cubrid>=1.0
+sqlalchemy>=2.0
+pycubrid>=1.6.0
