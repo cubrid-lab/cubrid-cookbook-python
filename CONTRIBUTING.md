@@ -21,27 +21,14 @@ and instructions for contributing to the project.
 3. **Include a README** for each example with setup and run instructions
 4. **Follow the existing directory structure**:
 
-```mermaid
-flowchart TD
-    ROOT[examples]
-    ROOT --> PY[python/]
-    ROOT --> ND[node/]
-    ROOT --> GO[go/]
-
-    PY --> PYFA[fastapi/]
-    PY --> PYDJ[django/]
-    PY --> PYFL[flask/]
-    PY --> PYSA[sqlalchemy/]
-    PY --> PYPY[pycubrid/]
-    PY --> PYPD[pandas/]
-    PY --> PYCE[celery/]
-    PY --> PYST[streamlit/]
-
-    ND --> NDCB[cubrid-client/]
-    ND --> NDDR[drizzle/]
-
-    GO --> GOCB[cubrid-go/]
-    GO --> GOGM[gorm/]
+```
+quickstart/          # 5-minute getting-started examples
+fundamentals/        # Core CUBRID operations with Python
+templates/           # Production-ready application templates
+migration/           # Language migration guides (Java → Python)
+performance/         # Benchmark-backed optimization patterns
+pitfalls/            # Common mistakes and fixes
+docs/                # Internal docs (PRD, agent playbook)
 ```
 
 ### Running Examples
@@ -50,19 +37,13 @@ flowchart TD
 # Start CUBRID
 docker compose up -d
 
-# Python examples
-cd python/fastapi
+# Example: run a FastAPI template
+cd templates/api-service-fastapi
 pip install -r requirements.txt
-python app/main.py
+uvicorn app:app --reload
 
-# Node.js examples
-cd node/drizzle
-npm install
-npx tsx src/index.ts
-
-# Go examples
-cd go/gorm
-go run main.go
+# Example: run a fundamental
+python fundamentals/pycubrid/01_connect.py
 ```
 
 ---
@@ -80,27 +61,17 @@ This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formattin
 
 ```bash
 # Check lint
-ruff check python/
+ruff check .
 
 # Auto-fix lint issues
-ruff check --fix python/
+ruff check --fix .
 
 # Check formatting
-ruff format --check python/
+ruff format --check .
 
 # Apply formatting
-ruff format python/
+ruff format .
 ```
-
-### TypeScript
-
-- Use modern TypeScript (ES modules, `import`/`export`)
-- Follow the existing pattern in `node/` examples
-
-### Go
-
-- Use standard `go fmt` formatting
-- Follow Go conventions (`gofmt`, `go vet`)
 
 ---
 
@@ -121,8 +92,8 @@ ruff format python/
 
 3. **Run lint checks** on Python code:
    ```bash
-   ruff check python/
-   ruff format --check python/
+   ruff check .
+   ruff format --check .
    ```
 
 ### PR Content
@@ -145,7 +116,7 @@ ruff format python/
 When reporting a bug in an example, please include:
 
 - Which example you're running
-- Python/Node.js/Go version
+- Python version
 - CUBRID server version
 - Full error output
 - Steps to reproduce

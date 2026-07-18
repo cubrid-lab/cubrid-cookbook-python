@@ -1,44 +1,66 @@
-# CUBRID Cookbook
+# CUBRID Python Cookbook
 
-> Production-ready, copy-paste friendly examples for using the CUBRID database with Python, Node.js, and Go. Every example is verified working against a real CUBRID instance via Docker.
+> Production-ready, copy-paste friendly Python examples for the CUBRID database. Every example is verified working against a real CUBRID instance via Docker.
 
-The CUBRID Cookbook provides runnable code examples for 12 framework/driver combinations across 3 languages. All examples connect to a shared CUBRID Docker container and follow consistent patterns: connect, CRUD, transactions, and framework-specific features.
+The CUBRID Python Cookbook provides runnable code examples for Python developers adopting CUBRID — from first connection to production API, with migration guides, performance patterns, and common pitfalls. All examples connect to a shared CUBRID Docker container and follow consistent patterns: connect, CRUD, transactions, and framework-specific features.
 
 Key facts:
 - Connection: `localhost:33000`, database `testdb`, user `dba`, no password
 - Docker: `docker compose up -d` starts CUBRID 11.2
-- Python examples: pycubrid, SQLAlchemy, FastAPI, Django, Flask, Pandas, Streamlit, Celery
-- Node.js examples: cubrid-client, Drizzle ORM
-- Go examples: cubrid-go (database/sql), GORM
+- Python 3.10+ required (`from __future__ import annotations` patterns throughout)
 - All table names prefixed with `cookbook_` to avoid conflicts
-- Each example is self-contained with its own README, dependencies, and setup instructions
+- Parameterized queries only (`?` placeholders) — never string interpolation
+- This is a Python-only repository
 
-## Python Examples
+## Quickstart
 
-- [pycubrid](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/pycubrid): Direct DB-API 2.0 driver — connect, query, transactions, prepared statements, error handling, LOBs
-- [SQLAlchemy](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/sqlalchemy): Core + ORM — engine, models, CRUD, DML extensions (ODKU, MERGE, REPLACE)
-- [FastAPI](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/fastapi): REST API with automatic docs, dependency injection, async-ready
-- [Django](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/django): Django project with CUBRID via SQLAlchemy bridge
-- [Flask](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/flask): Flask + Flask-SQLAlchemy — blueprints, models, CRUD routes
-- [Pandas](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/pandas): Data analysis pipeline — read_sql, transforms, visualization
-- [Streamlit](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/streamlit): Interactive data dashboard with live CUBRID queries
-- [Celery](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/celery): Async task queue — background jobs backed by CUBRID
+- [5min FastAPI](quickstart/5min-fastapi/): Docker + FastAPI + CUBRID running in under 5 minutes
+- [5min SQLAlchemy](quickstart/5min-sqlalchemy/): SQLAlchemy 2.x ORM quickstart
 
-## Node.js Examples
+## Fundamentals
 
-- [cubrid-client](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/node/cubrid): Modern Promise-based client — connect, query, CRUD, transactions
-- [Drizzle ORM](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/node/drizzle): Type-safe ORM — schema, query builder, CRUD, transactions, custom types
+Core database patterns using pycubrid (DB-API 2.0) and SQLAlchemy ORM.
 
-## Go Examples
+- [connect](fundamentals/connect/): Basic connection, metadata, cursor usage, context managers
+- [crud](fundamentals/crud/): INSERT, SELECT, UPDATE, DELETE with parameters
+- [transactions](fundamentals/transactions/): Commit, rollback, savepoints, isolation levels, auto-commit
+- [parameterized-queries](fundamentals/parameterized-queries/): Safe `?`-style parameterized queries (driver-side binding, not server-side prepare)
+- [error-handling](fundamentals/error-handling/): PEP 249 exception hierarchy, retry patterns
+- [lob-handling](fundamentals/lob-handling/): BLOB/CLOB operations via `conn.create_lob()`
+- [orm-basics](fundamentals/orm-basics/): SQLAlchemy engine, Core, ORM, relationships, reflection
+- [pycubrid](fundamentals/pycubrid/): 14 numbered pycubrid fundamentals (connect → cascade delete)
+- [sqlalchemy](fundamentals/sqlalchemy/): Numbered SQLAlchemy ORM examples
+- [pandas](fundamentals/pandas/): Pandas data analysis with CUBRID
 
-- [cubrid-go](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/go/cubrid-go): Pure Go database/sql driver — connect, query, CRUD, transactions
-- [GORM](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/go/gorm): GORM ORM — AutoMigrate, models, CRUD, relationships, advanced queries
+## Migration Guide
 
-## Drivers and ORMs
+- [java-to-python](migration/java-to-python/): Side-by-side Java JDBC → Python DB-API/SQLAlchemy migration (connections, CRUD, transactions, batch operations)
 
-- [pycubrid](https://github.com/cubrid-lab/pycubrid): Pure Python DB-API 2.0 driver for CUBRID
-- [sqlalchemy-cubrid](https://github.com/cubrid-lab/sqlalchemy-cubrid): SQLAlchemy 2.0 dialect for CUBRID
-- [cubrid-client](https://github.com/cubrid-lab/cubrid-client): Modern TypeScript-first Node.js client for CUBRID
-- [drizzle-cubrid](https://github.com/cubrid-lab/drizzle-cubrid): Drizzle ORM dialect for CUBRID
-- [cubrid-go](https://github.com/cubrid-lab/cubrid-go): Pure Go CUBRID driver (database/sql + GORM)
+## Templates
+
+Copy-and-customize production starters:
+
+- [api-service-fastapi](templates/api-service-fastapi/): REST API with FastAPI, SQLAlchemy, Docker, 12 advanced recipes (saga, CQRS, rate limiter, etc.)
+- [flask](templates/flask/): Flask + Flask-SQLAlchemy with 11 progressive examples (basic CRUD → workflow engine)
+- [django](templates/django/): Django project using CUBRID via SQLAlchemy bridge
+- [dashboard](templates/dashboard/): Streamlit interactive data dashboard (5 scripts)
+- [async-worker](templates/async-worker/): Celery background task processing
+- [batch-etl](templates/batch-etl/): Pandas data pipeline (seed → read → analyze → write)
+
+## Performance
+
+Benchmark-backed optimization patterns based on [cubrid-benchmark](https://github.com/cubrid-lab/cubrid-benchmark) data:
+
+- [fetch-optimization](performance/fetch-optimization/): SELECT 10K rows: 96ms → 78ms (−19%)
+- [bulk-insert](performance/bulk-insert/): COMMIT is 7× costlier than INSERT — batch your writes
+- [connection-pooling](performance/connection-pooling/): Reuse connections to avoid 1.7ms/connect overhead
+
+## Pitfalls
+
+- [pitfalls](pitfalls/): 7 common anti-patterns — reserved words, auto-commit differences, connection leaks, and more
+
+## Dependencies
+
+- [pycubrid](https://github.com/cubrid-lab/pycubrid): Pure Python DB-API 2.0 driver for CUBRID (required)
+- [sqlalchemy-cubrid](https://github.com/cubrid-lab/sqlalchemy-cubrid): SQLAlchemy 2.0–2.2 dialect for CUBRID (required for ORM examples)
 - [CUBRID](https://www.cubrid.org/): The CUBRID database
