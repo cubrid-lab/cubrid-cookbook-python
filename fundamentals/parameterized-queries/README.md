@@ -13,7 +13,7 @@ qmark (`?`) placeholder style.
 
 | Recipe | Description |
 |--------|-------------|
-| [`04_prepared.py`](04_prepared.py) | Parameterized queries, batch operations with `executemany()` |
+| [`04_parameterized.py`](04_parameterized.py) | Parameterized queries, batch operations with `executemany()` |
 
 ## Why parameterized queries?
 

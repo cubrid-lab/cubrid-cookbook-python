@@ -31,7 +31,7 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 |-----------|---------|--------|
 | pycubrid | ≥ 1.3.2 | ✅ Required |
 | sqlalchemy-cubrid | ≥ 1.0 | ✅ Required for SQLAlchemy recipes |
-| SQLAlchemy | 2.0–2.1 | ✅ |
+| SQLAlchemy | 2.0–2.2 | ✅ |
 | Flask | ≥ 3.0 | ✅ |
 | Flask-SQLAlchemy | ≥ 3.1 | ✅ |
 | FastAPI | ≥ 0.100 | ✅ |

@@ -7,7 +7,7 @@
 
 ## Links
 
-- 📋 [GitHub Milestones](https://github.com/cubrid-lab/cubrid-cookbook/milestones)
+- 📋 [GitHub Milestones](https://github.com/cubrid-lab/cubrid-cookbook-python/milestones)
 - 🗂️ [Org Project Board](https://github.com/orgs/cubrid-lab/projects/2)
 - 🌐 [Ecosystem Roadmap](https://github.com/cubrid-lab/.github/blob/main/ROADMAP.md)
 

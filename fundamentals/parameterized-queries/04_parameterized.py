@@ -1,4 +1,4 @@
-"""04_prepared.py — Parameterized queries and batch operations.
+"""04_parameterized.py — Parameterized queries and batch operations.
 
 Demonstrates:
 - Parameterized queries (qmark style: ?)
