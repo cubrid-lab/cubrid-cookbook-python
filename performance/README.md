@@ -2,7 +2,7 @@
 
 Practical patterns to maximize performance with CUBRID + Python.
 
-> 📊 All numbers are based on [cubrid-benchmark](https://github.com/cubrid-labs/cubrid-benchmark) experiment data.
+> 📊 All numbers are based on [cubrid-benchmark](https://github.com/cubrid-lab/cubrid-benchmark) experiment data.
 > Environment: Intel i5-4200M, CUBRID 11.2, Python 3.12, pycubrid 0.5.0+16a8634
 
 ## Benchmark Evidence
@@ -48,4 +48,4 @@ Practical patterns to maximize performance with CUBRID + Python.
 
 ---
 
-*Data source: [cubrid-benchmark/experiments/driver-comparison](https://github.com/cubrid-labs/cubrid-benchmark/tree/main/experiments/driver-comparison)*
+*Data source: [cubrid-benchmark/experiments/driver-comparison](https://github.com/cubrid-lab/cubrid-benchmark/tree/main/experiments/driver-comparison)*

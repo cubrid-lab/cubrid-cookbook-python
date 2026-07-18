@@ -69,7 +69,7 @@ def clob_example(conn: pycubrid.Connection) -> None:
             "README",
             "# CUBRID Cookbook\n\nA collection of examples for CUBRID database.",
         ),
-        ("License", "Apache License 2.0\n\nCopyright 2026 cubrid-labs"),
+        ("License", "Apache License 2.0\n\nCopyright 2026 cubrid-lab"),
         (
             "Long Text",
             "Lorem ipsum dolor sit amet. " * 100,  # ~3KB of text

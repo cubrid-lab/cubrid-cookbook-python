@@ -4,7 +4,7 @@
 
 **Project**: cubrid-cookbook-python
 **Status**: Active (continuously updated)
-**Repository**: [github.com/cubrid-labs/cubrid-cookbook-python](https://github.com/cubrid-labs/cubrid-cookbook-python)
+**Repository**: [github.com/cubrid-lab/cubrid-cookbook-python](https://github.com/cubrid-lab/cubrid-cookbook-python)
 **License**: MIT
 
 ### 1.1 Problem Statement
@@ -71,7 +71,7 @@ cubrid-cookbook-python/
 │   ├── connect/               # Connection basics
 │   ├── crud/                  # CRUD operations
 │   ├── transactions/          # Transaction management
-│   ├── prepared-statements/   # Parameterized queries
+│   ├── parameterized-queries/   # Parameterized queries
 │   ├── error-handling/        # Exception patterns
 │   ├── lob-handling/          # BLOB/CLOB
 │   └── orm-basics/            # SQLAlchemy ORM
@@ -155,9 +155,9 @@ Every example must:
 
 | Layer | Project |
 |---|---|
-| **DB Driver** | [pycubrid](https://github.com/cubrid-labs/pycubrid) |
-| **ORM Dialect** | [sqlalchemy-cubrid](https://github.com/cubrid-labs/sqlalchemy-cubrid) |
-| **Benchmarks** | [cubrid-benchmark](https://github.com/cubrid-labs/cubrid-benchmark) |
+| **DB Driver** | [pycubrid](https://github.com/cubrid-lab/pycubrid) |
+| **ORM Dialect** | [sqlalchemy-cubrid](https://github.com/cubrid-lab/sqlalchemy-cubrid) |
+| **Benchmarks** | [cubrid-benchmark](https://github.com/cubrid-lab/cubrid-benchmark) |
 | **Database** | [CUBRID](https://www.cubrid.org/) |
 
 ---

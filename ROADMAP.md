@@ -3,13 +3,13 @@
 > **Last updated**: 2026-03-20
 >
 > This roadmap reflects current priorities. For the ecosystem-wide view, see the
-> [CUBRID Labs Ecosystem Roadmap](https://github.com/cubrid-labs/.github/blob/main/ROADMAP.md).
+> [CUBRID Labs Ecosystem Roadmap](https://github.com/cubrid-lab/.github/blob/main/ROADMAP.md).
 
 ## Links
 
-- 📋 [GitHub Milestones](https://github.com/cubrid-labs/cubrid-cookbook/milestones)
-- 🗂️ [Org Project Board](https://github.com/orgs/cubrid-labs/projects/2)
-- 🌐 [Ecosystem Roadmap](https://github.com/cubrid-labs/.github/blob/main/ROADMAP.md)
+- 📋 [GitHub Milestones](https://github.com/cubrid-lab/cubrid-cookbook/milestones)
+- 🗂️ [Org Project Board](https://github.com/orgs/cubrid-lab/projects/2)
+- 🌐 [Ecosystem Roadmap](https://github.com/cubrid-lab/.github/blob/main/ROADMAP.md)
 
 ## Next Release — v1.0 — Complete Examples
 

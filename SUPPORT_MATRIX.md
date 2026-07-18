@@ -10,6 +10,10 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 | **11.2** | ✅ Fully supported | Primary development/test target |
 | 11.0 | ⚠️ Untested | Should work (same CAS protocol) |
 | 10.2 | ⚠️ Untested | Should work (same CAS protocol) |
+> **Scope note**: The cookbook is tested only against CUBRID 11.2 and 11.4. Older
+> versions (10.2, 11.0) share the same CAS protocol and should work but are
+> not exercised by the recipe test suite. The drivers (`pycubrid`,
+> `sqlalchemy-cubrid`) themselves support the full 10.2–11.4 range.
 
 ## Python Versions
 
@@ -26,7 +30,7 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 | Component | Version | Status |
 |-----------|---------|--------|
 | pycubrid | ≥ 1.3.2 | ✅ Required |
-| sqlalchemy-cubrid | ≥ 0.3.0 | ✅ Required for SQLAlchemy recipes |
+| sqlalchemy-cubrid | ≥ 1.0 | ✅ Required for SQLAlchemy recipes |
 | SQLAlchemy | 2.0–2.1 | ✅ |
 | Flask | ≥ 3.0 | ✅ |
 | Flask-SQLAlchemy | ≥ 3.1 | ✅ |

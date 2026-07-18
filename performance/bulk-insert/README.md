@@ -105,4 +105,4 @@ Reducing COMMIT frequency is the single most effective optimization for write-he
 ## Benchmark Reference
 
 - INSERT execute: 7.10ms, COMMIT: 51.32ms
-- Full details: [cubrid-benchmark/experiments/driver-comparison](https://github.com/cubrid-labs/cubrid-benchmark/tree/main/experiments/driver-comparison)
+- Full details: [cubrid-benchmark/experiments/driver-comparison](https://github.com/cubrid-lab/cubrid-benchmark/tree/main/experiments/driver-comparison)

@@ -6,7 +6,7 @@
 [![CUBRID 11.2 | 11.4](https://img.shields.io/badge/CUBRID-11.2%20%7C%2011.4-green.svg)](SUPPORT_MATRIX.md)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 ![pycubrid](https://img.shields.io/badge/pycubrid-%E2%89%A51.3.2-blue)
-![sqlalchemy-cubrid](https://img.shields.io/badge/sqlalchemy--cubrid-%E2%89%A50.3.0-blue)
+![sqlalchemy-cubrid](https://img.shields.io/badge/sqlalchemy--cubrid-%E2%89%A51.0-blue)
 ![status](https://img.shields.io/badge/status-active%20development-yellow)
 
 ---
@@ -75,7 +75,7 @@ Step-by-step reference for every core operation:
 | [Connecting](fundamentals/connect/) | Basic connection, metadata, context managers |
 | [CRUD](fundamentals/crud/) | INSERT, SELECT, UPDATE, DELETE with parameters |
 | [Transactions](fundamentals/transactions/) | Commit, rollback, savepoints, auto-commit |
-| [Prepared statements](fundamentals/prepared-statements/) | Parameterized queries |
+| [Prepared statements](fundamentals/parameterized-queries/) | Parameterized queries |
 | [Error handling](fundamentals/error-handling/) | Exception types, retry patterns |
 | [LOB handling](fundamentals/lob-handling/) | BLOB/CLOB operations |
 | [ORM basics](fundamentals/orm-basics/) | SQLAlchemy engine, core, ORM, relationships |
@@ -143,7 +143,7 @@ cubrid-cookbook-python/
 │   ├── connect/               # Connection basics
 │   ├── crud/                  # CRUD operations
 │   ├── transactions/          # Transaction management
-│   ├── prepared-statements/   # Parameterized queries
+│   ├── parameterized-queries/   # Parameterized queries
 │   ├── error-handling/        # Exception patterns
 │   ├── lob-handling/          # BLOB/CLOB
 │   └── orm-basics/            # SQLAlchemy ORM
@@ -152,15 +152,15 @@ cubrid-cookbook-python/
 
 ## Related Projects
 
-- [pycubrid](https://github.com/cubrid-labs/pycubrid) — Pure Python DB-API 2.0 driver for CUBRID
-- [sqlalchemy-cubrid](https://github.com/cubrid-labs/sqlalchemy-cubrid) — SQLAlchemy 2.0 dialect for CUBRID
+- [pycubrid](https://github.com/cubrid-lab/pycubrid) — Pure Python DB-API 2.0 driver for CUBRID
+- [sqlalchemy-cubrid](https://github.com/cubrid-lab/sqlalchemy-cubrid) — SQLAlchemy 2.0 dialect for CUBRID
 - [CUBRID](https://www.cubrid.org/) — The CUBRID database
 
 ## Roadmap
 
 See [`ROADMAP.md`](ROADMAP.md) for planned additions.
 
-For the ecosystem-wide view, see the [CUBRID Labs Ecosystem Roadmap](https://github.com/cubrid-labs/.github/blob/main/ROADMAP.md) and [Project Board](https://github.com/orgs/cubrid-labs/projects/2).
+For the ecosystem-wide view, see the [CUBRID Labs Ecosystem Roadmap](https://github.com/cubrid-lab/.github/blob/main/ROADMAP.md) and [Project Board](https://github.com/orgs/cubrid-lab/projects/2).
 
 ## Contributing
 

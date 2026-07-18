@@ -6,7 +6,7 @@
 
 ## Read First
 - `README.md`
-- `PRD.md`
+- `docs/internal/PRD.md`
 - `CONTRIBUTING.md`
 
 ## Repository Structure
@@ -32,9 +32,9 @@ fundamentals/      → Step-by-step reference for core operations
 - If an example's setup or dependencies change, update the surrounding docs in the same change.
 - Avoid adding hidden prerequisites that are not documented.
 
-## Development Workflow (cubrid-labs org standard)
+## Development Workflow (cubrid-lab org standard)
 
-All non-trivial work across cubrid-labs repositories MUST follow this 4-phase cycle:
+All non-trivial work across cubrid-lab repositories MUST follow this 4-phase cycle:
 
 1. **Oracle Design Review** — Consult Oracle before implementation to validate architecture, API surface, and approach. Raise concerns early.
 2. **Implementation** — Build the feature/fix with tests. Follow existing codebase patterns.
@@ -53,7 +53,7 @@ Skipping any phase requires explicit justification. Trivial changes (typos, sing
 ## Project Context
 
 > This repo is the **Python cookbook** for the CUBRID ecosystem.
-> Board: [CUBRID Ecosystem Roadmap](https://github.com/orgs/cubrid-labs/projects/2)
+> Board: [CUBRID Ecosystem Roadmap](https://github.com/orgs/cubrid-lab/projects/2)
 
 ### Role
 

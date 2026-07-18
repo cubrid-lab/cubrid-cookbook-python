@@ -84,4 +84,4 @@ for row in session.execute(stmt).scalars():
 ## Benchmark Reference
 
 - SELECT 10K fetch: 96ms → 78ms after optimization (**−19%**)
-- Full details: [cubrid-benchmark/experiments/driver-comparison](https://github.com/cubrid-labs/cubrid-benchmark/tree/main/experiments/driver-comparison)
+- Full details: [cubrid-benchmark/experiments/driver-comparison](https://github.com/cubrid-lab/cubrid-benchmark/tree/main/experiments/driver-comparison)
