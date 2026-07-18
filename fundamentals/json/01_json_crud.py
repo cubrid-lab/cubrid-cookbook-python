@@ -212,6 +212,10 @@ def main() -> None:
     print("Path syntax:  $.key        object key")
     print("              $.key[0]     array index")
     print("              $.key.sub    nested key")
+    print()
+    print("CUBRID 11.2+ shorthand operators:")
+    print("    doc->'$.key'   equivalent to JSON_EXTRACT (JSON-typed)")
+    print("    doc->>'$.key'  equivalent to JSON_UNQUOTE(JSON_EXTRACT(...))  (scalar)")
 
 
 if __name__ == "__main__":

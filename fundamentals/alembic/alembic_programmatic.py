@@ -1,4 +1,4 @@
-"""01_alembic_programmatic.py - Alembic migrations against CUBRID, programmatically.
+"""alembic_programmatic.py - Alembic migrations against CUBRID, programmatically.
 
 Demonstrates:
 - Using ``alembic.command`` and ``alembic.config.Config`` from Python
@@ -16,7 +16,7 @@ This recipe runs Alembic against a TEMP DIRECTORY so it is fully
 self-contained: no project-level ``alembic.ini`` required.
 
 Run:
-    python 01_alembic_programmatic.py
+    python alembic_programmatic.py
 """
 
 from __future__ import annotations
@@ -77,7 +77,7 @@ from alembic import context
 import sys
 sys.path.insert(0, %r)
 
-from 01_alembic_programmatic import Base  # noqa: E402
+from alembic_programmatic import Base  # noqa: E402
 
 config = context.config
 if config.config_file_name is not None:

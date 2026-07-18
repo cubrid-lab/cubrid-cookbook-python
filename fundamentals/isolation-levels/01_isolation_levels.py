@@ -28,6 +28,7 @@ Run:
 from __future__ import annotations
 
 import threading
+import time
 from typing import Any
 
 import pycubrid  # type: ignore[import-not-found]
@@ -125,6 +126,9 @@ def dirty_read_demo(level: int, label: str) -> None:
             cur.execute(f"SET TRANSACTION ISOLATION LEVEL {level}")
             cur.execute("UPDATE cookbook_isolation_demo SET val = 999 WHERE id = 1")
             # Hold the write uncommitted; do NOT commit yet.
+            # Small sleep ensures the CAS broker has the row locked before
+            # the reader wakes up, eliminating a theoretical startup race.
+            time.sleep(0.1)
             writer_done.set()
             # Wait for the reader to finish its observation.
             reader_done.wait(timeout=5.0)
