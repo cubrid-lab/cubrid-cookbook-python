@@ -1,0 +1,2 @@
+# pycubrid driver
+pycubrid>=1.6.0

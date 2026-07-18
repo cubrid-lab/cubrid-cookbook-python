@@ -32,6 +32,11 @@ Core database patterns using pycubrid (DB-API 2.0) and SQLAlchemy ORM.
 - [sqlalchemy](fundamentals/sqlalchemy/): Numbered SQLAlchemy ORM examples
 - [pandas](fundamentals/pandas/): Pandas data analysis with CUBRID
 
+- [async](fundamentals/async/): Async I/O with pycubrid.aio (since v1.6) and SQLAlchemy async engine
+- [alembic](fundamentals/alembic/): Programmatic Alembic migrations using the CubridImpl entry point
+- [json](fundamentals/json/): Native JSON columns with JSON_EXTRACT / JSON_UNQUOTE patterns
+- [isolation-levels](fundamentals/isolation-levels/): All 6 numeric isolation levels plus a dirty-read demonstration
+
 ## Migration Guide
 
 - [java-to-python](migration/java-to-python/): Side-by-side Java JDBC → Python DB-API/SQLAlchemy migration (connections, CRUD, transactions, batch operations)
