@@ -1,4 +1,4 @@
-# Contributing to cubrid-cookbook
+# Contributing to cubrid-cookbook-python
 
 Thank you for your interest in contributing! This document provides guidelines
 and instructions for contributing to the project.
@@ -156,5 +156,5 @@ For new example requests, describe the use case and framework.
 
 ## Questions?
 
-Open a [GitHub Discussion](https://github.com/cubrid-lab/cubrid-cookbook/discussions)
-or file an [issue](https://github.com/cubrid-lab/cubrid-cookbook/issues).
+Open a [GitHub Discussion](https://github.com/cubrid-lab/cubrid-cookbook-python/discussions)
+or file an [issue](https://github.com/cubrid-lab/cubrid-cookbook-python/issues).
