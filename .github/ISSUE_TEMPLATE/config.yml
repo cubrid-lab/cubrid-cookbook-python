@@ -4,8 +4,8 @@ contact_links:
     url: https://cubrid.org/documentation
     about: Official CUBRID database documentation
   - name: sqlalchemy-cubrid
-    url: https://github.com/cubrid-labs/sqlalchemy-cubrid
+    url: https://github.com/cubrid-lab/sqlalchemy-cubrid
     about: SQLAlchemy 2.0 dialect for CUBRID
   - name: pycubrid
-    url: https://github.com/cubrid-labs/pycubrid
+    url: https://github.com/cubrid-lab/pycubrid
     about: Pure Python DB-API 2.0 driver for CUBRID

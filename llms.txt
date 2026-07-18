@@ -15,30 +15,30 @@ Key facts:
 
 ## Python Examples
 
-- [pycubrid](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/python/pycubrid): Direct DB-API 2.0 driver — connect, query, transactions, prepared statements, error handling, LOBs
-- [SQLAlchemy](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/python/sqlalchemy): Core + ORM — engine, models, CRUD, DML extensions (ODKU, MERGE, REPLACE)
-- [FastAPI](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/python/fastapi): REST API with automatic docs, dependency injection, async-ready
-- [Django](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/python/django): Django project with CUBRID via SQLAlchemy bridge
-- [Flask](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/python/flask): Flask + Flask-SQLAlchemy — blueprints, models, CRUD routes
-- [Pandas](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/python/pandas): Data analysis pipeline — read_sql, transforms, visualization
-- [Streamlit](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/python/streamlit): Interactive data dashboard with live CUBRID queries
-- [Celery](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/python/celery): Async task queue — background jobs backed by CUBRID
+- [pycubrid](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/pycubrid): Direct DB-API 2.0 driver — connect, query, transactions, prepared statements, error handling, LOBs
+- [SQLAlchemy](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/sqlalchemy): Core + ORM — engine, models, CRUD, DML extensions (ODKU, MERGE, REPLACE)
+- [FastAPI](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/fastapi): REST API with automatic docs, dependency injection, async-ready
+- [Django](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/django): Django project with CUBRID via SQLAlchemy bridge
+- [Flask](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/flask): Flask + Flask-SQLAlchemy — blueprints, models, CRUD routes
+- [Pandas](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/pandas): Data analysis pipeline — read_sql, transforms, visualization
+- [Streamlit](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/streamlit): Interactive data dashboard with live CUBRID queries
+- [Celery](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/python/celery): Async task queue — background jobs backed by CUBRID
 
 ## Node.js Examples
 
-- [cubrid-client](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/node/cubrid): Modern Promise-based client — connect, query, CRUD, transactions
-- [Drizzle ORM](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/node/drizzle): Type-safe ORM — schema, query builder, CRUD, transactions, custom types
+- [cubrid-client](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/node/cubrid): Modern Promise-based client — connect, query, CRUD, transactions
+- [Drizzle ORM](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/node/drizzle): Type-safe ORM — schema, query builder, CRUD, transactions, custom types
 
 ## Go Examples
 
-- [cubrid-go](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/go/cubrid-go): Pure Go database/sql driver — connect, query, CRUD, transactions
-- [GORM](https://github.com/cubrid-labs/cubrid-cookbook/tree/main/go/gorm): GORM ORM — AutoMigrate, models, CRUD, relationships, advanced queries
+- [cubrid-go](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/go/cubrid-go): Pure Go database/sql driver — connect, query, CRUD, transactions
+- [GORM](https://github.com/cubrid-lab/cubrid-cookbook/tree/main/go/gorm): GORM ORM — AutoMigrate, models, CRUD, relationships, advanced queries
 
 ## Drivers and ORMs
 
-- [pycubrid](https://github.com/cubrid-labs/pycubrid): Pure Python DB-API 2.0 driver for CUBRID
-- [sqlalchemy-cubrid](https://github.com/cubrid-labs/sqlalchemy-cubrid): SQLAlchemy 2.0 dialect for CUBRID
-- [cubrid-client](https://github.com/cubrid-labs/cubrid-client): Modern TypeScript-first Node.js client for CUBRID
-- [drizzle-cubrid](https://github.com/cubrid-labs/drizzle-cubrid): Drizzle ORM dialect for CUBRID
-- [cubrid-go](https://github.com/cubrid-labs/cubrid-go): Pure Go CUBRID driver (database/sql + GORM)
+- [pycubrid](https://github.com/cubrid-lab/pycubrid): Pure Python DB-API 2.0 driver for CUBRID
+- [sqlalchemy-cubrid](https://github.com/cubrid-lab/sqlalchemy-cubrid): SQLAlchemy 2.0 dialect for CUBRID
+- [cubrid-client](https://github.com/cubrid-lab/cubrid-client): Modern TypeScript-first Node.js client for CUBRID
+- [drizzle-cubrid](https://github.com/cubrid-lab/drizzle-cubrid): Drizzle ORM dialect for CUBRID
+- [cubrid-go](https://github.com/cubrid-lab/cubrid-go): Pure Go CUBRID driver (database/sql + GORM)
 - [CUBRID](https://www.cubrid.org/): The CUBRID database

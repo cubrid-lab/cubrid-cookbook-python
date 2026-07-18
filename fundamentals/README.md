@@ -11,7 +11,7 @@ Start here if you're new to CUBRID + Python.
 | [connect/](./connect/) | Basic connection, metadata, cursor usage | pycubrid |
 | [crud/](./crud/) | Create, Read, Update, Delete operations | pycubrid |
 | [transactions/](./transactions/) | Commit, rollback, isolation levels | pycubrid |
-| [prepared-statements/](./prepared-statements/) | Parameterized queries for safety and performance | pycubrid |
+| [parameterized-queries/](./parameterized-queries/) | Parameterized queries for safety and performance | pycubrid |
 | [error-handling/](./error-handling/) | Connection failures, constraint violations, timeouts | pycubrid |
 | [lob-handling/](./lob-handling/) | Large Object (BLOB/CLOB) operations | pycubrid |
 | [orm-basics/](./orm-basics/) | SQLAlchemy engine, Core, ORM, relationships, reflection | SQLAlchemy |
@@ -42,7 +42,7 @@ pip install sqlalchemy-cubrid
 ## Learning Path
 
 ```
-connect/ → crud/ → transactions/ → prepared-statements/ → orm-basics/
+connect/ → crud/ → transactions/ → parameterized-queries/ → orm-basics/
 ```
 
 After fundamentals, continue to:

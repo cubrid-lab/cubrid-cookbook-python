@@ -1,5 +1,5 @@
 pandas>=2.0
 sqlalchemy>=2.0
-sqlalchemy-cubrid @ git+https://github.com/cubrid-labs/sqlalchemy-cubrid.git@main
-pycubrid @ git+https://github.com/cubrid-labs/pycubrid.git@main
+sqlalchemy-cubrid @ git+https://github.com/cubrid-lab/sqlalchemy-cubrid.git@main
+pycubrid @ git+https://github.com/cubrid-lab/pycubrid.git@main
 matplotlib>=3.7

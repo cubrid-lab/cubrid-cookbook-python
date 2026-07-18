@@ -1,1 +1,1 @@
-pycubrid @ git+https://github.com/cubrid-labs/pycubrid.git@main
+pycubrid @ git+https://github.com/cubrid-lab/pycubrid.git@main

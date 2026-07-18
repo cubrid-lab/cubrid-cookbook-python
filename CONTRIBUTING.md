@@ -156,5 +156,5 @@ For new example requests, describe the use case and framework.
 
 ## Questions?
 
-Open a [GitHub Discussion](https://github.com/cubrid-labs/cubrid-cookbook/discussions)
-or file an [issue](https://github.com/cubrid-labs/cubrid-cookbook/issues).
+Open a [GitHub Discussion](https://github.com/cubrid-lab/cubrid-cookbook/discussions)
+or file an [issue](https://github.com/cubrid-lab/cubrid-cookbook/issues).

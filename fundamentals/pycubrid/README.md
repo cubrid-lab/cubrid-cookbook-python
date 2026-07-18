@@ -1,6 +1,6 @@
 # pycubrid Examples
 
-Direct database access using the [pycubrid](https://github.com/cubrid-labs/pycubrid) DB-API 2.0 driver — a pure Python connector for CUBRID with no C dependencies.
+Direct database access using the [pycubrid](https://github.com/cubrid-lab/pycubrid) DB-API 2.0 driver — a pure Python connector for CUBRID with no C dependencies.
 
 ## Features
 
@@ -188,6 +188,6 @@ All users (5 rows):
 
 ## Learn More
 
-- [pycubrid documentation](https://github.com/cubrid-labs/pycubrid)
+- [pycubrid documentation](https://github.com/cubrid-lab/pycubrid)
 - [PEP 249 — DB-API 2.0 Specification](https://peps.python.org/pep-0249/)
 - [CUBRID SQL Guide](https://www.cubrid.org/manual/en/11.2/sql/index.html)
