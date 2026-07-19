@@ -23,3 +23,10 @@ jobs:
         run: ruff check .
       - name: Ruff format check
         run: ruff format --check .
+
+  doc-lint:
+    name: Documentation lint
+    uses: cubrid-lab/.github/.github/workflows/doc-lint.yml@main
+    with:
+      exclude: "node_modules/,typescript/node_modules/,vendor/"
+      fail-on-issue: false  # advisory mode during initial rollout
