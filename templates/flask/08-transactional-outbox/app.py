@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import cast
 
 from flask import Blueprint, jsonify, request
@@ -70,7 +70,7 @@ def send_invoice(invoice_id: int):
     if invoice.status == "sent":
         return jsonify({"error": "Invoice already sent."}), 409
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     invoice.status = "sent"
     invoice.sent_at = now
 
@@ -116,7 +116,7 @@ def lease_outbox_messages():
     if not processor_id:
         return jsonify({"error": "processor_id is required"}), 400
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     lease_until = now + timedelta(minutes=5)
     messages = (
         db.session.execute(
@@ -178,7 +178,7 @@ def acknowledge_outbox_message(message_id: int):
     if message is None:
         return jsonify({"error": "Outbox message not found."}), 404
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if message.leased_until is None or message.leased_until <= now:
         return jsonify({"error": "Outbox message is not currently leased."}), 409
     if message.leased_by != processor_id:
@@ -211,7 +211,7 @@ def fail_outbox_message(message_id: int):
     if message is None:
         return jsonify({"error": "Outbox message not found."}), 404
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if message.leased_until is None or message.leased_until <= now:
         return jsonify({"error": "Outbox message is not currently leased."}), 409
     if message.leased_by != processor_id:

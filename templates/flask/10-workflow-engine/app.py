@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from flask import Flask, jsonify, request
@@ -144,7 +144,7 @@ def _set_run_completed_if_terminal(workflow_run: WorkflowRun) -> None:
     if step_runs and all(step_run.state in terminal_states for step_run in step_runs.values()):
         has_failure = any(step_run.state == "failed" for step_run in step_runs.values())
         workflow_run.state = "failed" if has_failure else "completed"
-        workflow_run.completed_at = datetime.utcnow()
+        workflow_run.completed_at = datetime.now(timezone.utc)
 
 
 def _serialize_workflow(workflow: WorkflowDefinition) -> dict[str, object]:
@@ -410,7 +410,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
                     {
                         "state": "running",
                         "version": WorkflowStepRun.version + 1,
-                        "started_at": step_run.started_at or datetime.utcnow(),
+                        "started_at": step_run.started_at or datetime.now(timezone.utc),
                     }
                 )
             )
@@ -442,7 +442,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
                             "last_error_text": None,
                             "attempt_count": claimed_run.attempt_count + 1,
                             "version": WorkflowStepRun.version + 1,
-                            "finished_at": datetime.utcnow(),
+                            "finished_at": datetime.now(timezone.utc),
                         }
                     )
                 )
@@ -460,7 +460,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
                             "last_error_text": "forced failure",
                             "attempt_count": claimed_run.attempt_count + 1,
                             "version": WorkflowStepRun.version + 1,
-                            "finished_at": datetime.utcnow(),
+                            "finished_at": datetime.now(timezone.utc),
                         }
                     )
                 )
@@ -495,7 +495,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
                 {
                     "state": "completed",
                     "version": WorkflowStepRun.version + 1,
-                    "finished_at": datetime.utcnow(),
+                    "finished_at": datetime.now(timezone.utc),
                 }
             )
         )
@@ -579,7 +579,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
                 {
                     "state": "skipped",
                     "version": WorkflowStepRun.version + 1,
-                    "finished_at": datetime.utcnow(),
+                    "finished_at": datetime.now(timezone.utc),
                 }
             )
         )

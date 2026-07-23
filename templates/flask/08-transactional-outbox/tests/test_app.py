@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
 import httpx
@@ -131,7 +131,7 @@ def test_fail_three_times_dead_letters(app: Flask, httpx_client: httpx.Client) -
         db.session.execute(
             update(OutboxMessage)
             .where(OutboxMessage.id == msg["id"])
-            .values(next_attempt_at=datetime.utcnow() - timedelta(seconds=1))
+            .values(next_attempt_at=datetime.now(timezone.utc) - timedelta(seconds=1))
         )
         db.session.commit()
 
@@ -149,7 +149,7 @@ def test_fail_three_times_dead_letters(app: Flask, httpx_client: httpx.Client) -
         db.session.execute(
             update(OutboxMessage)
             .where(OutboxMessage.id == msg["id"])
-            .values(next_attempt_at=datetime.utcnow() - timedelta(seconds=1))
+            .values(next_attempt_at=datetime.now(timezone.utc) - timedelta(seconds=1))
         )
         db.session.commit()
 

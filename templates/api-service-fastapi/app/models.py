@@ -19,9 +19,8 @@ class CookbookCategory(Base):
         "CookbookItem",
         back_populates="category",
         cascade="all, delete-orphan",
-        passive_deletes=True,
+        # passive_deletes removed — CUBRID FK cascade support varies (issue #33).
     )
-
 
 class CookbookItem(Base):
     __tablename__ = "cookbook_items"

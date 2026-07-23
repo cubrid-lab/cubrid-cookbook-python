@@ -9,6 +9,8 @@ Demonstrates:
 Collection literals use CUBRID syntax: SET{...}, MULTISET{...}, LIST{...}.
 """
 
+from __future__ import annotations
+
 # pyright: reportAttributeAccessIssue=false, reportMissingImports=false
 
 import pycubrid

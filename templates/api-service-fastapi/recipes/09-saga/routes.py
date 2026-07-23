@@ -1,5 +1,5 @@
 # pyright: basic
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -87,7 +87,7 @@ def _compensate(db: Session, order, completed_steps: list[str]) -> None:
             .values(
                 compensation_attempt_count=SagaStep.compensation_attempt_count + 1,
                 status="compensated",
-                compensated_at=datetime.utcnow(),
+                compensated_at=datetime.now(timezone.utc),
             )
         )
 
@@ -224,7 +224,7 @@ def execute_order(order_key: str, db: Session = Depends(get_db)):
     db.execute(
         update(SagaStep)
         .where(and_(SagaStep.order_id == order.id, SagaStep.step_name == "reserve_inventory"))
-        .values(status="done", executed_at=datetime.utcnow())
+        .values(status="done", executed_at=datetime.now(timezone.utc))
     )
     completed_steps.append("reserve_inventory")
     db.commit()
@@ -280,7 +280,7 @@ def execute_order(order_key: str, db: Session = Depends(get_db)):
     db.execute(
         update(SagaStep)
         .where(and_(SagaStep.order_id == order.id, SagaStep.step_name == "charge_payment"))
-        .values(status="done", executed_at=datetime.utcnow())
+        .values(status="done", executed_at=datetime.now(timezone.utc))
     )
     completed_steps.append("charge_payment")
     db.commit()
@@ -291,7 +291,7 @@ def execute_order(order_key: str, db: Session = Depends(get_db)):
         .values(
             attempt_count=SagaStep.attempt_count + 1,
             status="done",
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
         )
     )
     db.execute(
@@ -320,7 +320,7 @@ def recover_order(
         return order
 
     # Check timeout: order must have been stuck longer than timeout_seconds
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if order.updated_at is not None:
         stuck_seconds = (now - order.updated_at).total_seconds()
         if stuck_seconds < payload.timeout_seconds:

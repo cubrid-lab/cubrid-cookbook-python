@@ -6,10 +6,12 @@ Demonstrates:
 - Listing generated order numbers and totals
 """
 
+from __future__ import annotations
+
 # pyright: reportAttributeAccessIssue=false, reportMissingImports=false
 
 import pycubrid
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 DB_CONFIG = {
@@ -71,7 +73,7 @@ def next_order_number(cursor):
 
 def create_order(cursor, customer, lines):
     order_no = next_order_number(cursor)
-    created_at_utc = datetime.utcnow()
+    created_at_utc = datetime.now(timezone.utc)
     total_cents = 0
     line_rows = []
     for product_name, qty, unit_price_cents in lines:

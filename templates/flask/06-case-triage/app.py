@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import cast
 
 from flask import Blueprint, jsonify, request
@@ -144,7 +144,7 @@ def claim_case(case_id: int):
     except LookupError:
         return jsonify({"error": "Case not found."}), 404
 
-    claim_error = _claim_case(review_case, agent, datetime.utcnow())
+    claim_error = _claim_case(review_case, agent, datetime.now(timezone.utc))
     if claim_error is not None:
         return jsonify(claim_error[0]), claim_error[1]
     return jsonify(review_case.to_dict())
@@ -203,7 +203,7 @@ def resolve_case(case_id: int):
     except LookupError:
         return jsonify({"error": "Case not found."}), 404
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if review_case.status != "claimed" or review_case.claimed_by != agent:
         return jsonify({"error": "Case can only be resolved by current claimant."}), 409
     if review_case.lease_expires_at is None or review_case.lease_expires_at <= now:
@@ -248,7 +248,7 @@ def claim_next_case():
         return jsonify({"error": str(exc)}), 400
 
     for _ in range(2):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         next_case = db.session.execute(
             select(ReviewCase)
             .where(

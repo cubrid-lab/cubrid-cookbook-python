@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app import models
 
@@ -74,6 +74,18 @@ class Repository(Generic[ModelT, CreateSchemaT, UpdateSchemaT]):
 class ItemRepository(Repository[models.CookbookItem, BaseModel, BaseModel]):
     def __init__(self) -> None:
         super().__init__(models.CookbookItem)
+
+    def _base_query(self) -> Select[tuple[models.CookbookItem]]:
+        # Eager-load category to prevent N+1 queries and DetachedInstanceError (issue #33).
+        return select(models.CookbookItem).options(selectinload(models.CookbookItem.category))
+
+    def get(self, db: Session, entity_id: int) -> models.CookbookItem:
+        # Override to use _base_query for eager loading (issue #33).
+        stmt = self._base_query().where(models.CookbookItem.id == entity_id)
+        entity = db.execute(stmt).scalar_one_or_none()
+        if entity is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+        return entity
 
     def create(self, db: Session, payload: BaseModel) -> models.CookbookItem:
         category = db.get(models.CookbookCategory, payload.category_id)

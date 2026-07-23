@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import cast
 
 from flask import Blueprint, jsonify, request
@@ -177,7 +177,7 @@ def submit_purchase_order(order_id: int):
     result = db.session.execute(
         update(PurchaseOrder)
         .where(PurchaseOrder.id == order_id, PurchaseOrder.version == order.version)
-        .values(status="submitted", submitted_at=datetime.utcnow(), version=order.version + 1)
+        .values(status="submitted", submitted_at=datetime.now(timezone.utc), version=order.version + 1)
     )
     if cast(CursorResult[object], result).rowcount == 0:
         return jsonify({"error": "Concurrent modification detected."}), 409
@@ -200,7 +200,7 @@ def approve_purchase_order(order_id: int):
     result = db.session.execute(
         update(PurchaseOrder)
         .where(PurchaseOrder.id == order_id, PurchaseOrder.version == order.version)
-        .values(status="approved", approved_at=datetime.utcnow(), version=order.version + 1)
+        .values(status="approved", approved_at=datetime.now(timezone.utc), version=order.version + 1)
     )
     if cast(CursorResult[object], result).rowcount == 0:
         return jsonify({"error": "Concurrent modification detected."}), 409
@@ -255,7 +255,7 @@ def receive_purchase_order(order_id: int):
     new_values: dict[str, object] = {"version": order.version + 1}
     if len(order.lines) > 0 and all(line.received_qty >= line.quantity for line in order.lines):
         new_values["status"] = "fulfilled"
-        new_values["fulfilled_at"] = datetime.utcnow()
+        new_values["fulfilled_at"] = datetime.now(timezone.utc)
 
     result = db.session.execute(
         update(PurchaseOrder)

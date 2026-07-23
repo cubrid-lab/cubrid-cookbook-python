@@ -1,5 +1,5 @@
 # pyright: reportImplicitRelativeImport=false, reportUnusedParameter=false
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -8,7 +8,7 @@ from database import Base
 
 
 def utc_now() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 class Task(Base):

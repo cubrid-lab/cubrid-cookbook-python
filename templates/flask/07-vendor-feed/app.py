@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import cast
 
 from flask import Blueprint, jsonify, request
@@ -187,7 +187,7 @@ def validate_import_batch(batch_id: int):
         invalid_count += 1
 
     batch.status = "validated"
-    batch.validated_at = datetime.utcnow()
+    batch.validated_at = datetime.now(timezone.utc)
     db.session.commit()
 
     return jsonify(
@@ -265,7 +265,7 @@ def promote_import_batch(batch_id: int):
             skipped_count += 1
 
     batch.status = "promoted"
-    batch.promoted_at = datetime.utcnow()
+    batch.promoted_at = datetime.now(timezone.utc)
     db.session.commit()
 
     return jsonify(

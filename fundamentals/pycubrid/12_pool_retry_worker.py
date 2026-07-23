@@ -15,7 +15,7 @@ import time
 
 import pycubrid  # type: ignore[import-not-found]
 
-CONNECT = getattr(pycubrid, "connect")
+# Use pycubrid.connect() directly (issue #31)
 OPERATIONAL_ERROR = getattr(pycubrid, "OperationalError", Exception)
 INTERFACE_ERROR = getattr(pycubrid, "InterfaceError", Exception)
 
@@ -29,7 +29,7 @@ DB_CONFIG = {
 
 
 def get_connection():
-    return CONNECT(**DB_CONFIG)
+    return pycubrid.connect(**DB_CONFIG)
 
 
 class ConnectionPool:
