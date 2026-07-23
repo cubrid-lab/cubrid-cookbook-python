@@ -18,7 +18,7 @@ from __future__ import annotations
 import datetime
 import pycubrid  # type: ignore[import-not-found]
 
-CONNECT = getattr(pycubrid, "connect")
+# Use pycubrid.connect() directly (issue #31)
 
 DB_CONFIG = {
     "host": "localhost",
@@ -30,7 +30,7 @@ DB_CONFIG = {
 
 
 def get_connection():
-    return CONNECT(**DB_CONFIG)
+    return pycubrid.connect(**DB_CONFIG)
 
 
 def setup_schema(conn) -> None:

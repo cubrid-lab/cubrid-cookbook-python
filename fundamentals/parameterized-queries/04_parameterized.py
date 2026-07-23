@@ -1,5 +1,9 @@
 """04_parameterized.py — Parameterized queries and batch operations.
 
+NOTE: This recipe is identical to ``fundamentals/pycubrid/04_prepared.py``.
+It is duplicated here for topic-based discovery. Changes should be made
+in the canonical location: ``fundamentals/pycubrid/04_prepared.py``.
+
 Demonstrates:
 - Parameterized queries (qmark style: ?)
 - Preventing SQL injection

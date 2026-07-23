@@ -1,7 +1,7 @@
 from __future__ import annotations
 # pyright: reportGeneralTypeIssues=false, reportImplicitRelativeImport=false
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import update
@@ -25,7 +25,7 @@ router = APIRouter()
 
 
 def utcnow() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 def _rotate_window_if_needed(window: ClientRateWindow, now: datetime, window_seconds: int) -> None:

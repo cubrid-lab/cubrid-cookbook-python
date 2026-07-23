@@ -1,5 +1,5 @@
 # pyright: reportImplicitRelativeImport=false, reportUnusedParameter=false
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -8,7 +8,7 @@ from database import Base
 
 
 def utc_now() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 class Tenant(Base):
     __tablename__: str = "cookbook_tenants"

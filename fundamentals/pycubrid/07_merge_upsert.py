@@ -9,10 +9,12 @@ If MERGE syntax fails on a specific server patch level, adapt to
 INSERT ... ON DUPLICATE KEY UPDATE while keeping the same behavior.
 """
 
+from __future__ import annotations
+
 # pyright: reportAttributeAccessIssue=false, reportMissingImports=false
 
 import pycubrid
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 DB_CONFIG = {
@@ -68,7 +70,7 @@ def load_snapshot(cursor, rows):
 
 
 def merge_snapshot(cursor):
-    now_utc = datetime.utcnow()
+    now_utc = datetime.now(timezone.utc)
     cursor.execute(
         """
         MERGE INTO cookbook_products p

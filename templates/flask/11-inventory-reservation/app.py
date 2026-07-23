@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 from typing import Any, cast
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, Flask, jsonify, request
 from sqlalchemy import and_, select, update
@@ -107,7 +107,7 @@ def create_reservation():
     if item is None:
         return jsonify({"error": "item not found"}), 404
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expires_at = now + timedelta(seconds=ttl_seconds)
 
     updated = db.session.execute(
@@ -178,7 +178,7 @@ def confirm_reservation(reservation_key: str):
     if reservation is None:
         return jsonify({"error": "reservation not found"}), 404
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if reservation.state != "active":
         return jsonify({"error": "reservation is not active"}), 409
     if reservation.expires_at <= now:
@@ -239,7 +239,7 @@ def cancel_reservation(reservation_key: str):
     if reservation.state != "active":
         return jsonify({"error": "reservation is not active"}), 409
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     reservation_update = db.session.execute(
         update(StockReservation)
         .where(
@@ -285,7 +285,7 @@ def cancel_reservation(reservation_key: str):
 
 @api.post("/sweeps/expire")
 def expire_reservations():
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     sweep = ExpirySweep()
     sweep.started_at = now
     sweep.status = "running"
@@ -348,7 +348,7 @@ def expire_reservations():
         except Exception:
             failed_count += 1
 
-    sweep.finished_at = datetime.utcnow()
+    sweep.finished_at = datetime.now(timezone.utc)
     sweep.status = "completed" if failed_count == 0 else "completed_with_errors"
     sweep.expired_count = expired_count
     if failed_count > 0:

@@ -15,6 +15,8 @@ def main() -> int:
 
     try:
         with engine.begin() as conn:
+            # SECURITY: TABLE_NAME is a hardcoded constant. NEVER use f-string
+            # interpolation with text() for user-supplied values.
             _ = conn.execute(text(f"DROP TABLE IF EXISTS {TABLE_NAME}"))
             _ = conn.execute(
                 text(
@@ -71,6 +73,8 @@ def main() -> int:
         return 1
     finally:
         with engine.begin() as conn:
+            # SECURITY: TABLE_NAME is a hardcoded constant. NEVER use f-string
+            # interpolation with text() for user-supplied values.
             _ = conn.execute(text(f"DROP TABLE IF EXISTS {TABLE_NAME}"))
         engine.dispose()
 

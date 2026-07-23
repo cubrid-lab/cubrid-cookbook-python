@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TypedDict, cast
 
 import httpx
@@ -111,7 +111,7 @@ def test_claim_expired_lease(httpx_client: httpx.Client, app: Flask) -> None:
         _ = db.session.execute(
             update(ReviewCase)
             .where(ReviewCase.id == created_case["id"])
-            .values(lease_expires_at=datetime.utcnow() - timedelta(minutes=1))
+            .values(lease_expires_at=datetime.now(timezone.utc) - timedelta(minutes=1))
         )
         db.session.commit()
 

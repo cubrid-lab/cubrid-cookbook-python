@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import cast
 
 from flask import Blueprint, jsonify, request
@@ -182,7 +182,7 @@ def submit_price_update_job():
     job.success_cnt = success_cnt
     job.failed_cnt = failed_cnt
     job.status = "completed"
-    job.finished_at = datetime.utcnow()
+    job.finished_at = datetime.now(timezone.utc)
 
     try:
         db.session.commit()
