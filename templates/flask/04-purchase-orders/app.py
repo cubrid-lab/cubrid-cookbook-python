@@ -177,7 +177,9 @@ def submit_purchase_order(order_id: int):
     result = db.session.execute(
         update(PurchaseOrder)
         .where(PurchaseOrder.id == order_id, PurchaseOrder.version == order.version)
-        .values(status="submitted", submitted_at=datetime.now(timezone.utc), version=order.version + 1)
+        .values(
+            status="submitted", submitted_at=datetime.now(timezone.utc), version=order.version + 1
+        )
     )
     if cast(CursorResult[object], result).rowcount == 0:
         return jsonify({"error": "Concurrent modification detected."}), 409
@@ -200,7 +202,9 @@ def approve_purchase_order(order_id: int):
     result = db.session.execute(
         update(PurchaseOrder)
         .where(PurchaseOrder.id == order_id, PurchaseOrder.version == order.version)
-        .values(status="approved", approved_at=datetime.now(timezone.utc), version=order.version + 1)
+        .values(
+            status="approved", approved_at=datetime.now(timezone.utc), version=order.version + 1
+        )
     )
     if cast(CursorResult[object], result).rowcount == 0:
         return jsonify({"error": "Concurrent modification detected."}), 409

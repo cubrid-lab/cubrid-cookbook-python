@@ -18,20 +18,24 @@ Category = _models.Category
 
 bp = Blueprint("categories", __name__, url_prefix="/api/categories")
 
+
 def _category_or_404(category_id: int) -> Category:
     category = db.session.get(Category, category_id)
     if category is None:
         raise LookupError("Category not found.")
     return category
 
+
 def _is_include_deleted_enabled() -> bool:
     return request.args.get("include_deleted") == "1"
+
 
 def _json_payload() -> Mapping[str, object]:
     payload_value = request.get_json(silent=True)
     if isinstance(payload_value, dict):
         return cast(dict[str, object], payload_value)
     return {}
+
 
 @bp.get("")
 def list_categories():
@@ -40,6 +44,7 @@ def list_categories():
         stmt = stmt.where(Category.is_deleted == 0)
     categories = db.session.execute(stmt).scalars().all()
     return jsonify([category.to_dict() for category in categories])
+
 
 @bp.post("")
 def create_category():
@@ -68,6 +73,7 @@ def create_category():
     db.session.commit()
     return jsonify(category.to_dict()), 201
 
+
 @bp.get("/<int:category_id>")
 def get_category(category_id: int):
     try:
@@ -80,6 +86,7 @@ def get_category(category_id: int):
     articles = [article.to_dict() for article in category.articles if article.is_deleted == 0]
     return jsonify({**category.to_dict(), "children": children, "articles": articles})
 
+
 @bp.delete("/<int:category_id>")
 def soft_delete_category(category_id: int):
     try:
@@ -88,12 +95,17 @@ def soft_delete_category(category_id: int):
         return jsonify({"error": "Category not found."}), 404
     active_children = [child for child in category.children if child.is_deleted == 0]
     if active_children:
-        return jsonify({"error": "Cannot delete category with active children. Delete or reassign children first."}), 409
+        return jsonify(
+            {
+                "error": "Cannot delete category with active children. Delete or reassign children first."
+            }
+        ), 409
     category.is_deleted = 1
     for article in category.articles:
         article.is_deleted = 1
     db.session.commit()
     return jsonify(category.to_dict())
+
 
 @bp.post("/<int:category_id>/restore")
 def restore_category(category_id: int):
@@ -106,6 +118,7 @@ def restore_category(category_id: int):
         article.is_deleted = 0
     db.session.commit()
     return jsonify(category.to_dict())
+
 
 @bp.post("/<int:category_id>/articles")
 def create_article(category_id: int):
@@ -125,13 +138,23 @@ def create_article(category_id: int):
     db.session.commit()
     return jsonify(article.to_dict()), 201
 
+
 @bp.get("/<int:category_id>/articles")
 def list_articles(category_id: int):
     category = db.session.get(Category, category_id)
     if category is None or category.is_deleted == 1:
         return jsonify({"error": "Category not found."}), 404
-    articles = db.session.execute(select(Article).where(Article.category_id == category_id, Article.is_deleted == 0).order_by(Article.id.asc())).scalars().all()
+    articles = (
+        db.session.execute(
+            select(Article)
+            .where(Article.category_id == category_id, Article.is_deleted == 0)
+            .order_by(Article.id.asc())
+        )
+        .scalars()
+        .all()
+    )
     return jsonify([article.to_dict() for article in articles])
+
 
 @bp.delete("/<int:category_id>/articles/<int:article_id>")
 def soft_delete_article(category_id: int, article_id: int):
@@ -145,9 +168,12 @@ def soft_delete_article(category_id: int, article_id: int):
     db.session.commit()
     return jsonify(article.to_dict())
 
+
 def create_app(config=None):
     app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb")
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+        "DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb"
+    )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     if config:
         app.config.update(config)

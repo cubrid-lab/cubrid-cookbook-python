@@ -1,14 +1,15 @@
 # pyright: reportImplicitRelativeImport=false, reportUnusedParameter=false
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
 
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
 
 class CatalogItem(Base):
     __tablename__: str = "cookbook_catalog_items"
@@ -20,6 +21,7 @@ class CatalogItem(Base):
     available: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     source_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     last_synced_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
 
 class SyncRun(Base):
     __tablename__: str = "cookbook_sync_runs"

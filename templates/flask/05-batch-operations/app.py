@@ -200,6 +200,7 @@ def submit_price_update_job():
         }
     ), 201
 
+
 @batch_bp.get("/jobs")
 def list_batch_jobs():
     jobs = db.session.execute(select(BatchJob).order_by(BatchJob.id.desc())).scalars().all()
@@ -233,9 +234,12 @@ def get_batch_job(job_id: int):
 import os
 from flask import Flask
 
+
 def create_app(config=None):
     app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb")
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+        "DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb"
+    )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     if config:
         app.config.update(config)

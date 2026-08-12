@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DocumentCreate(BaseModel):
@@ -11,10 +11,12 @@ class DocumentCreate(BaseModel):
     body: str = Field(min_length=1)
     created_by: str = Field(min_length=1, max_length=100)
 
+
 class DraftCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     body: str = Field(min_length=1)
     created_by: str = Field(min_length=1, max_length=100)
+
 
 class DocumentResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
@@ -28,6 +30,7 @@ class DocumentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
 class RevisionResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
 
@@ -39,6 +42,7 @@ class RevisionResponse(BaseModel):
     source_revision_id: int | None
     created_by: str
     created_at: datetime
+
 
 class DocumentDetailResponse(BaseModel):
     document: DocumentResponse

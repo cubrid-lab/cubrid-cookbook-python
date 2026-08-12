@@ -253,9 +253,12 @@ def get_outbox_message(message_id: int):
 import os
 from flask import Flask
 
+
 def create_app(config=None):
     app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb")
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+        "DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb"
+    )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     if config:
         app.config.update(config)

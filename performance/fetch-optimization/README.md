@@ -49,13 +49,14 @@ rows = cursor.fetchall()
 # Don't fetch 100K rows at once — paginate on the server
 PAGE_SIZE = 1000
 
+
 def fetch_page(cursor, offset: int, limit: int) -> list:
     cursor.execute(
-        "SELECT order_id, total_amt FROM cookbook_orders "
-        "ORDER BY order_id LIMIT ?, ?",
+        "SELECT order_id, total_amt FROM cookbook_orders ORDER BY order_id LIMIT ?, ?",
         (offset, limit),
     )
     return cursor.fetchall()
+
 
 # Usage
 page = fetch_page(cursor, offset=0, limit=PAGE_SIZE)

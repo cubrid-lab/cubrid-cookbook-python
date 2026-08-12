@@ -37,12 +37,14 @@ class ReservationCreate(BaseModel):
             if value.tzinfo is not None:
                 # Convert to UTC then strip tzinfo
                 from datetime import timezone
+
                 value = value.astimezone(timezone.utc).replace(tzinfo=None)
             return value
         try:
             parsed = datetime.fromisoformat(value)
             if parsed.tzinfo is not None:
                 from datetime import timezone
+
                 parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
             return parsed
         except ValueError as exc:
@@ -74,12 +76,14 @@ class ReservationWindowQuery(BaseModel):
         if isinstance(value, datetime):
             if value.tzinfo is not None:
                 from datetime import timezone
+
                 value = value.astimezone(timezone.utc).replace(tzinfo=None)
             return value
         try:
             parsed = datetime.fromisoformat(value)
             if parsed.tzinfo is not None:
                 from datetime import timezone
+
                 parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
             return parsed
         except ValueError as exc:
@@ -97,12 +101,14 @@ class WaitlistCreate(BaseModel):
         if isinstance(value, datetime):
             if value.tzinfo is not None:
                 from datetime import timezone
+
                 value = value.astimezone(timezone.utc).replace(tzinfo=None)
             return value
         try:
             parsed = datetime.fromisoformat(value)
             if parsed.tzinfo is not None:
                 from datetime import timezone
+
                 parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
             return parsed
         except ValueError as exc:

@@ -1,14 +1,15 @@
 # pyright: reportImplicitRelativeImport=false, reportUnusedParameter=false
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
 
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
 
 class Tenant(Base):
     __tablename__: str = "cookbook_tenants"
@@ -17,6 +18,7 @@ class Tenant(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     slug: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
 
 class Contact(Base):
     __tablename__: str = "cookbook_contacts"

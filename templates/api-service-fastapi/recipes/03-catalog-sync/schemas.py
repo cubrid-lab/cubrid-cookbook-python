@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CatalogItemSync(BaseModel):
@@ -11,9 +11,11 @@ class CatalogItemSync(BaseModel):
     price: int = Field(gt=0)
     available: int = Field(ge=0, le=1)
 
+
 class CatalogSyncRequest(BaseModel):
     source: str = Field(min_length=1, max_length=100)
     items: list[CatalogItemSync] = Field(min_length=1)
+
 
 class CatalogItemResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
@@ -25,6 +27,7 @@ class CatalogItemResponse(BaseModel):
     available: int
     source_version: int
     last_synced_at: datetime
+
 
 class SyncRunResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)

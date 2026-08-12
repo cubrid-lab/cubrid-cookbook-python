@@ -1,3 +1,19 @@
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
+# Pin the rule set explicitly instead of inheriting ruff's implicit defaults.
+# Ruff expanded its default selection in 0.16 (59 -> 413 rules against this
+# config), which turns every routine ruff bump into a CI-breaking change
+# unrelated to our own code. These four groups are exactly what ruff selected
+# by default through 0.15.x.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test suites bootstrap sys.path before importing the module under test,
+# so their imports are intentionally not at the top of the file.
+"**/tests/*.py" = ["E402"]
+# Flask template app.py files intentionally place demo imports mid-file to
+# illustrate patterns; moving them would change the teaching structure.
+"templates/flask/**/app.py" = ["E402"]

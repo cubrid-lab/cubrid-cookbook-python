@@ -13,6 +13,7 @@ Inserting 10,000 rows with individual COMMITs takes **~470 seconds** (7.8 minute
 
 ```python
 """Reduce transaction overhead by committing in batches."""
+
 from __future__ import annotations
 
 import pycubrid
@@ -58,6 +59,7 @@ conn.close()
 
 ```python
 """Insert multiple rows in a single call."""
+
 from __future__ import annotations
 
 import pycubrid
@@ -81,6 +83,7 @@ conn.close()
 
 ```python
 """Bulk insert using SQLAlchemy Core (faster than ORM object creation)."""
+
 from __future__ import annotations
 
 from sqlalchemy import create_engine

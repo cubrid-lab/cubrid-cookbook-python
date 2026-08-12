@@ -29,10 +29,10 @@
   cookbook_ref_articles PK: ['id']
 
   Foreign keys on cookbook_ref_articles:
+    ['author_id'] → cookbook_ref_authors.['id']
 
 === Reflect Indexes ===
   Indexes on cookbook_ref_articles:
-    fk_cookbook_ref_articles_author_id  columns=['author_id']
     idx_articles_views              columns=['views']
 
 === Autoload Table ===

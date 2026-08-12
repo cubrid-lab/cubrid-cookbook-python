@@ -22,6 +22,7 @@ class CookbookCategory(Base):
         # passive_deletes removed — CUBRID FK cascade support varies (issue #33).
     )
 
+
 class CookbookItem(Base):
     __tablename__ = "cookbook_items"
 

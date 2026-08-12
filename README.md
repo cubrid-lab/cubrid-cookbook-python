@@ -113,10 +113,12 @@ All examples connect to the same CUBRID instance:
 ```python
 # pycubrid (direct)
 import pycubrid
+
 conn = pycubrid.connect(host="localhost", port=33000, database="testdb", user="dba")
 
 # SQLAlchemy
 from sqlalchemy import create_engine
+
 engine = create_engine("cubrid+pycubrid://dba@localhost:33000/testdb")
 ```
 

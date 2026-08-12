@@ -5,7 +5,10 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "0 0 * * 0"
+    - cron: "0 0 * * *"
+  repository_dispatch:
+    types: [upstream-released]
+  workflow_dispatch:
 
 concurrency:
   group: smoke-tests-${{ github.workflow }}-${{ github.ref }}
@@ -14,20 +17,22 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    services:
-      cubrid:
-        image: cubrid/cubrid:11.2
-        env:
-          CUBRID_DB: testdb
-        ports:
-          - 33000:33000
-        options: >-
-          --health-cmd "csql -u dba testdb -c 'SELECT 1'"
-          --health-interval 15s
-          --health-timeout 10s
-          --health-retries 10
-          --health-start-period 30s
     steps:
+      - name: Report trigger
+        env:
+          # Pass untrusted repository_dispatch payload through the environment
+          # instead of interpolating it directly into the shell, which would be
+          # a command-injection vector.
+          EVENT_NAME: ${{ github.event_name }}
+          UPSTREAM_PACKAGE: ${{ github.event.client_payload.package }}
+          UPSTREAM_REF: ${{ github.event.client_payload.ref }}
+        run: |
+          printf 'Event: %s\n' "$EVENT_NAME"
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            printf 'Triggered by upstream release: %s %s\n' "$UPSTREAM_PACKAGE" "$UPSTREAM_REF"
+            printf '### Triggered by upstream release: `%s %s`\n' "$UPSTREAM_PACKAGE" "$UPSTREAM_REF" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -37,30 +42,94 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install pycubrid sqlalchemy sqlalchemy-cubrid
+        run: |
+          pip install pycubrid sqlalchemy sqlalchemy-cubrid
+          # Extra deps used by templates (e.g. batch-etl). Installed separately
+          # so the released pycubrid/sqlalchemy-cubrid above are not overridden
+          # by the git-pinned versions in the template requirements files.
+          pip install pandas matplotlib
+          # cubrid-mcp-server publishes to PyPI on release; fall back to git
+          # until the first PyPI release is available.
+          pip install cubrid-mcp-server \
+            || pip install "git+https://github.com/cubrid-lab/cubrid-mcp-server.git"
+
+      - name: Record tested versions
+        run: |
+          {
+            echo "### Tested upstream versions";
+            echo "";
+            echo "| Package | Version |";
+            echo "| --- | --- |";
+            for pkg in pycubrid sqlalchemy-cubrid cubrid-mcp-server; do
+              ver=$(pip show "$pkg" | awk -F': ' '/^Version:/ {print $2}');
+              echo "| $pkg | ${ver:-not installed} |";
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Start CUBRID container
+        run: |
+          docker run -d --name cubrid --shm-size 512m \
+            -e CUBRID_DB=testdb \
+            -p 33000:33000 -p 1523:1523 \
+            cubrid/cubrid:11.2
 
       - name: Wait for CUBRID readiness
         run: |
-          for i in $(seq 1 30); do
-            if python -c "
-          from pycubrid import connect
-          try:
-              conn = connect('CUBRID:localhost:33000:testdb:::', user='dba', password='')
-              cur = conn.cursor()
-              cur.execute('SELECT 1')
-              cur.close()
-              conn.close()
-              print('CUBRID ready')
-              exit(0)
-          except Exception as e:
-              print(f'Not ready: {e}')
-              exit(1)
-          "; then
-              break
+          # Use the in-container csql check (same as docker-compose healthcheck)
+          # rather than a client connect; the broker accepts external TCP
+          # connections slightly after the engine itself is ready.
+          for i in $(seq 1 60); do
+            if docker exec cubrid bash -lc "csql -u dba testdb -c 'SELECT 1;'" >/dev/null 2>&1; then
+              echo "CUBRID testdb is ready (attempt $i)"
+              exit 0
             fi
-            echo "Waiting... ($i/30)"
+            echo "Waiting for CUBRID testdb... attempt $i/60"
             sleep 5
           done
+          echo "CUBRID testdb did not become ready in time"
+          docker logs cubrid || true
+          exit 1
+
+      - name: Verify external client connectivity
+        run: |
+          # The csql check only proves the in-container engine is up; the broker
+          # accepts external TCP on the mapped port slightly later. Confirm a real
+          # pycubrid client (the same path the examples use) can connect before
+          # running make verify, otherwise the first example races the broker.
+          python - <<'PY'
+          import sys
+          import time
+
+          import pycubrid
+
+          last_error = None
+          for attempt in range(1, 31):
+              try:
+                  conn = pycubrid.connect(
+                      host="localhost",
+                      port=33000,
+                      database="testdb",
+                      user="dba",
+                      password="",
+                  )
+                  cursor = conn.cursor()
+                  cursor.execute("SELECT 1")
+                  cursor.fetchone()
+                  cursor.close()
+                  conn.close()
+                  print(f"External pycubrid connection OK (attempt {attempt})")
+                  sys.exit(0)
+              except Exception as error:
+                  last_error = error
+                  print(f"Waiting for external broker... attempt {attempt}/30: {error}")
+                  time.sleep(3)
+
+          print(f"External broker not reachable in time: {last_error}")
+          sys.exit(1)
+          PY
 
       - name: Run make verify
         run: make verify
+
+      - name: Smoke test cubrid-mcp-server
+        run: python -c "import cubrid_mcp_server; print('cubrid-mcp-server import OK')"

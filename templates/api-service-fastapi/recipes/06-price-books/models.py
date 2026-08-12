@@ -1,7 +1,7 @@
 # pyright: reportImplicitRelativeImport=false, reportUnusedParameter=false
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -10,6 +10,7 @@ from database import Base
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
+
 class PriceProduct(Base):
     __tablename__: str = "cookbook_price_products"
 
@@ -17,6 +18,7 @@ class PriceProduct(Base):
     sku: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     active: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
 
 class PriceBookEntry(Base):
     __tablename__: str = "cookbook_price_book_entries"

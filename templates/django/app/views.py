@@ -16,6 +16,7 @@ def _ensure_tables_initialized() -> None:
         create_tables()
         _tables_initialized = True
 
+
 def health_view(_request: HttpRequest) -> JsonResponse:
     _ensure_tables_initialized()
     session = get_session()

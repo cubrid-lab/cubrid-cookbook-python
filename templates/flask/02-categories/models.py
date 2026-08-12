@@ -16,11 +16,15 @@ class Category(db.Model):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    parent_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("cookbook_categories.id"), nullable=True)
+    parent_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("cookbook_categories.id"), nullable=True
+    )
     is_deleted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
-    parent: Mapped["Category | None"] = relationship("Category", remote_side=[id], back_populates="children")
+    parent: Mapped["Category | None"] = relationship(
+        "Category", remote_side=[id], back_populates="children"
+    )
     children: Mapped[list["Category"]] = relationship("Category", back_populates="parent")
     articles: Mapped[list["Article"]] = relationship(back_populates="category")
 
@@ -40,7 +44,9 @@ class Article(db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
-    category_id: Mapped[int] = mapped_column(Integer, ForeignKey("cookbook_categories.id"), nullable=False)
+    category_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("cookbook_categories.id"), nullable=False
+    )
     is_deleted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 

@@ -46,7 +46,6 @@ async def client(db_session: Session):
 from typing import cast
 
 
-
 def build_items(price_offset: int = 0) -> list[dict[str, object]]:
     return [
         {

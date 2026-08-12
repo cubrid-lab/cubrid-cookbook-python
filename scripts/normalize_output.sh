@@ -27,4 +27,5 @@ sed -E \
   -e 's/[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]+/{{TIMESTAMP}}/g' \
   -e 's/[{][{]DATE[}][}] [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]+/{{TIMESTAMP}}/g' \
   -e 's/[{][{]DATE[}][}]T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+/{{DATETIME}}/g' \
-  -e 's/\[generated in [0-9.]+s]/[generated in {{TIME}}s]/g'
+  -e 's/\[generated in [0-9.]+s]/[generated in {{TIME}}s]/g' \
+  -e "s/ \(errno=-?[0-9]+, description='[^']*', sqlstate='[^']*'\)//g"
