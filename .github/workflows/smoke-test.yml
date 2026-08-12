@@ -68,26 +68,20 @@ jobs:
 
       - name: Wait for CUBRID readiness
         run: |
-          for i in $(seq 1 30); do
-            if python -c "
-          from pycubrid import connect
-          try:
-              conn = connect('CUBRID:localhost:33000:testdb:::', user='dba', password='')
-              cur = conn.cursor()
-              cur.execute('SELECT 1')
-              cur.close()
-              conn.close()
-              print('CUBRID ready')
-              exit(0)
-          except Exception as e:
-              print(f'Not ready: {e}')
-              exit(1)
-          "; then
-              break
+          # Use the in-container csql check (same as docker-compose healthcheck)
+          # rather than a client connect; the broker accepts external TCP
+          # connections slightly after the engine itself is ready.
+          for i in $(seq 1 60); do
+            if docker exec cubrid bash -lc "csql -u dba testdb -c 'SELECT 1;'" >/dev/null 2>&1; then
+              echo "CUBRID testdb is ready (attempt $i)"
+              exit 0
             fi
-            echo "Waiting... ($i/30)"
+            echo "Waiting for CUBRID testdb... attempt $i/60"
             sleep 5
           done
+          echo "CUBRID testdb did not become ready in time"
+          docker logs cubrid || true
+          exit 1
 
       - name: Run make verify
         run: make verify
