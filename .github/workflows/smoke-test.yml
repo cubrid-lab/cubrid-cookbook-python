@@ -86,5 +86,14 @@ jobs:
       - name: Run make verify
         run: make verify
 
+      - name: Dump golden candidates
+        if: always()
+        run: |
+          for s in fundamentals/lob-handling/06_lob.py fundamentals/orm-basics/06_reflection.py; do
+            echo "vvvvv BEGIN $s vvvvv"
+            python "$s" 2>&1 | ./scripts/normalize_output.sh
+            echo "^^^^^ END $s ^^^^^"
+          done
+
       - name: Smoke test cubrid-mcp-server
         run: python -c "import cubrid_mcp_server; print('cubrid-mcp-server import OK')"
