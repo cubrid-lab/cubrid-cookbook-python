@@ -19,11 +19,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Report trigger
+        env:
+          # Pass untrusted repository_dispatch payload through the environment
+          # instead of interpolating it directly into the shell, which would be
+          # a command-injection vector.
+          EVENT_NAME: ${{ github.event_name }}
+          UPSTREAM_PACKAGE: ${{ github.event.client_payload.package }}
+          UPSTREAM_REF: ${{ github.event.client_payload.ref }}
         run: |
-          echo "Event: ${{ github.event_name }}"
-          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            echo "Triggered by upstream release: ${{ github.event.client_payload.package }} ${{ github.event.client_payload.ref }}"
-            echo "### Triggered by upstream release: \`${{ github.event.client_payload.package }} ${{ github.event.client_payload.ref }}\`" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Event: %s\n' "$EVENT_NAME"
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            printf 'Triggered by upstream release: %s %s\n' "$UPSTREAM_PACKAGE" "$UPSTREAM_REF"
+            printf '### Triggered by upstream release: `%s %s`\n' "$UPSTREAM_PACKAGE" "$UPSTREAM_REF" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Checkout
@@ -82,6 +89,44 @@ jobs:
           echo "CUBRID testdb did not become ready in time"
           docker logs cubrid || true
           exit 1
+
+      - name: Verify external client connectivity
+        run: |
+          # The csql check only proves the in-container engine is up; the broker
+          # accepts external TCP on the mapped port slightly later. Confirm a real
+          # pycubrid client (the same path the examples use) can connect before
+          # running make verify, otherwise the first example races the broker.
+          python - <<'PY'
+          import sys
+          import time
+
+          import pycubrid
+
+          last_error = None
+          for attempt in range(1, 31):
+              try:
+                  conn = pycubrid.connect(
+                      host="localhost",
+                      port=33000,
+                      database="testdb",
+                      user="dba",
+                      password="",
+                  )
+                  cursor = conn.cursor()
+                  cursor.execute("SELECT 1")
+                  cursor.fetchone()
+                  cursor.close()
+                  conn.close()
+                  print(f"External pycubrid connection OK (attempt {attempt})")
+                  sys.exit(0)
+              except Exception as error:
+                  last_error = error
+                  print(f"Waiting for external broker... attempt {attempt}/30: {error}")
+                  time.sleep(3)
+
+          print(f"External broker not reachable in time: {last_error}")
+          sys.exit(1)
+          PY
 
       - name: Run make verify
         run: make verify
