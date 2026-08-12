@@ -22,7 +22,14 @@ class BatchProduct(db.Model):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     def to_dict(self) -> dict[str, object]:
-        return {"id": self.id, "sku": self.sku, "name": self.name, "price": self.price, "is_active": self.is_active, "created_at": self.created_at.isoformat()}
+        return {
+            "id": self.id,
+            "sku": self.sku,
+            "name": self.name,
+            "price": self.price,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat(),
+        }
 
 
 class BatchJob(db.Model):
@@ -39,14 +46,25 @@ class BatchJob(db.Model):
     rows: Mapped[list["BatchJobRow"]] = relationship(back_populates="job")
 
     def to_dict(self) -> dict[str, object]:
-        return {"id": self.id, "job_type": self.job_type, "status": self.status, "total_rows": self.total_rows, "success_cnt": self.success_cnt, "failed_cnt": self.failed_cnt, "created_at": self.created_at.isoformat(), "finished_at": self.finished_at.isoformat() if self.finished_at else None}
+        return {
+            "id": self.id,
+            "job_type": self.job_type,
+            "status": self.status,
+            "total_rows": self.total_rows,
+            "success_cnt": self.success_cnt,
+            "failed_cnt": self.failed_cnt,
+            "created_at": self.created_at.isoformat(),
+            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
+        }
 
 
 class BatchJobRow(db.Model):
     __tablename__ = "cookbook_batch_job_rows"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    job_id: Mapped[int] = mapped_column(Integer, db.ForeignKey("cookbook_batch_jobs.id"), nullable=False)
+    job_id: Mapped[int] = mapped_column(
+        Integer, db.ForeignKey("cookbook_batch_jobs.id"), nullable=False
+    )
     row_index: Mapped[int] = mapped_column(Integer, nullable=False)
     sku: Mapped[str] = mapped_column(String(100), nullable=False)
     payload: Mapped[str] = mapped_column(Text, nullable=False)
@@ -55,4 +73,12 @@ class BatchJobRow(db.Model):
     job: Mapped["BatchJob"] = relationship(back_populates="rows")
 
     def to_dict(self) -> dict[str, object]:
-        return {"id": self.id, "job_id": self.job_id, "row_index": self.row_index, "sku": self.sku, "payload": self.payload, "status": self.status, "error_message": self.error_message}
+        return {
+            "id": self.id,
+            "job_id": self.job_id,
+            "row_index": self.row_index,
+            "sku": self.sku,
+            "payload": self.payload,
+            "status": self.status,
+            "error_message": self.error_message,
+        }

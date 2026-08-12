@@ -47,7 +47,6 @@ import json
 from typing import cast
 
 
-
 @pytest.mark.asyncio
 async def test_create_profile(client: AsyncClient) -> None:
     payload = {

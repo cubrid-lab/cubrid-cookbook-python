@@ -77,10 +77,18 @@ def main() -> None:
 
         # Print results
         print("\n=== Bulk Insert Benchmark ===")
-        print(f"Strategy 1 (per-row COMMIT):     {strategy1_time:.3f}s  {per_row_count} rows  ({strategy1_rows_sec:.0f} rows/sec)")
-        print(f"Strategy 2 (batch COMMIT 500):   {strategy2_time:.3f}s  {num_rows} rows  ({strategy2_rows_sec:.0f} rows/sec)")
-        print(f"Strategy 3 (single COMMIT):      {strategy3_time:.3f}s  {num_rows} rows  ({strategy3_rows_sec:.0f} rows/sec)")
-        print(f"\nKey insight: COMMIT is ~{strategy1_time / per_row_count * 1000:.0f}ms per call — batch your writes!")
+        print(
+            f"Strategy 1 (per-row COMMIT):     {strategy1_time:.3f}s  {per_row_count} rows  ({strategy1_rows_sec:.0f} rows/sec)"
+        )
+        print(
+            f"Strategy 2 (batch COMMIT 500):   {strategy2_time:.3f}s  {num_rows} rows  ({strategy2_rows_sec:.0f} rows/sec)"
+        )
+        print(
+            f"Strategy 3 (single COMMIT):      {strategy3_time:.3f}s  {num_rows} rows  ({strategy3_rows_sec:.0f} rows/sec)"
+        )
+        print(
+            f"\nKey insight: COMMIT is ~{strategy1_time / per_row_count * 1000:.0f}ms per call — batch your writes!"
+        )
         print()
 
     finally:
