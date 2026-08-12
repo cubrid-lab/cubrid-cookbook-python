@@ -5,7 +5,10 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "0 0 * * 0"
+    - cron: "0 0 * * *"
+  repository_dispatch:
+    types: [upstream-released]
+  workflow_dispatch:
 
 concurrency:
   group: smoke-tests-${{ github.workflow }}-${{ github.ref }}
@@ -28,6 +31,14 @@ jobs:
           --health-retries 10
           --health-start-period 30s
     steps:
+      - name: Report trigger
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "Triggered by upstream release: ${{ github.event.client_payload.package }} ${{ github.event.client_payload.ref }}"
+            echo "### Triggered by upstream release: \`${{ github.event.client_payload.package }} ${{ github.event.client_payload.ref }}\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -37,7 +48,20 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install pycubrid sqlalchemy sqlalchemy-cubrid
+        run: pip install pycubrid sqlalchemy sqlalchemy-cubrid cubrid-mcp-server
+
+      - name: Record tested versions
+        run: |
+          {
+            echo "### Tested upstream versions";
+            echo "";
+            echo "| Package | Version |";
+            echo "| --- | --- |";
+            for pkg in pycubrid sqlalchemy-cubrid cubrid-mcp-server; do
+              ver=$(pip show "$pkg" | awk -F': ' '/^Version:/ {print $2}');
+              echo "| $pkg | ${ver:-not installed} |";
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Wait for CUBRID readiness
         run: |
@@ -64,3 +88,6 @@ jobs:
 
       - name: Run make verify
         run: make verify
+
+      - name: Smoke test cubrid-mcp-server
+        run: python -c "import cubrid_mcp_server; print('cubrid-mcp-server import OK')"
