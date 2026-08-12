@@ -17,19 +17,6 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    services:
-      cubrid:
-        image: cubrid/cubrid:11.2
-        env:
-          CUBRID_DB: testdb
-        ports:
-          - 33000:33000
-        options: >-
-          --health-cmd "csql -u dba testdb -c 'SELECT 1'"
-          --health-interval 15s
-          --health-timeout 10s
-          --health-retries 10
-          --health-start-period 30s
     steps:
       - name: Report trigger
         run: |
@@ -62,6 +49,13 @@ jobs:
               echo "| $pkg | ${ver:-not installed} |";
             done
           } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Start CUBRID container
+        run: |
+          docker run -d --name cubrid --shm-size 512m \
+            -e CUBRID_DB=testdb \
+            -p 33000:33000 -p 1523:1523 \
+            cubrid/cubrid:11.2
 
       - name: Wait for CUBRID readiness
         run: |
