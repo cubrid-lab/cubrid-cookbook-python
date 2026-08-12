@@ -35,7 +35,12 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install pycubrid sqlalchemy sqlalchemy-cubrid cubrid-mcp-server
+        run: |
+          pip install pycubrid sqlalchemy sqlalchemy-cubrid
+          # cubrid-mcp-server publishes to PyPI on release; fall back to git
+          # until the first PyPI release is available.
+          pip install cubrid-mcp-server \
+            || pip install "git+https://github.com/cubrid-lab/cubrid-mcp-server.git"
 
       - name: Record tested versions
         run: |
