@@ -37,6 +37,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pycubrid sqlalchemy sqlalchemy-cubrid
+          # Extra deps used by templates (e.g. batch-etl). Installed separately
+          # so the released pycubrid/sqlalchemy-cubrid above are not overridden
+          # by the git-pinned versions in the template requirements files.
+          pip install pandas matplotlib
           # cubrid-mcp-server publishes to PyPI on release; fall back to git
           # until the first PyPI release is available.
           pip install cubrid-mcp-server \
