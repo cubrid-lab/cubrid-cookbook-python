@@ -10,6 +10,7 @@ from database import Base
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
+
 class Document(Base):
     __tablename__: str = "cookbook_documents"
 
@@ -27,6 +28,7 @@ class Document(Base):
         onupdate=utc_now,
     )
     revisions: Mapped[list["DocumentRevision"]] = relationship(back_populates="document")
+
 
 class DocumentRevision(Base):
     __tablename__: str = "cookbook_document_revisions"

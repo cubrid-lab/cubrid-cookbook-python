@@ -33,6 +33,7 @@ engine = create_engine(
 )
 SessionLocal = sessionmaker(bind=engine)
 
+
 @app.get("/items")
 def list_items():
     with SessionLocal() as session:
@@ -158,7 +159,7 @@ session.execute(stmt)
 # ❌ Anti-pattern — sync DB call in async handler blocks the event loop
 @app.get("/items")
 async def list_items():
-    conn = pycubrid.connect(...)    # Blocks event loop
+    conn = pycubrid.connect(...)  # Blocks event loop
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM cookbook_items")  # Blocks event loop
     rows = cursor.fetchall()
@@ -175,11 +176,13 @@ async def list_items():
 def list_items(db: Session = Depends(get_db)):
     return db.execute(text("SELECT * FROM cookbook_items")).all()
 
+
 # ✅ Option B — explicit thread pool for async handler
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 executor = ThreadPoolExecutor(max_workers=5)
+
 
 @app.get("/items")
 async def list_items():

@@ -46,7 +46,6 @@ async def client(db_session: Session):
 from typing import cast
 
 
-
 async def create_tenant(client: AsyncClient, name: str, slug: str) -> dict[str, object]:
     response = await client.post("/tenants", json={"name": name, "slug": slug})
     assert response.status_code == 201

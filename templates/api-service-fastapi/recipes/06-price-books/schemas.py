@@ -2,12 +2,13 @@
 from datetime import datetime
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PriceProductCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=100)
     name: str = Field(min_length=1, max_length=255)
+
 
 class PriceProductResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
@@ -17,6 +18,7 @@ class PriceProductResponse(BaseModel):
     name: str
     active: int
 
+
 class PriceEntryCreate(BaseModel):
     product_id: int
     channel: str = Field(min_length=1, max_length=30)
@@ -24,6 +26,7 @@ class PriceEntryCreate(BaseModel):
     amount_cents: int = Field(gt=0)
     starts_at: datetime
     ends_at: datetime | None = None
+
 
 class PriceEntryResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
@@ -36,6 +39,7 @@ class PriceEntryResponse(BaseModel):
     starts_at: datetime
     ends_at: datetime | None
     version: int
+
 
 class SupersedeRequest(BaseModel):
     new_amount_cents: int = Field(gt=0)

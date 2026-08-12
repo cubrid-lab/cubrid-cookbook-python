@@ -10,6 +10,7 @@ from database import Base
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
+
 class UserProfile(Base):
     __tablename__: str = "cookbook_user_profiles"
 
@@ -29,6 +30,7 @@ class UserProfile(Base):
         back_populates="profile",
         cascade="all, delete-orphan",
     )
+
 
 class ProfileEvent(Base):
     __tablename__: str = "cookbook_profile_events"

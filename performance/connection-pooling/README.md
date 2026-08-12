@@ -15,16 +15,17 @@ In a web application creating a new connection per request:
 
 ```python
 """Use SQLAlchemy's built-in connection pool."""
+
 from __future__ import annotations
 
 from sqlalchemy import create_engine, text
 
 engine = create_engine(
     "cubrid+pycubrid://dba@localhost:33000/testdb",
-    pool_size=5,         # Number of connections to keep in the pool
-    max_overflow=10,     # Extra connections allowed beyond pool_size
-    pool_timeout=30,     # Max seconds to wait for a connection
-    pool_recycle=3600,   # Recreate connections after 1 hour (handles CUBRID idle timeout)
+    pool_size=5,  # Number of connections to keep in the pool
+    max_overflow=10,  # Extra connections allowed beyond pool_size
+    pool_timeout=30,  # Max seconds to wait for a connection
+    pool_recycle=3600,  # Recreate connections after 1 hour (handles CUBRID idle timeout)
     pool_pre_ping=True,  # Validate connections before use
 )
 
@@ -41,6 +42,7 @@ with engine.connect() as conn:
 
 ```python
 """Per-request session management in FastAPI."""
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -93,7 +95,7 @@ Set `pool_recycle` shorter than the server timeout to avoid stale connections.
 # Set pool_recycle well below that (safety margin)
 engine = create_engine(
     "cubrid+pycubrid://dba@localhost:33000/testdb",
-    pool_recycle=3600,   # 1 hour — 1/6 of server timeout
+    pool_recycle=3600,  # 1 hour — 1/6 of server timeout
     pool_pre_ping=True,  # Detect broken connections before use
 )
 ```

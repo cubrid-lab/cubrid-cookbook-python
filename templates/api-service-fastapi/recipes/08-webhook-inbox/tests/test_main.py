@@ -48,8 +48,6 @@ from models import Shipment
 from typing import cast
 
 
-
-
 @pytest.mark.asyncio
 async def test_ingest_webhook_creates_event(client: AsyncClient) -> None:
     shipment_response = await client.post(

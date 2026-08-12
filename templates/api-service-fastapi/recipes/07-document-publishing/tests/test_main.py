@@ -46,7 +46,6 @@ async def client(db_session: Session):
 from typing import cast
 
 
-
 @pytest.mark.asyncio
 async def test_create_document_with_first_revision(client: AsyncClient) -> None:
     response = await client.post(

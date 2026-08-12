@@ -10,6 +10,7 @@ from database import Base
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
+
 class Shipment(Base):
     __tablename__: str = "cookbook_shipments"
 
@@ -18,6 +19,7 @@ class Shipment(Base):
     carrier: Mapped[str] = mapped_column(String(50), nullable=False)
     current_status: Mapped[str] = mapped_column(String(30), nullable=False, default="unknown")
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
 
 class WebhookEvent(Base):
     __tablename__: str = "cookbook_webhook_events"
@@ -43,6 +45,7 @@ class WebhookEvent(Base):
     received_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     attempts_list: Mapped[list["WebhookAttempt"]] = relationship(back_populates="event")
+
 
 class WebhookAttempt(Base):
     __tablename__: str = "cookbook_webhook_attempts"

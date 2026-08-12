@@ -25,7 +25,13 @@ db = importlib.import_module("database").db
 
 @pytest.fixture
 def app(tmp_path: Path):
-    return create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'test.db'}", "SQLALCHEMY_TRACK_MODIFICATIONS": False})
+    return create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'test.db'}",
+            "SQLALCHEMY_TRACK_MODIFICATIONS": False,
+        }
+    )
 
 
 @pytest.fixture
@@ -33,6 +39,7 @@ def httpx_client(app):
     transport = httpx.WSGITransport(app=app)
     with httpx.Client(transport=transport, base_url="http://testserver") as client:
         yield client
+
 
 def _create_invoice(
     httpx_client: httpx.Client,

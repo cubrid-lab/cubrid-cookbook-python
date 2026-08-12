@@ -4,10 +4,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 try:
-    from .database import Base, engine
     from .routes import router
 except ImportError:
-    from database import Base, engine
     from routes import router
 
 

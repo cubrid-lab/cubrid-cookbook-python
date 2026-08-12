@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from sqlalchemy import create_engine, text
-from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy.pool import NullPool
 
 
 def main() -> None:

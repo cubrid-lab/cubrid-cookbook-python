@@ -21,7 +21,12 @@ class Warehouse(db.Model):
     stock_items: Mapped[list["StockItem"]] = relationship(back_populates="warehouse")
 
     def to_dict(self) -> dict[str, object]:
-        return {"id": self.id, "code": self.code, "name": self.name, "created_at": self.created_at.isoformat()}
+        return {
+            "id": self.id,
+            "code": self.code,
+            "name": self.name,
+            "created_at": self.created_at.isoformat(),
+        }
 
 
 class StockItem(db.Model):
@@ -29,7 +34,9 @@ class StockItem(db.Model):
     __table_args__ = (UniqueConstraint("warehouse_id", "sku", name="uq_stock_item_warehouse_sku"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    warehouse_id: Mapped[int] = mapped_column(Integer, ForeignKey("cookbook_warehouses.id"), nullable=False)
+    warehouse_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("cookbook_warehouses.id"), nullable=False
+    )
     sku: Mapped[str] = mapped_column(String(100), nullable=False)
     product_name: Mapped[str] = mapped_column(String(255), nullable=False)
     on_hand_qty: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -38,14 +45,22 @@ class StockItem(db.Model):
     movements: Mapped[list["StockMovement"]] = relationship(back_populates="stock_item")
 
     def to_dict(self) -> dict[str, object]:
-        return {"id": self.id, "warehouse_id": self.warehouse_id, "sku": self.sku, "product_name": self.product_name, "on_hand_qty": self.on_hand_qty}
+        return {
+            "id": self.id,
+            "warehouse_id": self.warehouse_id,
+            "sku": self.sku,
+            "product_name": self.product_name,
+            "on_hand_qty": self.on_hand_qty,
+        }
 
 
 class StockMovement(db.Model):
     __tablename__ = "cookbook_stock_movements"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    stock_item_id: Mapped[int] = mapped_column(Integer, ForeignKey("cookbook_stock_items.id"), nullable=False)
+    stock_item_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("cookbook_stock_items.id"), nullable=False
+    )
     movement_type: Mapped[str] = mapped_column(String(20), nullable=False)
     qty_delta: Mapped[int] = mapped_column(Integer, nullable=False)
     reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -54,4 +69,12 @@ class StockMovement(db.Model):
     stock_item: Mapped["StockItem"] = relationship(back_populates="movements")
 
     def to_dict(self) -> dict[str, object]:
-        return {"id": self.id, "stock_item_id": self.stock_item_id, "movement_type": self.movement_type, "qty_delta": self.qty_delta, "reference": self.reference, "note": self.note, "created_at": self.created_at.isoformat()}
+        return {
+            "id": self.id,
+            "stock_item_id": self.stock_item_id,
+            "movement_type": self.movement_type,
+            "qty_delta": self.qty_delta,
+            "reference": self.reference,
+            "note": self.note,
+            "created_at": self.created_at.isoformat(),
+        }
