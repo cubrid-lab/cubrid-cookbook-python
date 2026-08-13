@@ -104,8 +104,8 @@ def find_untested(repo_root: Path, examples: list[str], allowlist: set[str]) -> 
         if ex in allowlist:
             continue
         example_dir = repo_root / ex
-        has_expected = any(example_dir.rglob("expected"))
-        has_tests = any(example_dir.rglob("tests"))
+        has_expected = any(p.is_dir() for p in example_dir.rglob("expected"))
+        has_tests = any(p.is_dir() for p in example_dir.rglob("tests"))
         if not has_expected and not has_tests:
             untested.append(ex)
     return untested
