@@ -102,10 +102,31 @@ jobs:
             printf '### Scoped smoke: `%s`\n' "${SELECTED# }" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Start CUBRID container
+        run: |
+          # Started before dependency install so the image pull and engine
+          # initialization overlap with pip install instead of running serially;
+          # the readiness gate below then usually finds the engine already up.
+          docker run -d --name cubrid --shm-size 512m \
+            -e CUBRID_DB=testdb \
+            -p 33000:33000 -p 1523:1523 \
+            cubrid/cubrid:11.2
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          # Rolling key: the target packages float to their latest release, so
+          # this caches downloaded wheels (pandas, matplotlib, numpy, sqlalchemy)
+          # without pinning versions. pip still queries PyPI for newer releases.
+          key: pip-smoke-${{ runner.os }}-${{ hashFiles('.github/workflows/smoke-test.yml') }}
+          restore-keys: |
+            pip-smoke-${{ runner.os }}-
 
       - name: Install dependencies
         run: |
@@ -131,13 +152,6 @@ jobs:
               echo "| $pkg | ${ver:-not installed} |";
             done
           } | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Start CUBRID container
-        run: |
-          docker run -d --name cubrid --shm-size 512m \
-            -e CUBRID_DB=testdb \
-            -p 33000:33000 -p 1523:1523 \
-            cubrid/cubrid:11.2
 
       - name: Wait for CUBRID readiness
         run: |
