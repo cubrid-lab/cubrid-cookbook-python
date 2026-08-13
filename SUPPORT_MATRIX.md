@@ -6,7 +6,7 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 
 | CUBRID | Status | Notes |
 |--------|--------|-------|
-| **11.4** | ✅ Fully supported | All 55 recipes pass |
+| **11.4** | ✅ Fully supported | All 62 recipes pass |
 | **11.2** | ✅ Fully supported | Primary development/test target |
 | 11.0 | ⚠️ Untested | Should work (same CAS protocol) |
 | 10.2 | ⚠️ Untested | Should work (same CAS protocol) |
@@ -19,9 +19,9 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 
 | Python | Status |
 |--------|--------|
-| **3.10** | ✅ Tested (CI default) |
+| **3.12** | ✅ Tested (CI default) |
 | **3.11** | ✅ Compatible |
-| **3.12** | ✅ Compatible |
+| **3.10** | ✅ Supported (minimum) |
 | **3.13** | ✅ Compatible |
 | 3.9 | ❌ Not supported (`from __future__ import annotations` patterns) |
 
@@ -53,7 +53,7 @@ All recipes tested against CUBRID 11.2 and 11.4:
 | Streamlit templates | 5 | ✅ All pass | ✅ All pass |
 | Django template | 1 | ✅ Pass | ✅ Pass |
 | Async + Alembic + JSON + Isolation | 4 | ✅ All pass | ✅ All pass |
-| **Total** | **58** | **✅** | **✅** |
+| **Total** | **62** | **✅** | **✅** |
 
 ## Known Limitations by Version
 
