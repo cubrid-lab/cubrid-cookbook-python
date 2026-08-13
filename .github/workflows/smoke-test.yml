@@ -144,10 +144,10 @@ jobs:
           # so the released pycubrid/sqlalchemy-cubrid above are not overridden
           # by the git-pinned versions in the template requirements files.
           pip install pandas matplotlib
-          # cubrid-mcp-server publishes to PyPI on release; fall back to git
-          # until the first PyPI release is available.
+          # cubrid-mcp-server is not yet on PyPI; fall back to the pinned git
+          # release tag so the tested version is deterministic (not main HEAD).
           pip install cubrid-mcp-server \
-            || pip install "git+https://github.com/cubrid-lab/cubrid-mcp-server.git"
+            || pip install "git+https://github.com/cubrid-lab/cubrid-mcp-server.git@v0.2.1"
 
       - name: Record tested versions
         run: |
