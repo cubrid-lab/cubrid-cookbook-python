@@ -19,7 +19,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Previous Releases
 - Python examples: FastAPI, Django, Flask, SQLAlchemy, pycubrid, Pandas, Celery, Streamlit
 - llms.txt for AI agent discoverability
-- Multilingual README support (🇰🇷 🇺🇸 🇨🇳 🇮🇳 🇩🇪 🇷🇺)
 - PRD with Example-first Design Philosophy
 
 ### Changed

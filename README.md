@@ -16,6 +16,7 @@
 | Your Goal | Go Here | Time |
 |-----------|---------|------|
 | **Start in 5 minutes** | [`quickstart/5min-fastapi/`](quickstart/5min-fastapi/) | 5 min |
+| **Start with SQLAlchemy** | [`quickstart/5min-sqlalchemy/`](quickstart/5min-sqlalchemy/) | 5 min |
 | **Migrate from Java** | [`migration/java-to-python/`](migration/java-to-python/) | 30 min |
 | **Build a production API** | [`templates/api-service-fastapi/`](templates/api-service-fastapi/) | 15 min |
 
@@ -47,7 +48,9 @@ Copy-and-customize starting points for real applications:
 
 | Template | Use Case |
 |----------|----------|
-| [`api-service-fastapi/`](templates/api-service-fastapi/) | REST API with FastAPI, SQLAlchemy, Docker |
+| [`api-service-fastapi/`](templates/api-service-fastapi/) | REST API with FastAPI, SQLAlchemy, Docker (12 recipes) |
+| [`flask/`](templates/flask/) | Flask + Flask-SQLAlchemy patterns (11 recipes) |
+| [`django/`](templates/django/) | Minimal Django app on CUBRID |
 | [`async-worker/`](templates/async-worker/) | Background task processing with Celery |
 | [`batch-etl/`](templates/batch-etl/) | Data pipeline with Pandas |
 | [`dashboard/`](templates/dashboard/) | Interactive dashboard with Streamlit |
@@ -79,6 +82,9 @@ Step-by-step reference for every core operation:
 | [Error handling](fundamentals/error-handling/) | Exception types, retry patterns |
 | [LOB handling](fundamentals/lob-handling/) | BLOB/CLOB operations |
 | [ORM basics](fundamentals/orm-basics/) | SQLAlchemy engine, core, ORM, relationships |
+| [pycubrid driver](fundamentals/pycubrid/) | 16 DB-API recipes: cursors, fetch sizing, batch error handling |
+| [SQLAlchemy recipes](fundamentals/sqlalchemy/) | 7 recipes including SET/MULTISET/SEQUENCE collection types |
+| [Pandas](fundamentals/pandas/) | 6 recipes: read_sql, chunked reads, to_sql load patterns |
 | [Async I/O](fundamentals/async/) | pycubrid.aio and SQLAlchemy async engine |
 | [Alembic migrations](fundamentals/alembic/) | Programmatic migration setup with CubridImpl |
 | [JSON type CRUD](fundamentals/json/) | Native JSON columns, JSON_EXTRACT/UNQUOTE patterns |
@@ -90,11 +96,13 @@ Step-by-step reference for every core operation:
 
 ```
 pycubrid (DB-API 2.0 driver)
-├── Direct usage ─── fundamentals/connect, crud, transactions
-├── SQLAlchemy ───── fundamentals/orm-basics, templates/api-service-fastapi
+├── Direct usage ─── fundamentals/connect, crud, transactions, pycubrid
+├── SQLAlchemy ───── fundamentals/orm-basics, sqlalchemy, quickstart/5min-sqlalchemy
 ├── FastAPI ──────── quickstart/5min-fastapi, templates/api-service-fastapi
+├── Flask ─────────── templates/flask
+├── Django ────────── templates/django
 ├── Celery ──────── templates/async-worker
-├── Pandas ──────── templates/batch-etl
+├── Pandas ──────── fundamentals/pandas, templates/batch-etl
 └── Streamlit ───── templates/dashboard
 ```
 
@@ -132,14 +140,17 @@ docker compose up -d
 ```
 cubrid-cookbook-python/
 ├── quickstart/
-│   └── 5min-fastapi/          # Docker + FastAPI in 5 minutes
+│   ├── 5min-fastapi/          # Docker + FastAPI in 5 minutes
+│   └── 5min-sqlalchemy/       # Docker + SQLAlchemy in 5 minutes
 ├── migration/
 │   └── java-to-python/        # JDBC → pycubrid/SQLAlchemy migration
 ├── templates/
-│   ├── api-service-fastapi/   # Production REST API
+│   ├── api-service-fastapi/   # Production REST API (12 recipes)
+│   ├── flask/                 # Flask + Flask-SQLAlchemy (11 recipes)
+│   ├── django/                # Minimal Django app
 │   ├── async-worker/          # Celery background tasks
 │   ├── batch-etl/             # Pandas data pipeline
-│   └── dashboard/             # Streamlit dashboard
+│   └── dashboard/             # Streamlit dashboard (5 recipes)
 ├── performance/
 │   ├── fetch-optimization/    # SELECT tuning (benchmarked)
 │   ├── bulk-insert/           # Write batching (benchmarked)
@@ -152,7 +163,14 @@ cubrid-cookbook-python/
 │   ├── parameterized-queries/   # Parameterized queries
 │   ├── error-handling/        # Exception patterns
 │   ├── lob-handling/          # BLOB/CLOB
-│   └── orm-basics/            # SQLAlchemy ORM
+│   ├── orm-basics/            # SQLAlchemy ORM
+│   ├── pycubrid/              # 16 pycubrid DB-API recipes
+│   ├── sqlalchemy/            # 7 SQLAlchemy recipes
+│   ├── pandas/                # 6 Pandas recipes
+│   ├── async/                 # pycubrid.aio + async SQLAlchemy
+│   ├── alembic/               # Programmatic Alembic migrations
+│   ├── json/                  # Native JSON column CRUD
+│   └── isolation-levels/      # 6 CUBRID isolation levels
 └── docker-compose.yml         # CUBRID 11.2
 ```
 
