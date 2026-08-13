@@ -73,7 +73,18 @@ jobs:
               esac
             done
             if [ -n "$MATCH" ]; then
-              case " $SELECTED " in *" $MATCH "*) : ;; *) SELECTED="$SELECTED $MATCH" ;; esac
+              # Reject any path with characters outside a safe allowlist before it
+              # reaches $GITHUB_ENV / make / find. This closes the injection and
+              # word-splitting surface from PR-controlled directory names; the
+              # allowlist excludes spaces and shell metacharacters, so the
+              # space-separated `find $(VERIFY_PATHS)` in the Makefile stays safe.
+              case "$MATCH" in
+                *[!A-Za-z0-9._/-]*)
+                  echo "Unsafe example path forces full verify: $MATCH"
+                  FALLBACK=1 ;;
+                *)
+                  case " $SELECTED " in *" $MATCH "*) : ;; *) SELECTED="$SELECTED $MATCH" ;; esac ;;
+              esac
             else
               # A file outside every example dir (Makefile, scripts/, workflow,
               # shared requirements, docs) can affect any example -> full run.
