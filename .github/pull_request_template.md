@@ -20,3 +20,5 @@ Make sure all items are marked when you submit the pull-request.
 - [ ] README with setup and run instructions is included
 - [ ] Python code passes `ruff check` and `ruff format --check`
 - [ ] No hardcoded credentials — environment variables used
+- [ ] Tests updated — new/changed examples ship an `expected/` golden file or a `tests/` suite (or an allowlist entry with a reason)
+- [ ] Docs updated — README, SUPPORT_MATRIX, and CHANGELOG reflect any added, renamed, or removed example (4-phase workflow: code without doc updates is incomplete)
