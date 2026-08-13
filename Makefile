@@ -5,6 +5,10 @@ DOCKER_COMPOSE := docker compose
 NORMALIZE := bash scripts/normalize_output.sh
 PYTHON := python3
 
+# Search roots for `make verify`. Defaults to the whole tree; CI narrows this to
+# only the changed example directories on pull requests (see smoke-test.yml).
+VERIFY_PATHS ?= .
+
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -27,10 +31,10 @@ clean: ## Stop and remove all data
 	$(DOCKER_COMPOSE) down -v
 	@echo "✓ Cleaned up all containers and volumes"
 
-verify: ## Verify example outputs against expected results
-	@echo "Verifying example outputs..."
+verify: ## Verify example outputs against expected results (VERIFY_PATHS scopes the search roots)
+	@echo "Verifying example outputs in: $(VERIFY_PATHS)"
 	@PASS=0; FAIL=0; SKIP=0; \
-	for expected in $$(find . -path '*/expected/*.expected' | sort); do \
+	for expected in $$(find $(VERIFY_PATHS) -path '*/expected/*.expected' | sort); do \
 		dir=$$(dirname "$$(dirname "$$expected")"); \
 		base=$$(basename "$$expected" .expected); \
 		script="$$dir/$$base.py"; \

@@ -35,6 +35,72 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history so PR-scoped verify can diff against the base commit.
+          fetch-depth: 0
+
+      - name: Scope verify to changed examples (pull requests only)
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # Non-PR events (push to main, cron, upstream release, manual dispatch)
+          # always run the full suite: a dependency bump or scheduled run must
+          # exercise every example, not just a diff.
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "VERIFY_PATHS=." >> "$GITHUB_ENV"
+            echo "Full verify (event=$EVENT_NAME)"
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=1 origin "$PR_BASE_SHA" 2>/dev/null || true
+          CHANGED=$(git diff --name-only "$PR_BASE_SHA" HEAD)
+          echo "Changed files:"
+          printf '%s\n' "$CHANGED"
+
+          # Example roots are directories that own an expected/ folder.
+          EXROOTS=$(find . -type d -name expected -not -path '*/node_modules/*' \
+            | sed 's#/expected$##;s#^\./##' | sort -u)
+
+          SELECTED=""
+          FALLBACK=0
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            MATCH=""
+            for root in $EXROOTS; do
+              case "$f" in
+                "$root"/*) MATCH="$root"; break ;;
+              esac
+            done
+            if [ -n "$MATCH" ]; then
+              # Reject any path with characters outside a safe allowlist before it
+              # reaches $GITHUB_ENV / make / find. This closes the injection and
+              # word-splitting surface from PR-controlled directory names; the
+              # allowlist excludes spaces and shell metacharacters, so the
+              # space-separated `find $(VERIFY_PATHS)` in the Makefile stays safe.
+              case "$MATCH" in
+                *[!A-Za-z0-9._/-]*)
+                  echo "Unsafe example path forces full verify: $MATCH"
+                  FALLBACK=1 ;;
+                *)
+                  case " $SELECTED " in *" $MATCH "*) : ;; *) SELECTED="$SELECTED $MATCH" ;; esac ;;
+              esac
+            else
+              # A file outside every example dir (Makefile, scripts/, workflow,
+              # shared requirements, docs) can affect any example -> full run.
+              echo "Shared/global change forces full verify: $f"
+              FALLBACK=1
+            fi
+          done <<< "$CHANGED"
+
+          if [ "$FALLBACK" -eq 1 ] || [ -z "${SELECTED// /}" ]; then
+            echo "VERIFY_PATHS=." >> "$GITHUB_ENV"
+            echo "Full verify (fallback=$FALLBACK, selected='${SELECTED# }')"
+          else
+            echo "VERIFY_PATHS=${SELECTED# }" >> "$GITHUB_ENV"
+            echo "Scoped verify: ${SELECTED# }"
+            printf '### Scoped smoke: `%s`\n' "${SELECTED# }" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -129,7 +195,7 @@ jobs:
           PY
 
       - name: Run make verify
-        run: make verify
+        run: make verify VERIFY_PATHS="${VERIFY_PATHS:-.}"
 
       - name: Smoke test cubrid-mcp-server
         run: python -c "import cubrid_mcp_server; print('cubrid-mcp-server import OK')"
