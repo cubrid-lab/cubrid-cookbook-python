@@ -24,6 +24,19 @@ jobs:
       - name: Ruff format check
         run: ruff format --check .
 
+  docs-sync:
+    name: Docs sync gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run doctests
+        run: python3 -m doctest scripts/check_docs_sync.py -v
+      - name: Check examples are documented
+        run: python3 scripts/check_docs_sync.py
+
   doc-lint:
     name: Documentation lint
     uses: cubrid-lab/.github/.github/workflows/doc-lint.yml@main

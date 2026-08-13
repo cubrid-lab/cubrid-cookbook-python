@@ -1,0 +1,12 @@
+# Smoke-coverage allowlist for scripts/check_docs_sync.py
+#
+# Each non-comment line is an example path (<category>/<name>) that is exempt
+# from the "missing smoke coverage" WARNING. Record a reason as an inline
+# comment. This allowlist does NOT exempt an example from the blocking
+# README-reference check.
+#
+# performance/* examples are benchmark demonstrations whose timing output is
+# non-deterministic and cannot be golden-file verified.
+performance/bulk-insert         # benchmark: non-deterministic timing output
+performance/connection-pooling  # benchmark: non-deterministic timing output
+performance/fetch-optimization  # benchmark: non-deterministic timing output
