@@ -221,4 +221,39 @@ jobs:
         run: make verify VERIFY_PATHS="${VERIFY_PATHS:-.}"
 
       - name: Smoke test cubrid-mcp-server
-        run: python -c "import cubrid_mcp_server; print('cubrid-mcp-server import OK')"
+        run: |
+          # Real-usage smoke: build the FastMCP server object and enumerate its
+          # registered tools, rather than only importing the package. This exercises
+          # the @mcp.tool registration path and catches a broken server surface (e.g.
+          # a tool that fails to register) that a bare `import` would silently pass.
+          # Tool handlers connect to CUBRID lazily (only on first call via _db()), so
+          # listing the tool surface needs no live database and no CUBRID_* env vars.
+          python - <<'PY'
+          import asyncio
+
+          from cubrid_mcp_server.server import mcp
+
+          # The public tool contract documented in the server's README. If a tool is
+          # renamed or dropped upstream, this smoke test should fail loudly.
+          expected = {
+              "all_table_names",
+              "filter_table_names",
+              "schema_definitions",
+              "describe_table",
+              "list_indexes",
+              "explain_query",
+              "table_row_counts",
+              "list_serials",
+              "list_class_hierarchy",
+              "execute_query",
+          }
+
+          tools = asyncio.run(mcp.list_tools())
+          names = {tool.name for tool in tools}
+          print(f"cubrid-mcp-server exposes {len(names)} tools: {sorted(names)}")
+
+          missing = expected - names
+          if missing:
+              raise SystemExit(f"cubrid-mcp-server missing expected tools: {sorted(missing)}")
+          print("cubrid-mcp-server real-usage smoke OK")
+          PY
