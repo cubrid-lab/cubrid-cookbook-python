@@ -60,7 +60,6 @@ class CookbookCollectionDemo(Base):
     checklist: Mapped[Any] = mapped_column(SEQUENCE(String(200)))  # ordered
 
 
-
 def _literal(value: str) -> str:
     """Render a Python string as a single-quoted SQL literal (escapes quotes)."""
     return "'" + value.replace("'", "''") + "'"
