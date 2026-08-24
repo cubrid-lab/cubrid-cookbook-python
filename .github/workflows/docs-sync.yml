@@ -6,7 +6,7 @@ name: docs-sync
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled, edited]
 
 jobs:
   docs-sync:
@@ -51,7 +51,7 @@ jobs:
             **/*.rst
             **/*.txt
         run: |
-          git fetch origin "$BASE_REF" --depth=1
+          git fetch origin "$BASE_REF"
           python - <<'PY'
           import fnmatch, json, os, subprocess, sys
 
@@ -70,7 +70,8 @@ jobs:
           def matches(path, patterns):
               return any(fnmatch.fnmatch(path, pat) for pat in patterns)
 
-          event = json.load(open(os.environ["EVENT_PATH"]))
+          with open(os.environ["EVENT_PATH"]) as _f:
+              event = json.load(_f)
           pr = event.get("pull_request", {})
           labels = {label["name"] for label in pr.get("labels", [])}
           body = pr.get("body") or ""
