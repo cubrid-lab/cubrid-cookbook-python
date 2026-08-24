@@ -50,6 +50,14 @@ Skipping any phase requires explicit justification. Trivial changes (typos, sing
 - Verify output matches expected behavior
 - `docker compose down`
 
+## Documentation definition of done
+
+Any change that adds, renames, removes, or alters the behavior of an example — or changes supported CUBRID/driver/Python versions — MUST update the matching documentation in the **same PR**. At minimum keep in sync: `SUPPORT_MATRIX.md`, `CHANGELOG.md`, `README.md` (incl. version badges/claims), and any affected `docs/`.
+
+If no documentation change is needed, state the reason explicitly in the PR body as `Docs: not needed - <reason>` or apply the `docs-not-needed` label. This is enforced by the `docs-sync` CI check (which complements phase 3 of the workflow above).
+
+Do not mark work complete until code, tests, and documentation are consistent.
+
 ## Project Context
 
 > This repo is the **Python cookbook** for the CUBRID ecosystem.
