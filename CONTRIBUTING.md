@@ -77,6 +77,37 @@ uvicorn app:app --reload
 python fundamentals/pycubrid/01_connect.py
 ```
 
+### Golden Verification
+
+Runnable examples are checked against committed golden output with `make verify`,
+which runs each `<dir>/<name>.py`, pipes it through `scripts/normalize_output.sh`,
+and diffs the result against `<dir>/expected/<name>.expected`. When you add a
+one-shot example, capture its golden output so CI can guard it.
+
+#### Excluded from golden verification
+
+Some examples are **intentionally** outside `make verify`. They are still real,
+runnable examples — they just can't be captured as a deterministic one-shot
+golden. If you see one of these without an `expected/` file, that is expected
+and not missing coverage:
+
+| Example | Why it is excluded |
+|---------|--------------------|
+| `quickstart/5min-fastapi` | Long-running web server (`uvicorn`) — never exits, so there is no terminal output to capture. |
+| `templates/async-worker` | Celery worker that requires an external broker (Redis) and runs until stopped. |
+| `fundamentals/pycubrid/12_pool_retry_worker.py` | Long-running pool/retry worker — not a one-shot script; it does not terminate deterministically. |
+| `performance/bulk-insert/benchmark.py` | Throughput benchmark — prints wall-clock timings and rows/sec that vary run-to-run. |
+| `performance/connection-pooling/benchmark.py` | Throughput benchmark — timings and speedup factors are nondeterministic. |
+| `performance/fetch-optimization/benchmark.py` | Throughput benchmark — per-strategy timings are nondeterministic. |
+
+Where output is dynamic only in *presentation* (timings, absolute paths, peak
+memory), prefer adding a presentation-only rule to `scripts/normalize_output.sh`
+(see `make test-normalize`) so the example can be golden-captured instead of
+excluded. Reserve exclusion for examples that never produce deterministic,
+one-shot terminal output.
+
+---
+
 ---
 
 ## Code Style
