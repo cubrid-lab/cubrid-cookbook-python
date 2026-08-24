@@ -1,0 +1,26 @@
+=== CUBRID Isolation Levels Demo ===
+
+CUBRID uses MVCC. Three isolation levels are accepted in raw SQL:
+  READ COMMITTED   - statement-level snapshot (default)
+  REPEATABLE READ  - transaction-level snapshot
+  SERIALIZABLE     - full serializable
+
+[setup] Created cookbook_isolation_demo with row (id=1, val=100)
+
+[1] Setting and reading each isolation level:
+
+  SET ... READ COMMITTED   ->  GET code=4 (ok)
+  SET ... REPEATABLE READ  ->  GET code=5 (ok)
+  SET ... SERIALIZABLE     ->  GET code=6 (ok)
+
+[2] Dirty-read demo at READ COMMITTED:
+
+  reader observed val=100 (committed value) -> no dirty read (MVCC)
+
+--- Choosing an isolation level ---
+  Read-heavy / typical web app : READ COMMITTED  (CUBRID default)
+  Consistent multi-read units  : REPEATABLE READ
+  Strict serialization         : SERIALIZABLE
+
+Tip: SQLAlchemy exposes these names via
+     sqlalchemy_cubrid/dialect.py:_ISOLATION_LEVEL_MAP.

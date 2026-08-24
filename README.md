@@ -88,7 +88,7 @@ Step-by-step reference for every core operation:
 | [Async I/O](fundamentals/async/) | pycubrid.aio and SQLAlchemy async engine |
 | [Alembic migrations](fundamentals/alembic/) | Programmatic migration setup with CubridImpl |
 | [JSON type CRUD](fundamentals/json/) | Native JSON columns, JSON_EXTRACT/UNQUOTE patterns |
-| [Isolation levels](fundamentals/isolation-levels/) | 6 CUBRID levels, dirty-read demonstration |
+| [Isolation levels](fundamentals/isolation-levels/) | 3 MVCC levels, no-dirty-read demonstration |
 
 ---
 
@@ -170,7 +170,7 @@ cubrid-cookbook-python/
 │   ├── async/                 # pycubrid.aio + async SQLAlchemy
 │   ├── alembic/               # Programmatic Alembic migrations
 │   ├── json/                  # Native JSON column CRUD
-│   └── isolation-levels/      # 6 CUBRID isolation levels
+│   └── isolation-levels/      # 3 MVCC isolation levels
 └── docker-compose.yml         # CUBRID 11.2
 ```
 
