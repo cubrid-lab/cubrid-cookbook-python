@@ -163,9 +163,15 @@ jobs:
               # git URL, closing the command-injection surface on untrusted input.
               *[!A-Za-z0-9._/-]*)
                 echo "Dispatched ref '$UPSTREAM_REF' is unsafe; keeping default $MCP_REF" ;;
-              *)
+              # Only accept a strict release-tag pattern (vMAJOR.MINOR.PATCH) so
+              # a dispatched ref points at an actual published release, not an
+              # arbitrary branch/sha. Anything else falls back to the pinned tag.
+              v[0-9]*.[0-9]*.[0-9]*)
                 MCP_REF="$UPSTREAM_REF"
-                echo "Using dispatched cubrid-mcp-server ref: $MCP_REF" ;;
+                MCP_DISPATCHED=1
+                echo "Using dispatched cubrid-mcp-server release ref: $MCP_REF" ;;
+              *)
+                echo "Dispatched ref '$UPSTREAM_REF' is not a release tag; keeping default $MCP_REF" ;;
             esac
           fi
           pip install cubrid-mcp-server \
