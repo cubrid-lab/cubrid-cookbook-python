@@ -175,8 +175,16 @@ jobs:
                 keeping default $MCP_REF" ;;
             esac
           fi
-          pip install cubrid-mcp-server \
-            || pip install "git+https://github.com/cubrid-lab/cubrid-mcp-server.git@${MCP_REF}"
+          # When an upstream release dispatched this run, install the exact
+          # released ref directly from git so the dogfood tests that release
+          # even before it appears on PyPI. Otherwise prefer the PyPI package
+          # and fall back to the pinned git ref.
+          if [ "${MCP_DISPATCHED:-0}" = "1" ]; then
+            pip install "git+https://github.com/cubrid-lab/cubrid-mcp-server.git@${MCP_REF}"
+          else
+            pip install cubrid-mcp-server \
+              || pip install "git+https://github.com/cubrid-lab/cubrid-mcp-server.git@${MCP_REF}"
+          fi
 
       - name: Record tested versions
         run: |
