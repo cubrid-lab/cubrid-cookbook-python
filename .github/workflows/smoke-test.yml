@@ -284,9 +284,10 @@ jobs:
               "list_class_hierarchy",
               "execute_query",
           }
-          # Tools added after v0.2.1 (e.g. health_check on main). Allowed but not
-          # required, so this contract stays green whether the pinned v0.2.1 tag
-          # or a newer dispatched ref (see install step) is installed.
+          # Tools added after v0.2.1 (e.g. health_check on main). Optional ONLY for
+          # the pinned v0.2.1 tag; the version gate below promotes health_check to
+          # required once a newer ref (see install step) is installed, so a newer
+          # dispatched release that drops it fails loudly.
           optional = {
               "health_check",
           }
