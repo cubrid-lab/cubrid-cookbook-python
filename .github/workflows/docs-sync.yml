@@ -17,6 +17,10 @@ jobs:
           fetch-depth: 0
 
       - name: Check behavior changes have docs updates
+        # Dependency-only Dependabot PRs never carry doc changes; exempt them so
+        # they can auto-merge. Guard on PR author (not actor) so reruns/follow-up
+        # events triggered by a human still skip enforcement for Dependabot PRs.
+        if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
         env:
           BASE_REF: ${{ github.base_ref }}
           EVENT_PATH: ${{ github.event_path }}
