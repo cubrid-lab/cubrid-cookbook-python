@@ -56,3 +56,5 @@ package-lock.json
 # Go
 *.exe
 fundamentals/pandas/*.csv
+# 06_export_csv.py writes to its CWD, which is the repo root under `make verify`.
+cookbook_monthly_sales_summary.csv
