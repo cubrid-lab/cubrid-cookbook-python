@@ -138,16 +138,38 @@ jobs:
             pip-smoke-${{ runner.os }}-
 
       - name: Install dependencies
+        env:
+          # Pass the untrusted repository_dispatch payload through the environment
+          # (never interpolated directly into a shell/URL) to avoid injection.
+          EVENT_NAME: ${{ github.event_name }}
+          UPSTREAM_PACKAGE: ${{ github.event.client_payload.package }}
+          UPSTREAM_REF: ${{ github.event.client_payload.ref }}
         run: |
           pip install pycubrid sqlalchemy sqlalchemy-cubrid
           # Extra deps used by templates (e.g. batch-etl). Installed separately
           # so the released pycubrid/sqlalchemy-cubrid above are not overridden
           # by the git-pinned versions in the template requirements files.
           pip install pandas matplotlib
-          # cubrid-mcp-server is not yet on PyPI; fall back to the pinned git
-          # release tag so the tested version is deterministic (not main HEAD).
+          # cubrid-mcp-server is not yet on PyPI, so it is installed from a git
+          # ref. Default to a deterministic pinned tag for PR/push/cron/manual
+          # runs; when an upstream release dispatches this workflow, install the
+          # ref that was just released so the dogfood actually tests it.
+          MCP_REF="v0.2.1"
+          if [ "$EVENT_NAME" = "repository_dispatch" ] && [ "$UPSTREAM_PACKAGE" = "cubrid-mcp-server" ]; then
+            case "$UPSTREAM_REF" in
+              "")
+                echo "Dispatched ref is empty; keeping default $MCP_REF" ;;
+              # Reject anything outside a strict allowlist before it reaches the
+              # git URL, closing the command-injection surface on untrusted input.
+              *[!A-Za-z0-9._/-]*)
+                echo "Dispatched ref '$UPSTREAM_REF' is unsafe; keeping default $MCP_REF" ;;
+              *)
+                MCP_REF="$UPSTREAM_REF"
+                echo "Using dispatched cubrid-mcp-server ref: $MCP_REF" ;;
+            esac
+          fi
           pip install cubrid-mcp-server \
-            || pip install "git+https://github.com/cubrid-lab/cubrid-mcp-server.git@v0.2.1"
+            || pip install "git+https://github.com/cubrid-lab/cubrid-mcp-server.git@${MCP_REF}"
 
       - name: Record tested versions
         run: |
@@ -233,8 +255,8 @@ jobs:
 
           from cubrid_mcp_server.server import mcp
 
-          # The public tool contract documented in the server's README. If a tool is
-          # renamed or dropped upstream, this smoke test should fail loudly.
+          # The public tool contract documented in the server's README. Every
+          # supported release must expose these; a rename or drop fails loudly.
           expected = {
               "all_table_names",
               "filter_table_names",
@@ -247,6 +269,12 @@ jobs:
               "list_class_hierarchy",
               "execute_query",
           }
+          # Tools added after v0.2.1 (e.g. health_check on main). Allowed but not
+          # required, so this contract stays green whether the pinned v0.2.1 tag
+          # or a newer dispatched ref (see install step) is installed.
+          optional = {
+              "health_check",
+          }
 
           tools = asyncio.run(mcp.list_tools())
           names = {tool.name for tool in tools}
@@ -255,5 +283,14 @@ jobs:
           missing = expected - names
           if missing:
               raise SystemExit(f"cubrid-mcp-server missing expected tools: {sorted(missing)}")
+
+          # Fail on genuinely unknown tools so an upstream addition can't slip in
+          # untracked; known-optional additions are tolerated on purpose.
+          unknown = names - expected - optional
+          if unknown:
+              raise SystemExit(
+                  "cubrid-mcp-server exposes undocumented tools "
+                  f"(update the smoke-test contract): {sorted(unknown)}"
+              )
           print("cubrid-mcp-server real-usage smoke OK")
           PY
