@@ -17,7 +17,10 @@ This recipe runs Alembic against a TEMP DIRECTORY so it is fully
 self-contained: no project-level ``alembic.ini`` required. Because the demo
 database is shared with other recipes, ``env.py`` restricts autogenerate to the
 single demo table via an ``include_name`` filter, so it never tries to drop
-unrelated tables.
+unrelated tables. For repeatable runs the script drops both the demo table
+(``cookbook_alembic_demo``) and Alembic's own bookkeeping table
+(``alembic_version``) in ``testdb`` before and after the migration; no other
+schema in ``testdb`` is touched.
 
 Run:
     python alembic_programmatic.py
@@ -169,7 +172,7 @@ def _reset_demo_state() -> None:
     """Drop the demo table and Alembic's bookkeeping table for a clean run."""
     engine = create_engine(DATABASE_URL)
     with engine.begin() as conn:
-        conn.exec_driver_sql(f"DROP TABLE IF EXISTS {TARGET_METADATA_TABLE}")
+        conn.exec_driver_sql("DROP TABLE IF EXISTS cookbook_alembic_demo")
         # Alembic records the applied head here; leftover rows from a previous
         # run would point at a revision file the fresh temp dir no longer has.
         conn.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
