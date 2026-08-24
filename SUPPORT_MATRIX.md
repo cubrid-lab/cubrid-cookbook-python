@@ -19,10 +19,11 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 
 | Python | Status |
 |--------|--------|
+| **3.13** | ✅ Compatible |
 | **3.12** | ✅ Tested (CI default) |
 | **3.11** | ✅ Compatible |
 | **3.10** | ✅ Supported (minimum) |
-| **3.13** | ✅ Compatible |
+| 3.14 | ⚠️ Not yet tested |
 | 3.9 | ❌ Not supported (`from __future__ import annotations` patterns) |
 
 ## Driver & Framework Versions
@@ -30,7 +31,7 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 | Component | Version | Status |
 |-----------|---------|--------|
 | pycubrid | ≥ 1.6.1 | ✅ Required |
-| sqlalchemy-cubrid | ≥ 1.0 | ✅ Required for SQLAlchemy recipes |
+| sqlalchemy-cubrid | ≥ 1.6.0 | ✅ Required for SQLAlchemy recipes |
 | SQLAlchemy | 2.0–2.2 | ✅ |
 | Flask | ≥ 3.0 | ✅ |
 | Flask-SQLAlchemy | ≥ 3.1 | ✅ |
@@ -54,6 +55,11 @@ All recipes tested against CUBRID 11.2 and 11.4:
 | Django template | 1 | ✅ Pass | ✅ Pass |
 | Async + Alembic + JSON + Isolation | 4 | ✅ All pass | ✅ All pass |
 | **Total** | **62** | **✅** | **✅** |
+
+> The `async-worker` (Celery) and `batch-etl` (Pandas) templates are not part of
+> the 62-recipe automated pytest count above: `batch-etl` is verified via golden
+> `expected/` outputs, and `async-worker` requires an external broker and is
+> exercised manually.
 
 ## Known Limitations by Version
 
@@ -83,8 +89,8 @@ docker compose up -d
 sleep 60  # wait for DB initialization
 
 # Run all tests
-cd templates/flask && for d in */tests; do python3 -m pytest "$d" -q; done
-cd templates/api-service-fastapi/recipes && for d in */tests; do python3 -m pytest "$d" -q; done
+( cd templates/flask && for d in */tests; do python3 -m pytest "$d" -q; done )
+( cd templates/api-service-fastapi/recipes && for d in */tests; do python3 -m pytest "$d" -q; done )
 
 # Run fundamentals
 for f in fundamentals/pycubrid/*.py; do python3 "$f"; done
