@@ -291,6 +291,34 @@ jobs:
               "health_check",
           }
 
+          # Promote health_check from optional to required once the installed
+          # cubrid-mcp-server is newer than v0.2.1 (the release that predates it).
+          # Parse the numeric (major, minor, patch) prefix without depending on
+          # `packaging`, so a dispatched newer release must actually expose it.
+          from importlib.metadata import version as _pkg_version
+
+          def _numeric_release(raw):
+              parts = []
+              for chunk in raw.split(".")[:3]:
+                  digits = ""
+                  for ch in chunk:
+                      if ch.isdigit():
+                          digits += ch
+                      else:
+                          break
+                  parts.append(int(digits) if digits else 0)
+              while len(parts) < 3:
+                  parts.append(0)
+              return tuple(parts)
+
+          installed = _numeric_release(_pkg_version("cubrid-mcp-server"))
+          if installed > (0, 2, 1):
+              expected.add("health_check")
+              optional.discard("health_check")
+              print(
+                  f"cubrid-mcp-server {installed} > (0, 2, 1): requiring health_check tool"
+              )
+
           tools = asyncio.run(mcp.list_tools())
           names = {tool.name for tool in tools}
           print(f"cubrid-mcp-server exposes {len(names)} tools: {sorted(names)}")
