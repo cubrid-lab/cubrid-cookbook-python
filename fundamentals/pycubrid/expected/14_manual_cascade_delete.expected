@@ -1,0 +1,26 @@
+✓ Created tenant graph tables
+✓ Seeded account graph for account_id=1
+
+=== Delete Preview ===
+  account_id=1
+  accounts: 1
+  projects: 2
+  tasks:    6
+  comments: 12
+
+=== Delete Execution ===
+  ✓ Deleted comments: 12
+  ✓ Deleted tasks:    6
+  ✓ Deleted projects: 2
+  ✓ Deleted accounts: 1
+
+=== Post-Delete Verification ===
+  account rows left: 0
+  project rows left: 0
+  task rows left:    0
+  comment rows left: 0
+  orphan tasks:      0
+  orphan comments:   0
+  ✓ Cascade cleanup verified
+
+✓ Cleaned up tenant graph tables

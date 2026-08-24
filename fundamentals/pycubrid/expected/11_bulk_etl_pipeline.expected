@@ -1,0 +1,39 @@
+✓ Created tables 'cookbook_sales_stage' and 'cookbook_sales'
+Generated source rows: 1000
+  ✓ Staged chunk 1: 100 rows
+  ✓ Staged chunk 2: 100 rows
+  ✓ Staged chunk 3: 100 rows
+  ✓ Staged chunk 4: 100 rows
+  ✓ Staged chunk 5: 100 rows
+  ✓ Staged chunk 6: 100 rows
+  ✓ Staged chunk 7: 100 rows
+  ✓ Staged chunk 8: 100 rows
+  ✓ Staged chunk 9: 100 rows
+  ✓ Staged chunk 10: 100 rows
+✓ Validation complete: valid=934, rejected=66
+✓ Applied staged rows into target: inserted=872, updated=0
+
+=== ETL Summary ===
+  Loaded:    1000
+  Validated: 934
+  Rejected:  66
+  Target rows after apply: 872
+
+Rejected examples (first 5):
+  stage_id=25 source_row=25 order_no='ORD-00025' customer_id='CUST-0025' amount_cents=-1 reason='invalid amount'
+  stage_id=40 source_row=40 order_no='' customer_id='CUST-0040' amount_cents=1600 reason='missing order_no'
+  stage_id=50 source_row=50 order_no='ORD-00050' customer_id='CUST-0050' amount_cents=-1 reason='invalid amount'
+  stage_id=60 source_row=60 order_no='ORD-00060' customer_id='' amount_cents=1900 reason='missing customer_id'
+  stage_id=75 source_row=75 order_no='ORD-00075' customer_id='CUST-0075' amount_cents=-1 reason='invalid amount'
+
+Target sample (first 5 by order_no):
+  ORD-00001  customer=CUST-0091  amount_cents=3715
+  ORD-00002  customer=CUST-0092  amount_cents=3730
+  ORD-00003  customer=CUST-0093  amount_cents=3745
+  ORD-00004  customer=CUST-0094  amount_cents=3760
+  ORD-00005  customer=CUST-0095  amount_cents=3775
+
+=== Final Counts ===
+  loaded=1000, validated=934, rejected=66, inserted=872, updated=0
+
+✓ Cleaned up ETL tables

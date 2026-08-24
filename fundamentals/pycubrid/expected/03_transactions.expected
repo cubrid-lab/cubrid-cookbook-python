@@ -1,0 +1,25 @@
+
+=== Commit Example ===
+  Balances (before): Alice=$1000.00, Bob=$500.00
+  ✓ Transferred $200.00 from Alice to Bob
+  Balances (after commit): Alice=$800.00, Bob=$700.00
+
+=== Rollback Example ===
+  Balances (before): Alice=$800.00, Bob=$700.00
+  Made Alice's balance = 0 (not committed)
+  ✓ Rolled back — Alice's balance restored
+  Balances (after rollback): Alice=$800.00, Bob=$700.00
+
+=== Autocommit Example ===
+  ✓ Updated Alice +$50 (auto-committed immediately)
+  Balances (autocommit): Alice=$850.00, Bob=$700.00
+
+=== Savepoint Example ===
+  Balances (before): Alice=$850.00, Bob=$700.00
+  Step 1: Alice +$100
+  ✓ Created SAVEPOINT 'after_alice_bonus'
+  Step 2: Bob +$999 (will be rolled back)
+  ✓ Rolled back to savepoint — Bob's $999 undone, Alice's $100 kept
+  Balances (after savepoint rollback + commit): Alice=$950.00, Bob=$700.00
+
+✓ Cleaned up

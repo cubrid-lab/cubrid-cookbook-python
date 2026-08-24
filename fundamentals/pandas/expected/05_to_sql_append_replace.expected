@@ -1,0 +1,18 @@
+=== Base DataFrame (replace) ===
+   item_id item_name  stock_qty  unit_cost_cents
+0        1  Notebook         10             3200
+1        2     Mouse         25             1500
+2        3  Keyboard         14             2800
+
+=== Append DataFrame (append) ===
+   item_id item_name  stock_qty  unit_cost_cents
+0        4   Monitor          6            19800
+1        5    Webcam          9             6400
+
+=== Final table after replace + append ===
+   item_id item_name  stock_qty  unit_cost_cents  unit_cost_dollars
+0        1  Notebook         10             3200               32.0
+1        2     Mouse         25             1500               15.0
+2        3  Keyboard         14             2800               28.0
+3        4   Monitor          6            19800              198.0
+4        5    Webcam          9             6400               64.0

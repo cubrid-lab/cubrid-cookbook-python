@@ -1,0 +1,22 @@
+✓ Created table 'cookbook_org_tree'
+✓ Inserted tree nodes: 9
+
+Full tree (9 rows):
+  - id=1 parent=None name=CEO
+    - id=2 parent=1 name=Engineering
+    - id=3 parent=1 name=Sales
+      - id=4 parent=2 name=Platform Team
+      - id=5 parent=2 name=Application Team
+      - id=6 parent=3 name=Domestic Sales
+      - id=7 parent=3 name=International Sales
+        - id=8 parent=5 name=Backend Squad
+        - id=9 parent=5 name=Frontend Squad
+
+Subtree from node 2 (5 rows):
+  - id=2 parent=1 name=Engineering
+    - id=4 parent=2 name=Platform Team
+    - id=5 parent=2 name=Application Team
+      - id=8 parent=5 name=Backend Squad
+      - id=9 parent=5 name=Frontend Squad
+
+✓ Cleaned up table 'cookbook_org_tree'

@@ -1,0 +1,50 @@
+=== JSON Type CRUD Demo (CUBRID 10.2+) ===
+
+[setup] Created cookbook_user_prefs with JSON column
+[1] Inserted 3 JSON documents
+
+[2] All rows (raw JSON):
+    user_id=1  email=alice@example.com
+    preferences={"theme":"dark","newsletter":true,"tags":["python","cubrid"]}
+    user_id=2  email=bob@example.com
+    preferences={"theme":"light","newsletter":false,"tags":["java"]}
+    user_id=3  email=carol@example.com
+    preferences={"theme":"dark","newsletter":true,"tags":["python","rust","go"]}
+
+[3] JSON_EXTRACT('$.theme') — RAW (note the double quotes):
+    user_id=1  theme_raw='"dark"'
+    user_id=2  theme_raw='"light"'
+    user_id=3  theme_raw='"dark"'
+
+[4] JSON_UNQUOTE(JSON_EXTRACT(...)) — clean scalar value:
+    user_id=1  theme='dark'
+    user_id=2  theme='light'
+    user_id=3  theme='dark'
+
+[5] Users with theme='dark':
+    user_id=1  email=alice@example.com
+    user_id=3  email=carol@example.com
+
+[6] Tag count per user (JSON_LENGTH on '$.tags'):
+    user_id=1  tag_count=2
+    user_id=2  tag_count=1
+    user_id=3  tag_count=3
+
+[7] After UPDATE: user_id=1 theme is now '"light"'
+[8] After DELETE (newsletter=false): 2 rows remain
+
+--- JSON function cheat sheet ---
+  JSON_EXTRACT(doc, '$.path')            raw value (JSON-typed)
+  JSON_UNQUOTE(JSON_EXTRACT(doc, '$.x')) scalar value (no quotes)
+  JSON_LENGTH(doc_or_array)              element count
+  JSON_REPLACE(doc, '$.k', new_value)    update existing key
+  JSON_INSERT(doc, '$.k', value)         add key if absent
+  JSON_REMOVE(doc, '$.k')                delete key
+
+Path syntax:  $.key        object key
+              $.key[0]     array index
+              $.key.sub    nested key
+
+CUBRID 11.2+ shorthand operators:
+    doc->'$.key'   equivalent to JSON_EXTRACT (JSON-typed)
+    doc->>'$.key'  equivalent to JSON_UNQUOTE(JSON_EXTRACT(...))  (scalar)

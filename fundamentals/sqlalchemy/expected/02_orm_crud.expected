@@ -1,0 +1,24 @@
+=== SQLAlchemy ORM CRUD ===
+[1] Creating table cookbook_users
+
+[2] INSERT users
+Inserted 3 users
+
+[3] LIST users
+id=1, username=alice, email=alice@example.com, active_flag=1
+id=2, username=bob, email=bob@example.com, active_flag=1
+id=3, username=carol, email=carol@example.com, active_flag=0
+
+[4] UPDATE bob -> active_flag=0
+Updated user id=2, username=bob, active_flag=0
+
+[5] DELETE carol
+Deleted user id=3, username=carol
+
+[6] FINAL LIST
+id=1, username=alice, email=alice@example.com, active_flag=1
+id=2, username=bob, email=bob@example.com, active_flag=0
+
+CRUD demo completed.
+Dropping table cookbook_users
+Cleanup complete.

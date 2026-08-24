@@ -1,0 +1,38 @@
+=== PEP 249 Exception Hierarchy ===
+  Exception
+  ├── Warning
+  └── Error
+      ├── InterfaceError
+      └── DatabaseError
+          ├── DataError
+          ├── OperationalError
+          ├── IntegrityError
+          ├── InternalError
+          ├── ProgrammingError
+          └── NotSupportedError
+  ✓ Hierarchy verified
+
+=== Connection Error Handling ===
+  ✓ Caught OperationalError (bad host): failed to connect to CUBRID broker
+  ✓ Caught connection error (bad port): OperationalError: failed to connect to CUBRID broker
+
+=== SQL Syntax Errors ===
+  ✓ Caught ProgrammingError (bad SQL): Syntax: In line {{LINE}}, column {{COL}} before ' * FORM nonexistent_table'
+Syntax error: unexpected 'SELEC', expecting SELECT or VALUE or VALUES or '(' 
+
+=== Integrity Errors ===
+  ✓ Caught IntegrityError (duplicate PK): Operation would have caused one or more unique constraint violations. INDEX pk_cookbook_err_test_id(B+tree: {{BTREE}}) ON CLASS dba.cookbook_err_test(CLASS_OID: {{OID}}). key: 1(OID: {{OID}}).
+  ✓ Caught IntegrityError (duplicate UNIQUE): Operation would have caused one or more unique constraint violations. INDEX u_cookbook_err_test_email(B+tree: {{BTREE}}) ON CLASS dba.cookbook_err_test(CLASS_OID: {{OID}}). key: 'a@test.com'(OID: {{OID}}).
+
+=== Error Recovery Pattern ===
+  ✓ Results: 4 succeeded, 0 failed
+    Widget: $10.00
+    Gadget: $25.00
+    None: $-1.00
+    Doohickey: $15.00
+
+=== Generic Error Catching ===
+  ✓ 'SELECT 1' → (1,)
+  ✗ 'SELECT * FROM this_table_does_not_exist' → ProgrammingError: Syntax: Unknown class "dba.this_table_does_not_exist". select * from [dba.this_table_does_not_exist]
+  ✗ 'INVALID SQL SYNTAX HERE' → ProgrammingError: Syntax: In line {{LINE}}, column {{COL}} before ' SQL SYNTAX HERE'
+Syntax error: unexpected 'INVALID', expecting SELECT or VALUE or VALUES or '(' 

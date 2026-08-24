@@ -1,0 +1,24 @@
+✓ Created table 'cookbook_counters'
+=== Recording single events ===
+✓ Recorded initial events
+
+=== Recording batch events ===
+✓ Recorded batch of 8 events
+
+=== Top Metrics (today) ===
+  1. api.orders.create            12
+  2. page.home.view               8
+  3. api.login.success            6
+  4. page.product.view            4
+  5. page.checkout.view           2
+
+=== Before/After State ===
+  api.login.failure            count=1
+  api.login.success            count=6
+  api.orders.cancel            count=1
+  api.orders.create            count=12
+  page.checkout.view           count=2
+  page.home.view               count=8
+  page.product.view            count=4
+
+✓ Cleaned up table 'cookbook_counters'

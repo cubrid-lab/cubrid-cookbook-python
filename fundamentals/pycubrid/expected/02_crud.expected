@@ -1,0 +1,48 @@
+✓ Created table 'cookbook_users'
+✓ Inserted 5 rows
+
+All users (5 rows):
+   ID  Name          Email                      Age
+  ---  ----          -----                      ---
+    1  Alice         alice@example.com           30
+    2  Bob           bob@example.com             25
+    3  Charlie       charlie@example.com         35
+    4  Diana         diana@example.com           28
+    5  Eve           eve@example.com             32
+
+Users age >= 30 (3 rows):
+  Charlie       age=35
+  Eve           age=32
+  Alice         age=30
+
+Users with 'li' in name (2 rows):
+  Alice         alice@example.com
+  Charlie       charlie@example.com
+
+fetchone():  Alice
+fetchmany(2): ['Bob', 'Charlie']
+fetchall():  ['Diana', 'Eve']
+
+✓ Updated Alice's age (rows affected: 1)
+✓ Incremented age for young users (rows affected: 2)
+
+All users (5 rows):
+   ID  Name          Email                      Age
+  ---  ----          -----                      ---
+    1  Alice         alice@example.com           31
+    2  Bob           bob@example.com             26
+    3  Charlie       charlie@example.com         35
+    4  Diana         diana@example.com           29
+    5  Eve           eve@example.com             32
+
+✓ Deleted Eve (rows affected: 1)
+
+All users (4 rows):
+   ID  Name          Email                      Age
+  ---  ----          -----                      ---
+    1  Alice         alice@example.com           31
+    2  Bob           bob@example.com             26
+    3  Charlie       charlie@example.com         35
+    4  Diana         diana@example.com           29
+
+✓ Cleaned up table 'cookbook_users'
