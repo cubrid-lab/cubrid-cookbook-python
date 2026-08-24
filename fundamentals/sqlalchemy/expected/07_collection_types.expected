@@ -1,0 +1,46 @@
+=== CUBRID Collection Types (SET / MULTISET / SEQUENCE) ===
+
+[1] Created table cookbook_collection_demo
+      tags          SET(40)        unique, unordered
+      phone_numbers MULTISET(20)   duplicates allowed
+      checklist     SEQUENCE(200)  ordered, duplicates allowed
+
+[2] Inserted 3 rows with collection columns
+
+[3] All rows:
+    id=1  title='First task'
+      tags          = ['cubrid', 'demo', 'python']
+      phone_numbers = ['555-1000', '555-1000', '555-2000']
+      checklist     = ['open editor', 'write code', 'run tests']
+    id=2  title='Second task'
+      tags          = ['orm', 'python']
+      phone_numbers = ['555-3000']
+      checklist     = ['review PR', 'merge']
+    id=3  title='Third task'
+      tags          = ['rust', 'systems']
+      phone_numbers = ['555-4000', '555-4000']
+      checklist     = ['benchmark', 'profile', 'optimize', 'benchmark']
+
+[4] Rows whose tags include 'python' (server-side 'python' IN tags):
+    id=1  title='First task'  tags=['cubrid', 'demo', 'python']
+    id=2  title='Second task'  tags=['orm', 'python']
+
+[5] Semantic difference (observe duplicates/ordering):
+    SET        tags          = ['cubrid', 'demo', 'python']
+                -> unique, CUBRID normalizes to sorted order
+    MULTISET   phone_numbers = ['555-1000', '555-1000', '555-2000']
+                -> duplicates PRESERVED (555-1000 appears twice)
+    SEQUENCE   checklist     = ['open editor', 'write code', 'run tests']
+                -> order PRESERVED (open editor first, run tests last)
+
+[6] Updated checklist for id=3: ['benchmark', 'optimize', 'benchmark', 'ship']
+    (SEQUENCE preserves the new order and the duplicate 'benchmark')
+
+[7] Cleaned up table and closed engine
+
+--- Choosing a collection type ---
+  Need uniqueness?           -> SET
+  Duplicates meaningful?     -> MULTISET (e.g. vote tallies)
+  Insertion order matters?   -> SEQUENCE (e.g. ordered steps)
+
+See: https://www.cubrid.org/manual/en/11.2/sql/datatype.html#collection-types
