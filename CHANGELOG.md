@@ -30,3 +30,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - Python lint errors and code formatting across all examples
 - All examples verified against live CUBRID instance
+- `fundamentals/sqlalchemy/07_collection_types.py` — SET/MULTISET/SEQUENCE collection columns now render correct single-quoted SQL literals (with quote escaping) instead of malformed inline SQL, and the example is verified against a golden `expected/07_collection_types.expected` output (Closes #56)
