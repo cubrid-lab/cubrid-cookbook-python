@@ -2,27 +2,34 @@
 
 Tested combinations of CUBRID server, Python version, and driver/framework.
 
+> **What "tested" means here**: CI runs `make verify` on **CUBRID 11.2 / Python
+> 3.12**, comparing stdout against the **46 recipes that ship goldens**
+> (`expected/*.expected`). The Flask, FastAPI, Streamlit, and Django recipes are
+> covered by pytest suites that are **run manually** (see [How to Test](#how-to-test-against-a-specific-version)),
+> not in CI. CUBRID 11.4 has no CI job.
+
 ## CUBRID Server Versions
 
 | CUBRID | Status | Notes |
 |--------|--------|-------|
-| **11.4** | ✅ Fully supported | All 62 recipes pass |
-| **11.2** | ✅ Fully supported | Primary development/test target |
+| **11.2** | ✅ CI-verified | Primary CI target — 46 example outputs checked by `make verify` |
+| **11.4** | ⚠️ Expected to work | Same CAS protocol as 11.2; **not exercised in CI** |
 | 11.0 | ⚠️ Untested | Should work (same CAS protocol) |
 | 10.2 | ⚠️ Untested | Should work (same CAS protocol) |
-> **Scope note**: The cookbook is tested only against CUBRID 11.2 and 11.4. Older
-> versions (10.2, 11.0) share the same CAS protocol and should work but are
-> not exercised by the recipe test suite. The drivers (`pycubrid`,
-> `sqlalchemy-cubrid`) themselves support the full 10.2–11.4 range.
+> **Scope note**: CI exercises only CUBRID **11.2** with Python **3.12**. Older
+> versions (10.2, 11.0) and newer 11.4 share the same CAS protocol and should
+> work but are **not exercised in CI**. The drivers (`pycubrid`,
+> `sqlalchemy-cubrid`) themselves run the full 10.2–11.4 matrix in their own
+> repositories.
 
 ## Python Versions
 
 | Python | Status |
 |--------|--------|
 | **3.12** | ✅ Tested (CI default) |
-| **3.11** | ✅ Compatible |
-| **3.10** | ✅ Supported (minimum) |
-| **3.13** | ✅ Compatible |
+| **3.11** | ⚠️ Expected to work (not in CI) |
+| **3.10** | ⚠️ Minimum; expected to work (not in CI) |
+| **3.13** | ⚠️ Expected to work (not in CI) |
 | 3.9 | ❌ Not supported (`from __future__ import annotations` patterns) |
 
 ## Driver & Framework Versions
@@ -39,21 +46,30 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 | Streamlit | ≥ 1.30 | ✅ |
 | Django | ≥ 5.0 | ✅ (minimal recipe) |
 
-## Recipe Test Results
+## Recipe Coverage
 
-All recipes tested against CUBRID 11.2 and 11.4:
+The cookbook ships **62 recipes**. Verification is split:
 
-| Category | Recipes | CUBRID 11.2 | CUBRID 11.4 |
-|----------|---------|-------------|-------------|
-| pycubrid fundamentals | 16 | ✅ All pass | ✅ All pass |
-| SQLAlchemy fundamentals | 7 | ✅ All pass | ✅ All pass |
-| Pandas fundamentals | 6 | ✅ All pass | ✅ All pass |
-| Flask templates | 11 | ✅ All pass | ✅ All pass |
-| FastAPI templates | 12 | ✅ All pass | ✅ All pass |
-| Streamlit templates | 5 | ✅ All pass | ✅ All pass |
-| Django template | 1 | ✅ Pass | ✅ Pass |
-| Async + Alembic + JSON + Isolation | 4 | ✅ All pass | ✅ All pass |
-| **Total** | **62** | **✅** | **✅** |
+- **46 recipes** carry stdout goldens (`expected/*.expected`) and are checked by
+  `make verify` in CI on **CUBRID 11.2 / Python 3.12** (fundamentals, migration,
+  quickstart, and the golden-backed templates).
+- The **Flask, FastAPI, Streamlit, and Django** recipes are covered by pytest
+  suites that are **run manually** (see [How to Test](#how-to-test-against-a-specific-version)),
+  not in CI.
+- **CUBRID 11.4** has no CI job; it shares the CAS protocol with 11.2 and is
+  expected to work but is not exercised automatically.
+
+| Category | Recipes | Verified by |
+|----------|---------|-------------|
+| pycubrid fundamentals | 16 | `make verify` (CI, 11.2) |
+| SQLAlchemy fundamentals | 7 | `make verify` (CI, 11.2) |
+| Pandas fundamentals | 6 | `make verify` (CI, 11.2) |
+| Flask templates | 11 | pytest (manual) |
+| FastAPI templates | 12 | pytest (manual) |
+| Streamlit templates | 5 | manual run |
+| Django template | 1 | manual run |
+| Async + Alembic + JSON + Isolation | 4 | `make verify` (CI, 11.2) |
+| **Total** | **62** | 46 CI-verified on 11.2; rest run manually |
 
 ## Known Limitations by Version
 
@@ -71,7 +87,7 @@ See [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for details and workarounds.
 ```yaml
 # docker-compose.yml — change tag to test different versions
 image: cubrid/cubrid:11.2   # default
-image: cubrid/cubrid:11.4   # also fully supported
+image: cubrid/cubrid:11.4   # expected to work; not exercised in CI
 ```
 
 ## How to Test Against a Specific Version
