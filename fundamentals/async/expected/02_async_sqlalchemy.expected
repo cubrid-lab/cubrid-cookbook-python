@@ -1,0 +1,19 @@
+=== Async SQLAlchemy (cubrid+aiopycubrid) Demo ===
+
+[1] Created table cookbook_async_orm_demo
+[2] Inserted 3 rows asynchronously
+
+[3] Rows ordered by score DESC:
+    id=1  name=alice  score=90
+    id=3  name=carol  score=88
+    id=2  name=bob  score=75
+
+[4] Updated bob's score to 95
+
+[5] Dropped table and closed engine
+
+--- async SQLAlchemy URL formats ---
+  Sync:   cubrid+pycubrid://user:pass@host:port/db
+  Async:  cubrid+aiopycubrid://user:pass@host:port/db
+
+Requirements: pycubrid>=1.6, sqlalchemy-cubrid>=1.0, SQLAlchemy>=2.0

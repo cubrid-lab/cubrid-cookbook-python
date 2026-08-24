@@ -1,0 +1,26 @@
+=== pycubrid.aio Async CRUD Demo ===
+
+[setup] Created cookbook_async_demo
+[1] Inserted 4 rows asynchronously
+
+[2] All rows (fetchall):
+    id=1  name=alice  score=90
+    id=3  name=carol  score=88
+    id=2  name=bob  score=75
+    id=4  name=dave  score=60
+
+[3] First row (fetchone):
+    name=alice  score=90
+
+[4] Updated alice's score to 100
+
+--- async API summary ---
+  await pycubrid.aio.connect(**DB_CONFIG)        -> AsyncConnection
+  conn.cursor()                                   -> AsyncCursor (no await)
+  await cur.execute(sql, params)                  -> AsyncCursor
+  await cur.executemany(sql, params_list)         -> AsyncCursor
+  await cur.fetchone() / fetchall() / fetchmany() -> rows
+  await conn.commit() / conn.rollback()
+  await conn.close()
+
+See also: 02_async_sqlalchemy.py for the SQLAlchemy async engine.

@@ -1,0 +1,19 @@
+=== Basic Connection ===
+1 + 1 = 2
+
+=== Connection Info ===
+CUBRID version: {{VERSION}}
+Database: testdb
+User: DBA@{{HOSTNAME}}
+
+=== Cursor Description ===
+Columns:
+  id          type_code=8
+  name        type_code=1
+  val         type_code=12
+Row: (1, 'hello', 3.14)
+
+=== Multiple Queries ===
+SELECT 1 AS a                            → 1
+SELECT 'hello' AS b                      → hello
+SELECT CURRENT_DATE AS today             → {{DATE}}

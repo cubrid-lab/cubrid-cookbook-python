@@ -1,0 +1,25 @@
+=== SQLAlchemy Reflection Demo ===
+[1] Created tables cookbook_ref_authors and cookbook_ref_books
+
+[2] Table discovery
+- cookbook_ref_authors
+- cookbook_ref_books
+
+[3] Columns for cookbook_ref_authors
+column=id, type=INTEGER, nullable=NO, default=None
+column=author_name, type=VARCHAR(100), nullable=NO, default=None
+Primary key: ['id']
+Index: none
+Foreign key: none
+
+[3] Columns for cookbook_ref_books
+column=id, type=INTEGER, nullable=NO, default=None
+column=author_id, type=INTEGER, nullable=YES, default=None
+column=title, type=VARCHAR(120), nullable=NO, default=None
+column=price_cents, type=INTEGER, nullable=NO, default=None
+Primary key: ['id']
+Index: none
+Foreign key: ['author_id'] -> cookbook_ref_authors.['id']
+
+Reflection demo completed.
+Cleanup complete.

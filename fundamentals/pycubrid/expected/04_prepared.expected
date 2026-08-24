@@ -1,0 +1,25 @@
+=== Parameterized Queries ===
+  ✓ Inserted 3 products with parameterized queries
+  Electronics > $50: [('Laptop', 999.99)]
+
+=== SQL Injection Safety ===
+  Malicious input returned 0 rows (table is safe!)
+  ✓ Table still has 3 rows — SQL injection prevented
+
+=== Batch Insert (executemany) ===
+  ✓ Inserted 8 products in {{TIME}}ms
+  Total products: 11
+
+=== Batch Update ===
+  ✓ Applied 10% discount to 3 products
+  Laptop          → $899.99
+  Monitor         → $314.99
+  Standing Desk   → $539.10
+
+=== Aggregate Queries ===
+  Category         Count   Avg Price   Stock
+  --------         -----   ---------   -----
+  Electronics          7  $   229.28     915
+  Furniture            4  $   296.77     135
+
+✓ Cleaned up

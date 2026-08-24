@@ -1,0 +1,17 @@
+=== SQLAlchemy + CUBRID: Connect and Session ===
+Connection URL: cubrid+pycubrid://dba@localhost:33000/testdb
+
+[1] Running SELECT 1 with raw connection
+SELECT 1 result: 1
+CUBRID version: {{VERSION}}
+Database: testdb
+Connected user: DBA@{{HOSTNAME}}
+
+[2] Running SELECT 1 using Session context manager
+Session SELECT 1 result: 1
+
+[3] Pool status snapshot
+Pool status: Pool size: 5  Connections in pool: 1 Current Overflow: -4 Current Checked out connections: 0
+
+Done. Engine and Session usage completed successfully.
+Engine disposed. Clean shutdown complete.

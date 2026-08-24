@@ -1,0 +1,23 @@
+=== CUBRID ON DUPLICATE KEY UPDATE and REPLACE ===
+[1] Created table cookbook_app_settings
+
+[2] Insert baseline row
+Current rows after initial insert:
+setting_key=app.name, setting_val=Cookbook, enabled_flag=1
+
+[3] ON DUPLICATE KEY UPDATE for existing key
+Rows after ODKU update:
+setting_key=app.name, setting_val=Cookbook v2, enabled_flag=1
+
+[4] ON DUPLICATE KEY UPDATE for new key
+Rows after ODKU insert:
+setting_key=app.name, setting_val=Cookbook v2, enabled_flag=1
+setting_key=feature.search, setting_val=enabled, enabled_flag=1
+
+[5] REPLACE INTO for existing key
+Rows after REPLACE:
+setting_key=app.name, setting_val=Cookbook v2, enabled_flag=1
+setting_key=feature.search, setting_val=disabled, enabled_flag=0
+
+CUBRID upsert demo completed.
+Cleanup complete.

@@ -1,0 +1,9 @@
+=== read_sql_query with parameters ===
+   order_id customer_name region_name  order_total_cents  is_priority
+0         7          Gina       north              12800            1
+1         3          Cara       north               8600            1
+
+=== Result with dollars column ===
+   order_id customer_name  order_total_dollars  is_priority
+0         7          Gina                128.0            1
+1         3          Cara                 86.0            1

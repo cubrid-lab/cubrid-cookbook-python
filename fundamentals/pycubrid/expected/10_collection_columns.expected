@@ -1,0 +1,33 @@
+✓ Created table 'cookbook_collections'
+✓ Inserted collection examples
+
+After insert:
+Collections (2 rows):
+  id=1 name=Doc Workflow
+    contains_tag_blue=1 contains_permission_8=0
+    matches_steps_v1=1 matches_steps_v2=0
+  id=2 name=Incident Flow
+    contains_tag_blue=0 contains_permission_8=1
+    matches_steps_v1=0 matches_steps_v2=0
+
+Before update:
+Collections (2 rows):
+  id=1 name=Doc Workflow
+    contains_tag_blue=1 contains_permission_8=0
+    matches_steps_v1=1 matches_steps_v2=0
+  id=2 name=Incident Flow
+    contains_tag_blue=0 contains_permission_8=1
+    matches_steps_v1=0 matches_steps_v2=0
+
+✓ Updated row id=1 collections (rows affected: 1)
+
+After update:
+Collections (2 rows):
+  id=1 name=Doc Workflow
+    contains_tag_blue=1 contains_permission_8=0
+    matches_steps_v1=0 matches_steps_v2=1
+  id=2 name=Incident Flow
+    contains_tag_blue=0 contains_permission_8=1
+    matches_steps_v1=0 matches_steps_v2=0
+
+✓ Cleaned up table 'cookbook_collections'

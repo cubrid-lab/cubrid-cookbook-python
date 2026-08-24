@@ -1,0 +1,20 @@
+=== ORM Relationships (Department / Employee) ===
+[1] Creating tables
+
+[2] Seeding parent/child rows
+Seed complete
+
+[3] Lazy loading: access department.employees
+Engineering: ['Alice', 'Bob']
+Support: ['Eun']
+
+[4] Eager loading with selectinload
+Engineering (eager): ['Alice', 'Bob']
+Support (eager): ['Eun']
+
+[5] Child-first deletion (no DB-level CASCADE)
+Deleted 3 child rows from cookbook_employees
+Deleted 2 parent rows from cookbook_departments
+
+Relationship demo completed.
+Cleanup complete.
