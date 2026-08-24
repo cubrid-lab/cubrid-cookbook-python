@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: help up down status clean verify demo
+.PHONY: help up down status clean verify demo test-normalize
 
 DOCKER_COMPOSE := docker compose
 NORMALIZE := bash scripts/normalize_output.sh
@@ -62,6 +62,9 @@ verify: ## Verify example outputs against expected results (VERIFY_PATHS scopes 
 	echo ""; \
 	echo "Results: $$PASS passed, $$FAIL failed, $$SKIP skipped"; \
 	[ "$$FAIL" -eq 0 ]
+
+test-normalize: ## Run before/after unit checks for scripts/normalize_output.sh
+	bash scripts/test_normalize_output.sh
 
 demo: up verify ## Full demo: start DB, verify all examples
 	@echo ""
