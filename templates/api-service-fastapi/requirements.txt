@@ -2,5 +2,5 @@ fastapi>=0.111.0,<1.0.0
 uvicorn>=0.30.0,<1.0.0
 pycubrid>=0.0.4
 sqlalchemy>=2.0.0,<3.0.0
-sqlalchemy-cubrid>=2.0.0
+sqlalchemy-cubrid>=1.0
 pydantic-settings>=2.3.0,<3.0.0

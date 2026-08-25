@@ -22,7 +22,7 @@ FROM articles a
 ```
 
 In SQLAlchemy, `func.cardinality()` will raise a clear `CompileError` with this guidance
-(sqlalchemy-cubrid >= 0.3.0).
+(sqlalchemy-cubrid >= 1.0).
 
 In pycubrid >= 1.3.3, the error message includes a hint with the workaround.
 
