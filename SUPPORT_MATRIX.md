@@ -51,7 +51,7 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 
 The cookbook ships **62 recipes**. Verification is split:
 
-- **46 recipes** carry stdout goldens (`expected/*.expected`) and are checked by
+- **45 recipes** carry stdout goldens (`expected/*.expected`) and are checked by
   `make verify` in CI on **CUBRID 11.2 / Python 3.12** (fundamentals, migration,
   quickstart, and the golden-backed templates).
 - The **Flask, FastAPI, Streamlit, and Django** recipes are covered by pytest
@@ -70,7 +70,7 @@ The cookbook ships **62 recipes**. Verification is split:
 | Streamlit templates | 5 | manual run |
 | Django template | 1 | manual run |
 | Async + Alembic + JSON + Isolation | 4 | `make verify` (CI, 11.2) |
-| **Total** | **62** | 46 CI-verified on 11.2; rest run manually |
+| **Total** | **62** | 45 CI-verified on 11.2; rest run manually |
 
 ## Known Limitations by Version
 
