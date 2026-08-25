@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### CI
 - **Pinned `ruff` to `0.16.4` in CI (#78)** — the lint job installed `ruff` unpinned, so formatter/linter rule changes in new ruff releases could break CI unpredictably; pinned to `0.16.4` to match the version used by `pycubrid` and `sqlalchemy-cubrid`.
 
+### Fixed
+- **De-duplicated the parameterized-queries recipe golden (#79)** — `fundamentals/parameterized-queries/04_parameterized.py` was a byte-for-byte copy of the canonical `fundamentals/pycubrid/04_prepared.py`, and both shipped `expected/` goldens, so `make verify` counted the same recipe twice. The topic entry is now a thin redirect to the canonical recipe (its `expected/` golden removed and the folder allowlisted in `scripts/docs-sync-allowlist.txt`), dropping the CI golden count from 46 to 45 while keeping topic-based discovery intact.
+
 ### Added
 - v1.6.x feature recipes (8 new scripts):
   - `fundamentals/async/` — pycubrid.aio + SQLAlchemy async engine

@@ -13,7 +13,7 @@ qmark (`?`) placeholder style.
 
 | Recipe | Description |
 |--------|-------------|
-| [`04_parameterized.py`](04_parameterized.py) | Parameterized queries, batch operations with `executemany()` |
+| [`04_parameterized.py`](04_parameterized.py) | Topic redirect → canonical recipe at [`../pycubrid/04_prepared.py`](../pycubrid/04_prepared.py) (parameterized queries, batch `executemany()`, SQL injection safety) |
 
 ## Why parameterized queries?
 
