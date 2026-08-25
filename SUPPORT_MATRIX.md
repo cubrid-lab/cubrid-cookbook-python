@@ -69,8 +69,10 @@ The cookbook ships **62 recipes**. Verification is split:
 | FastAPI templates | 12 | pytest (manual) |
 | Streamlit templates | 5 | manual run |
 | Django template | 1 | manual run |
+| Celery async-worker template | 1 | manual run |
+| Pandas batch-etl template | 5 | manual run (goldens in `expected/`) |
 | Async + Alembic + JSON + Isolation | 4 | `make verify` (CI, 11.2) |
-| **Total** | **62** | 45 CI-verified on 11.2; rest run manually |
+| **Total** | **68** | 45 CI-verified on 11.2; rest run manually |
 
 ## Known Limitations by Version
 
@@ -100,8 +102,8 @@ docker compose up -d
 sleep 60  # wait for DB initialization
 
 # Run all tests
-cd templates/flask && for d in */tests; do python3 -m pytest "$d" -q; done
-cd templates/api-service-fastapi/recipes && for d in */tests; do python3 -m pytest "$d" -q; done
+( cd templates/flask && for d in */tests; do python3 -m pytest "$d" -q; done )
+( cd templates/api-service-fastapi/recipes && for d in */tests; do python3 -m pytest "$d" -q; done )
 
 # Run fundamentals
 for f in fundamentals/pycubrid/*.py; do python3 "$f"; done
