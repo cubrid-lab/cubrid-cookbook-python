@@ -26,10 +26,11 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 
 | Python | Status |
 |--------|--------|
+| **3.14** | ⚠️ Expected to work (not in CI) |
+| **3.13** | ⚠️ Expected to work (not in CI) |
 | **3.12** | ✅ Tested (CI default) |
 | **3.11** | ⚠️ Expected to work (not in CI) |
 | **3.10** | ⚠️ Minimum; expected to work (not in CI) |
-| **3.13** | ⚠️ Expected to work (not in CI) |
 | 3.9 | ❌ Not supported (`from __future__ import annotations` patterns) |
 
 ## Driver & Framework Versions
