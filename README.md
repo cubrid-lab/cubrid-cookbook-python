@@ -78,7 +78,7 @@ Step-by-step reference for every core operation:
 | [Connecting](fundamentals/connect/) | Basic connection, metadata, context managers |
 | [CRUD](fundamentals/crud/) | INSERT, SELECT, UPDATE, DELETE with parameters |
 | [Transactions](fundamentals/transactions/) | Commit, rollback, savepoints, auto-commit |
-| [Prepared statements](fundamentals/parameterized-queries/) | Parameterized queries |
+| [Parameterized queries](fundamentals/parameterized-queries/) | Safe parameter binding (client-side, not server-side prepare) |
 | [Error handling](fundamentals/error-handling/) | Exception types, retry patterns |
 | [LOB handling](fundamentals/lob-handling/) | BLOB/CLOB operations |
 | [ORM basics](fundamentals/orm-basics/) | SQLAlchemy engine, core, ORM, relationships |

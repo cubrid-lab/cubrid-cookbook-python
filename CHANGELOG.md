@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Docs
+- **README fundamentals link renamed to "Parameterized queries" (#82)** — the link targeting `fundamentals/parameterized-queries/` was labelled "Prepared statements", implying server-side prepare that pycubrid does not do; relabelled to "Parameterized queries" with a client-side note to match the recipe's own README warning.
 - **SUPPORT_MATRIX Python table fixed (#81)** — added a **3.14** row and re-sorted the Python versions table into consistent descending order (3.14 → 3.9); previously 3.14 was missing and 3.13 was listed after 3.10.
 - **SUPPORT_MATRIX corrected to match CI (#72)** — the matrix claimed CUBRID 11.4 was "fully supported" and "all 62 recipes pass", but CI only runs `make verify` (46 stdout goldens) on CUBRID 11.2 / Python 3.12; the Flask/FastAPI/Streamlit/Django pytest suites and CUBRID 11.4 are never exercised in CI. Reworded the server/Python/recipe tables to state exactly what CI enforces vs. what is run manually or merely expected to work, removing the unenforced green checkmarks.
 
