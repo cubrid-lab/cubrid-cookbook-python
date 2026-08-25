@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Docs
 - **SUPPORT_MATRIX corrected to match CI (#72)** — the matrix claimed CUBRID 11.4 was "fully supported" and "all 62 recipes pass", but CI only runs `make verify` (46 stdout goldens) on CUBRID 11.2 / Python 3.12; the Flask/FastAPI/Streamlit/Django pytest suites and CUBRID 11.4 are never exercised in CI. Reworded the server/Python/recipe tables to state exactly what CI enforces vs. what is run manually or merely expected to work, removing the unenforced green checkmarks.
 
+### CI
+- **Pinned `ruff` to `0.16.4` in CI (#78)** — the lint job installed `ruff` unpinned, so formatter/linter rule changes in new ruff releases could break CI unpredictably; pinned to `0.16.4` to match the version used by `pycubrid` and `sqlalchemy-cubrid`.
+
 ### Added
 - v1.6.x feature recipes (8 new scripts):
   - `fundamentals/async/` — pycubrid.aio + SQLAlchemy async engine
