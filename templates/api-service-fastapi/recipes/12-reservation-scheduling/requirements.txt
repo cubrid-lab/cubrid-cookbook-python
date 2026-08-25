@@ -1,7 +1,7 @@
 fastapi>=0.111.0
 uvicorn>=0.30.0
 sqlalchemy>=2.0.31
-sqlalchemy-cubrid>=0.4.1
+sqlalchemy-cubrid>=1.0
 pycubrid>=0.2.6
 pydantic>=2.8.2
 httpx>=0.27.0
