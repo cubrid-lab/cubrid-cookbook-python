@@ -1,0 +1,13 @@
+=== Query Timeout Demo (client-side read_timeout) ===
+
+[setup] Created cookbook_timeout_demo and committed initial row
+[1] Writer holds an uncommitted lock on id=1
+[2] Second connection (read_timeout=2s) attempts the same UPDATE...
+[3] Timed out as expected: OperationalError: socket communication failed
+    -> a client-side read_timeout bounds an operation blocked on a lock
+[4] Writer released the lock and dropped the table; timed-out socket discarded
+
+--- Key points ---
+  pycubrid.connect(..., read_timeout=SECONDS) bounds blocked/slow operations
+  Prefer a client-side read_timeout over relying on server lock_timeout
+  A timed-out connection's socket is dead -- discard it, never reuse it

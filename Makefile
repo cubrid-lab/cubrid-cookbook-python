@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: help up down status clean verify demo test-normalize
+.PHONY: help up down status clean verify demo test-normalize check-coverage
 
 DOCKER_COMPOSE := docker compose
 NORMALIZE := bash scripts/normalize_output.sh
@@ -31,7 +31,7 @@ clean: ## Stop and remove all data
 	$(DOCKER_COMPOSE) down -v
 	@echo "✓ Cleaned up all containers and volumes"
 
-verify: ## Verify example outputs against expected results (VERIFY_PATHS scopes the search roots)
+verify: check-coverage ## Verify example outputs against expected results (VERIFY_PATHS scopes the search roots)
 	@echo "Verifying example outputs in: $(VERIFY_PATHS)"
 	@PASS=0; FAIL=0; SKIP=0; \
 	for expected in $$(find $(VERIFY_PATHS) -path '*/expected/*.expected' | sort); do \
@@ -65,6 +65,9 @@ verify: ## Verify example outputs against expected results (VERIFY_PATHS scopes 
 
 test-normalize: ## Run before/after unit checks for scripts/normalize_output.sh
 	bash scripts/test_normalize_output.sh
+
+check-coverage: ## Fail if any opted-in example script lacks an .expected golden
+	$(PYTHON) scripts/check_expected_coverage.py
 
 demo: up verify ## Full demo: start DB, verify all examples
 	@echo ""

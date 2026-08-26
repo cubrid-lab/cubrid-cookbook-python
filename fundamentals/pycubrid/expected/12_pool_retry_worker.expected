@@ -1,0 +1,33 @@
+✓ Created table 'cookbook_jobs'
+✓ Seeded 5 queued jobs
+✓ Pool health check: healthy=2, replaced=0
+  Picked job id=1 payload=job-1 attempts=0
+  Retryable DB error: OperationalError (attempt 1/3), backoff=0.10s
+  Picked job id=1 payload=job-1 attempts=1
+  ✓ Processed job id=1
+  Picked job id=2 payload=job-2 attempts=0
+  Retryable DB error: OperationalError (attempt 1/3), backoff=0.10s
+  Picked job id=2 payload=job-2 attempts=1
+  ✓ Processed job id=2
+  Picked job id=3 payload=job-3 attempts=0
+  Retryable DB error: OperationalError (attempt 1/3), backoff=0.10s
+  Picked job id=3 payload=job-3 attempts=1
+  ✓ Processed job id=3
+  Picked job id=4 payload=job-4 attempts=0
+  Retryable DB error: OperationalError (attempt 1/3), backoff=0.10s
+  Picked job id=4 payload=job-4 attempts=1
+  ✓ Processed job id=4
+  Picked job id=5 payload=job-5 attempts=0
+  Retryable DB error: OperationalError (attempt 1/3), backoff=0.10s
+  Picked job id=5 payload=job-5 attempts=1
+  ✓ Processed job id=5
+
+=== Job Results ===
+  id=1 payload=job-1 status=done attempts=2
+  id=2 payload=job-2 status=done attempts=2
+  id=3 payload=job-3 status=done attempts=2
+  id=4 payload=job-4 status=done attempts=2
+  id=5 payload=job-5 status=done attempts=2
+✓ Total processed jobs: 5
+
+✓ Cleaned up table 'cookbook_jobs'

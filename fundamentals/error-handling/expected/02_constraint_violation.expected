@@ -1,0 +1,2 @@
+Unique constraint violation handled.
+Caught: IntegrityError: Operation would have caused one or more unique constraint violations. INDEX u_cookbook_error_users_email(B+tree: {{BTREE}}) ON CLASS dba.cookbook_error_users(CLASS_OID: {{OID}}). key: 'alice@example.com'(OID: {{OID}}).

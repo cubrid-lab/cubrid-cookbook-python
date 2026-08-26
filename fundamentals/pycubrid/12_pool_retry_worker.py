@@ -244,6 +244,9 @@ if __name__ == "__main__":
         cursor.close()
         print(f"✓ Total processed jobs: {processed}")
     finally:
-        cleanup(admin_conn)
+        # Close pool connections BEFORE dropping the table: a pooled connection
+        # may still hold row locks on cookbook_jobs from its last claim, and
+        # DROP TABLE would block on those locks until the pool is closed.
         pool.close_all()
+        cleanup(admin_conn)
         admin_conn.close()

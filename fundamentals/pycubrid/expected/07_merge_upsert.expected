@@ -1,0 +1,22 @@
+✓ Created tables 'cookbook_products' and 'cookbook_product_stage'
+✓ Loaded snapshot rows into staging: 3
+✓ Merged staging snapshot into target table
+✓ Marked missing products inactive (rows affected: 0)
+
+After first snapshot (3 rows):
+  sku=SKU-100  name=Keyboard           price_cents=  4999 active=1 last_seen_utc={{DATETIME}}
+  sku=SKU-200  name=Mouse              price_cents=  2599 active=1 last_seen_utc={{DATETIME}}
+  sku=SKU-300  name=Monitor            price_cents= 19999 active=1 last_seen_utc={{DATETIME}}
+
+Applying second snapshot...
+✓ Loaded snapshot rows into staging: 3
+✓ Merged staging snapshot into target table
+✓ Marked missing products inactive (rows affected: 1)
+
+After second snapshot (4 rows):
+  sku=SKU-100  name=Keyboard Pro       price_cents=  6999 active=1 last_seen_utc={{DATETIME}}
+  sku=SKU-200  name=Mouse              price_cents=  2599 active=0 last_seen_utc={{DATETIME}}
+  sku=SKU-300  name=Monitor            price_cents= 18999 active=1 last_seen_utc={{DATETIME}}
+  sku=SKU-400  name=Dock               price_cents=  7999 active=1 last_seen_utc={{DATETIME}}
+
+✓ Cleaned up 'cookbook_product_stage' and 'cookbook_products'

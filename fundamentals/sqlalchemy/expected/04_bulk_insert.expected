@@ -1,0 +1,23 @@
+=== Bulk Insert Comparison ===
+[1] Created table cookbook_products
+
+[2] Bulk insert using session.execute(insert(...), rows)
+Inserted 500 rows in {{TIME}}s
+
+[3] Bulk insert using ORM add_all
+Inserted 500 rows in {{TIME}}s
+
+[4] Verify row count and sample data
+Total rows in cookbook_products: 1000
+id=1, sku=FAST-0000, price_cents=1000 ($10.00), in_stock_flag=0
+id=2, sku=FAST-0001, price_cents=1025 ($10.25), in_stock_flag=1
+id=3, sku=FAST-0002, price_cents=1050 ($10.50), in_stock_flag=1
+id=4, sku=FAST-0003, price_cents=1075 ($10.75), in_stock_flag=0
+id=5, sku=FAST-0004, price_cents=1100 ($11.00), in_stock_flag=1
+
+[5] Timing summary
+execute(insert, rows): {{TIME}}s
+add_all: {{TIME}}s
+
+Bulk insert demo completed.
+Cleanup complete.

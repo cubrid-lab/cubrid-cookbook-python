@@ -21,6 +21,8 @@ grep -v 'this attribute may be set' | \
 #   - absolute export paths:   "exported to: /abs/dir/file.csv" -> "{{PATH}}/file.csv"
 #   - tracemalloc peak memory: "peak_memory=  123.4 KB" -> "peak_memory={{MEM}} KB"
 #   - derived memory ratio:    "(largest / smallest): 12.3x" -> "...: {{RATIO}}x"
+#   - datetime w/ microseconds: "{{DATE}} 11:03:13.052000" -> "{{DATETIME}}"
+#   - bulk-insert perf summary:  "execute(insert, rows): 0.06s" -> "...: {{TIME}}s"
 sed -E \
   -e 's/CUBRID version: [0-9.]+/CUBRID version: {{VERSION}}/g' \
   -e 's/^(Version:[[:space:]]+)[0-9.]+/\1{{VERSION}}/g' \
@@ -35,10 +37,13 @@ sed -E \
   -e 's/[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]+/{{TIMESTAMP}}/g' \
   -e 's/[{][{]DATE[}][}] [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]+/{{TIMESTAMP}}/g' \
   -e 's/[{][{]DATE[}][}]T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+/{{DATETIME}}/g' \
+  -e 's/[{][{]DATE[}][}] [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+/{{DATETIME}}/g' \
   -e 's/\[generated in [0-9.]+s]/[generated in {{TIME}}s]/g' \
   -e "s/ \(errno=-?[0-9]+, description='[^']*', sqlstate='[^']*'\)//g" \
   -e 's/in [0-9]+\.[0-9]+ seconds/in {{TIME}}s/g' \
   -e 's/in [0-9]+ seconds/in {{TIME}}s/g' \
+  -e 's/(execute\(insert, rows\): )[0-9]+\.[0-9]+s/\1{{TIME}}s/g' \
+  -e 's/(add_all: )[0-9]+\.[0-9]+s/\1{{TIME}}s/g' \
   -e 's#(exported to: )/[^[:space:]]*/([^/[:space:]]+)#\1{{PATH}}/\2#g' \
   -e 's/(peak_memory=)[[:space:]]*[0-9]+\.[0-9]+ KB/\1{{MEM}} KB/g' \
   -e 's#(memory ratio \(largest / smallest\): )[0-9]+\.[0-9]+x#\1{{RATIO}}x#g'

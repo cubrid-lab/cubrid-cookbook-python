@@ -43,6 +43,15 @@ assert "tracemalloc peak memory" \
 assert "peak memory ratio" \
   "Peak memory ratio (largest / smallest): 12.3x" \
   "Peak memory ratio (largest / smallest): {{RATIO}}x"
+assert "datetime with microseconds (space sep)" \
+  "  order_no=1000 created_at_utc=2026-08-26 11:03:13.052000 total=10" \
+  "  order_no=1000 created_at_utc={{DATETIME}} total=10"
+assert "bulk-insert perf: execute(insert, rows)" \
+  "execute(insert, rows): 0.0664s" \
+  "execute(insert, rows): {{TIME}}s"
+assert "bulk-insert perf: add_all" \
+  "add_all: 0.4805s" \
+  "add_all: {{TIME}}s"
 
 # --- Guardrail: rules must NOT touch meaningful data ---
 assert "keeps SQL text" \

@@ -1,10 +1,14 @@
-"""16_batch_error_handling.py - Partial-failure handling for executemany_batch.
+"""16_batch_error_handling.py - All-or-nothing recovery for executemany_batch.
 
 Demonstrates:
 - Building a batch of heterogeneous SQL statements
 - Intentionally injecting a failing statement mid-batch
 - Catching the raised exception and inspecting the error code
-- Retrying only the statements that did not run
+- The real CUBRID semantics: every VALID statement in the batch is executed
+  (even statements AFTER the failing one); the failure is reported, not rolled
+  back automatically
+- Recovering safely with a single ``rollback()`` for all-or-nothing behavior
+  (never blindly re-run individual statements -- they may already be applied)
 
 Prior to pycubrid 1.6.1 (issue #186), ``executemany_batch`` silently
 swallowed per-statement errors returned by the CAS broker in
@@ -106,44 +110,46 @@ def main() -> None:
         except DatabaseError as exc:
             # Some CUBRID versions classify PRIMARY KEY violations as a
             # generic DatabaseError rather than IntegrityError. Either way,
-            # the batch stopped at the first failing statement.
+            # the driver reports the first failing statement.
             print(f"[3] Caught DatabaseError: {exc}")
             print(f"    args={exc.args!r}")
 
         # ------------------------------------------------------------------
-        # Step 3: inspect which statements actually committed.
+        # Step 3: inspect what the failing batch actually did.
         #
-        # IMPORTANT: CUBRID's batch-execute runs each statement in its own
-        # implicit transaction unless auto_commit=False is set AND the caller
-        # explicitly commits. Statements BEFORE the failure may or may not
-        # be visible depending on broker configuration; statements AFTER the
-        # failure are NOT executed.
+        # KEY CUBRID SEMANTICS: with auto_commit=False, CUBRID executes every
+        # VALID statement in the batch and raises on the first failing one.
+        # Statements AFTER the failure ARE executed too -- the whole batch is
+        # attempted -- and nothing is rolled back automatically. Because the
+        # caller has not committed yet, every applied row is still uncommitted
+        # and visible only inside this transaction.
         # ------------------------------------------------------------------
         cur.execute("SELECT id, name FROM cookbook_batch_probe ORDER BY id")
-        visible = cur.fetchall()
-        print(f"[4] Rows visible after failure: {len(visible)}")
-        for row in visible:
+        uncommitted = cur.fetchall()
+        print(f"[4] Rows visible in this transaction (uncommitted): {len(uncommitted)}")
+        for row in uncommitted:
             print(f"    id={row[0]}  name={row[1]}")
 
         # ------------------------------------------------------------------
-        # Step 4: demonstrate retry of the un-executed tail.
+        # Step 4: recover with all-or-nothing semantics.
         #
-        # In production, you typically split the batch on failure and retry
-        # the statements that come AFTER the failing one. Here we retry
-        # statements #4 and #5 (indices 3 and 4).
+        # Since nothing was committed, a single rollback() discards EVERY
+        # statement from the failed batch. This is the safe recovery path:
+        # NEVER blindly retry individual statements after a batch failure --
+        # the ones that succeeded are already applied, so re-running them
+        # raises duplicate-key errors. Roll back, fix the data, resubmit the
+        # whole corrected batch.
         # ------------------------------------------------------------------
         print()
-        print("[5] Retrying statements after the failing one...")
-        retry_list = sql_list[3:]  # gamma + delta
-        cur.executemany_batch(retry_list, auto_commit=False)
-        conn.commit()
-        print(f"    Retried {len(retry_list)} statements successfully")
+        print("[5] Rolling back the whole batch for all-or-nothing semantics...")
+        conn.rollback()
 
         cur.execute("SELECT id, name FROM cookbook_batch_probe ORDER BY id")
-        final_rows = cur.fetchall()
-        print(f"[6] Final row count: {len(final_rows)}")
-        for row in final_rows:
+        after_rollback = cur.fetchall()
+        print(f"[6] Rows after rollback: {len(after_rollback)}")
+        for row in after_rollback:
             print(f"    id={row[0]}  name={row[1]}")
+        print("    -> only the pre-existing committed row survives; the batch was undone.")
 
         cur.close()
     finally:
@@ -159,6 +165,8 @@ def main() -> None:
     print("    auto_commit: True = each stmt auto-commits; False = caller commits")
     print("  Returns: list[tuple[int, int]] of (result_code, affected_count)")
     print("  Raises:  PEP 249 exception on first per-statement failure")
+    print("  Semantics: valid statements are executed and left uncommitted;")
+    print("             rollback() for all-or-nothing, then resubmit the batch")
     print()
     print("See also: pycubrid issue #186 for the silent-swallow bug this fixes.")
 

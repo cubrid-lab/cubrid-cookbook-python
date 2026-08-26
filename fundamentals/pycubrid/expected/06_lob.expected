@@ -1,10 +1,10 @@
 === CLOB (Character Large Object) ===
   ✓ Inserted 3 documents with CLOB data
-  README          (66 chars): # CUBRID Cookbook\
-\
-A collection of examples for CUBRID dat...
-  License         (47 chars): Apache License 2.0\
-\
+  README          (64 chars): # CUBRID Cookbook
+
+A collection of examples for CUBRID datab...
+  License         (45 chars): Apache License 2.0
+
 Copyright 2026 cubrid-lab
   Long Text       (2,800 chars): Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet. Lore...
 
