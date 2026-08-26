@@ -23,6 +23,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Added datetime-microsecond and bulk-insert timing rules to `scripts/normalize_output.sh`** — `{{DATE}} HH:MM:SS.ffffff` now normalizes to `{{DATETIME}}` and the `execute(insert, rows):`/`add_all:` perf-summary lines normalize their seconds to `{{TIME}}s`, so the merge/serial/bulk-insert examples produce reproducible goldens. Covered by new `scripts/test_normalize_output.sh` cases.
 
 ### Added
+- CUBRID-distinctive SQL feature recipes (6 new pycubrid scripts):
+  - `fundamentals/pycubrid/17_window_functions.py` — ROW_NUMBER/RANK/DENSE_RANK, LAG, running SUM over partitions (with deterministic tie-breakers)
+  - `fundamentals/pycubrid/18_recursive_cte.py` — `WITH RECURSIVE` number series and hierarchy path building (contrast with 08 CONNECT BY)
+  - `fundamentals/pycubrid/19_pagination.py` — `LIMIT`/`OFFSET` vs CUBRID-idiomatic `FOR ORDERBY_NUM() BETWEEN`, plus the `ROWNUM` caveat
+  - `fundamentals/pycubrid/20_timezone_datetime.py` — `DATETIMETZ`/`DATETIMELTZ` native reads and `SET TIME ZONE`; `TIMESTAMPTZ` rendered via server-side `TO_CHAR` to sidestep [pycubrid#289](https://github.com/cubrid-lab/pycubrid/issues/289)
+  - `fundamentals/pycubrid/21_enum_type.py` — ENUM declaration-order sorting, `col + 0` ordinal, out-of-set rejection
+  - `fundamentals/pycubrid/22_date_formatting.py` — `TO_CHAR`/`TO_DATE` date and number formatting with visible fixed-width padding
 - v1.6.x feature recipes (8 new scripts):
   - `fundamentals/async/` — pycubrid.aio + SQLAlchemy async engine
   - `fundamentals/alembic/` — programmatic Alembic migration with CubridImpl

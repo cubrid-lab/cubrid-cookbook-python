@@ -1,0 +1,14 @@
+
+Generated number series: [1, 2, 3, 4, 5]
+✓ Created table 'cookbook_employees'
+✓ Inserted employees: 6
+
+Org hierarchy (ordered by path):
+  - id=1 depth=1 path=Alice
+    - id=2 depth=2 path=Alice > Bob
+      - id=4 depth=3 path=Alice > Bob > Dave
+      - id=5 depth=3 path=Alice > Bob > Eve
+    - id=3 depth=2 path=Alice > Carol
+      - id=6 depth=3 path=Alice > Carol > Frank
+
+✓ Cleaned up table 'cookbook_employees'

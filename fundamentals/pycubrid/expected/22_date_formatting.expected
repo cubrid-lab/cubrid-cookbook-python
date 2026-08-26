@@ -1,0 +1,14 @@
+
+TO_CHAR date/datetime formatting (| | shows exact output):
+  DD/MM/YYYY     |15/01/2026|
+  MM-DD-YYYY     |01-15-2026|
+  datetime       |2026/01/15 14:05:09|
+
+TO_DATE parsing (parse one layout, re-render in another):
+  '15-01-2026' (DD-MM-YYYY) -> |2026/01/15| (YYYY/MM/DD)
+  '20260115'   (YYYYMMDD)  -> |01-15-2026| (MM-DD-YYYY)
+
+TO_CHAR numeric formatting (| | shows padding):
+  grouped        |1,234,567.89|
+  space-padded   |  1,234,567.89|
+  zero-padded    |001,234,567.89|
