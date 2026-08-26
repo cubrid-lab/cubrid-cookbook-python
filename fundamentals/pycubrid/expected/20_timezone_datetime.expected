@@ -1,0 +1,14 @@
+✓ Session time zone pinned to 'Asia/Seoul'
+✓ Created table 'cookbook_events'
+✓ Session time zone pinned to 'Asia/Seoul'
+✓ Inserted events: 2
+
+Native tz-aware datetimes (DATETIMETZ, DATETIMELTZ):
+  id=1 seoul-launch tz={{DATE}} 10:30:00+09:00  ltz={{DATE}} 01:30:00+00:00
+  id=2 utc-batch    tz={{DATE}} 10:30:00+00:00  ltz={{DATE}} 16:30:00+00:00
+
+TIMESTAMPTZ via server-side TO_CHAR (zone region):
+  id=1 seoul-launch ts={{DATE}} 10:30:00 Asia/Seoul
+  id=2 utc-batch    ts={{DATE}} 10:30:00 UTC
+
+✓ Cleaned up table 'cookbook_events'

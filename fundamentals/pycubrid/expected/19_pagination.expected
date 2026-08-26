@@ -1,0 +1,19 @@
+✓ Created table 'cookbook_catalog'
+✓ Inserted catalog rows: 10
+
+Page 1 (size 3):
+  LIMIT/OFFSET : ['item-01', 'item-02', 'item-03']
+  ORDERBY_NUM  : ['item-01', 'item-02', 'item-03']
+  -> both idioms agree: same
+
+Page 2 (size 3):
+  LIMIT/OFFSET : ['item-04', 'item-05', 'item-06']
+  ORDERBY_NUM  : ['item-04', 'item-05', 'item-06']
+  -> both idioms agree: same
+
+Page 3 (size 3):
+  LIMIT/OFFSET : ['item-07', 'item-08', 'item-09']
+  ORDERBY_NUM  : ['item-07', 'item-08', 'item-09']
+  -> both idioms agree: same
+
+✓ Cleaned up table 'cookbook_catalog'

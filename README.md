@@ -82,7 +82,7 @@ Step-by-step reference for every core operation:
 | [Error handling](fundamentals/error-handling/) | Exception types, retry patterns |
 | [LOB handling](fundamentals/lob-handling/) | BLOB/CLOB operations |
 | [ORM basics](fundamentals/orm-basics/) | SQLAlchemy engine, core, ORM, relationships |
-| [pycubrid driver](fundamentals/pycubrid/) | 16 DB-API recipes: cursors, fetch sizing, batch error handling |
+| [pycubrid driver](fundamentals/pycubrid/) | 22 DB-API recipes: cursors, window functions, recursive CTEs, pagination, timezone/ENUM types |
 | [SQLAlchemy recipes](fundamentals/sqlalchemy/) | 7 recipes including SET/MULTISET/SEQUENCE collection types |
 | [Pandas](fundamentals/pandas/) | 6 recipes: read_sql, chunked reads, to_sql load patterns |
 | [Async I/O](fundamentals/async/) | pycubrid.aio and SQLAlchemy async engine |
@@ -164,7 +164,7 @@ cubrid-cookbook-python/
 │   ├── error-handling/        # Exception patterns
 │   ├── lob-handling/          # BLOB/CLOB
 │   ├── orm-basics/            # SQLAlchemy ORM
-│   ├── pycubrid/              # 16 pycubrid DB-API recipes
+│   ├── pycubrid/              # 22 pycubrid DB-API recipes
 │   ├── sqlalchemy/            # 7 SQLAlchemy recipes
 │   ├── pandas/                # 6 Pandas recipes
 │   ├── async/                 # pycubrid.aio + async SQLAlchemy

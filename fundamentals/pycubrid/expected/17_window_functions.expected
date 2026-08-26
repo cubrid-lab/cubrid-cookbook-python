@@ -1,0 +1,22 @@
+✓ Created table 'cookbook_sales'
+✓ Inserted sales rows: 6
+
+Ranking within each region (by amount desc):
+  region  product  amount  row_number  rank  dense_rank
+  East    Gadget      200           1     1           1
+  East    Gizmo       150           2     2           2
+  East    Widget      100           3     3           3
+  West    Widget      300           1     1           1
+  West    Gizmo       300           2     2           1
+  West    Gadget       50           3     3           2
+
+LAG and running total within each region:
+  region  product  amount  prev_amount  running_total
+  East    Gadget      200       (none)            200
+  East    Gizmo       150          200            350
+  East    Widget      100          150            450
+  West    Widget      300       (none)            300
+  West    Gizmo       300          300            600
+  West    Gadget       50          300            650
+
+✓ Cleaned up table 'cookbook_sales'

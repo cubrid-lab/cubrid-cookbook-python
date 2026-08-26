@@ -1,0 +1,14 @@
+✓ Created table 'cookbook_tickets'
+✓ Inserted tickets: 4
+
+Tickets by priority (highest first):
+  ordinal  priority  title
+        4  critical  DB is down
+        3  high      Login sometimes fails
+        2  medium    Slow dashboard
+        1  low       Typo in footer
+
+Inserting an out-of-set value ('urgent'):
+  rejected by ENUM constraint: ProgrammingError
+
+✓ Cleaned up table 'cookbook_tickets'
