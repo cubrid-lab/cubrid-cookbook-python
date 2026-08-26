@@ -1,0 +1,13 @@
+✓ Created serial 'cookbook_order_seq' and order tables
+✓ Created order_no=1000 customer=Alice lines=2 total_cents=10197
+✓ Created order_no=1001 customer=Bob lines=2 total_cents=22896
+
+Orders (2 rows):
+  order_no=1000 customer=Alice created_at_utc={{DATETIME}} total_cents=10197
+    - product=Keyboard qty=1 unit_price_cents=4999 line_total_cents=4999
+    - product=Mouse qty=2 unit_price_cents=2599 line_total_cents=5198
+  order_no=1001 customer=Bob created_at_utc={{DATETIME}} total_cents=22896
+    - product=Monitor qty=1 unit_price_cents=18999 line_total_cents=18999
+    - product=HDMI Cable qty=3 unit_price_cents=1299 line_total_cents=3897
+
+✓ Cleaned up order tables and serial 'cookbook_order_seq'

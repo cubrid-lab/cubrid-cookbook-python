@@ -1,0 +1,2 @@
+Connection failed as expected.
+Caught: OperationalError: failed to connect to CUBRID broker

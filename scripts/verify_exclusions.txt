@@ -1,0 +1,13 @@
+# verify_exclusions.txt - example scripts intentionally WITHOUT an .expected golden.
+#
+# `scripts/check_expected_coverage.py` requires every runnable *.py inside a
+# directory that owns an expected/ folder to have a matching golden. List here
+# the rare scripts that legitimately cannot be golden-verified (e.g. they need
+# interactive input, wall-clock-dependent output that cannot be normalized, or
+# external network services).
+#
+# Format: one repo-relative path per line, with a REQUIRED trailing reason.
+#   fundamentals/foo/99_interactive.py  # needs TTY input, not reproducible
+#
+# Keep this list minimal. Prefer making an example deterministic + adding a
+# golden over excluding it.

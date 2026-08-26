@@ -47,7 +47,7 @@ pip install -r requirements.txt
 | `13_atomic_counters.py` | Atomic counters | `ON DUPLICATE KEY UPDATE`, hot-path metrics, rankings |
 | `14_manual_cascade_delete.py` | App-managed cascades | child-first deletes, preview counts, CUBRID no-CASCADE workaround |
 | `15_cursor_memory_bound.py` | Bounded fetch with ``fetch_size`` | tracemalloc, fetch_size vs arraysize, peak-memory comparison |
-| `16_batch_error_handling.py` | Partial-failure recovery | ``executemany_batch`` error paths, retry-after-failure pattern |
+| `16_batch_error_handling.py` | All-or-nothing batch recovery | ``executemany_batch`` error paths, `rollback()` for all-or-nothing semantics |
 
 ## Run
 

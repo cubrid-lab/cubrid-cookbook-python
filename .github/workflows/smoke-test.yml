@@ -126,6 +126,12 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Check golden coverage
+        # Guard against issue #89: a script inside an expected/-owning directory
+        # with no matching .expected golden is silently never run by make verify.
+        # Always full-repo (not scoped) and needs no database.
+        run: python scripts/check_expected_coverage.py
+
       - name: Cache pip downloads
         uses: actions/cache@v4
         with:

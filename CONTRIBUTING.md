@@ -85,6 +85,12 @@ which discovers each committed `<dir>/expected/<name>.expected`, runs the matchi
 result against that golden file. When you add a one-shot example, capture its
 golden output so CI can guard it.
 
+This is enforced: `scripts/check_expected_coverage.py` (run by `make verify` and
+the smoke-test workflow) fails if any runnable `<dir>/*.py` inside a directory
+that owns an `expected/` folder has no matching `expected/<name>.expected`
+golden. To opt a script out, add it to `scripts/verify_exclusions.txt` with a
+reason — but prefer making the example deterministic and adding a golden.
+
 #### Excluded from golden verification
 
 Some examples are **intentionally** outside `make verify`. They are still real,
@@ -96,7 +102,6 @@ and not missing coverage:
 |---------|--------------------|
 | `quickstart/5min-fastapi` | Long-lived ASGI web service (`uvicorn`) exercised via HTTP, not a deterministic one-shot script — it runs until stopped, so there is no single terminal output to golden-capture. |
 | `templates/async-worker` | Celery worker that requires an external broker (Redis) and runs until stopped. |
-| `fundamentals/pycubrid/12_pool_retry_worker.py` | Long-running pool/retry worker — not a one-shot script; it does not terminate deterministically. |
 | `performance/bulk-insert/benchmark.py` | Throughput benchmark — prints wall-clock timings and rows/sec that vary run-to-run. |
 | `performance/connection-pooling/benchmark.py` | Throughput benchmark — timings and speedup factors are nondeterministic. |
 | `performance/fetch-optimization/benchmark.py` | Throughput benchmark — per-strategy timings are nondeterministic. |

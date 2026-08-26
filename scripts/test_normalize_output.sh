@@ -43,6 +43,30 @@ assert "tracemalloc peak memory" \
 assert "peak memory ratio" \
   "Peak memory ratio (largest / smallest): 12.3x" \
   "Peak memory ratio (largest / smallest): {{RATIO}}x"
+assert "datetime with microseconds (space sep)" \
+  "  order_no=1000 created_at_utc=2026-08-26 11:03:13.052000 total=10" \
+  "  order_no=1000 created_at_utc={{DATETIME}} total=10"
+assert "bulk-insert perf: execute(insert, rows)" \
+  "execute(insert, rows): 0.0664s" \
+  "execute(insert, rows): {{TIME}}s"
+assert "bulk-insert perf: add_all" \
+  "add_all: 0.4805s" \
+  "add_all: {{TIME}}s"
+assert "pandas string dtype -> canonical object (product_name)" \
+  "product_name          str" \
+  "product_name object"
+assert "pandas string dtype -> canonical object (category_name)" \
+  "category_name         string[python]" \
+  "category_name object"
+assert "pandas object dtype canonicalized to single space" \
+  "product_name        object" \
+  "product_name object"
+assert "pandas int64 dtype line canonicalized (product_id)" \
+  "product_id           int64" \
+  "product_id int64"
+assert "pandas int64 dtype line canonicalized (is_active)" \
+  "is_active            int64" \
+  "is_active int64"
 
 # --- Guardrail: rules must NOT touch meaningful data ---
 assert "keeps SQL text" \
@@ -57,6 +81,12 @@ assert "keeps exception class" \
 assert "keeps static byte sizes" \
   "  icon.bin        (256 bytes)" \
   "  icon.bin        (256 bytes)"
+assert "does not touch str outside dtypes columns" \
+  "result str: hello world" \
+  "result str: hello world"
+assert "keeps non-01 dtype column unchanged (not column-anchored)" \
+  "quantity            int64" \
+  "quantity            int64"
 
 if [ "$fail_count" -ne 0 ]; then
   printf '\n%d check(s) failed\n' "$fail_count"
