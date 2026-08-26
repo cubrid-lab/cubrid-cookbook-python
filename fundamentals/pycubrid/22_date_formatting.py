@@ -46,7 +46,6 @@ def format_dates(cursor):
     print(f"  datetime       |{dt}|")
 
 
-
 def parse_dates(cursor):
     cursor.execute(
         """
