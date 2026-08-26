@@ -52,6 +52,21 @@ assert "bulk-insert perf: execute(insert, rows)" \
 assert "bulk-insert perf: add_all" \
   "add_all: 0.4805s" \
   "add_all: {{TIME}}s"
+assert "pandas string dtype -> canonical object (product_name)" \
+  "product_name          str" \
+  "product_name object"
+assert "pandas string dtype -> canonical object (category_name)" \
+  "category_name         string[python]" \
+  "category_name object"
+assert "pandas object dtype canonicalized to single space" \
+  "product_name        object" \
+  "product_name object"
+assert "pandas int64 dtype line canonicalized (product_id)" \
+  "product_id           int64" \
+  "product_id int64"
+assert "pandas int64 dtype line canonicalized (is_active)" \
+  "is_active            int64" \
+  "is_active int64"
 
 # --- Guardrail: rules must NOT touch meaningful data ---
 assert "keeps SQL text" \
@@ -66,6 +81,12 @@ assert "keeps exception class" \
 assert "keeps static byte sizes" \
   "  icon.bin        (256 bytes)" \
   "  icon.bin        (256 bytes)"
+assert "does not touch str outside dtypes columns" \
+  "result str: hello world" \
+  "result str: hello world"
+assert "keeps non-01 dtype column unchanged (not column-anchored)" \
+  "quantity            int64" \
+  "quantity            int64"
 
 if [ "$fail_count" -ne 0 ]; then
   printf '\n%d check(s) failed\n' "$fail_count"

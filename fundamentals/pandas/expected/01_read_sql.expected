@@ -8,11 +8,11 @@
 5           6          Water Bottle   accessories              2400          1
 
 === dtypes ===
-product_id           int64
-product_name        object
-category_name       object
-unit_price_cents     int64
-is_active            int64
+product_id int64
+product_name object
+category_name object
+unit_price_cents int64
+is_active int64
 dtype: object
 
 === head(3) ===

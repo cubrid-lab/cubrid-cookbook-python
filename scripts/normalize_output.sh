@@ -23,6 +23,13 @@ grep -v 'this attribute may be set' | \
 #   - derived memory ratio:    "(largest / smallest): 12.3x" -> "...: {{RATIO}}x"
 #   - datetime w/ microseconds: "{{DATE}} 11:03:13.052000" -> "{{DATETIME}}"
 #   - bulk-insert perf summary:  "execute(insert, rows): 0.06s" -> "...: {{TIME}}s"
+#   - pandas string-dtype spelling: pandas 2.2 renders SQL string columns as
+#     "object"; newer pandas (PDEP-14 default) renders them as "str". The lesson
+#     under test is table loading, not pandas' dtype spelling. The dtype spelling
+#     also shifts the .dtypes Series column alignment (widest value "object"(6)
+#     vs "str"(3)), so ALL of 01_read_sql's known dtype lines are canonicalized to
+#     a single space and string columns are mapped to "object" (column-anchored,
+#     not global, so other examples' dtypes output is untouched).
 sed -E \
   -e 's/CUBRID version: [0-9.]+/CUBRID version: {{VERSION}}/g' \
   -e 's/^(Version:[[:space:]]+)[0-9.]+/\1{{VERSION}}/g' \
@@ -46,6 +53,11 @@ sed -E \
   -e 's/(add_all: )[0-9]+\.[0-9]+s/\1{{TIME}}s/g' \
   -e 's#(exported to: )/[^[:space:]]*/([^/[:space:]]+)#\1{{PATH}}/\2#g' \
   -e 's/(peak_memory=)[[:space:]]*[0-9]+\.[0-9]+ KB/\1{{MEM}} KB/g' \
+  -e 's/^(product_id)[[:space:]]+([A-Za-z0-9_]+(\[[^]]+\])?)$/\1 \2/g' \
+  -e 's/^(unit_price_cents)[[:space:]]+([A-Za-z0-9_]+(\[[^]]+\])?)$/\1 \2/g' \
+  -e 's/^(is_active)[[:space:]]+([A-Za-z0-9_]+(\[[^]]+\])?)$/\1 \2/g' \
+  -e 's/^(product_name)[[:space:]]+(object|str|string(\[[^]]+\])?)$/\1 object/g' \
+  -e 's/^(category_name)[[:space:]]+(object|str|string(\[[^]]+\])?)$/\1 object/g' \
   -e 's#(memory ratio \(largest / smallest\): )[0-9]+\.[0-9]+x#\1{{RATIO}}x#g'
 
 # NOTE (Oracle B4, opt-in): generated SERIAL / AUTO_INCREMENT ids are NOT
