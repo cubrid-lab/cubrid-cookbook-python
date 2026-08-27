@@ -190,6 +190,10 @@ For the ecosystem-wide view, see the [CUBRID Labs Ecosystem Roadmap](https://git
 
 PRs welcome! Each example should be self-contained and independently runnable. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
+## Disclaimer
+
+This project is part of [CUBRID Lab](https://github.com/cubrid-lab), an independent open-source initiative for CUBRID developer tooling, and is not affiliated with, sponsored by, or endorsed by CUBRID Corporation or the official CUBRID project.
+
 ## License
 
 [MIT](LICENSE)
