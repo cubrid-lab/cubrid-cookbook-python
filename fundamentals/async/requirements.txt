@@ -1,4 +1,4 @@
 # async pycubrid driver and SQLAlchemy async engine support
 pycubrid>=1.6.0
-sqlalchemy-cubrid>=1.0
+sqlalchemy-cubrid>=1.4.2
 sqlalchemy>=2.0

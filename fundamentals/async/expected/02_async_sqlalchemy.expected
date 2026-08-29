@@ -16,4 +16,4 @@
   Sync:   cubrid+pycubrid://user:pass@host:port/db
   Async:  cubrid+aiopycubrid://user:pass@host:port/db
 
-Requirements: pycubrid>=1.6, sqlalchemy-cubrid>=1.0, SQLAlchemy>=2.0
+Requirements: pycubrid>=1.6, sqlalchemy-cubrid>=1.4.2, SQLAlchemy>=2.0

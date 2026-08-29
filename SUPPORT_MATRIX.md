@@ -38,7 +38,7 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 | Component | Version | Status |
 |-----------|---------|--------|
 | pycubrid | ≥ 1.6.1 | ✅ Required |
-| sqlalchemy-cubrid | ≥ 1.0 | ✅ Required for SQLAlchemy recipes |
+| sqlalchemy-cubrid | ≥ 1.0 | ✅ Required for SQLAlchemy recipes (≥ 1.4.2 for the async `cubrid+aiopycubrid://` recipe [^async]) |
 | SQLAlchemy | 2.0–2.2 | ✅ |
 | Flask | ≥ 3.0 | ✅ |
 | Flask-SQLAlchemy | ≥ 3.1 | ✅ |
@@ -46,6 +46,8 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 | Pandas | ≥ 2.0 | ✅ |
 | Streamlit | ≥ 1.30 | ✅ |
 | Django | ≥ 5.0 | ✅ (minimal recipe) |
+
+[^async]: The sync SQLAlchemy dialect (`cubrid+pycubrid://`) works from `sqlalchemy-cubrid` 1.0. The async dialect (`cubrid+aiopycubrid://`, used by `fundamentals/async/02_async_sqlalchemy.py`) is only registered from 1.2.1 onward, and this cookbook pins it to `≥ 1.4.2` to match the floor of the other advanced SQLAlchemy recipes (pandas, ORM, Django, dashboard).
 
 ## Recipe Coverage
 
