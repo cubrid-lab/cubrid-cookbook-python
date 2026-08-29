@@ -103,7 +103,7 @@ async def main() -> None:
     print("  Sync:   cubrid+pycubrid://user:pass@host:port/db")
     print("  Async:  cubrid+aiopycubrid://user:pass@host:port/db")
     print()
-    print("Requirements: pycubrid>=1.6, sqlalchemy-cubrid>=1.0, SQLAlchemy>=2.0")
+    print("Requirements: pycubrid>=1.6, sqlalchemy-cubrid>=1.4.2, SQLAlchemy>=2.0")
 
 
 if __name__ == "__main__":
