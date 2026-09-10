@@ -1,0 +1,41 @@
+services:
+  cubrid:
+    image: cubrid/cubrid:11.4
+    container_name: cubrid-dashboard
+    ports:
+      - "33000:33000"
+    environment:
+      CUBRID_DB: testdb
+    healthcheck:
+      test: ["CMD", "csql", "-u", "dba", "testdb", "-c", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    volumes:
+      - cubrid_data:/var/lib/cubrid
+
+  dashboard:
+    # Installs the pinned requirements on start (no build step) so the
+    # template stays copy-and-run; the pip_cache volume speeds up later runs.
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+      - pip_cache:/root/.cache/pip
+    environment:
+      DATABASE_URL: cubrid+pycubrid://dba@cubrid:33000/testdb
+    command: >
+      sh -c "pip install --no-cache-dir -q -r requirements.txt &&
+             streamlit run 01_table_viewer.py
+               --server.address=0.0.0.0 --server.port=8501
+               --browser.gatherUsageStats=false"
+    ports:
+      - "8501:8501"
+    depends_on:
+      cubrid:
+        condition: service_healthy
+
+volumes:
+  cubrid_data:
+  pip_cache:
