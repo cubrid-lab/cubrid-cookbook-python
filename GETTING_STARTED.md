@@ -27,7 +27,7 @@ The expected output is checked by CI on CUBRID 11.2 and 11.4 — compare against
 
 ```bash
 pip install sqlalchemy-cubrid   # pulls SQLAlchemy 2.x
-python fundamentals/sqlalchemy/01_engine_and_connection.py
+python fundamentals/sqlalchemy/01_connect_and_session.py
 ```
 
 Production-shaped starters live in `templates/` — a FastAPI service, Flask app, Django app, Streamlit dashboard, Celery async worker, and a pandas batch ETL. The dashboard is a one-command demo:
