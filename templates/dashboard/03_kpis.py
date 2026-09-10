@@ -9,9 +9,7 @@ import streamlit as st
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb"
-)
+DATABASE_URL = os.environ.get("DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb")
 PRODUCTS_TABLE = "cookbook_products"
 SALES_TABLE = "cookbook_sales"
 
