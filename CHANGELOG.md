@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Docs
 - **`GETTING_STARTED.md` restructured as the judge/demo entry point** — three-path flow (pycubrid first query → ORM/templates → `uvx cubrid-mcp-server` with the four natural-language steps incl. the read-only refusal), expected-output pointers to the CI-checked goldens, and fixed stale `fundamentals/connect/`-style links that no longer matched the directory layout.
 
-- **CUBRID server license line added; copyright notice unified (#99)** — `THIRD_PARTY_LICENSES.md` states the verified upstream licensing (server engine Apache-2.0, APIs/connectors BSD per CUBRID's `COPYING`; GPL v2+ is outdated) and that the examples are independent clients with `cubrid/cubrid` images used for CI/demo only. LICENSE/NOTICE copyright unified to `Yeongseon Choe and Gyeongjun Paik` (2025-2026), replacing the `CUBRID Labs` line.
+- **CUBRID server license line added; copyright notice unified (#99)** — `THIRD_PARTY_LICENSES.md` states the verified upstream licensing (server engine Apache-2.0, APIs/connectors BSD per CUBRID's `COPYING`; GPL v2+ is outdated) and that the examples are independent clients with `cubrid/cubrid` images used for CI/demo only. LICENSE/NOTICE copyright unified to `Yeongseon Choe, Gyeongjun Paik` (2025-2026), replacing the `CUBRID Labs` line.
 
 ### Docs
 - **Added `THIRD_PARTY_LICENSES.md` and `NOTICE`** — pip-licenses-generated inventory of the union of template/example requirements (all permissive; no GPL), and a NOTICE declaring the examples original with no embedded third-party source. Documentation only.
