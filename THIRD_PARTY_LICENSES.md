@@ -4,6 +4,13 @@ This file lists the third-party open-source software used by the **cubrid-cookbo
 
 All listed dependencies are distributed under permissive licenses (MIT, BSD-2/3-Clause, Apache-2.0, PSF, MPL-2.0). No dependency is copyleft/GPL, and none conflicts with this project's MIT license. This repository distributes example source code only; no packages are published from it.
 
+> **CUBRID server license, for the record.** The CUBRID server engine is
+> distributed under Apache License 2.0 and the official APIs/connectors under
+> BSD (upstream `COPYING`, http://www.cubrid.org/cubrid) — the frequently cited
+> GPL v2+ no longer applies. This project is an independent wire-protocol client
+> that neither includes nor links any CUBRID server code; the `cubrid/cubrid`
+> Docker image is used for CI and demo verification only.
+
 ## Dependencies (union of template/example requirements)
 
 | Name                      | Version      | License                              | URL                                                                  |
