@@ -19,7 +19,20 @@ All recipes use:
 4. `04_charts.py` - Grouped bar and line charts using native Streamlit chart APIs
 5. `05_form_crud.py` - Insert/update/delete flows using `st.form`
 
-## Setup
+## One-command demo (Docker)
+
+```bash
+docker compose up -d
+# → CUBRID 11.4 on localhost:33000 + dashboard at http://localhost:8501
+```
+
+The compose file starts CUBRID 11.4 and a Streamlit service that installs the
+pinned requirements on first start (a few minutes; later runs reuse the pip
+cache). Recipes read `DATABASE_URL` from the environment (default
+`cubrid+pycubrid://dba@localhost:33000/testdb`), and the compose service points
+it at the co-located container. `docker compose down -v` resets everything.
+
+## Local setup (no Docker for the app)
 
 ```bash
 python -m venv .venv

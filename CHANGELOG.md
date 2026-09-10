@@ -6,7 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **One-command dashboard demo** — `templates/dashboard/` now ships its own `docker-compose.yml` (CUBRID **11.4** + Streamlit at http://localhost:8501), and the five recipes read `DATABASE_URL` from the environment (default unchanged: `cubrid+pycubrid://dba@localhost:33000/testdb`) so the compose service can point them at the co-located container.
+
 ### Docs
+- **`GETTING_STARTED.md` restructured as the judge/demo entry point** — three-path flow (pycubrid first query → ORM/templates → `uvx cubrid-mcp-server` with the four natural-language steps incl. the read-only refusal), expected-output pointers to the CI-checked goldens, and fixed stale `fundamentals/connect/`-style links that no longer matched the directory layout.
 - **Added `THIRD_PARTY_LICENSES.md` and `NOTICE`** — pip-licenses-generated inventory of the union of template/example requirements (all permissive; no GPL), and a NOTICE declaring the examples original with no embedded third-party source. Documentation only.
 
 - **Corrected the async recipe's `sqlalchemy-cubrid` floor from `>=1.0` to `>=1.4.2` (#94)** — `fundamentals/async/02_async_sqlalchemy.py` builds an `AsyncEngine` with the `cubrid+aiopycubrid://` URL, but that async dialect (`cubrid.aiopycubrid` entry point) only became installable from PyPI in `sqlalchemy-cubrid` 1.2.3 — the entry points were missing from the 1.2.0–1.2.1 releases and 1.2.2 was yanked; 1.2.1 only shipped the `get_pool_class()`/`create_async_engine()` fix (#116). So the recipe's `sqlalchemy-cubrid>=1.0` pin (in its `requirements.txt`, its printed "Requirements:" line, and the matching golden) advertised a version that cannot run it. Bumped all three to `>=1.4.2`, matching the floor already used by the other advanced SQLAlchemy recipes (pandas, ORM, Django, dashboard) rather than the bare 1.2.3 minimum. `SUPPORT_MATRIX.md` now carries an `[^async]` footnote documenting that the sync dialect works from 1.0 while the async recipe needs `>=1.4.2`. The global README badge stays at `>=1.0`: the sync `cubrid+pycubrid://` recipes (including all FastAPI templates, which use `create_engine`, not `create_async_engine`) genuinely run on 1.0.
