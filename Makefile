@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: help up down status clean verify demo test-normalize check-coverage
+.PHONY: help up down status clean verify demo test-normalize check-coverage docs
 
 DOCKER_COMPOSE := docker compose
 NORMALIZE := bash scripts/normalize_output.sh
@@ -72,3 +72,7 @@ check-coverage: ## Fail if any opted-in example script lacks an .expected golden
 demo: up verify ## Full demo: start DB, verify all examples
 	@echo ""
 	@echo "✓ Demo complete — all examples verified against CUBRID"
+
+docs: ## Stage repo docs into docs/ and build the site locally (strict)
+	bash scripts/stage_docs.sh
+	mkdocs build --strict

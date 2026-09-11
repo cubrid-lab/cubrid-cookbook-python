@@ -23,6 +23,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install mkdocs-material pymdown-extensions
+      - run: bash scripts/stage_docs.sh
       - run: mkdocs build --strict
       - uses: actions/upload-pages-artifact@v5
         with:
