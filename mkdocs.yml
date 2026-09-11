@@ -30,10 +30,10 @@ theme:
 
 nav:
   - Home: index.md
-  - Start:
+  - Getting Started:
       - Getting Started: getting-started.md
       - Quick Start (site guide): quickstart.md
-  - Catalog:
+  - Usage:
       - Full example catalog: catalog.md
       - Fundamentals overview: fundamentals.md
       - pycubrid recipes: fundamentals-pycubrid.md
@@ -42,16 +42,18 @@ nav:
       - Parameterized queries: fundamentals-parameterized-queries.md
       - Performance patterns: performance.md
       - CUBRID quirks & pitfalls: pitfalls.md
-  - Templates:
-      - FastAPI service: template-api-service-fastapi.md
-      - Celery async worker: template-async-worker.md
-      - pandas batch ETL: template-batch-etl.md
-      - Streamlit dashboard: template-dashboard.md
-      - Django app: template-django.md
-      - Flask app: template-flask.md
+      - Templates:
+          - FastAPI service: template-api-service-fastapi.md
+          - Celery async worker: template-async-worker.md
+          - pandas batch ETL: template-batch-etl.md
+          - Streamlit dashboard: template-dashboard.md
+          - Django app: template-django.md
+          - Flask app: template-flask.md
   - Reference:
       - Support matrix: support-matrix.md
+  - Operations:
       - Known issues: known-issues.md
+  - Project:
       - Changelog: changelog.md
 
 markdown_extensions:
