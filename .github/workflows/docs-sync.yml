@@ -104,3 +104,17 @@ jobs:
 
           print("\nDocs-sync guard passed.")
           PY
+
+  translation-sync:
+    # README.md must not drift from its docs/README.<lang>.md translations.
+    # Escape hatch: the `translations-deferred` PR label.
+    if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'translations-deferred') && github.event.pull_request.user.login != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check README translations stay in sync
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: python scripts/check_translation_sync.py
