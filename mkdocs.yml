@@ -1,0 +1,62 @@
+site_name: cubrid-cookbook-python
+site_description: Runnable Python examples and production-shaped templates for CUBRID
+site_author: cubrid-lab
+site_url: https://cubrid-lab.github.io/cubrid-cookbook-python/
+repo_url: https://github.com/cubrid-lab/cubrid-cookbook-python
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quick Start: quickstart.md
+  - Reference:
+      - Support Matrix: https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/SUPPORT_MATRIX.md
+      - Known Issues: https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/KNOWN_ISSUES.md
+      - Templates: https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates
+      - Changelog: https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/CHANGELOG.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - tables
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.details
+
+plugins:
+  - search
+
+validation:
+  nav:
+    omitted_files: ignore
+  links:
+    not_found: ignore
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/cubrid-lab/cubrid-cookbook-python
