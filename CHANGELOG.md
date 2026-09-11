@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **One-command dashboard demo** — `templates/dashboard/` now ships its own `docker-compose.yml` (CUBRID **11.4** + Streamlit at http://localhost:8501), and the five recipes read `DATABASE_URL` from the environment (default unchanged: `cubrid+pycubrid://dba@localhost:33000/testdb`) so the compose service can point them at the co-located container.
 
 ### Docs
+- Added `SUPPORT.md` (help channels, templates, security pointer) — root-file parity with the sibling repos instead of relying on the org fallback.
 - **Documentation site launched** — mkdocs-material site deployed to https://cubrid-lab.github.io/cubrid-cookbook-python/ (`index.md` catalog overview + `quickstart.md` three-path guide), matching the sibling repos' Pages setups. README's private org-board link removed (404 for signed-out readers).
 - **`GETTING_STARTED.md` restructured as the judge/demo entry point** — three-path flow (pycubrid first query → ORM/templates → `uvx cubrid-mcp-server` with the four natural-language steps incl. the read-only refusal), expected-output pointers to the CI-checked goldens, and fixed stale `fundamentals/connect/`-style links that no longer matched the directory layout.
 
