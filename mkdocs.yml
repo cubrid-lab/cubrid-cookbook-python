@@ -10,8 +10,10 @@ theme:
   features:
     - navigation.tabs
     - navigation.sections
+    - navigation.expand
     - content.code.copy
     - search.highlight
+    - search.suggest
   palette:
     - scheme: default
       primary: blue
@@ -28,13 +30,29 @@ theme:
 
 nav:
   - Home: index.md
-  - Getting Started:
-      - Quick Start: quickstart.md
+  - Start:
+      - Getting Started: getting-started.md
+      - Quick Start (site guide): quickstart.md
+  - Catalog:
+      - Full example catalog: catalog.md
+      - Fundamentals overview: fundamentals.md
+      - pycubrid recipes: fundamentals-pycubrid.md
+      - SQLAlchemy recipes: fundamentals-sqlalchemy.md
+      - pandas recipes: fundamentals-pandas.md
+      - Parameterized queries: fundamentals-parameterized-queries.md
+      - Performance patterns: performance.md
+      - CUBRID quirks & pitfalls: pitfalls.md
+  - Templates:
+      - FastAPI service: template-api-service-fastapi.md
+      - Celery async worker: template-async-worker.md
+      - pandas batch ETL: template-batch-etl.md
+      - Streamlit dashboard: template-dashboard.md
+      - Django app: template-django.md
+      - Flask app: template-flask.md
   - Reference:
-      - Support Matrix: https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/SUPPORT_MATRIX.md
-      - Known Issues: https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/KNOWN_ISSUES.md
-      - Templates: https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates
-      - Changelog: https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/CHANGELOG.md
+      - Support matrix: support-matrix.md
+      - Known issues: known-issues.md
+      - Changelog: changelog.md
 
 markdown_extensions:
   - admonition
@@ -42,9 +60,13 @@ markdown_extensions:
       permalink: true
       toc_depth: 3
   - tables
+  - attr_list
+  - md_in_html
   - pymdownx.superfences
   - pymdownx.highlight:
       anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
   - pymdownx.details
 
 plugins:
