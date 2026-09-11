@@ -33,3 +33,4 @@ stage templates/batch-etl/README.md              docs/template-batch-etl.md
 stage templates/dashboard/README.md              docs/template-dashboard.md
 stage templates/django/README.md                 docs/template-django.md
 stage templates/flask/README.md                  docs/template-flask.md
+stage templates/ai-agent/README.md                 docs/template-ai-agent.md
