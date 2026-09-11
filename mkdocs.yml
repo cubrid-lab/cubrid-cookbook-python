@@ -54,6 +54,8 @@ nav:
   - Operations:
       - Known issues: known-issues.md
   - Project:
+      - Translations:
+          - 한국어: README.ko.md
       - Changelog: changelog.md
 
 markdown_extensions:
