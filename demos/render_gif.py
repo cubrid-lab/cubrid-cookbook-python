@@ -4,6 +4,7 @@
 Optimized for GitHub README: 8fps, 800x450, 6-10 seconds.
 Usage: python render_gif.py script.json output.gif
 """
+
 from __future__ import annotations
 
 import json
@@ -33,17 +34,21 @@ TITLE_H = 32
 
 _font = None
 
+
 def _get_font():
     global _font
     if _font is None:
-        for p in ["/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-                  "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf"]:
+        for p in [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+        ]:
             if Path(p).exists():
                 _font = ImageFont.truetype(p, FONT_SIZE)
                 break
         else:
             _font = ImageFont.load_default()
     return _font
+
 
 def _draw(lines, cursor=-1):
     img = Image.new("RGB", (WIDTH, HEIGHT), BG)
@@ -52,13 +57,13 @@ def _draw(lines, cursor=-1):
 
     d.rectangle([0, 0, WIDTH, TITLE_H], fill=TITLE_BG)
     d.line([0, TITLE_H, WIDTH, TITLE_H], fill=BORDER, width=1)
-    for i, c in enumerate([(255,95,86),(255,189,46),(39,201,63)]):
-        x = 12 + i*20
-        d.ellipse([x, TITLE_H//2-5, x+10, TITLE_H//2+5], fill=c)
-    d.text((WIDTH//2-30, TITLE_H//2-7), "bash", font=f, fill=DIM)
+    for i, c in enumerate([(255, 95, 86), (255, 189, 46), (39, 201, 63)]):
+        x = 12 + i * 20
+        d.ellipse([x, TITLE_H // 2 - 5, x + 10, TITLE_H // 2 + 5], fill=c)
+    d.text((WIDTH // 2 - 30, TITLE_H // 2 - 7), "bash", font=f, fill=DIM)
 
     y = TITLE_H + PAD
-    max_lines = (HEIGHT - TITLE_H - PAD*2) // LINE_H
+    max_lines = (HEIGHT - TITLE_H - PAD * 2) // LINE_H
     vis = lines[-max_lines:]
     adj = len(lines) - len(vis)
 
@@ -89,12 +94,13 @@ def _draw(lines, cursor=-1):
             d.text((x, y), line, font=f, fill=FG)
 
         if cursor == i + adj:
-            bb = f.getbbox(line) if line else (0,0,8,0)
+            bb = f.getbbox(line) if line else (0, 0, 8, 0)
             cx = PAD + (bb[2] if bb else 8) + 4
-            d.rectangle([cx, y+2, cx+7, y+FONT_SIZE], fill=FG)
+            d.rectangle([cx, y + 2, cx + 7, y + FONT_SIZE], fill=FG)
         y += LINE_H
 
     return img
+
 
 def re_split(s):
     """Split string into (text, color) segments with basic syntax highlighting."""
@@ -105,12 +111,12 @@ def re_split(s):
             if idx > 0:
                 segs.append((s[:idx], FG))
             segs.append((kw, YELLOW))
-            rest = s[idx+len(kw):]
+            rest = s[idx + len(kw) :]
             # highlight strings in rest
             parts = rest.split('"')
             for j, p in enumerate(parts):
                 if j % 2 == 1:
-                    segs.append(('"'+p+'"', CYAN))
+                    segs.append(('"' + p + '"', CYAN))
                 elif p:
                     segs.append((p, FG))
             return segs
@@ -118,10 +124,11 @@ def re_split(s):
     parts = s.split('"')
     for j, p in enumerate(parts):
         if j % 2 == 1:
-            segs.append(('"'+p+'"', CYAN))
+            segs.append(('"' + p + '"', CYAN))
         elif p:
             segs.append((p, FG))
     return segs
+
 
 def render(script_path, output_path):
     _get_font()
@@ -139,17 +146,17 @@ def render(script_path, output_path):
         if st == "type":
             text = step["text"]
             # batch: 4 chars per frame
-            for i in range(4, len(text)+4, 4):
-                partial = text[:min(i, len(text))]
+            for i in range(4, len(text) + 4, 4):
+                partial = text[: min(i, len(text))]
                 curlines = lines + ["$ " + partial]
-                frames.append(_draw(curlines, cursor=len(curlines)-1))
+                frames.append(_draw(curlines, cursor=len(curlines) - 1))
                 ms += step_ms
 
         elif st == "enter":
             lines = lines + ["$ " + step.get("_last", "")]
             # just add empty prompt
             lines = lines + ["$ "]
-            frames.append(_draw(lines, cursor=len(lines)-1))
+            frames.append(_draw(lines, cursor=len(lines) - 1))
             ms += step_ms
 
         elif st == "output":
@@ -166,7 +173,7 @@ def render(script_path, output_path):
             code = step["code"]
             result = step.get("result", "")
             lines = lines + [">>> " + code]
-            frames.append(_draw(lines, cursor=len(lines)-1))
+            frames.append(_draw(lines, cursor=len(lines) - 1))
             ms += step_ms
             if result:
                 lines = lines + [result]
@@ -191,6 +198,7 @@ def render(script_path, output_path):
     dur = ms / 1000
     kb = Path(output_path).stat().st_size // 1024
     print(f"  {output_path}: {len(frames)}f {dur:.1f}s {kb}KB {WIDTH}x{HEIGHT}")
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
