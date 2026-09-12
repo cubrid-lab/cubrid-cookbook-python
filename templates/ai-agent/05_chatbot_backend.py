@@ -9,12 +9,10 @@ user profiles, and message analytics in CUBRID. Demonstrates:
 
 from __future__ import annotations
 
-import json
-import uuid
 from datetime import datetime
 
 import sqlalchemy as sa
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Integer, String, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session, relationship
 
 DATABASE_URL = "cubrid+pycubrid://dba@localhost:33000/testdb"
@@ -131,7 +129,7 @@ def main() -> None:
         # Verify JSON metadata round-trip
         assert msgs[0].metadata_["turn"] == 0
         assert msgs[0].metadata_["source"] == "demo"
-        print(f"\n  JSON metadata round-trip: ✓")
+        print("\n  JSON metadata round-trip: ✓")
 
         # User preferences (JSON column)
         print(f"  User preferences: {user.preferences}")

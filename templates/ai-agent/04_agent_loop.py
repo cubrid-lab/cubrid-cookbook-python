@@ -10,7 +10,6 @@ Demonstrates how CUBRID serves as the backbone for an agentic workflow:
 
 from __future__ import annotations
 
-import json
 import time
 
 import pycubrid

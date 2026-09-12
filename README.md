@@ -53,6 +53,7 @@ Copy-and-customize starting points for real applications:
 | [`django/`](templates/django/) | Minimal Django app on CUBRID |
 | [`async-worker/`](templates/async-worker/) | Background task processing with Celery |
 | [`batch-etl/`](templates/batch-etl/) | Data pipeline with Pandas |
+| [`ai-agent/`](templates/ai-agent/) | AI agent state store + MCP toolchain + RAG metadata |
 | [`dashboard/`](templates/dashboard/) | Interactive dashboard with Streamlit |
 
 ### Performance
@@ -103,6 +104,7 @@ pycubrid (DB-API 2.0 driver)
 ├── Django ────────── templates/django
 ├── Celery ──────── templates/async-worker
 ├── Pandas ──────── fundamentals/pandas, templates/batch-etl
+├── AI Agent ─────── templates/ai-agent
 └── Streamlit ───── templates/dashboard
 ```
 
@@ -150,6 +152,7 @@ cubrid-cookbook-python/
 │   ├── django/                # Minimal Django app
 │   ├── async-worker/          # Celery background tasks
 │   ├── batch-etl/             # Pandas data pipeline
+│   ├── ai-agent/              # AI agent state + MCP + RAG (5 recipes)
 │   └── dashboard/             # Streamlit dashboard (5 recipes)
 ├── performance/
 │   ├── fetch-optimization/    # SELECT tuning (benchmarked)

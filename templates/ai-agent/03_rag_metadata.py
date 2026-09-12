@@ -165,8 +165,8 @@ def log_retrieval(
     cur = conn.cursor()
     ids_seq = "{" + ", ".join(str(i) for i in doc_ids) + "}"
     cur.execute(
-        f"INSERT INTO rag_retrieval_log (query_text, retrieved_doc_ids, llm_response, relevance_scores) "
-        f"VALUES (?, ?, ?, ?)",
+        "INSERT INTO rag_retrieval_log (query_text, retrieved_doc_ids, llm_response, relevance_scores) "
+        "VALUES (?, ?, ?, ?)",
         [query, ids_seq, llm_response, json.dumps(scores)],
     )
     conn.commit()
@@ -205,7 +205,7 @@ def main() -> None:
         llm_response,
         [0.92, 0.85, 0.78],
     )
-    print(f"  Logged to rag_retrieval_log")
+    print("  Logged to rag_retrieval_log")
 
     # Verify: retrieve logged interactions with JSON scores
     cur = conn.cursor()
