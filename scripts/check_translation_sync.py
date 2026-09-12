@@ -8,6 +8,7 @@
 - English is canonical. The Korean hard gate is time-boxed until the
   2026 contest finals and should be relaxed to advisory afterwards.
 """
+
 from __future__ import annotations
 
 import os
@@ -19,12 +20,15 @@ SOURCE = Path("README.md")
 REQUIRED_LANGS = {"ko"}
 LANGS = {"ko": "한국어", "de": "Deutsch", "hi": "हिन्दी", "ru": "Русский", "zh": "中文"}
 
+
 def changed_files() -> set[str]:
     base = os.environ.get("BASE_REF", "main")
     ref = base if base.startswith("origin/") else f"origin/{base}"
     out = subprocess.run(
         ["git", "diff", "--name-only", "--find-renames", f"{ref}...HEAD"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout
     # --find-renames keeps a rename as old	new; both sides matter
     files = set()
@@ -34,6 +38,7 @@ def changed_files() -> set[str]:
             if p.strip():
                 files.add(p.strip())
     return files
+
 
 def main() -> int:
     present = sorted(p.stem.split(".")[1] for p in Path("docs").glob("README.*.md"))
@@ -55,7 +60,9 @@ def main() -> int:
         else:
             warnings.append(f"{path} ({label})")
     for w in warnings:
-        print(f"::warning file=README.md::community translation drifted: {w} — maintainers will open a resync PR")
+        print(
+            f"::warning file=README.md::community translation drifted: {w} — maintainers will open a resync PR"
+        )
     if failures:
         print(
             "::error::README.md changed but the required translation did not: "
@@ -65,6 +72,7 @@ def main() -> int:
         return 1
     print("translation sync OK")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
