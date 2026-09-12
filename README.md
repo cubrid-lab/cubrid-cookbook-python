@@ -11,6 +11,8 @@
 
 ---
 
+<img src="docs/demo-agent-state.gif" alt="AI agent state management demo" width="100%"/>
+
 ## Get Started
 
 | Your Goal | Go Here | Time |

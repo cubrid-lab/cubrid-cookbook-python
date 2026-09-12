@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **One-command dashboard demo** — `templates/dashboard/` now ships its own `docker-compose.yml` (CUBRID **11.4** + Streamlit at http://localhost:8501), and the five recipes read `DATABASE_URL` from the environment (default unchanged: `cubrid+pycubrid://dba@localhost:33000/testdb`) so the compose service can point them at the co-located container.
 
 ### Docs
+- **AI agent demo GIF embedded in README** — agent state management showing sessions, JSON columns, SET tags.
 - **한국어 getting-started 사이트 페이지 (#109)** — GETTING_STARTED의 3-경로 사이트 번역판을 `docs/ko/getting-started.md`로 추가하고 Project → Translations에 노출.
 - **한국어 README 추가 (`docs/README.ko.md`)** — README 전문 번역으로 4개 Python 리포 모두 한국어 지원(접근성). 사이트 Project → Translations → 한국어로 노출. **번역 동기화 관리 장치 도입**: 모든 번역 파일에 동기화 마커 + docs-sync에 `translation-sync` 잡 추가 — `README.md`가 바뀌는데 번역이 같은 PR에서 안 바뀌면 실패 (`translations-deferred` 라벨로 의도적 보류).
 - **Docs site information architecture unified across the ecosystem** — nav aligned to the shared six-tab skeleton (Home / Getting Started / Usage / Reference / Operations / Project): catalog/topic pages and the six templates under Usage, Support Matrix under Reference, Known Issues under Operations, Changelog under Project.
