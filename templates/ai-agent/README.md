@@ -77,18 +77,18 @@ User Query
 ```python
 # OpenAI
 from openai import OpenAI
+
 client = OpenAI()
 response = client.chat.completions.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": user_message}]
+    model="gpt-4", messages=[{"role": "user", "content": user_message}]
 )
 
 # Anthropic Claude
 import anthropic
+
 client = anthropic.Anthropic()
 response = client.messages.create(
-    model="claude-sonnet-4-20250514",
-    messages=[{"role": "user", "content": user_message}]
+    model="claude-sonnet-4-20250514", messages=[{"role": "user", "content": user_message}]
 )
 ```
 
