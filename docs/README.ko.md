@@ -14,6 +14,8 @@
 
 ---
 
+<img src="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-agent-state.gif" alt="AI 에이전트 데모" width="100%"/>
+
 ## 시작하기
 
 | 목표 | 바로 가기 | 소요 시간 |
