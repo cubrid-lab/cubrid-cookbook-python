@@ -179,7 +179,7 @@ def render_gif(script_path: str, output_path: str, fps: int = 2):
 
         if stype == "type":
             text = step["text"]
-            speed_ms = step.get("speed", 50)
+            # speed handled per-character above
             # Show typing character by character
             for i in range(1, len(text) + 1):
                 lines = visible_lines + ["$ " + text[:i]]
