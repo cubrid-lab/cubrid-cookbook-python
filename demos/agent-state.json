@@ -1,0 +1,23 @@
+{
+  "title": "AI agent state demo",
+  "width": 1200,
+  "height": 600,
+  "steps": [
+    {"type": "type", "text": "python3 templates/ai-agent/01_agent_state.py", "speed": 40},
+    {"type": "enter"},
+    {"type": "sleep", "ms": 2000},
+    {"type": "output", "text": "Session created: 1"},
+    {"type": "sleep", "ms": 500},
+    {"type": "output", "text": "Conversation (4 messages):"},
+    {"type": "output", "text": "  [user] What are the top 5 products?"},
+    {"type": "output", "text": "  [assistant] I'll query the products table for you."},
+    {"type": "output", "text": "  [tool] Query returned 5 rows"},
+    {"type": "sleep", "ms": 1000},
+    {"type": "output", "text": "Agent metadata: {'confidence': 0.95, 'model': 'demo'}"},
+    {"type": "sleep", "ms": 500},
+    {"type": "output", "text": "Agent state management working"},
+    {"type": "sleep", "ms": 1000},
+    {"type": "output", "text": "CUBRID stores agent state in JSON columns + SET tags"},
+    {"type": "sleep", "ms": 1500}
+  ]
+}
