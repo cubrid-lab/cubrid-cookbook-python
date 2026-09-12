@@ -49,6 +49,7 @@ nav:
           - Streamlit dashboard: template-dashboard.md
           - Django app: template-django.md
           - Flask app: template-flask.md
+          - AI agent: template-ai-agent.md
   - Reference:
       - Support matrix: support-matrix.md
   - Operations:

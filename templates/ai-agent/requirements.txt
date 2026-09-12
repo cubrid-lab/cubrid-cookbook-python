@@ -1,0 +1,3 @@
+pycubrid>=1.7,<2
+sqlalchemy-cubrid>=1.7,<2
+cubrid-mcp-server>=0.3,<1
