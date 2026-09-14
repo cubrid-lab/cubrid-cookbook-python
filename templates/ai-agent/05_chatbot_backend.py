@@ -9,13 +9,15 @@ user profiles, and message analytics in CUBRID. Demonstrates:
 
 from __future__ import annotations
 
+import os
 from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy import Integer, String, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session, relationship
 
-DATABASE_URL = "cubrid+pycubrid://dba@localhost:33000/testdb"
+# Same DATABASE_URL convention as the dashboard recipes (templates/dashboard/*.py).
+DATABASE_URL = os.environ.get("DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb")
 
 
 class Base(DeclarativeBase):

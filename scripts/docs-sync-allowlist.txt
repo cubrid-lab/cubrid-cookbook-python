@@ -12,3 +12,4 @@ performance/connection-pooling  # benchmark: non-deterministic timing output
 performance/fetch-optimization  # benchmark: non-deterministic timing output
 fundamentals/parameterized-queries  # redirect-only topic entry; canonical verified recipe lives in fundamentals/pycubrid/04_prepared.py
 templates/dashboard         # tested via external pytest suite in tests/test_dashboard.py
+templates/ai-agent          # tested via external pytest suite in tests/test_ai_agent.py
