@@ -68,6 +68,7 @@ test-normalize: ## Run before/after unit checks for scripts/normalize_output.sh
 
 check-coverage: ## Fail if any opted-in example script lacks an .expected golden
 	$(PYTHON) scripts/check_expected_coverage.py
+	$(PYTHON) scripts/check_support_matrix_counts.py
 
 demo: up verify ## Full demo: start DB, verify all examples
 	@echo ""
