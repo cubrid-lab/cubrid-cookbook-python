@@ -43,3 +43,26 @@ jobs:
     with:
       exclude: "node_modules/,typescript/node_modules/,vendor/"
       fail-on-issue: false  # advisory mode during initial rollout
+
+  # `make verify` is golden-file only and never runs the pytest suites, so
+  # recipe-level CUBRID-only breakage ships undetected (#131/#127). This job
+  # runs them against one live CUBRID.
+  pytest-suites:
+    name: Recipe pytest suites (live CUBRID)
+    uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@main
+    with:
+      cubrid-version: "11.4"
+      python-version: "3.12"
+      cubrid-test-url: "cubrid+pycubrid://dba@localhost:33000/testdb"
+      setup-command: >-
+        python -m pip install --upgrade pip &&
+        pip install pytest pytest-asyncio httpx
+        -r templates/dashboard/requirements.txt
+        -r templates/flask/01-basic-crud/requirements.txt
+        -r templates/api-service-fastapi/recipes/01-basic-crud/requirements.txt
+      test-command: >-
+        python -m pytest
+        tests/test_dashboard.py
+        templates/flask/01-basic-crud/tests
+        templates/api-service-fastapi/recipes/01-basic-crud/tests
+        -v --tb=short
