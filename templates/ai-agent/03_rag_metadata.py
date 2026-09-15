@@ -9,7 +9,18 @@ in a retrieval-augmented generation pipeline.
 from __future__ import annotations
 
 import json
+import os
 import pycubrid
+
+# Same CUBRID_* env vars as 02_mcp_toolchain.py, so a single live test
+# instance (or a local dev CUBRID) configures every recipe in this folder.
+DB_CONFIG = {
+    "host": os.environ.get("CUBRID_HOST", "localhost"),
+    "port": int(os.environ.get("CUBRID_PORT", "33000")),
+    "user": os.environ.get("CUBRID_USER", "dba"),
+    "password": os.environ.get("CUBRID_PASSWORD", ""),
+    "database": os.environ.get("CUBRID_DATABASE", "testdb"),
+}
 
 DDL = [
     """
@@ -174,7 +185,7 @@ def log_retrieval(
 
 
 def main() -> None:
-    conn = pycubrid.connect(database="testdb")
+    conn = pycubrid.connect(**DB_CONFIG)
     setup(conn)
 
     # Ingest sample documents

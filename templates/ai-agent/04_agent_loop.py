@@ -115,7 +115,8 @@ class SimpleDataAgent:
 
 
 def main() -> None:
-    conn = pycubrid.connect(database="testdb")
+    # Reuses 01_agent_state's CUBRID_* env-var config, imported above.
+    conn = pycubrid.connect(**_agent_state.DB_CONFIG)
     _agent_state.setup_schema(conn)
 
     agent = SimpleDataAgent(conn, "agent-loop-demo")
