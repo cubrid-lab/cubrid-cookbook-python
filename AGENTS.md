@@ -50,6 +50,30 @@ Skipping any phase requires explicit justification. Trivial changes (typos, sing
 - Verify output matches expected behavior
 - `docker compose down`
 
+## Issue Labeling (cubrid-lab org standard)
+
+Every issue MUST carry a `size:` label estimating implementation effort, in addition
+to `type` (`bug`/`enhancement`/`docs`/`chore`/`ci`/…) and, when applicable, `priority:`
+and `area:` labels. The `size:` label sets contributor expectations up front and helps
+newcomers pick appropriately scoped work.
+
+| Label | Meaning | Rough guide |
+|-------|---------|-------------|
+| `size: XS` | Trivial change | < ~10 lines; single-file typo/config/one-liner |
+| `size: S` | Small change | One file or one focused function; a single test or doc page |
+| `size: M` | Medium change | A few files; a new test module, a bug fix with tests, a CI job |
+| `size: L` | Large change | Cross-cutting change across many files; multi-artifact (e.g. demo GIF + video + docs) |
+| `size: XL` | Very large | Consider splitting into smaller issues before starting |
+
+Rules:
+
+1. **Size reflects effort, not importance** — a one-line fix for a critical bug is still `size: XS`.
+2. **Assign `size:` when the issue is filed or triaged.** If scope is unknown, apply
+   `status: needs triage` (or the repo's equivalent) until it can be sized.
+3. **`good first issue` should be `size: XS` or `size: S`.** If a good-first-issue grows
+   past `size: S`, re-scope it or drop the `good first issue` label.
+4. **`size: XL` is a signal to split**, not a green light to start a sprawling change.
+
 ## Documentation definition of done
 
 Any change that adds, renames, removes, or alters the behavior of an example — or changes supported CUBRID/driver/Python versions — MUST update the matching documentation in the **same PR**. At minimum keep in sync: `SUPPORT_MATRIX.md`, `CHANGELOG.md`, `README.md` (incl. version badges/claims), and any affected `docs/`.
