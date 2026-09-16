@@ -60,9 +60,14 @@ jobs:
         -r templates/dashboard/requirements.txt
         -r templates/flask/01-basic-crud/requirements.txt
         -r templates/api-service-fastapi/recipes/01-basic-crud/requirements.txt
+      # Recipes share top-level module names (database/models/app), so one
+      # pytest process cross-imports them and collection fails; run each suite
+      # in its own process (as smoke-test.yml #141 does).
       test-command: >-
-        python -m pytest
+        for suite in
         tests/test_dashboard.py
         templates/flask/01-basic-crud/tests
-        templates/api-service-fastapi/recipes/01-basic-crud/tests
-        -v --tb=short
+        templates/api-service-fastapi/recipes/01-basic-crud/tests;
+        do echo "::group::pytest $suite";
+        python -m pytest "$suite" -v --tb=short || exit 1;
+        echo "::endgroup::"; done
