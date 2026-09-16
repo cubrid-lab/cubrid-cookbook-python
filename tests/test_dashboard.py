@@ -20,7 +20,7 @@ def setup_database_url():
         os.environ["DATABASE_URL"] = CUBRID_TEST_URL
 
 
-DASHBOARD_RECIPES = glob.glob("templates/dashboard/*.py")
+DASHBOARD_RECIPES = [os.path.abspath(p) for p in glob.glob("templates/dashboard/*.py")]
 
 
 @pytest.mark.parametrize("app_path", DASHBOARD_RECIPES)
