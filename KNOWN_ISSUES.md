@@ -94,6 +94,40 @@ new_id = result.inserted_primary_key[0]
 
 ---
 
+## 5. Duplicate Index on Already-Indexed Columns
+
+**Status**: Server behavior (CUBRID 11.2 and 11.4)
+
+CUBRID rejects a second index over exactly the same columns as an existing
+primary key, `UNIQUE` constraint, or index:
+
+```text
+Index "pk_cookbook_tasks_id" already defined for class "dba.cookbook_tasks".
+```
+
+SQLite accepts the redundant index silently, so a model can pass SQLite-backed
+tests and still fail `Base.metadata.create_all()` on CUBRID. In SQLAlchemy the
+usual trigger is `index=True` on a primary key column, or on a column that a
+`UniqueConstraint` already covers.
+
+### Workaround
+
+Do not add `index=True` to columns that a primary key or `UNIQUE` constraint
+already indexes:
+
+```python
+# Bad:  fails on CUBRID with "Index ... already defined"
+id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+# Good: the primary key already provides the index
+id: Mapped[int] = mapped_column(Integer, primary_key=True)
+```
+
+`unique=True, index=True` on the same column is fine (SQLAlchemy emits a single
+`CREATE UNIQUE INDEX`), and so is `index=True` on a foreign key column.
+
+---
+
 ## Upstream Fix Tracking
 
 These issues require CUBRID server-level fixes and are tracked for future resolution:

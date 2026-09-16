@@ -32,9 +32,7 @@ class ClientRateWindow(Base):
     __table_args__ = (UniqueConstraint("client_id", name="uq_client_rate_windows_client"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    client_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("api_clients.id"), nullable=False, index=True
-    )
+    client_id: Mapped[int] = mapped_column(Integer, ForeignKey("api_clients.id"), nullable=False)
     current_window_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     current_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     previous_window_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

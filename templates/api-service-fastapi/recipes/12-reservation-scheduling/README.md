@@ -19,6 +19,7 @@ Standalone FastAPI recipe implementing resource reservation with overlap checks,
 - `routes.py`
 - `requirements.txt`
 - `tests/test_main.py`
+- `tests/conftest.py`
 
 ## Setup
 
@@ -61,4 +62,11 @@ Datetime fields use naive UTC ISO strings.
 
 ```bash
 pytest tests/test_main.py -q
+```
+
+Tests use an in-memory SQLite database by default. Set `CUBRID_TEST_URL` to run
+them against a live CUBRID instance:
+
+```bash
+CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" pytest tests/test_main.py -q
 ```

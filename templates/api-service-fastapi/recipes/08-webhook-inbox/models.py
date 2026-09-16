@@ -14,7 +14,7 @@ def utc_now() -> datetime:
 class Shipment(Base):
     __tablename__: str = "cookbook_shipments"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     external_ref: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     carrier: Mapped[str] = mapped_column(String(50), nullable=False)
     current_status: Mapped[str] = mapped_column(String(30), nullable=False, default="unknown")
@@ -27,7 +27,7 @@ class WebhookEvent(Base):
         UniqueConstraint("provider", "external_event_id", name="uq_webhook_provider_event"),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
     external_event_id: Mapped[str] = mapped_column(String(200), nullable=False)
     shipment_id: Mapped[int | None] = mapped_column(
@@ -50,7 +50,7 @@ class WebhookEvent(Base):
 class WebhookAttempt(Base):
     __tablename__: str = "cookbook_webhook_attempts"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     webhook_event_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("cookbook_webhook_events.id"),

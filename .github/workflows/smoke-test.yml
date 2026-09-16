@@ -354,3 +354,67 @@ jobs:
               )
           print("cubrid-mcp-server real-usage smoke OK")
           PY
+
+      - name: Install pytest suite dependencies (non-PR runs only)
+        # Pull requests skip the pytest suites so the PR gate stays fast: ci.yml
+        # runs one representative recipe per framework there (#140). The full
+        # matrix runs on push to main, the nightly schedule, upstream releases
+        # and manual dispatch, like the full `make verify` above.
+        if: github.event_name != 'pull_request'
+        # The Flask and FastAPI recipe suites run in this job's environment. One
+        # explicit list instead of each recipe's requirements.txt: those files pin
+        # different versions (api-service-fastapi recipe 10 pins pytest==8.3.3, for
+        # example), so installing them one after another would downgrade packages
+        # under the other suites. pycubrid and sqlalchemy-cubrid are not listed, so
+        # the releases installed above stay the versions under test.
+        run: pip install flask flask-sqlalchemy fastapi email-validator httpx pytest pytest-asyncio
+
+      - name: Run Flask and FastAPI pytest suites (non-PR runs only)
+        if: github.event_name != 'pull_request'
+        # Each suite's tests/conftest.py switches to live CUBRID when
+        # CUBRID_TEST_URL is set, so these run against the container started above.
+        # Every recipe imports its own app/database/main/models modules, so each
+        # suite needs a separate pytest process. All suites run even after a
+        # failure, then the step fails if any did; pytest exits non-zero when a
+        # suite collects no tests, so an empty suite cannot pass silently. The
+        # glob skips the nested templates/flask/*/01-basic-crud copies. pytest
+        # runs without -q so each log shows the conftest's "database: live
+        # CUBRID" header.
+        timeout-minutes: 15
+        env:
+          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
+          CUBRID_VERSION: ${{ matrix.cubrid }}
+        run: |
+          shopt -s nullglob
+          suites=(templates/flask/*/tests templates/api-service-fastapi/recipes/*/tests)
+          if [ "${#suites[@]}" -eq 0 ]; then
+            echo "::error::No pytest suites found"
+            exit 1
+          fi
+
+          log=$(mktemp)
+          failed=()
+          {
+            printf '### pytest suites against CUBRID %s\n\n' "$CUBRID_VERSION"
+            printf '| Suite | Result |\n| --- | --- |\n'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for suite in "${suites[@]}"; do
+            echo "::group::pytest $suite"
+            status=0
+            python -m pytest "$suite" > "$log" 2>&1 || status=$?
+            cat "$log"
+            echo "::endgroup::"
+            result=$(tail -n 1 "$log" | sed -E 's/=+//g; s/ in [0-9.]+s//; s/^ +| +$//g')
+            if [ "$status" -ne 0 ]; then
+              failed+=("$suite")
+              echo "::error::pytest failed in $suite (exit $status): $result"
+              result="FAILED: $result"
+            fi
+            printf '| %s | %s |\n' "$suite" "$result" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+          echo "Ran ${#suites[@]} pytest suites; ${#failed[@]} failed."
+          if [ "${#failed[@]}" -ne 0 ]; then
+            exit 1
+          fi

@@ -14,7 +14,7 @@ def utc_now() -> datetime:
 class Document(Base):
     __tablename__: str = "cookbook_documents"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -36,7 +36,7 @@ class DocumentRevision(Base):
         UniqueConstraint("document_id", "revision_no", name="uq_document_revision_no"),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     document_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("cookbook_documents.id"),

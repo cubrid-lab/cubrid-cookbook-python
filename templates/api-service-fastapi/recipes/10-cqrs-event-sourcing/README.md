@@ -9,7 +9,8 @@ Standalone FastAPI recipe showing CQRS with an event store, read model projectio
 - `models.py` - event store, snapshots, and account read model tables
 - `schemas.py` - request/response contracts
 - `routes.py` - command/query endpoints and projection logic
-- `tests/test_main.py` - end-to-end tests with in-memory SQLite
+- `tests/test_main.py` - end-to-end tests
+- `tests/conftest.py` - test database fixture (live CUBRID or in-memory SQLite)
 
 ## Run
 
@@ -33,4 +34,11 @@ uvicorn main:app --reload
 
 ```bash
 python -m pytest tests/ -v
+```
+
+Tests use an in-memory SQLite database by default. Set `CUBRID_TEST_URL` to run
+them against a live CUBRID instance:
+
+```bash
+CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" python -m pytest tests/ -v
 ```

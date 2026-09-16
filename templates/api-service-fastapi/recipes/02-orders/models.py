@@ -14,7 +14,7 @@ def utc_now() -> datetime:
 class Customer(Base):
     __tablename__ = "cookbook_customers"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
@@ -24,7 +24,7 @@ class Customer(Base):
 class Product(Base):
     __tablename__ = "cookbook_products_v2"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     price: Mapped[int] = mapped_column(Integer, nullable=False)
     stock: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -34,7 +34,7 @@ class Product(Base):
 class Order(Base):
     __tablename__ = "cookbook_orders"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     customer_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("cookbook_customers.id"), nullable=False
     )
@@ -50,7 +50,7 @@ class Order(Base):
 class OrderItem(Base):
     __tablename__ = "cookbook_order_items"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     order_id: Mapped[int] = mapped_column(Integer, ForeignKey("cookbook_orders.id"), nullable=False)
     product_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("cookbook_products_v2.id"), nullable=False

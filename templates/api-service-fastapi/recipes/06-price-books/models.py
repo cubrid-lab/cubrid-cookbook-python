@@ -14,7 +14,7 @@ def utc_now() -> datetime:
 class PriceProduct(Base):
     __tablename__: str = "cookbook_price_products"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     sku: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     active: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -32,7 +32,7 @@ class PriceBookEntry(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     product_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("cookbook_price_products.id"),

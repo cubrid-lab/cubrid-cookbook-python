@@ -4,30 +4,21 @@ from typing import cast
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from database import Base, get_db
+from database import get_db
 from main import app
 
 
 @pytest.fixture()
-def db_session():
-    engine = create_engine(
-        "sqlite+pysqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+def db_session(engine: Engine):
     session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-    Base.metadata.create_all(bind=engine)
     session = session_local()
     try:
         yield session
     finally:
         session.close()
-        Base.metadata.drop_all(bind=engine)
-        engine.dispose()
 
 
 @pytest_asyncio.fixture()

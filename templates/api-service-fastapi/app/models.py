@@ -11,7 +11,7 @@ from app.database import Base
 class CookbookCategory(Base):
     __tablename__ = "cookbook_categories"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     val: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
@@ -26,7 +26,7 @@ class CookbookCategory(Base):
 class CookbookItem(Base):
     __tablename__ = "cookbook_items"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     val: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     cnt: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

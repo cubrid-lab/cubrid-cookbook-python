@@ -14,7 +14,7 @@ def utc_now() -> datetime:
 class UserProfile(Base):
     __tablename__: str = "cookbook_user_profiles"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -38,7 +38,7 @@ class ProfileEvent(Base):
         UniqueConstraint("profile_id", "version", name="uq_profile_event_version"),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     profile_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("cookbook_user_profiles.id"),

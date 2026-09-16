@@ -10,6 +10,7 @@ Standalone FastAPI recipe implementing a Saga with compensating transactions for
 - `schemas.py` - request/response models
 - `routes.py` - all endpoints and saga flow
 - `tests/test_main.py` - recipe test suite
+- `tests/conftest.py` - test database fixture (live CUBRID or in-memory SQLite)
 
 ## Install
 
@@ -85,4 +86,11 @@ curl -X GET "http://127.0.0.1:8000/orders/O-1/steps"
 
 ```bash
 python -m pytest tests/ -v
+```
+
+Tests use an in-memory SQLite database by default. Set `CUBRID_TEST_URL` to run
+them against a live CUBRID instance:
+
+```bash
+CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" python -m pytest tests/ -v
 ```

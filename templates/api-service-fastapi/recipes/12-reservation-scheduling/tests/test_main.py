@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 import importlib
 from collections.abc import Generator
@@ -9,40 +8,28 @@ from pathlib import Path
 from httpx import Response
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
 RECIPE_ROOT = Path(__file__).resolve().parent.parent
 if str(RECIPE_ROOT) not in sys.path:
     sys.path.insert(0, str(RECIPE_ROOT))
 
-os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
-
 database = importlib.import_module("database")
 main_module = importlib.import_module("main")
-Base = database.Base
 get_db = database.get_db
 app = main_module.app
 
 
 @pytest.fixture()
-def db_session() -> Generator[Session, None, None]:
-    engine = create_engine(
-        "sqlite+pysqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+def db_session(engine: Engine) -> Generator[Session, None, None]:
     session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-    Base.metadata.create_all(bind=engine)
 
     session = session_local()
     try:
         yield session
     finally:
         session.close()
-        Base.metadata.drop_all(bind=engine)
-        engine.dispose()
 
 
 @pytest.fixture()

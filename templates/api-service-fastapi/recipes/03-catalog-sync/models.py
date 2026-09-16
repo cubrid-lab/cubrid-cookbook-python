@@ -14,7 +14,7 @@ def utc_now() -> datetime:
 class CatalogItem(Base):
     __tablename__: str = "cookbook_catalog_items"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     external_sku: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     price: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -26,7 +26,7 @@ class CatalogItem(Base):
 class SyncRun(Base):
     __tablename__: str = "cookbook_sync_runs"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="running")
     total_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

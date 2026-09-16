@@ -25,3 +25,17 @@ curl -X GET "http://127.0.0.1:8000/tasks?skip=0&limit=20"
 curl -X PUT "http://127.0.0.1:8000/tasks/1" -H "Content-Type: application/json" -d '{"completed":true,"priority":1}'
 curl -X DELETE "http://127.0.0.1:8000/tasks/1"
 ```
+
+## Test
+
+```bash
+pip install pytest pytest-asyncio httpx
+python -m pytest tests/ -v
+```
+
+Tests use an in-memory SQLite database by default. Set `CUBRID_TEST_URL` to run
+them against a live CUBRID instance:
+
+```bash
+CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" python -m pytest tests/ -v
+```

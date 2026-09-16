@@ -74,3 +74,10 @@ Additional settings in `app/config.py`:
   pip install -r requirements.txt
   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
   ```
+
+- Do not add `index=True` to primary key columns: CUBRID rejects a second index
+  on columns a primary key or `UNIQUE` constraint already indexes, so
+  `create_all()` fails at startup.
+- Each recipe under `recipes/` ships a test suite that runs against live CUBRID
+  when `CUBRID_TEST_URL` is set and falls back to in-memory SQLite otherwise.
+  See the Test section of each recipe's README.

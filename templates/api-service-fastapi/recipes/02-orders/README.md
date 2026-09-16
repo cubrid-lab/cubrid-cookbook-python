@@ -26,3 +26,17 @@ curl -X POST "http://127.0.0.1:8000/customers" -H "Content-Type: application/jso
 curl -X POST "http://127.0.0.1:8000/products" -H "Content-Type: application/json" -d '{"name":"Mouse","price":2500,"stock":5}'
 curl -X POST "http://127.0.0.1:8000/orders" -H "Content-Type: application/json" -d '{"customer_id":1,"items":[{"product_id":1,"quantity":2}]}'
 ```
+
+## Test
+
+```bash
+pip install pytest pytest-asyncio httpx
+python -m pytest tests/ -v
+```
+
+Tests use an in-memory SQLite database by default. Set `CUBRID_TEST_URL` to run
+them against a live CUBRID instance:
+
+```bash
+CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" python -m pytest tests/ -v
+```

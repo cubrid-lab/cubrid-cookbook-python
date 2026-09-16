@@ -19,6 +19,7 @@ Standalone FastAPI recipe that implements per-client rate limiting using a slidi
 - `routes.py`
 - `requirements.txt`
 - `tests/test_main.py`
+- `tests/conftest.py`
 
 ## Setup
 
@@ -58,6 +59,13 @@ uvicorn main:app --reload
 
 ```bash
 pytest tests/test_main.py -q
+```
+
+Tests use an in-memory SQLite database by default. Set `CUBRID_TEST_URL` to run
+them against a live CUBRID instance:
+
+```bash
+CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" pytest tests/test_main.py -q
 ```
 
 The tests avoid `sleep()` and patch `datetime.utcnow` through a recipe-local `utcnow` helper.

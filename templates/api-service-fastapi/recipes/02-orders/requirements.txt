@@ -3,3 +3,4 @@ uvicorn
 sqlalchemy
 pycubrid
 sqlalchemy-cubrid
+email-validator>=2

@@ -14,7 +14,7 @@ def utc_now() -> datetime:
 class Tenant(Base):
     __tablename__: str = "cookbook_tenants"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     slug: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
@@ -26,7 +26,7 @@ class Contact(Base):
         UniqueConstraint("tenant_id", "email", name="uq_contacts_tenant_email"),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tenant_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("cookbook_tenants.id"), nullable=False
     )

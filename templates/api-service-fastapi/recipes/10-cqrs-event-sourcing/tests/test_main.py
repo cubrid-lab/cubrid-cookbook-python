@@ -5,9 +5,9 @@ from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
 import sys
 
@@ -17,19 +17,13 @@ if str(ROOT_DIR) not in sys.path:
 
 import database
 import main
-from database import Base, get_db
+from database import get_db
 from models import EventStore
 
 
 @pytest.fixture()
-def client() -> Generator[TestClient, None, None]:
-    engine = create_engine(
-        "sqlite+pysqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+def client(engine: Engine) -> Generator[TestClient, None, None]:
     test_session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-    Base.metadata.create_all(bind=engine)
 
     database.engine = engine
     database.SessionLocal = test_session_local
@@ -48,8 +42,6 @@ def client() -> Generator[TestClient, None, None]:
         yield test_client
 
     main.app.dependency_overrides.clear()
-    Base.metadata.drop_all(bind=engine)
-    engine.dispose()
 
 
 def _open_account(client: TestClient, account_id: str = "acct-1") -> dict[str, object]:
