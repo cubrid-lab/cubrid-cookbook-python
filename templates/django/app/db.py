@@ -1,7 +1,12 @@
+import os
+
 from sqlalchemy import Integer, String, create_engine
 from sqlalchemy.orm import Mapped, Session, declarative_base, mapped_column, sessionmaker
 
-DATABASE_URL = "cubrid+pycubrid://dba@localhost:33000/testdb"
+DATABASE_URL = os.getenv(
+    "CUBRID_TEST_URL",
+    "cubrid+pycubrid://dba@localhost:33000/testdb",
+)
 
 engine = create_engine(DATABASE_URL, future=True)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, future=True)
