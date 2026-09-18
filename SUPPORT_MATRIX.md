@@ -6,8 +6,9 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 > 3.12** (job matrix), comparing stdout against the **46 recipes that ship goldens**
 > (`expected/*.expected`). On pushes to `main`, the nightly schedule and manual
 > runs, the same job also runs the **Flask and FastAPI pytest suites** against its
-> live CUBRID container on both versions. The Streamlit and Django recipes are
-> **run manually** (see [How to Test](#how-to-test-against-a-specific-version)), not in CI.
+> live CUBRID container on both versions. The Streamlit recipes are **run
+> manually** (see [How to Test](#how-to-test-against-a-specific-version)), while
+> the Django recipe has a live smoke test in CI.
 
 ## CUBRID Server Versions
 
@@ -62,8 +63,8 @@ The cookbook ships **62 recipes**. Verification is split:
   to `main`, nightly, and on manual runs (pull requests skip them to stay fast).
   Each suite's `conftest.py` reads `CUBRID_TEST_URL`; without it the suites fall
   back to SQLite for local runs.
-- The **Streamlit and Django** recipes are **run manually** (see [How to Test](#how-to-test-against-a-specific-version)),
-  not in CI.
+- The **Streamlit** recipes are **run manually** (see [How to Test](#how-to-test-against-a-specific-version)).
+- The **Django** recipe has a pytest live smoke test that runs against CUBRID in CI.
 - **CUBRID 11.4** runs in the same CI smoke matrix as 11.2 (its `make verify` goldens
   are checked on both versions).
 
@@ -75,7 +76,7 @@ The cookbook ships **62 recipes**. Verification is split:
 | Flask templates | 11 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
 | FastAPI templates | 12 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
 | Streamlit templates | 5 | manual run |
-| Django template | 1 | manual run |
+| Django template | 1 | pytest (CI live smoke) |
 | Celery async-worker template | 1 | manual run |
 | Pandas batch-etl template | 5 | manual run (goldens in `expected/`) |
 | Async + Alembic + JSON + Isolation | 4 | `make verify` (CI, 11.2) |
