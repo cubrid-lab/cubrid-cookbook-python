@@ -52,10 +52,25 @@ Skipping any phase requires explicit justification. Trivial changes (typos, sing
 
 ## Issue Labeling (cubrid-lab org standard)
 
-Every issue MUST carry a `size:` label estimating implementation effort, in addition
-to `type` (`bug`/`enhancement`/`docs`/`chore`/`ci`/…) and, when applicable, `priority:`
-and `area:` labels. The `size:` label sets contributor expectations up front and helps
-newcomers pick appropriately scoped work.
+When creating an issue in **any cubrid-lab repository**, assign exactly one
+`priority: <value>` label and exactly one `size: <value>` label at creation time,
+alongside a type label (`bug`/`enhancement`/`documentation`/`chore`/`ci`/…) and an
+`area:` label when applicable. These must be GitHub labels, not just text in the
+issue title or body.
+
+Use the following exact names, with **one space after the colon**:
+
+- Priority: `priority: critical`, `priority: high`, `priority: medium`, `priority: low`.
+- Size: `size: XS`, `size: S`, `size: M`, `size: L`, `size: XL`.
+
+Do not introduce variants such as `priority:high`, `priority-high`, `P1`, or
+`size:S`. Reuse the repository's canonical labels; if a required label is missing,
+create it with the exact name above before filing the issue. This policy governs
+new issue creation, not bulk renaming or relabeling existing issues unless
+explicitly requested.
+
+Priority reflects urgency and impact; size estimates implementation effort and
+helps contributors pick appropriately scoped work.
 
 | Label | Meaning | Rough guide |
 |-------|---------|-------------|
@@ -68,8 +83,10 @@ newcomers pick appropriately scoped work.
 Rules:
 
 1. **Size reflects effort, not importance** — a one-line fix for a critical bug is still `size: XS`.
-2. **Assign `size:` when the issue is filed or triaged.** If scope is unknown, apply
-   `status: needs triage` (or the repo's equivalent) until it can be sized.
+2. **Assign both `priority:` and `size:` when filing the issue.** If scope or impact
+   is uncertain, use a provisional estimate, explain the uncertainty in the body,
+   and add `status: needs triage` (or the repo's equivalent). Refine the estimates
+   during triage rather than omitting either required label.
 3. **`good first issue` should be `size: XS` or `size: S`.** If a good-first-issue grows
    past `size: S`, re-scope it or drop the `good first issue` label.
 4. **`size: XL` is a signal to split**, not a green light to start a sprawling change.
