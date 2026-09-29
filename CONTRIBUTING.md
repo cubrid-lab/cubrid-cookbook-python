@@ -212,6 +212,28 @@ memory), prefer adding a presentation-only rule to `scripts/normalize_output.sh`
 excluded. Reserve exclusion for examples that never produce deterministic,
 one-shot terminal output.
 
+### Documentation site
+
+The [documentation site](https://cubrid-lab.github.io/cubrid-cookbook-python/)
+is built from the repository docs; the repository files stay the source of truth.
+
+- `scripts/stage_docs.sh` (implemented in `scripts/stage_docs.py`) copies the
+  root and topic READMEs listed there into `docs/` (the copies are gitignored)
+  and rewrites their relative links: links to another staged page point at
+  that page, and links to any other repository path (recipe directories,
+  `.py` files, `LICENSE`, `docs/internal/`) become GitHub URLs on `main`.
+  Keep writing ordinary repository-relative links in the sources; a link to a
+  path that does not exist fails staging.
+- `mkdocs.yml` turns unresolved, unrecognized and broken-anchor links into
+  warnings, so `make docs` (`mkdocs build --strict`) fails on them. CI runs
+  `make docs` on every PR (`Docs site build (strict)`).
+- `docs/internal/` (planning material such as the PRD) is excluded from the
+  rendered site and its search index.
+- `docs/quickstart.md` is a hand-maintained site guide condensed from
+  `GETTING_STARTED.md`, which remains the source of truth. When a change to
+  `GETTING_STARTED.md` affects its commands or steps, update
+  `docs/quickstart.md` in the same PR.
+
 ---
 
 ## Code Style
