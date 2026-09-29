@@ -12,6 +12,7 @@ is welcome, and no specific tool is required.
 - [Adding Examples](#adding-examples)
 - [Code Style](#code-style)
 - [Pull Request Guidelines](#pull-request-guidelines)
+- [Pull request and commit titles](#pull-request-and-commit-titles)
 - [Reporting Issues](#reporting-issues)
 
 ---
@@ -265,8 +266,10 @@ ruff format .
 ### PR Content
 
 - Keep PRs focused — one example or fix per PR.
-- Write a clear title and description explaining _what_ and _why_.
-- Reference any related issues (e.g., `Fixes #42`).
+- Title the PR as described in
+  [Pull request and commit titles](#pull-request-and-commit-titles), and write a
+  description explaining _what_ and _why_.
+- Reference any related issues in the PR body (e.g., `Fixes #42`), not in the title.
 - Record commands actually executed, their results, and any checks not run with
   the reason. Optional AI/tool review is separate evidence and does not replace
   lint, tests, documentation checks, or live compatibility validation.
@@ -304,6 +307,71 @@ or an AI review does not waive the CI or live checks required before merge.
 
 ---
 
+## Pull request and commit titles
+
+This rule covers issue titles, pull request titles and commit subjects in every
+cubrid-lab repository. Pull requests are squash-merged and the pull request
+title becomes the commit title on `main`, so the pull request title is the one
+that must be right. The `PR title` check enforces it.
+
+```text
+type: description
+type(scope): description
+type!: description
+type(scope)!: description
+```
+
+- **type** (lowercase, exactly one of): `feat`, `fix`, `docs`, `test`, `perf`,
+  `refactor`, `ci`, `build`, `chore`, `style`, `revert`.
+- **scope** is optional: lowercase letters, digits, `-` or `_`, such as
+  `compiler`, `aio`, `deps` or `release`.
+- **`!`** before the colon marks a breaking change. Follow the repository's
+  release policy for breaking changes as well.
+- Exactly **one space** after the colon.
+- **description**: English and specific (name the function, type or behavior
+  that changed). Start with a lowercase letter unless the first word is an API
+  name, acronym or proper noun. No trailing period.
+- No bracket, status or priority prefixes (`[Bug]`, `[WIP]`, `Track:`,
+  `epic:`, `P1`). Open a draft pull request for unfinished work; priority and
+  size are labels.
+- No issue or pull request numbers in the title. Put `Closes #123` or
+  `Refs #123` in the pull request body. GitHub appends the pull request
+  number, for example `(#456)`, to the squash commit by itself.
+
+| Type | Use for |
+|------|---------|
+| `feat` | A new user-facing capability |
+| `fix` | Corrects wrong behavior, including security fixes |
+| `docs` | Documentation only |
+| `test` | Tests only |
+| `perf` | Faster or lighter with no behavior change |
+| `refactor` | Restructuring with no behavior change |
+| `ci` | CI workflows and their configuration |
+| `build` | Packaging and the build system |
+| `chore` | Maintenance: releases, dependency bumps, housekeeping |
+| `style` | Formatting only |
+| `revert` | Reverts an earlier change; name it in the description |
+
+Examples:
+
+```text
+fix(protocol): keep the CAS session after OUT_TRAN
+feat(aio): add a charset connection option
+docs: document JSON as_numeric() input limits
+chore(deps): bump ruff from 0.16.8 to 0.16.9
+chore: release v1.9.0
+refactor(compiler)!: drop legacy LIMIT rendering
+```
+
+Issue forms prefill a type prefix; keep it and write the rest of the title the
+same way. A tracking issue (epic) uses the type of the work it tracks.
+
+Maintainers merge with **squash merge only** and keep the pull request title as
+the commit title. Branch commits are squashed into the commit body, so keep
+their messages meaningful and keep any `Co-authored-by:` trailers intact.
+
+---
+
 ## Reporting Issues
 
 When reporting a bug in an example, please include:
@@ -315,6 +383,9 @@ When reporting a bug in an example, please include:
 - Steps to reproduce
 
 For new example requests, describe the use case and framework.
+
+Issue titles follow [Pull request and commit titles](#pull-request-and-commit-titles):
+keep the prefilled `fix:` (bug report) or `feat:` (example request) prefix.
 
 Describe urgency and the expected scope when useful. Maintainers or triagers
 assign/create the canonical `priority:` and `size:` GitHub labels; reporters do
