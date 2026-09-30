@@ -60,6 +60,16 @@ The `fundamentals/connect` and `fundamentals/orm-basics` requirements use
 example-specific floors do not change the minimum versions for other recipes
 in the table above.
 
+The full example apps under `templates/` (`flask`, `api-service-fastapi`,
+`ai-agent`, `async-worker`, `batch-etl`, and each of their standalone
+per-recipe `requirements.txt`) pin `pycubrid>=1.7,<2` — the `flask` family
+(including its recipes) also pins `sqlalchemy-cubrid>=1.7,<2` — instead of the
+bare global floor above. This is a deliberate, separate policy for installable
+apps (they used to install both drivers from `git+…@main`; see "Templates now
+install `pycubrid` and `sqlalchemy-cubrid` from PyPI" in the changelog) and is
+not itself a correctness floor for any single recipe; `scripts/check_dependency_floors.py`
+treats it as a documented per-family exception rather than drift.
+
 The smoke workflow selects published drivers, constrains all later dependency
 installs to those exact versions, and verifies their versions and package-index
 origin after installation. Its **Tested upstream versions** summary describes the
