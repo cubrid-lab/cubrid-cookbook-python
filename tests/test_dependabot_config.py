@@ -69,6 +69,12 @@ class DependabotConfigTests(unittest.TestCase):
         pip = self.config.split("package-ecosystem: pip", 1)[1]
         self.assertIn("group-by: dependency-name", pip)
 
+    def test_pip_versioning_strategy_preserves_recipe_floors(self) -> None:
+        # Otherwise GitHub's default "auto" strategy can raise a recipe's
+        # documented driver floor (SUPPORT_MATRIX.md) on a minor/patch bump.
+        pip = self.config.split("package-ecosystem: pip", 1)[1]
+        self.assertIn("versioning-strategy: increase-if-necessary", pip)
+
 
 class WorkflowPinTests(unittest.TestCase):
     def test_actions_are_sha_pinned_and_aligned(self) -> None:

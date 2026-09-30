@@ -82,6 +82,16 @@ Skipping any phase requires explicit justification. Trivial changes (typos, sing
 Record executed commands/results separately from AI review and checks not run.
 Explain gaps; maintainers coordinate the remaining required CI/live validation.
 
+## Commit Convention
+
+Issue titles, pull request titles and commit subjects follow
+[CONTRIBUTING.md - Pull request and commit titles](CONTRIBUTING.md#pull-request-and-commit-titles):
+`type(scope)!: description` with types `feat`, `fix`, `docs`, `test`, `perf`,
+`refactor`, `ci`, `build`, `chore`, `style`, `revert`; English, lowercase start,
+no trailing period, no issue numbers in pull request titles (use `Closes #N` /
+`Refs #N` in the body). Pull requests are squash-merged and the pull request
+title becomes the commit title. The `PR title` check enforces it.
+
 ## Issue Labeling (cubrid-lab org standard)
 
 When creating an issue in **any cubrid-lab repository**, assign exactly one
@@ -89,6 +99,9 @@ When creating an issue in **any cubrid-lab repository**, assign exactly one
 alongside a type label (`bug`/`enhancement`/`documentation`/`chore`/`ci`/…) and an
 `area:` label when applicable. These must be GitHub labels, not just text in the
 issue title or body.
+
+Issue titles use the same `type(scope): description` format as pull request
+titles (see [CONTRIBUTING.md](CONTRIBUTING.md#pull-request-and-commit-titles)).
 
 Use the following exact names, with **one space after the colon**:
 

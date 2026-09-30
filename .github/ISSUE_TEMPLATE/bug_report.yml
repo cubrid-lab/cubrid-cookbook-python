@@ -1,8 +1,15 @@
 name: Bug Report
 description: Report a bug in a cookbook example
-title: "[Bug]: "
+title: "fix: "
 labels: ["bug"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep the `fix:` title prefix and finish the title in English, for example
+        `fix: basic CRUD recipe leaks a connection on error`. You do not need to
+        apply labels; maintainers assign priority and size after triage.
+
   - type: dropdown
     id: language
     attributes:

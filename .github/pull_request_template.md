@@ -1,9 +1,16 @@
+<!--
+Title: `type: description` or `type(scope): description`; add `!` before the colon
+for a breaking change. Types: feat, fix, docs, test, perf, refactor, ci, build,
+chore, style, revert. English, lowercase start, no trailing period, no issue
+numbers (put "Closes #123" in Related Issues). The title becomes the squash
+commit title. See CONTRIBUTING.md#pull-request-and-commit-titles.
+-->
 ## High level description of this Pull-request
 Include motivations, reasons, and background to add context to your contribution.
 Include a description of changes associated with your commit(s)
 
 ## Related Issues
-- List all related issues or NA
+- `Closes #123` / `Refs #456`, or NA (issue numbers go here, not in the PR title)
 
 ## Example Details
 - **Python/Framework**: (e.g., Python/FastAPI, Flask, SQLAlchemy)

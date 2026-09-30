@@ -32,6 +32,10 @@ updates:
       - "/templates/api-service-fastapi/recipes/*"
     schedule:
       interval: monthly
+    # Preserve an existing range that already allows the new version instead
+    # of raising a recipe's documented floor as a side effect of a
+    # minor/patch bump (GitHub's default "auto" strategy can do that).
+    versioning-strategy: increase-if-necessary
     commit-message:
       prefix: "chore(deps)"
     labels: [dependencies]
