@@ -435,20 +435,23 @@ class ReleaseDispatchTests(unittest.TestCase):
             self.assertIn(f"          - {option}\n", manual)
         self.assertIn("default: latest", manual)
         self.assertIn("type: choice", manual)
-        # Request fields may key the concurrency group, but job steps must read them
-        # from GITHUB_EVENT_PATH (via release_smoke.py), never via interpolation.
+        # Request fields may key the concurrency group and the report job condition,
+        # but job steps must read them from GITHUB_EVENT_PATH or RELEASE_INPUT_*
+        # (via release_smoke.py), never via interpolation.
         jobs = workflow[workflow.index("\njobs:") :]
-        self.assertNotIn("inputs.", jobs)
+        report_condition = "|| inputs.package != '') }}"
+        self.assertEqual(jobs.count("inputs."), 1)
+        self.assertEqual(jobs.count(report_condition), 1)
         self.assertNotIn("client_payload", jobs)
         header = workflow[: workflow.index("\njobs:")]
-        concurrency = header[header.index("\nconcurrency:") :]
+        concurrency = header[header.index("\nconcurrency:") : header.index("\npermissions:")]
         for key in (
             "github.event_name",
-            "github.event.inputs.package || github.event.client_payload.package || 'none'",
-            "github.event.inputs.version || github.event.client_payload.ref || 'none'",
-            "github.event.inputs.request_id || github.event.client_payload.request_id || 'none'",
+            "inputs.package || github.event.client_payload.package || 'none'",
+            "inputs.version || github.event.client_payload.ref || 'none'",
+            "inputs.request_id || github.event.client_payload.request_id || 'none'",
             "github.event_name == 'repository_dispatch'",
-            "github.event.inputs.package != 'latest'",
+            "inputs.package != 'latest'",
         ):
             self.assertIn(key, " ".join(concurrency.split()))
         self.assertNotIn("cancel-in-progress: true", concurrency)

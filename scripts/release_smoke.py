@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import time
+from collections.abc import Mapping
 from importlib import metadata
 from pathlib import Path
 
@@ -20,6 +21,16 @@ RELEASE_TAG = re.compile(r"v(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)"
 REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{8,80}")
 REPORT_SCHEMA = 1
 REPORT_PART = "release-verification-part.json"
+# Another repository's release workflow calls smoke-test.yml (on: workflow_call).
+# GITHUB_EVENT_NAME/GITHUB_EVENT_PATH then describe the CALLER's event, so the
+# workflow flags the call and passes its inputs through the environment instead.
+WORKFLOW_CALL = "workflow_call"
+CALL_FLAG = "RELEASE_WORKFLOW_CALL"
+CALL_INPUTS = {
+    "package": "RELEASE_INPUT_PACKAGE",
+    "version": "RELEASE_INPUT_VERSION",
+    "request_id": "RELEASE_INPUT_REQUEST_ID",
+}
 
 
 def read_request_id(value: object) -> str | None:
@@ -31,12 +42,22 @@ def read_request_id(value: object) -> str | None:
     return value
 
 
-def read_request(event_name: str, event_path: Path | None) -> dict[str, str] | None:
-    """Validate an upstream release dispatch or a pinned manual release run.
+def read_request(
+    event_name: str, event_path: Path | None, environ: Mapping[str, str] | None = None
+) -> dict[str, str] | None:
+    """Validate an upstream release request: dispatch, pinned manual run or workflow call.
 
-    Both sources are read from the event JSON, so request fields never enter shell code.
+    Dispatch and manual fields are read from the event JSON. Under ``workflow_call`` the
+    event JSON is the caller's, so the call inputs come from ``RELEASE_INPUT_*``
+    environment variables instead. Request fields never enter shell code.
     A manual run without a package keeps the ordinary latest-release smoke behavior.
     """
+    if event_name == WORKFLOW_CALL:
+        environ = os.environ if environ is None else environ
+        inputs = {key: environ.get(name, "") for key, name in CALL_INPUTS.items()}
+        if inputs["package"] in ("", MANUAL_LATEST):
+            raise ValueError("Release workflow call requires a package: " + ", ".join(PACKAGES))
+        return read_inputs(inputs, "Release workflow call")
     if event_name not in ("repository_dispatch", "workflow_dispatch"):
         return None
     if event_path is None or not event_path.is_file():
@@ -63,25 +84,36 @@ def read_request(event_name: str, event_path: Path | None) -> dict[str, str] | N
         inputs = {}
     if not isinstance(inputs, dict):
         raise ValueError("Manual release inputs must be an object")
+    return read_inputs(inputs, "Manual release")
+
+
+def read_inputs(inputs: Mapping[str, object], source: str) -> dict[str, str] | None:
+    """Validate package/version/request_id inputs of a manual run or workflow call."""
     package = inputs.get("package")
     version = inputs.get("version")
     request_id = inputs.get("request_id")
     if package in (None, "", MANUAL_LATEST):
         if version in (None, "") and request_id in (None, ""):
             return None
-        raise ValueError("Manual release version or request_id requires a non-latest package")
+        raise ValueError(f"{source} version or request_id requires a non-latest package")
     if package not in PACKAGES:
-        raise ValueError("Manual release package must be one of " + ", ".join(PACKAGES))
+        raise ValueError(f"{source} package must be one of " + ", ".join(PACKAGES))
     if not isinstance(version, str) or not version:
-        raise ValueError("Manual release run requires a version such as 1.8.0 or v1.8.0")
+        raise ValueError(f"{source} run requires a version such as 1.8.0 or v1.8.0")
     ref = version if version.startswith("v") else "v" + version
     if RELEASE_TAG.fullmatch(ref) is None:
-        raise ValueError("Manual release version must be MAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH")
-    request_id = read_request_id(request_id)
-    return {"package": package, "ref": ref, "version": ref[1:], "request_id": request_id}
+        raise ValueError(f"{source} version must be MAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH")
+    return {
+        "package": package,
+        "ref": ref,
+        "version": ref[1:],
+        "request_id": read_request_id(request_id),
+    }
 
 
 def request_source(event_name: str) -> str:
+    if event_name == WORKFLOW_CALL:
+        return "release workflow call"
     return "manual release run" if event_name == "workflow_dispatch" else "release dispatch"
 
 
@@ -417,8 +449,15 @@ def report_releases(
 
 
 def event_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--event-name", default=os.environ.get("GITHUB_EVENT_NAME", ""))
+    called = os.environ.get(CALL_FLAG) == "true"
+    event_name = WORKFLOW_CALL if called else os.environ.get("GITHUB_EVENT_NAME", "")
+    parser.add_argument("--event-name", default=event_name)
     parser.add_argument("--event-path", type=Path, default=os.environ.get("GITHUB_EVENT_PATH"))
+
+
+def cookbook_commit() -> str:
+    """The cookbook commit under test; GITHUB_SHA is the caller's under workflow_call."""
+    return os.environ.get("COOKBOOK_COMMIT") or os.environ.get("GITHUB_SHA", "")
 
 
 def main() -> None:
@@ -442,7 +481,7 @@ def main() -> None:
     final = commands.add_parser("summary")
     event_arguments(final)
     final.add_argument("--state", type=Path, required=True)
-    final.add_argument("--commit", default=os.environ.get("GITHUB_SHA", ""))
+    final.add_argument("--commit", default=cookbook_commit())
     final.add_argument("--server", default=os.environ.get("CUBRID_SERVER_VERSION", "unavailable"))
     final.add_argument("--result", required=True)
     final.add_argument("--part", type=Path)
@@ -475,7 +514,7 @@ def main() -> None:
                 "id": run_id,
                 "attempt": os.environ.get("GITHUB_RUN_ATTEMPT", ""),
                 "url": f"{server_url}/{repository}/actions/runs/{run_id}",
-                "commit": os.environ.get("GITHUB_SHA", ""),
+                "commit": cookbook_commit(),
                 "event": args.event_name,
             }
             if not report_releases(

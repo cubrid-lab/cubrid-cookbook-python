@@ -189,8 +189,11 @@ verification.
 ##### Release verification contract (for upstream release workflows)
 
 The automated releases in `pycubrid`, `sqlalchemy-cubrid` and `cubrid-mcp-server`
-dispatch a verification and then wait for **that** run. This repository commits
-to the following interface; changing it is a breaking change for those workflows.
+verify the cookbook either by **calling `smoke-test.yml` as a reusable workflow**
+(preferred: no token, see [Calling the smoke test from a release workflow](#calling-the-smoke-test-from-a-release-workflow-no-token))
+or by dispatching a verification and then waiting for **that** run. This repository
+commits to the following interface; changing it is a breaking change for those
+workflows.
 
 **Request.** Either a `repository_dispatch` with `event_type: upstream-released`:
 
@@ -209,8 +212,9 @@ or a manual run: `gh workflow run smoke-test.yml -R cubrid-lab/cubrid-cookbook-p
 | `version` (manual) | `MAJOR.MINOR.PATCH` or `vMAJOR.MINOR.PATCH` |
 | `request_id` | optional, `^[A-Za-z0-9._-]{8,80}$`; required in practice to find the run |
 
-All fields are read and validated from the event JSON by `scripts/release_smoke.py`;
-an invalid `request_id` fails the run before any install. A manual `request_id`
+All fields are read and validated from the event JSON by `scripts/release_smoke.py`
+(from the call inputs for a workflow call); an invalid `request_id` fails the run
+before any install. A manual `request_id`
 without a pinned package is rejected.
 
 **Finding the run.** A release verification run is named
@@ -224,8 +228,9 @@ Release verification <package>@<ref or version as sent> [request_id=<request_id>
 (or `event=workflow_dispatch`, optionally `created=>=<dispatch time>`) and select the
 run whose `display_title` contains the exact token `[request_id=<request_id>]`. Other
 runs (pushes, pull requests, the schedule, manual `latest` runs) keep the default name.
-Each request gets its own non-cancelling concurrency group (event, package, version and
-request id), so two verifications of the same version never replace each other.
+Each request gets its own non-cancelling concurrency group (event, package, version,
+request id and run), so two verifications never replace each other and a called run
+never shares the caller's group.
 
 **Result.** The run's `conclusion` is `success` only when both CUBRID smoke jobs pass
 and every job installed exactly the requested version from PyPI. The
@@ -268,6 +273,73 @@ run conclusion `success` **and** the artifact's `status == "success"` with
 `installed_version == requested_version`. Publication delay is absorbed inside the
 run by the bounded retry above; a release that never appears fails, and the run never
 falls back to the latest release or to `main`.
+
+##### Calling the smoke test from a release workflow (no token)
+
+This repository is public, so a release workflow can run the whole smoke test as a
+job of its **own** run with its own `GITHUB_TOKEN` — no PAT, no
+`COOKBOOK_DISPATCH_TOKEN`, no secrets and no polling:
+
+```yaml
+  cookbook-smoke:
+    needs: publish                     # after the release is on PyPI
+    permissions:
+      contents: read                   # all the called workflow needs
+    uses: cubrid-lab/cubrid-cookbook-python/.github/workflows/smoke-test.yml@<40-hex cookbook commit> # main
+    with:
+      package: pycubrid                # pycubrid | sqlalchemy-cubrid | cubrid-mcp-server
+      version: ${{ needs.publish.outputs.version }}   # X.Y.Z or vX.Y.Z
+      request_id: pycubrid-v${{ needs.publish.outputs.version }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+  require-cookbook:
+    needs: cookbook-smoke
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          STATUS: ${{ needs.cookbook-smoke.outputs.status }}
+          REQUESTED: ${{ needs.cookbook-smoke.outputs.requested_version }}
+          INSTALLED: ${{ needs.cookbook-smoke.outputs.installed_version }}
+        run: |
+          [ "$STATUS" = success ] && [ -n "$INSTALLED" ] && [ "$INSTALLED" = "$REQUESTED" ]
+```
+
+| Input | Rule |
+| --- | --- |
+| `package` | required; `pycubrid`, `sqlalchemy-cubrid` or `cubrid-mcp-server` |
+| `version` | required; `MAJOR.MINOR.PATCH` or `vMAJOR.MINOR.PATCH` |
+| `request_id` | optional, `^[A-Za-z0-9._-]{8,80}$`; names the report artifact |
+
+| Output | Value |
+| --- | --- |
+| `status` | `success` or `failure` (see **Result** above) |
+| `requested_version` | normalized `MAJOR.MINOR.PATCH` |
+| `installed_version` | the version every smoke job installed, empty unless they agree |
+| `artifact` | report artifact name in the caller's run (`release-verification-<request_id>`) |
+
+The called run behaves exactly like a release dispatch: the exact PyPI install with
+the bounded publication retry, no fallback to the latest release or to `main`, both
+CUBRID jobs, the same report job and `release-verification.json` schema (with
+`run.event` = `workflow_call` and `run.commit` = the cookbook commit tested). The
+caller job fails when the verification fails; the outputs are still set, so a
+following job with `if: always()` can report them.
+
+- **Pin a full commit SHA** of this repository (a `main` commit), like any
+  third-party action. Every job checks out **this** repository at exactly that
+  commit (`job.workflow_sha`), never the caller's repository or `main`.
+- Under `workflow_call` GitHub gives the called jobs the caller's `github` context
+  and event (for example the release `push`), so `smoke-test.yml` detects the call
+  by comparing `job.workflow_ref` with `github.workflow_ref` and passes the call
+  inputs to `scripts/release_smoke.py` as `RELEASE_INPUT_*` environment variables,
+  never as shell code; the caller's event JSON is ignored.
+- The calling job must grant at least `contents: read`. Nothing else is needed:
+  artifacts are uploaded to and downloaded from the caller's run with the runner's
+  own artifact token. The call inherits no secrets.
+- The jobs appear in the caller's run as `<calling job> / Smoke Tests (CUBRID 11.2)`,
+  `… (CUBRID 11.4)` and `… / Release verification report`, and upload the artifacts
+  `release-verification-part-cubrid-11.2`, `release-verification-part-cubrid-11.4`
+  and `release-verification-<request_id>`. Call the workflow at most once per
+  caller run.
 
 Run the smoke dependency guards without a database or network:
 

@@ -4,6 +4,7 @@ name: Smoke Tests
 # exactly its run through the Actions API (match display_title on the bracketed
 # request_id). Other runs keep GitHub's default name (whitespace -> default).
 # The name is display text only; run: steps never read these fields from here.
+# Under workflow_call GitHub shows the caller's run name instead.
 run-name: >-
   ${{ (github.event_name == 'repository_dispatch' || (github.event_name == 'workflow_dispatch'
   && inputs.package != 'latest')) && format('Release verification {0}@{1} [request_id={2}]',
@@ -42,27 +43,72 @@ on:
         description: "Optional correlation id shown in the run name and report artifact, [A-Za-z0-9._-]{8,80}"
         type: string
         default: ""
+  workflow_call:
+    # Package release workflows call this workflow as a job with their own
+    # GITHUB_TOKEN (no PAT): see "Release verification contract" in CONTRIBUTING.md.
+    # The github context and GITHUB_EVENT_PATH are then the CALLER's, so these
+    # inputs reach scripts/release_smoke.py only as RELEASE_INPUT_* environment
+    # variables (never shell code), and each job checks out this repository at
+    # the called workflow's own commit (job.workflow_sha).
+    inputs:
+      package:
+        description: "Released package to verify exactly: pycubrid, sqlalchemy-cubrid or cubrid-mcp-server"
+        type: string
+        required: true
+      version:
+        description: "Exact release to verify, MAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH"
+        type: string
+        required: true
+      request_id:
+        description: "Optional correlation id for the report artifact name, [A-Za-z0-9._-]{8,80}"
+        type: string
+        default: ""
+    outputs:
+      status:
+        description: "success only when every smoke job passed with the requested version installed"
+        value: ${{ jobs.report.outputs.status }}
+      requested_version:
+        description: "Normalized requested version (MAJOR.MINOR.PATCH)"
+        value: ${{ jobs.report.outputs.requested_version }}
+      installed_version:
+        description: "Version installed by every smoke job, empty unless they all agree"
+        value: ${{ jobs.report.outputs.installed_version }}
+      artifact:
+        description: "Name of the release-verification report artifact in the caller's run"
+        value: ${{ jobs.report.outputs.artifact }}
 
-# Release verifications (repository_dispatch, or workflow_dispatch pinned to a
-# package) get their own group per event/package/version/request_id and are
-# never cancelled, so a push to main cannot cancel an in-flight release check and
-# two verifications of the same version cannot replace each other while pending.
-# Expression-only use of request fields; run: steps read them from the event JSON.
+# Release verifications (repository_dispatch, workflow_dispatch pinned to a
+# package, or a workflow_call) get their own group per event/package/version/
+# request_id/run and are never cancelled, so a push to main cannot cancel an
+# in-flight release check, two verifications cannot replace each other while
+# pending, and a called run can never share (and deadlock or cancel) the caller's
+# group. `inputs` holds the manual or call inputs (github.event is the caller's
+# event under workflow_call). Expression-only use of request fields; run: steps
+# read them from the event JSON or RELEASE_INPUT_* variables.
 concurrency:
   group: >-
     smoke-tests-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{
-    github.event.inputs.package || github.event.client_payload.package || 'none' }}-${{
-    github.event.inputs.version || github.event.client_payload.ref || 'none' }}-${{
-    github.event.inputs.request_id || github.event.client_payload.request_id || 'none' }}
+    inputs.package || github.event.client_payload.package || 'none' }}-${{
+    inputs.version || github.event.client_payload.ref || 'none' }}-${{
+    inputs.request_id || github.event.client_payload.request_id || 'none' }}${{
+    (github.event_name == 'repository_dispatch' || (inputs.package && inputs.package != 'latest'))
+    && format('-run-{0}-{1}', github.run_id, github.run_attempt) || '' }}
   cancel-in-progress: >-
-    ${{ !(github.event_name == 'repository_dispatch' || (github.event_name == 'workflow_dispatch'
-    && github.event.inputs.package != 'latest')) }}
+    ${{ !(github.event_name == 'repository_dispatch' || (inputs.package && inputs.package != 'latest')) }}
 
 # Least privilege: this workflow only reads the repo and runs untrusted
 # PR-authored example code via `make verify`. A read-only token removes the
 # write/approve escalation path if that code reaches the persisted credentials.
 permissions:
   contents: read
+
+# Manual (workflow_dispatch) or call (workflow_call) inputs as plain data.
+# release_smoke.py reads them only for a workflow call (RELEASE_WORKFLOW_CALL,
+# set by the first step of each job); other runs read the event JSON.
+env:
+  RELEASE_INPUT_PACKAGE: ${{ inputs.package }}
+  RELEASE_INPUT_VERSION: ${{ inputs.version }}
+  RELEASE_INPUT_REQUEST_ID: ${{ inputs.request_id }}
 
 jobs:
   verify:
@@ -73,14 +119,46 @@ jobs:
       matrix:
         cubrid: ["11.2", "11.4"]
     steps:
-      - name: Report trigger
-        # Request fields are read and validated from GITHUB_EVENT_PATH by Python.
+      - name: Detect release workflow call
+        # A called job's github context is the caller's; job.workflow_ref/_sha/
+        # _repository name the workflow file that defines this job. The refs differ
+        # only under workflow_call. (Read via toJSON(job): actionlint 1.7.12 does
+        # not know these newer job context properties yet.)
+        env:
+          CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
+          JOB_CONTEXT: ${{ toJSON(job) }}
         run: |
           printf 'Event: %s\n' "$GITHUB_EVENT_NAME"
+          JOB_WORKFLOW_REF=$(jq -r '.workflow_ref // ""' <<< "$JOB_CONTEXT")
+          JOB_WORKFLOW_REPOSITORY=$(jq -r '.workflow_repository // ""' <<< "$JOB_CONTEXT")
+          JOB_WORKFLOW_SHA=$(jq -r '.workflow_sha // ""' <<< "$JOB_CONTEXT")
+          if [ -z "$JOB_WORKFLOW_REF" ]; then
+            echo "::error::job.workflow_ref is unavailable; cannot tell a workflow call apart"
+            exit 1
+          fi
+          if [ "$JOB_WORKFLOW_REF" = "$CALLER_WORKFLOW_REF" ]; then
+            exit 0
+          fi
+          # Test exactly the cookbook commit the caller pinned, never its own repo.
+          if [ "$JOB_WORKFLOW_REPOSITORY" != "cubrid-lab/cubrid-cookbook-python" ] \
+            || ! printf '%s' "$JOB_WORKFLOW_SHA" | grep -Eqx '[0-9a-f]{40}'; then
+            echo "::error::Unexpected called workflow $JOB_WORKFLOW_REPOSITORY@$JOB_WORKFLOW_SHA"
+            exit 1
+          fi
+          printf 'Called by %s; testing cubrid-lab/cubrid-cookbook-python@%s\n' \
+            "$CALLER_WORKFLOW_REF" "$JOB_WORKFLOW_SHA"
+          {
+            echo "RELEASE_WORKFLOW_CALL=true"
+            echo "COOKBOOK_COMMIT=$JOB_WORKFLOW_SHA"
+          } >> "$GITHUB_ENV"
 
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          # A workflow call runs in the caller's context: check out this
+          # repository at the called workflow's own commit, not the caller's repo.
+          repository: ${{ env.RELEASE_WORKFLOW_CALL == 'true' && 'cubrid-lab/cubrid-cookbook-python' || github.repository }}
+          ref: ${{ env.COOKBOOK_COMMIT }}
           # Full history so PR-scoped verify can diff against the base commit.
           fetch-depth: 0
           # Do not persist GITHUB_TOKEN in .git/config: `make verify` runs
@@ -89,7 +167,8 @@ jobs:
 
       - name: Scope verify to changed examples (pull requests only)
         env:
-          EVENT_NAME: ${{ github.event_name }}
+          # A called run always verifies everything (the caller's PR is not ours).
+          EVENT_NAME: ${{ env.RELEASE_WORKFLOW_CALL == 'true' && 'workflow_call' || github.event_name }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           # Non-PR events (push to main, cron, upstream release, manual dispatch)
@@ -291,7 +370,7 @@ jobs:
       - name: Install pytest suite dependencies (non-PR runs only)
         # Pull requests skip the full pytest suites; ci.yml exercises representative
         # recipes. Install all dependencies before recording the tested versions.
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
         # One explicit list avoids conflicting pins in individual recipe files.
         # PIP_CONSTRAINT also covers these packages' transitive driver requirements.
         run: pip install flask flask-sqlalchemy fastapi email-validator httpx pytest pytest-asyncio
@@ -403,7 +482,7 @@ jobs:
           PY
 
       - name: Run Flask and FastAPI pytest suites (non-PR runs only)
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
         # Each suite's tests/conftest.py switches to live CUBRID when
         # CUBRID_TEST_URL is set, so these run against the container started above.
         # Every recipe imports its own app/database/main/models modules, so each
@@ -486,12 +565,56 @@ jobs:
     # requested version installed. Pull requests, pushes and the schedule skip it.
     name: Release verification report
     needs: verify
-    if: ${{ always() && (github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') }}
+    # The package input is set only for manual runs and workflow calls.
+    if: ${{ always() && (github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch' || inputs.package != '') }}
     runs-on: ubuntu-latest
+    # Read by workflow_call callers (see on.workflow_call.outputs).
+    outputs:
+      status: ${{ steps.report.outputs.status }}
+      requested_version: ${{ steps.report.outputs.requested_version }}
+      installed_version: ${{ steps.report.outputs.installed_version }}
+      artifact: ${{ steps.report.outputs.artifact }}
     steps:
+      - name: Detect release workflow call
+        # A called job's github context is the caller's; job.workflow_ref/_sha/
+        # _repository name the workflow file that defines this job. The refs differ
+        # only under workflow_call. (Read via toJSON(job): actionlint 1.7.12 does
+        # not know these newer job context properties yet.)
+        env:
+          CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
+          JOB_CONTEXT: ${{ toJSON(job) }}
+        run: |
+          printf 'Event: %s\n' "$GITHUB_EVENT_NAME"
+          JOB_WORKFLOW_REF=$(jq -r '.workflow_ref // ""' <<< "$JOB_CONTEXT")
+          JOB_WORKFLOW_REPOSITORY=$(jq -r '.workflow_repository // ""' <<< "$JOB_CONTEXT")
+          JOB_WORKFLOW_SHA=$(jq -r '.workflow_sha // ""' <<< "$JOB_CONTEXT")
+          if [ -z "$JOB_WORKFLOW_REF" ]; then
+            echo "::error::job.workflow_ref is unavailable; cannot tell a workflow call apart"
+            exit 1
+          fi
+          if [ "$JOB_WORKFLOW_REF" = "$CALLER_WORKFLOW_REF" ]; then
+            exit 0
+          fi
+          # Test exactly the cookbook commit the caller pinned, never its own repo.
+          if [ "$JOB_WORKFLOW_REPOSITORY" != "cubrid-lab/cubrid-cookbook-python" ] \
+            || ! printf '%s' "$JOB_WORKFLOW_SHA" | grep -Eqx '[0-9a-f]{40}'; then
+            echo "::error::Unexpected called workflow $JOB_WORKFLOW_REPOSITORY@$JOB_WORKFLOW_SHA"
+            exit 1
+          fi
+          printf 'Called by %s; testing cubrid-lab/cubrid-cookbook-python@%s\n' \
+            "$CALLER_WORKFLOW_REF" "$JOB_WORKFLOW_SHA"
+          {
+            echo "RELEASE_WORKFLOW_CALL=true"
+            echo "COOKBOOK_COMMIT=$JOB_WORKFLOW_SHA"
+          } >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          # A workflow call runs in the caller's context: check out this
+          # repository at the called workflow's own commit, not the caller's repo.
+          repository: ${{ env.RELEASE_WORKFLOW_CALL == 'true' && 'cubrid-lab/cubrid-cookbook-python' || github.repository }}
+          ref: ${{ env.COOKBOOK_COMMIT }}
           persist-credentials: false
 
       - name: Download smoke job results
@@ -508,7 +631,8 @@ jobs:
           VERIFY_RESULT: ${{ needs.verify.result }}
         run: |
           set -o pipefail
-          # Reads and validates the request from the event JSON, like the smoke jobs.
+          # Reads and validates the request like the smoke jobs (event JSON, or
+          # RELEASE_INPUT_* under a workflow call).
           python3 scripts/release_smoke.py report \
             --parts "$RUNNER_TEMP/release-verification-parts" \
             --verify-result "$VERIFY_RESULT" \
