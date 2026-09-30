@@ -15,8 +15,8 @@ jobs:
     uses: cubrid-lab/cubrid-cookbook-python/.github/workflows/smoke-test.yml@81cf7a70fc70a5e892fcab6519854c86f67e48b6
     with:
       package: pycubrid
-      version: 1.8.0
-      request_id: test-190-000f0d25
+      version: 9.9.9
+      request_id: test-190-neg-7c41e2
 
   require-cookbook:
     needs: cookbook-smoke
@@ -32,4 +32,5 @@ jobs:
           CALLER_SHA: ${{ github.sha }}
         run: |
           printf 'result=%s status=%s requested=%s installed=%s artifact=%s caller_sha=%s\n'             "$RESULT" "$STATUS" "$REQUESTED" "$INSTALLED" "$ARTIFACT" "$CALLER_SHA"
-          [ "$STATUS" = success ] && [ -n "$INSTALLED" ] && [ "$INSTALLED" = "$REQUESTED" ]
+          # Negative selftest: an unpublished release must fail with outputs set.
+          [ "$RESULT" = failure ] && [ "$STATUS" = failure ] && [ "$REQUESTED" = 9.9.9 ] && [ -z "$INSTALLED" ]
