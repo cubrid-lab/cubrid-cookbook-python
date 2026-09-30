@@ -374,6 +374,8 @@ class ReleaseVerificationTests(unittest.TestCase):
         self.assertIn("VERIFY_RESULT: ${{ needs.verify.result }}", report)
         self.assertIn("name: ${{ steps.report.outputs.artifact }}", report)
         self.assertIn("if-no-files-found: error", report)
+        # Re-running failed jobs must be able to replace both artifacts.
+        self.assertEqual(WORKFLOW.count("overwrite: true"), 2)
         self.assertNotIn("pypi", report.lower())
 
 

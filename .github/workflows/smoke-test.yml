@@ -476,6 +476,8 @@ jobs:
           path: ${{ runner.temp }}/release-verification-part.json
           if-no-files-found: ignore
           retention-days: 7
+          # A re-run of a failed job replaces its earlier result.
+          overwrite: true
 
   report:
     # One result per release request for the upstream release workflow: the job
@@ -521,3 +523,4 @@ jobs:
           path: ${{ runner.temp }}/release-verification/release-verification.json
           if-no-files-found: error
           retention-days: 30
+          overwrite: true

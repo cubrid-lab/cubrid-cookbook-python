@@ -236,7 +236,8 @@ and every job installed exactly the requested version from PyPI. The
 - step outputs `release`, `artifact`, `status`, `request_id`, `package`,
   `requested_version`, `installed_version`;
 - an artifact named `release-verification-<request_id>` (or
-  `release-verification-run-<run_id>` without a valid request id), retained 30 days,
+  `release-verification-run-<run_id>` without a valid request id), retained 30 days
+  and replaced when failed jobs are re-run in the same run,
   containing `release-verification.json`:
 
 ```json
