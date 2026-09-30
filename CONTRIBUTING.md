@@ -186,6 +186,88 @@ the latest release. A manual run with the default inputs (`package=latest`, empt
 smoke run on the latest published releases and is reported as not a release
 verification.
 
+##### Release verification contract (for upstream release workflows)
+
+The automated releases in `pycubrid`, `sqlalchemy-cubrid` and `cubrid-mcp-server`
+dispatch a verification and then wait for **that** run. This repository commits
+to the following interface; changing it is a breaking change for those workflows.
+
+**Request.** Either a `repository_dispatch` with `event_type: upstream-released`:
+
+```json
+{"event_type": "upstream-released",
+ "client_payload": {"package": "pycubrid", "ref": "v1.8.0", "request_id": "pycubrid-v1.8.0-123456789-1"}}
+```
+
+or a manual run: `gh workflow run smoke-test.yml -R cubrid-lab/cubrid-cookbook-python
+-f package=pycubrid -f version=1.8.0 -f request_id=<id>`.
+
+| Field | Rule |
+| --- | --- |
+| `package` | `pycubrid`, `sqlalchemy-cubrid` or `cubrid-mcp-server` |
+| `ref` (dispatch) | canonical `vMAJOR.MINOR.PATCH` |
+| `version` (manual) | `MAJOR.MINOR.PATCH` or `vMAJOR.MINOR.PATCH` |
+| `request_id` | optional, `^[A-Za-z0-9._-]{8,80}$`; required in practice to find the run |
+
+All fields are read and validated from the event JSON by `scripts/release_smoke.py`;
+an invalid `request_id` fails the run before any install. A manual `request_id`
+without a pinned package is rejected.
+
+**Finding the run.** A release verification run is named
+
+```text
+Release verification <package>@<ref or version as sent> [request_id=<request_id>]
+```
+
+(`[request_id=none]` when absent). Poll
+`GET /repos/cubrid-lab/cubrid-cookbook-python/actions/workflows/smoke-test.yml/runs?event=repository_dispatch`
+(or `event=workflow_dispatch`, optionally `created=>=<dispatch time>`) and select the
+run whose `display_title` contains the exact token `[request_id=<request_id>]`. Other
+runs (pushes, pull requests, the schedule, manual `latest` runs) keep the default name.
+Each request gets its own non-cancelling concurrency group (event, package, version and
+request id), so two verifications of the same version never replace each other.
+
+**Result.** The run's `conclusion` is `success` only when both CUBRID smoke jobs pass
+and every job installed exactly the requested version from PyPI. The
+`Release verification report` job then publishes, for every release request:
+
+- a job summary table (`request_id`, `package`, `requested_version`,
+  `installed_version`, `status`, plus the failure reasons);
+- step outputs `release`, `artifact`, `status`, `request_id`, `package`,
+  `requested_version`, `installed_version`;
+- an artifact named `release-verification-<request_id>` (or
+  `release-verification-run-<run_id>` without a valid request id), retained 30 days,
+  containing `release-verification.json`:
+
+```json
+{
+  "schema_version": 1,
+  "request_id": "pycubrid-v1.8.0-123456789-1",
+  "package": "pycubrid",
+  "requested_version": "1.8.0",
+  "installed_version": "1.8.0",
+  "status": "success",
+  "reasons": [],
+  "run": {"id": "…", "attempt": "1", "url": "https://github.com/…/actions/runs/…",
+          "commit": "<cookbook SHA>", "event": "repository_dispatch"},
+  "matrix": [
+    {"cubrid": "11.2", "request_valid": true, "installed_version": "1.8.0",
+     "origin": "package index", "server": "11.2.x", "verification": "passed",
+     "result": "success"},
+    {"cubrid": "11.4", "…": "…"}
+  ]
+}
+```
+
+`status` is `success` or `failure`; `installed_version` is `null` unless every job
+installed the same version, and a failure lists its `reasons` (invalid request,
+missing or failed jobs, `installed X differs from requested Y`). The report job
+itself fails whenever `status` is `failure`. An upstream verifier should require the
+run conclusion `success` **and** the artifact's `status == "success"` with
+`installed_version == requested_version`. Publication delay is absorbed inside the
+run by the bounded retry above; a release that never appears fails, and the run never
+falls back to the latest release or to `main`.
+
 Run the smoke dependency guards without a database or network:
 
 ```bash

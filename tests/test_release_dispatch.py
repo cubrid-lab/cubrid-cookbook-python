@@ -55,7 +55,13 @@ class ReleaseDispatchTests(unittest.TestCase):
                 self.payload(package, "v" + version)
                 request = smoke.read_request("repository_dispatch", self.event)
                 self.assertEqual(
-                    request, {"package": package, "ref": "v" + version, "version": version}
+                    request,
+                    {
+                        "package": package,
+                        "ref": "v" + version,
+                        "version": version,
+                        "request_id": None,
+                    },
                 )
                 with (
                     patch.object(smoke.subprocess, "run") as install,
@@ -279,7 +285,13 @@ class ReleaseDispatchTests(unittest.TestCase):
                     self.manual(package, spelled)
                     request = smoke.read_request("workflow_dispatch", self.event)
                     self.assertEqual(
-                        request, {"package": package, "ref": "v" + version, "version": version}
+                        request,
+                        {
+                            "package": package,
+                            "ref": "v" + version,
+                            "version": version,
+                            "request_id": None,
+                        },
                     )
                     with (
                         patch.object(smoke.subprocess, "run") as install,
@@ -434,6 +446,7 @@ class ReleaseDispatchTests(unittest.TestCase):
             "github.event_name",
             "github.event.inputs.package || github.event.client_payload.package || 'none'",
             "github.event.inputs.version || github.event.client_payload.ref || 'none'",
+            "github.event.inputs.request_id || github.event.client_payload.request_id || 'none'",
             "github.event_name == 'repository_dispatch'",
             "github.event.inputs.package != 'latest'",
         ):
