@@ -52,6 +52,21 @@ jobs:
       - name: Check examples are documented
         run: python3 scripts/check_docs_sync.py
 
+  # Stages the repo docs and builds the MkDocs site with --strict, so a link that
+  # breaks when a page is staged under docs/ fails the PR instead of the
+  # post-merge Pages deploy (#154). docs.yml still owns the deploy.
+  docs-site:
+    name: Docs site build (strict)
+    runs-on: ubuntu-latest
+    steps:
+      # Same action pins as docs.yml, which builds this site for deployment.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: pip install mkdocs-material pymdown-extensions
+      - run: make docs
+
   doc-lint:
     name: Documentation lint
     uses: cubrid-lab/.github/.github/workflows/doc-lint.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
@@ -92,7 +107,7 @@ jobs:
   ci-gate:
     name: CI Gate (all checks must pass)
     if: always()
-    needs: [lint-python, quickstart-tests, docs-sync, doc-lint, pytest-suites]
+    needs: [lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites]
     runs-on: ubuntu-latest
     permissions: {}
     steps:
@@ -101,12 +116,13 @@ jobs:
           R_LINT_PYTHON: ${{ needs.lint-python.result }}
           R_QUICKSTART_TESTS: ${{ needs.quickstart-tests.result }}
           R_DOCS_SYNC: ${{ needs.docs-sync.result }}
+          R_DOCS_SITE: ${{ needs.docs-site.result }}
           R_DOC_LINT: ${{ needs.doc-lint.result }}
           R_PYTEST_SUITES: ${{ needs.pytest-suites.result }}
         run: |
           set -euo pipefail
           fail=0
-          for var in R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOC_LINT R_PYTEST_SUITES; do
+          for var in R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOCS_SITE R_DOC_LINT R_PYTEST_SUITES; do
             if [[ "${!var}" != "success" ]]; then
               echo "::error::Required job ${var#R_} result: ${!var}"
               fail=1

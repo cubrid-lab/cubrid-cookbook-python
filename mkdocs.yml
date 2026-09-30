@@ -81,11 +81,21 @@ markdown_extensions:
 plugins:
   - search
 
+# docs/internal/ holds planning material (PRD); keep it out of the rendered
+# site and the search index. Staged pages link to it on GitHub instead.
+exclude_docs: |
+  internal/
+
+# Staged pages have their relative links rewritten by scripts/stage_docs.py, so
+# any link MkDocs still cannot resolve is a real break: these warnings fail
+# `mkdocs build --strict` (make docs, CI).
 validation:
   nav:
     omitted_files: ignore
   links:
-    not_found: ignore
+    not_found: warn
+    unrecognized_links: warn
+    anchors: warn
 
 extra:
   social:
