@@ -87,8 +87,9 @@ Explain gaps; maintainers coordinate the remaining required CI/live validation.
 Issue titles, pull request titles and commit subjects follow
 [CONTRIBUTING.md - Pull request and commit titles](CONTRIBUTING.md#pull-request-and-commit-titles):
 `type(scope)!: description` with types `feat`, `fix`, `docs`, `test`, `perf`,
-`refactor`, `ci`, `build`, `chore`, `style`, `revert`; English, lowercase start,
-no trailing period, no issue numbers in pull request titles (use `Closes #N` /
+`refactor`, `ci`, `build`, `chore`, `style`, `revert`; English, lowercase start
+unless the first word is an API name, acronym, or proper noun; no trailing
+period, no issue numbers in pull request titles (use `Closes #N` /
 `Refs #N` in the body). Pull requests are squash-merged and the pull request
 title becomes the commit title. The `PR title` check enforces it.
 

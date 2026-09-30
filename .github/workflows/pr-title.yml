@@ -59,8 +59,9 @@ jobs:
           match = HEADER.fullmatch(title)
           if match is None:
               errors.append(
-                  "Title must be 'type: description' or 'type(scope): description' "
-                  "with a lowercase type and one space after the colon."
+                  "Title must be 'type: description', 'type(scope): description', "
+                  "'type!: description', or 'type(scope)!: description' with a "
+                  "lowercase type and one space after the colon."
               )
           else:
               kind, scope, desc = match["type"], match["scope"], match["desc"]

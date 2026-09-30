@@ -1,9 +1,10 @@
 <!--
 Title: `type: description` or `type(scope): description`; add `!` before the colon
 for a breaking change. Types: feat, fix, docs, test, perf, refactor, ci, build,
-chore, style, revert. English, lowercase start, no trailing period, no issue
-numbers (put "Closes #123" in Related Issues). The title becomes the squash
-commit title. See CONTRIBUTING.md#pull-request-and-commit-titles.
+chore, style, revert. English, lowercase start unless the first word is an API
+name, acronym, or proper noun. No trailing period, no issue numbers (put
+"Closes #123" in Related Issues). The title becomes the squash commit title.
+See CONTRIBUTING.md#pull-request-and-commit-titles.
 -->
 ## High level description of this Pull-request
 Include motivations, reasons, and background to add context to your contribution.
