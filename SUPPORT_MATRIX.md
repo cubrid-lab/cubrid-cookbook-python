@@ -182,18 +182,21 @@ See [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for details and workarounds.
 ## Docker Images
 
 ```yaml
-# docker-compose.yml — change tag to test different versions
-image: cubrid/cubrid:11.2   # default
-image: cubrid/cubrid:11.4   # also exercised in CI (smoke-test job matrix)
+# docker-compose.yml — 11.2 by default; set CUBRID_VERSION to select another image
+image: cubrid/cubrid:${CUBRID_VERSION:-11.2}
 ```
 
 ## How to Test Against a Specific Version
 
+Image selection does not migrate database data. The commands below retain the
+existing volume; use fresh isolated test data when version compatibility has not
+been established, rather than implicitly deleting an existing database.
+
 ```bash
-# Edit docker-compose.yml to use desired CUBRID version, then:
-docker compose down -v
-docker compose up -d
-sleep 60  # wait for DB initialization
+# Stop the current service without deleting its data, then select a version:
+make down
+CUBRID_VERSION=11.4 make up
+# Omit CUBRID_VERSION for the default 11.2; make up uses bounded readiness probes.
 
 # Run all tests
 # Flask recipe tests use live CUBRID when CUBRID_TEST_URL is set and fall back

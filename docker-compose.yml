@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   cubrid:
-    image: cubrid/cubrid:11.2
+    image: cubrid/cubrid:${CUBRID_VERSION:-11.2}
     container_name: cubrid-cookbook
     ports:
       - "33000:33000"

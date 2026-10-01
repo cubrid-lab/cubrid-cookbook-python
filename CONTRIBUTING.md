@@ -143,6 +143,12 @@ container; it does not verify the driver's CAS connection. On failure the
 command exits nonzero and prints bounded Compose status/log diagnostics, leaving
 the containers and data available for inspection.
 
+The root Compose image defaults to CUBRID 11.2. Select another version without
+editing the file: `make down`, then `CUBRID_VERSION=11.4 make up` (combine with
+`UP_TIMEOUT=180` if needed). These commands retain the existing volume; changing
+the server image is not a database-format upgrade. Use fresh, isolated test data
+when switching incompatible versions, and never delete existing data implicitly.
+
 ### Golden Verification
 
 Runnable examples are checked against committed golden output with `make verify`,
