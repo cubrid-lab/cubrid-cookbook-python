@@ -106,6 +106,19 @@ def deactivate_missing(cursor):
     print(f"✓ Marked missing products inactive (rows affected: {cursor.rowcount})")
 
 
+def format_timestamp(value):
+    """Render a DATETIME value with a fixed millisecond fractional part.
+
+    CUBRID's DATETIME column has millisecond precision, but Python's
+    ``datetime.__str__()`` omits the fractional part entirely when the
+    microsecond component is exactly 0 -- i.e. whenever the stored value
+    lands on a whole second, about 1 run in 1000 -- which made the golden
+    comparison flaky (#189). Always printing the fractional part keeps the
+    output format stable regardless of the sub-second value.
+    """
+    return value.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+
 def show_results(cursor, label):
     cursor.execute(
         """
@@ -119,7 +132,7 @@ def show_results(cursor, label):
     for row in rows:
         print(
             f"  sku={row[0]:8s} name={row[1]:18s} "
-            f"price_cents={row[2]:6d} active={row[3]} last_seen_utc={row[4]}"
+            f"price_cents={row[2]:6d} active={row[3]} last_seen_utc={format_timestamp(row[4])}"
         )
 
 
