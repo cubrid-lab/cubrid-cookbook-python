@@ -58,4 +58,4 @@ CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" python -m pytest 
 
 ## More Detail
 
-Each numbered recipe documents its own endpoints, examples, and any additional requirements. For focused database error recipes, see the repository's `templates/error-handling/` examples.
+Each numbered recipe documents its own endpoints, examples, and any additional requirements. For focused database error recipes, see the repository's `fundamentals/error-handling/` examples.
