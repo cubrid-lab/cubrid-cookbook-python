@@ -160,20 +160,22 @@ def check(root: Path, matrix: str) -> list[str]:
                     )
                 continue
             if driver == "sqlalchemy-cubrid" and directory in ADVANCED_SQLALCHEMY_DIRS:
-                if base != ADVANCED_SQLALCHEMY_FLOOR:
+                if base != ADVANCED_SQLALCHEMY_FLOOR or upper:
                     errors.append(
-                        f"{where}: expected sqlalchemy-cubrid>={ADVANCED_SQLALCHEMY_FLOOR} "
+                        f"{where}: expected sqlalchemy-cubrid>={ADVANCED_SQLALCHEMY_FLOOR}, no upper bound "
                         f"(advanced SQLAlchemy floor) in {directory}"
                     )
                 continue
 
-            # Everything else must sit exactly on the documented global floor:
-            # higher (undocumented) or lower (stale) is drift either way.
-            if base != global_floors[driver]:
+            # Everything else must sit exactly on the documented global floor,
+            # with no upper bound (the SUPPORT_MATRIX.md table floor is
+            # one-sided): higher (undocumented), lower (stale), or an
+            # unexpected upper bound is drift either way.
+            if base != global_floors[driver] or upper:
                 errors.append(
-                    f"{where}: expected {driver}>={global_floors[driver]} (global floor) in {directory}, "
-                    f"or add {directory!r} as a documented exception in {Path(__file__).name} "
-                    "and SUPPORT_MATRIX.md"
+                    f"{where}: expected {driver}>={global_floors[driver]}, no upper bound "
+                    f"(global floor) in {directory}, or add {directory!r} as a documented "
+                    f"exception in {Path(__file__).name} and SUPPORT_MATRIX.md"
                 )
 
     for label, dirs in (

@@ -37,7 +37,10 @@ class DependencyFloorTests(unittest.TestCase):
         target = self.tmp / "migration/java-to-python/requirements.txt"
         target.write_text("pycubrid>=0.5\nsqlalchemy-cubrid>=1.0\n")
         errors = floors.check(self.tmp, MATRIX)
-        self.assertTrue(any("expected pycubrid>=1.6.1 (global floor)" in e for e in errors), errors)
+        self.assertTrue(
+            any("expected pycubrid>=1.6.1, no upper bound (global floor)" in e for e in errors),
+            errors,
+        )
 
     def test_undocumented_custom_floor_is_rejected(self) -> None:
         # A higher, undocumented pin is drift too -- it must be added as an
@@ -45,7 +48,44 @@ class DependencyFloorTests(unittest.TestCase):
         target = self.tmp / "migration/java-to-python/requirements.txt"
         target.write_text("pycubrid>=1.9\nsqlalchemy-cubrid>=1.0\n")
         errors = floors.check(self.tmp, MATRIX)
-        self.assertTrue(any("expected pycubrid>=1.6.1 (global floor)" in e for e in errors), errors)
+        self.assertTrue(
+            any("expected pycubrid>=1.6.1, no upper bound (global floor)" in e for e in errors),
+            errors,
+        )
+
+    def test_global_floor_rejects_an_unexpected_upper_bound(self) -> None:
+        # The documented global floor is one-sided (>=X.Y, no ceiling); a
+        # correct-looking lower bound with a smuggled upper bound is still
+        # drift from the documented contract.
+        target = self.tmp / "migration/java-to-python/requirements.txt"
+        target.write_text("pycubrid>=1.6.1,<1.7\nsqlalchemy-cubrid>=1.0,<1.1\n")
+        errors = floors.check(self.tmp, MATRIX)
+        self.assertTrue(
+            any("expected pycubrid>=1.6.1, no upper bound (global floor)" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            any(
+                "expected sqlalchemy-cubrid>=1.0, no upper bound (global floor)" in e
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_advanced_sqlalchemy_floor_rejects_an_unexpected_upper_bound(self) -> None:
+        target = self.tmp / "fundamentals/async/requirements.txt"
+        text = target.read_text().replace(
+            "sqlalchemy-cubrid>=1.4.2", "sqlalchemy-cubrid>=1.4.2,<1.5"
+        )
+        target.write_text(text)
+        errors = floors.check(self.tmp, MATRIX)
+        self.assertTrue(
+            any(
+                "expected sqlalchemy-cubrid>=1.4.2, no upper bound (advanced SQLAlchemy floor)" in e
+                for e in errors
+            ),
+            errors,
+        )
 
     def test_template_exception_wrong_floor_is_rejected(self) -> None:
         target = self.tmp / "templates/flask/requirements.txt"
