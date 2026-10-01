@@ -1,5 +1,5 @@
 fastapi==0.115.0
-uvicorn==0.30.6
+uvicorn==0.54.0
 sqlalchemy==2.0.35
 sqlalchemy-cubrid
 pycubrid
