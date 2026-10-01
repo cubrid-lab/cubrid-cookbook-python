@@ -126,6 +126,18 @@ jobs:
         pip install pytest -r templates/async-worker/requirements.txt
       test-command: python -m pytest templates/async-worker/tests -v --tb=short
 
+  django-bridge-pytest:
+    name: Django SQLAlchemy bridge (live CUBRID 11.4)
+    uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
+    with:
+      cubrid-version: "11.4"
+      python-version: "3.12"
+      cubrid-test-url: "cubrid+pycubrid://dba@localhost:33000/testdb"
+      setup-command: >-
+        python -m pip install --upgrade pip &&
+        pip install pytest -r templates/django/requirements.txt
+      test-command: python -m pytest templates/django/tests -v --tb=short
+
   # Single aggregate check for branch protection, mirroring pycubrid's gate.
   # None of the jobs above is path-gated or conditional (they all run on every
   # PR, docs-only included), so anything other than `success` -- failure,
@@ -133,7 +145,7 @@ jobs:
   ci-gate:
     name: CI Gate (all checks must pass)
     if: always()
-    needs: [lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest, async-worker-pytest]
+    needs: [lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest, async-worker-pytest, django-bridge-pytest]
     runs-on: ubuntu-latest
     permissions: {}
     steps:
@@ -147,10 +159,11 @@ jobs:
           R_PYTEST_SUITES: ${{ needs.pytest-suites.result }}
           R_DASHBOARD_PYTEST: ${{ needs.dashboard-pytest.result }}
           R_ASYNC_WORKER_PYTEST: ${{ needs.async-worker-pytest.result }}
+          R_DJANGO_BRIDGE_PYTEST: ${{ needs.django-bridge-pytest.result }}
         run: |
           set -euo pipefail
           fail=0
-          for var in R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOCS_SITE R_DOC_LINT R_PYTEST_SUITES R_DASHBOARD_PYTEST R_ASYNC_WORKER_PYTEST; do
+          for var in R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOCS_SITE R_DOC_LINT R_PYTEST_SUITES R_DASHBOARD_PYTEST R_ASYNC_WORKER_PYTEST R_DJANGO_BRIDGE_PYTEST; do
             if [[ "${!var}" != "success" ]]; then
               echo "::error::Required job ${var#R_} result: ${!var}"
               fail=1

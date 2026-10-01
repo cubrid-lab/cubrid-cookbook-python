@@ -47,6 +47,25 @@ Example create payload:
 
 `app/views.py` uses lazy initialization with `_ensure_tables_initialized()` to create `cookbook_items` on first request.
 
+## Test the CUBRID bridge
+
+The live test uses Django's HTTP test client for `/health` and `/items`, then
+updates and deletes the saved row through this example's SQLAlchemy session.
+It does not introduce or test a native Django CUBRID backend, Django ORM model,
+or Django migration.
+
+Run it against a dedicated, empty CUBRID database:
+
+```bash
+pip install -r requirements.txt pytest
+export CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb"
+python -m pytest tests -v
+```
+
+With no `CUBRID_TEST_URL`, the live test skips. An unreachable or non-CUBRID
+configured URL fails. The test refuses to touch a database where
+`cookbook_items` already exists, and removes only the table it created.
+
 ## Quick check
 
 ```bash

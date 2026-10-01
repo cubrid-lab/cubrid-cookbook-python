@@ -192,6 +192,32 @@ class OfflineWorkflowTests(unittest.TestCase):
         self.assertIn("CUBRID_TEST_URL:", workflow[worker:dashboard_switch])
         self.assertNotIn("continue-on-error", workflow[worker:dashboard_switch])
 
+    def test_django_bridge_has_its_own_required_live_cubrid_job(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        django = workflow.index("  django-bridge-pytest:")
+        gate = workflow.index("  ci-gate:")
+        self.assertIn('cubrid-version: "11.4"', workflow[django:gate])
+        self.assertIn("templates/django/requirements.txt", workflow[django:gate])
+        self.assertIn("templates/django/tests", workflow[django:gate])
+        self.assertIn("django-bridge-pytest", workflow[gate:])
+
+    def test_django_smoke_runs_after_colliding_recipes_under_frozen_constraints(self) -> None:
+        workflow = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
+        install = workflow.index("name: Install pytest suite dependencies")
+        verify_drivers = workflow.index("name: Record tested versions")
+        verify_examples = workflow.index("name: Run make verify")
+        framework_suites = workflow.index("name: Run Flask and FastAPI pytest suites")
+        django = workflow.index("name: Run Django SQLAlchemy bridge")
+        dashboard_switch = workflow.index("name: Start isolated dashboard CUBRID")
+        self.assertLess(install, verify_drivers)
+        self.assertLess(verify_examples, framework_suites)
+        self.assertLess(framework_suites, django)
+        self.assertLess(django, dashboard_switch)
+        self.assertIn("templates/django/requirements.txt", workflow[install:verify_drivers])
+        self.assertIn("templates/django/tests", workflow[django:dashboard_switch])
+        self.assertIn("CUBRID_TEST_URL:", workflow[django:dashboard_switch])
+        self.assertNotIn("continue-on-error", workflow[django:dashboard_switch])
+
     def test_dashboard_smoke_uses_separate_owned_container_after_other_suites(self) -> None:
         workflow = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
         suites = workflow.index("name: Run Flask and FastAPI pytest suites")

@@ -375,7 +375,7 @@ jobs:
         if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
         # One explicit list avoids conflicting pins in individual recipe files.
         # PIP_CONSTRAINT also covers these packages' transitive driver requirements.
-        run: pip install flask flask-sqlalchemy fastapi email-validator httpx pytest pytest-asyncio streamlit pandas -r templates/async-worker/requirements.txt
+        run: pip install flask flask-sqlalchemy fastapi email-validator httpx pytest pytest-asyncio streamlit pandas -r templates/async-worker/requirements.txt -r templates/django/requirements.txt
 
       - name: Record tested versions
         run: |
@@ -546,6 +546,16 @@ jobs:
         env:
           CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
         run: python -m pytest templates/async-worker/tests -v --tb=short
+
+      - name: Run Django SQLAlchemy bridge (non-PR runs only)
+        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
+        # cookbook_items is also used by the migration and FastAPI recipes.
+        # Both make verify and Flask/FastAPI suites must finish first; this
+        # suite refuses to delete a preexisting table.
+        timeout-minutes: 5
+        env:
+          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
+        run: python -m pytest templates/django/tests -v --tb=short
 
       - name: Start isolated dashboard CUBRID (non-PR runs only)
         if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'

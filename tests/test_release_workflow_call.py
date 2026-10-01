@@ -381,6 +381,7 @@ class WorkflowCallStaticTests(unittest.TestCase):
             "Install pytest suite dependencies (non-PR runs only)",
             "Run Flask and FastAPI pytest suites (non-PR runs only)",
             "Run async-worker database tasks (non-PR runs only)",
+            "Run Django SQLAlchemy bridge (non-PR runs only)",
             "Start isolated dashboard CUBRID (non-PR runs only)",
             "Wait for isolated dashboard CUBRID",
             "Run isolated Streamlit dashboard pytest suite",

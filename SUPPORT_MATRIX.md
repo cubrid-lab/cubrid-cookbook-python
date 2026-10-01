@@ -12,9 +12,9 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 > version. Every pull request runs representative Flask/FastAPI and dashboard
 > suites in separate live CUBRID 11.4 jobs (`ci.yml`). The async-worker's
 > database tasks run after `make verify` on the non-PR 11.2/11.4 matrix and
-> in their own required live CUBRID 11.4 pull-request job. The
-> **Django** recipe is still **run manually** (see [How to
-> Test](#how-to-test-against-a-specific-version)).
+> in their own required live CUBRID 11.4 pull-request job. The **Django
+> SQLAlchemy bridge** likewise has a separate required 11.4 pull-request job
+> and runs after the colliding examples in the non-PR 11.2/11.4 matrix.
 
 ## CUBRID Server Versions
 
@@ -112,8 +112,7 @@ when a row no longer matches the repository. Verification is split:
   It falls back to a shared SQLite file when `CUBRID_TEST_URL` is unset.
   Its `conftest.py` drops its own `cookbook_sales` and `cookbook_products`
   in FK-safe order, but isolation—not test ordering or cross-recipe deletion—
-  protects the Flask suite's `cookbook_products` (#142). The **Django**
-  recipe is still **run manually** (see [How to Test](#how-to-test-against-a-specific-version)).
+  protects the Flask suite's `cookbook_products` (#142).
 - The **FastAPI quickstart** has an offline pytest suite in PR CI for host and
   Compose configuration, startup, HTTP responses, and database failure cleanup.
   It uses mocked DB-API connections rather than a live server.
@@ -129,6 +128,12 @@ when a row no longer matches the repository. Verification is split:
   the dashboard container. The suite asserts persisted job state/result and
   report/email rows, refuses preexisting worker tables, and removes its own
   tables afterward. Broker delivery and Celery's result backend are not tested.
+- The **Django template** uses Django for HTTP requests and SQLAlchemy for
+  CUBRID persistence; it has no native Django CUBRID backend or Django ORM
+  model. `templates/django/tests` gates the existing `/health` and `/items`
+  bridge on a dedicated live **11.4** PR job and on the **11.2/11.4** non-PR
+  smoke matrix after golden and FastAPI tests. The suite refuses a preexisting
+  `cookbook_items` table and removes only its own table.
 - **CUBRID 11.4** runs in the same CI smoke matrix as 11.2 (its `make verify` goldens
   are checked on both versions).
 
@@ -149,9 +154,9 @@ when a row no longer matches the repository. Verification is split:
 | FastAPI quickstart | 1 | offline pytest (PR CI, mocked DB-API) |
 | AI agent template | 5 | pytest (smoke CI incl. PRs, 11.2 + 11.4) |
 | Streamlit templates | 5 | pytest (CI on `main` + nightly, 11.2 + 11.4; also PR CI on 11.4) |
-| Django template | 1 | manual run |
+| Django template | 1 | Django HTTP + SQLAlchemy bridge: live pytest (PR CI 11.4; `main` + nightly 11.2 + 11.4); no native Django ORM |
 | Celery async-worker template | 1 | database tasks: live pytest (PR CI 11.4; `main` + nightly 11.2 + 11.4); broker/worker manual |
-| **Total** | **102** | 66 golden-backed via `make verify` on 11.2 + 11.4; Flask, FastAPI and Streamlit pytest suites in CI on `main` + nightly (plus representative PR CI); async-worker database tasks and AI agent suite live-tested; Django and Celery broker/worker run manually |
+| **Total** | **102** | 66 golden-backed via `make verify` on 11.2 + 11.4; Flask, FastAPI, Streamlit and Django bridge pytest suites in CI; async-worker database tasks and AI agent suite live-tested; Celery broker/worker and native Django ORM are not covered |
 
 ## Known Limitations by Version
 
