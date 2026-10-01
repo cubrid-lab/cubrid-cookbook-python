@@ -7,8 +7,10 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 > (`expected/*.expected`; counts in [Recipe Coverage](#recipe-coverage)); a pull request
 > that touches only examples checks just those examples. On pushes to `main`, the nightly schedule and manual
 > runs, the same job also runs the **Flask and FastAPI pytest suites** against its
-> live CUBRID container on both versions. The Streamlit and Django recipes are
-> **run manually** (see [How to Test](#how-to-test-against-a-specific-version)), not in CI.
+> live CUBRID container on both versions. The **Streamlit** recipes have a pytest
+> suite (`templates/dashboard/tests/test_dashboard.py`) that is green locally
+> against live CUBRID but not yet wired into CI (tracked in #142). The **Django**
+> recipe is still **run manually** (see [How to Test](#how-to-test-against-a-specific-version)).
 
 ## CUBRID Server Versions
 
@@ -96,8 +98,12 @@ when a row no longer matches the repository. Verification is split:
   to `main`, nightly, and on manual runs (pull requests skip them to stay fast).
   Each suite's `conftest.py` reads `CUBRID_TEST_URL`; without it the suites fall
   back to SQLite for local runs.
-- The **Streamlit and Django** recipes are **run manually** (see [How to Test](#how-to-test-against-a-specific-version)),
-  not in CI.
+- The **Streamlit** recipes are covered by `templates/dashboard/tests/test_dashboard.py`
+  (`AppTest`-based: seeded table viewer rows, non-empty KPI metrics, and a
+  filter that changes the rendered row count), which runs against live
+  CUBRID when `CUBRID_TEST_URL` is set and falls back to a shared SQLite
+  file otherwise. Not yet wired into CI — tracked in #142. The **Django**
+  recipe is still **run manually** (see [How to Test](#how-to-test-against-a-specific-version)).
 - The **FastAPI quickstart** has an offline pytest suite in PR CI for host and
   Compose configuration, startup, HTTP responses, and database failure cleanup.
   It uses mocked DB-API connections rather than a live server.
@@ -125,10 +131,10 @@ when a row no longer matches the repository. Verification is split:
 | FastAPI templates | 12 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
 | FastAPI quickstart | 1 | offline pytest (PR CI, mocked DB-API) |
 | AI agent template | 5 | pytest (smoke CI incl. PRs, 11.2 + 11.4) |
-| Streamlit templates | 5 | manual run |
+| Streamlit templates | 5 | pytest (local, live CUBRID or SQLite fallback; not yet in CI — #142) |
 | Django template | 1 | manual run |
 | Celery async-worker template | 1 | manual run |
-| **Total** | **102** | 66 golden-backed via `make verify` on 11.2 + 11.4; Flask and FastAPI pytest suites in CI on `main` + nightly; AI agent suite on every smoke run; rest run manually |
+| **Total** | **102** | 66 golden-backed via `make verify` on 11.2 + 11.4; Flask and FastAPI pytest suites in CI on `main` + nightly; AI agent suite on every smoke run; Streamlit pytest suite runs locally (not yet in CI); Django and Celery run manually |
 
 ## Known Limitations by Version
 
@@ -170,6 +176,12 @@ export CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb"
 pip install fastapi sqlalchemy pycubrid sqlalchemy-cubrid "email-validator>=2" httpx pytest pytest-asyncio
 export CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb"
 ( cd templates/api-service-fastapi/recipes && for d in */tests; do python3 -m pytest "$d" -q; done )
+
+# Streamlit dashboard recipe tests (AppTest) use live CUBRID when
+# CUBRID_TEST_URL is set and fall back to a shared SQLite file when it is not
+pip install -r templates/dashboard/requirements.txt pytest
+export CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb"
+python3 -m pytest templates/dashboard/tests -q
 
 # Run fundamentals
 for f in fundamentals/pycubrid/*.py; do python3 "$f"; done

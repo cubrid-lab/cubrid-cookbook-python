@@ -22,7 +22,7 @@ Runnable Python examples and production-shaped application templates for CUBRID 
 | SQLAlchemy fundamentals | 7 | `make verify` goldens (CI) |
 | pandas fundamentals | 6 | `make verify` goldens (CI) |
 | Flask / FastAPI templates | 11 + 12 | pytest suites (CI on `main` + nightly, CUBRID 11.2 + 11.4) |
-| Streamlit / Django templates | 5 + 1 | manual runs (dashboard ships a compose demo) |
+| Streamlit / Django templates | 5 + 1 | pytest suite (local, not yet in CI) / manual run |
 | Celery / batch-ETL templates | 1 + 5 | manual runs (ETL goldens in `expected/`) |
 | Async · Alembic · JSON · isolation | 4 | `make verify` goldens (CI) |
 | Migration, performance, pitfalls | topic guides | docs |
