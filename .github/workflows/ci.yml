@@ -13,8 +13,8 @@ jobs:
   lint-python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Install ruff
@@ -28,8 +28,8 @@ jobs:
     name: Offline checks (no DB)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Install existing offline test dependencies
@@ -41,14 +41,31 @@ jobs:
     name: Docs sync gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Run doctests
         run: python3 -m doctest scripts/check_docs_sync.py -v
+      - name: Run pitfalls discovery unit tests
+        run: python3 -m unittest discover -s tests -p 'test_docs_sync.py' -v
       - name: Check examples are documented
         run: python3 scripts/check_docs_sync.py
+
+  # Stages the repo docs and builds the MkDocs site with --strict, so a link that
+  # breaks when a page is staged under docs/ fails the PR instead of the
+  # post-merge Pages deploy (#154). docs.yml still owns the deploy.
+  docs-site:
+    name: Docs site build (strict)
+    runs-on: ubuntu-latest
+    steps:
+      # Same action pins as docs.yml, which builds this site for deployment.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: pip install mkdocs-material pymdown-extensions
+      - run: make docs
 
   doc-lint:
     name: Documentation lint
@@ -74,7 +91,9 @@ jobs:
         -r templates/api-service-fastapi/recipes/01-basic-crud/requirements.txt
       # Recipes share top-level module names (database/models/app), so one
       # pytest process cross-imports them and collection fails; run each suite
-      # in its own process (as smoke-test.yml #141 does).
+      # in its own process (as smoke-test.yml #141 does). The dashboard suite
+      # uses a separate live-smoke job and CUBRID database because it shares
+      # cookbook_products with Flask and creates an FK from cookbook_sales.
       test-command: >-
         for suite in
         templates/flask/01-basic-crud/tests
@@ -83,6 +102,18 @@ jobs:
         python -m pytest "$suite" -v --tb=short || exit 1;
         echo "::endgroup::"; done
 
+  dashboard-pytest:
+    name: Dashboard pytest suite (isolated CUBRID 11.4)
+    uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
+    with:
+      cubrid-version: "11.4"
+      python-version: "3.12"
+      cubrid-test-url: "cubrid+pycubrid://dba@localhost:33000/testdb"
+      setup-command: >-
+        python -m pip install --upgrade pip &&
+        pip install pytest -r templates/dashboard/requirements.txt
+      test-command: python -m pytest templates/dashboard/tests -v --tb=short
+
   # Single aggregate check for branch protection, mirroring pycubrid's gate.
   # None of the jobs above is path-gated or conditional (they all run on every
   # PR, docs-only included), so anything other than `success` -- failure,
@@ -90,7 +121,7 @@ jobs:
   ci-gate:
     name: CI Gate (all checks must pass)
     if: always()
-    needs: [lint-python, quickstart-tests, docs-sync, doc-lint, pytest-suites]
+    needs: [lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest]
     runs-on: ubuntu-latest
     permissions: {}
     steps:
@@ -99,12 +130,14 @@ jobs:
           R_LINT_PYTHON: ${{ needs.lint-python.result }}
           R_QUICKSTART_TESTS: ${{ needs.quickstart-tests.result }}
           R_DOCS_SYNC: ${{ needs.docs-sync.result }}
+          R_DOCS_SITE: ${{ needs.docs-site.result }}
           R_DOC_LINT: ${{ needs.doc-lint.result }}
           R_PYTEST_SUITES: ${{ needs.pytest-suites.result }}
+          R_DASHBOARD_PYTEST: ${{ needs.dashboard-pytest.result }}
         run: |
           set -euo pipefail
           fail=0
-          for var in R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOC_LINT R_PYTEST_SUITES; do
+          for var in R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOCS_SITE R_DOC_LINT R_PYTEST_SUITES R_DASHBOARD_PYTEST; do
             if [[ "${!var}" != "success" ]]; then
               echo "::error::Required job ${var#R_} result: ${!var}"
               fail=1

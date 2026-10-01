@@ -57,6 +57,7 @@ GOLDEN_ROWS: dict[str, tuple[str, ...]] = {
     "Java-to-Python migration": ("migration/java-to-python",),
     "SQLAlchemy quickstart": ("quickstart/5min-sqlalchemy",),
     "Pandas batch-etl template": ("templates/batch-etl",),
+    "Pitfalls: reserved-word DDL": ("pitfalls/reserved-words",),
 }
 
 

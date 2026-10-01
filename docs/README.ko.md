@@ -77,7 +77,7 @@ Java JDBC → Python 마이그레이션을 실제 코드 나란히 비교로 제
 
 ### 함정 (Pitfalls)
 
-실제 프로덕션 사고를 일으키는 7가지 반패턴 — 예약어, 오토커밋 차이, 커넥션 누수 등. [`pitfalls/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/pitfalls) 참고.
+실제 프로덕션 사고를 일으키는 7가지 반패턴 — 예약어, 오토커밋 차이, 커넥션 누수 등. [`pitfalls/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/pitfalls) 참고. 예약어 관련 조언은 [`pitfalls/reserved-words/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/pitfalls/reserved-words)에서 실제 서버로 검증됩니다.
 
 ### 기초 (Fundamentals)
 

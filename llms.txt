@@ -1,6 +1,6 @@
 # CUBRID Python Cookbook
 
-> Production-ready, copy-paste friendly Python examples for the CUBRID database. Every example is verified working against a real CUBRID instance via Docker.
+> Production-ready, copy-paste friendly Python examples for the CUBRID database. Golden-backed examples are checked by `make verify` against real CUBRID 11.2 and 11.4 containers in CI; some templates are checked by pytest suites and the rest are run manually. The per-category verification scope and recipe counts are in [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md#recipe-coverage).
 
 The CUBRID Python Cookbook provides runnable code examples for Python developers adopting CUBRID — from first connection to production API, with migration guides, performance patterns, and common pitfalls. All examples connect to a shared CUBRID Docker container and follow consistent patterns: connect, CRUD, transactions, and framework-specific features.
 
@@ -10,6 +10,8 @@ Key facts:
 - Python 3.10+ required (`from __future__ import annotations` patterns throughout)
 - All table names prefixed with `cookbook_` to avoid conflicts
 - Parameterized queries only (`?` placeholders) — never string interpolation
+- Reserved words such as `key`, `value`, `count`, `data`, `date` and `day` fail as unquoted column names; rename them (`setting_key`, `val`, `cnt`) or quote them with double quotes, square brackets or backticks. `name` is not reserved. Official list: https://www.cubrid.org/manual/en/11.2/sql/keyword.html
+- Python async: `pycubrid.aio` is a native asyncio driver and `cubrid+aiopycubrid://` is the SQLAlchemy async URL; never call the synchronous `pycubrid.connect()` API directly inside an `async def` handler
 - This is a Python-only repository
 
 ## Quickstart
@@ -28,14 +30,14 @@ Core database patterns using pycubrid (DB-API 2.0) and SQLAlchemy ORM.
 - [error-handling](fundamentals/error-handling/): PEP 249 exception hierarchy, retry patterns
 - [lob-handling](fundamentals/lob-handling/): BLOB/CLOB operations via `conn.create_lob()`
 - [orm-basics](fundamentals/orm-basics/): SQLAlchemy engine, Core, ORM, relationships, reflection
-- [pycubrid](fundamentals/pycubrid/): 14 numbered pycubrid fundamentals (connect → cascade delete)
+- [pycubrid](fundamentals/pycubrid/): Numbered pycubrid fundamentals (connect → CRUD → collections, LOBs, window functions, timezones, date formatting)
 - [sqlalchemy](fundamentals/sqlalchemy/): Numbered SQLAlchemy ORM examples
 - [pandas](fundamentals/pandas/): Pandas data analysis with CUBRID
 
-- [async](fundamentals/async/): Async I/O with pycubrid.aio (since v1.6) and SQLAlchemy async engine
+- [async](fundamentals/async/): Native async I/O with `pycubrid.aio` and the SQLAlchemy async engine (`cubrid+aiopycubrid://`); the recipe requires pycubrid >= 1.6.0 and sqlalchemy-cubrid >= 1.4.2
 - [alembic](fundamentals/alembic/): Programmatic Alembic migrations using the CubridImpl entry point
 - [json](fundamentals/json/): Native JSON columns with JSON_EXTRACT / JSON_UNQUOTE patterns
-- [isolation-levels](fundamentals/isolation-levels/): All 6 numeric isolation levels plus a dirty-read demonstration
+- [isolation-levels](fundamentals/isolation-levels/): The three isolation levels CUBRID accepts under MVCC — READ COMMITTED (4, default), REPEATABLE READ (5) and SERIALIZABLE (6, which CUBRID currently runs as REPEATABLE READ snapshot isolation, so write skew is still possible); READ UNCOMMITTED and codes 1–3 are rejected. Includes a two-connection demonstration that dirty reads do not occur
 
 ## Migration Guide
 
@@ -43,12 +45,13 @@ Core database patterns using pycubrid (DB-API 2.0) and SQLAlchemy ORM.
 
 ## Templates
 
-Copy-and-customize production starters:
+Copy-and-customize production starters (recipe counts per template are in [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md#recipe-coverage)):
 
-- [api-service-fastapi](templates/api-service-fastapi/): REST API with FastAPI, SQLAlchemy, Docker, 12 advanced recipes (saga, CQRS, rate limiter, etc.)
-- [flask](templates/flask/): Flask + Flask-SQLAlchemy with 11 progressive examples (basic CRUD → workflow engine)
+- [ai-agent](templates/ai-agent/): AI agent patterns — agent state and memory in JSON columns, MCP tool chain via `cubrid-mcp-server`, RAG metadata, agent loop, SQLAlchemy chatbot backend
+- [api-service-fastapi](templates/api-service-fastapi/): REST API with FastAPI, SQLAlchemy, Docker, plus advanced recipes (saga, CQRS, rate limiter, etc.)
+- [flask](templates/flask/): Flask + Flask-SQLAlchemy progressive examples (basic CRUD → workflow engine)
 - [django](templates/django/): Django project using CUBRID via SQLAlchemy bridge
-- [dashboard](templates/dashboard/): Streamlit interactive data dashboard (5 scripts)
+- [dashboard](templates/dashboard/): Streamlit interactive data dashboard
 - [async-worker](templates/async-worker/): Celery background task processing
 - [batch-etl](templates/batch-etl/): Pandas data pipeline (seed → read → analyze → write)
 
@@ -63,6 +66,7 @@ Benchmark-backed optimization patterns based on [cubrid-benchmark](https://githu
 ## Pitfalls
 
 - [pitfalls](pitfalls/): 7 common anti-patterns — reserved words, auto-commit differences, connection leaks, and more
+- [pitfalls/reserved-words](pitfalls/reserved-words/): live-verified recipe checking every reserved-word statement in the pitfalls guide against a real server
 
 ## Dependencies
 

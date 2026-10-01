@@ -21,7 +21,7 @@ class SupportMatrixCountTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp)
-        for src in ("fundamentals", "migration", "quickstart", "templates"):
+        for src in ("fundamentals", "migration", "pitfalls", "quickstart", "templates"):
             shutil.copytree(ROOT / src, self.tmp / src, ignore=shutil.ignore_patterns("*.pyc"))
 
     def test_repository_matches_table(self) -> None:
@@ -49,7 +49,7 @@ class SupportMatrixCountTests(unittest.TestCase):
         )
 
     def test_wrong_total_and_unknown_row_are_reported(self) -> None:
-        matrix = MATRIX.replace("| **Total** | **101** |", "| **Total** | **99** |").replace(
+        matrix = MATRIX.replace("| **Total** | **102** |", "| **Total** | **99** |").replace(
             "| Django template | 1 |", "| Django app | 1 |"
         )
         errors = counts.check(ROOT, matrix)
@@ -63,7 +63,7 @@ class SupportMatrixCountTests(unittest.TestCase):
         row = "| SQLAlchemy quickstart | 1 | `make verify` (CI, 11.2 + 11.4) |\n"
         matrix = MATRIX.replace(row, row + row + "| Django template | 1 |\n", 1)
         errors = counts.check(
-            ROOT, matrix.replace("| **Total** | **101** |", "| **Total** | **102** |")
+            ROOT, matrix.replace("| **Total** | **102** |", "| **Total** | **103** |")
         )
         self.assertIn("row 'SQLAlchemy quickstart' appears more than once", errors)
         self.assertIn("row 'Django template': expected 3 cells, found 2", errors)
@@ -72,7 +72,7 @@ class SupportMatrixCountTests(unittest.TestCase):
         next((self.tmp / "fundamentals/pycubrid/expected").glob("*.expected")).unlink()
         errors = counts.check(self.tmp, MATRIX)
         self.assertIn("row 'pycubrid fundamentals': table says 22, repository has 21", errors)
-        self.assertIn("**Total** row says 65 golden-backed, repository has 64", errors)
+        self.assertIn("**Total** row says 66 golden-backed, repository has 65", errors)
 
     def test_missing_table_and_total_are_reported(self) -> None:
         self.assertEqual(

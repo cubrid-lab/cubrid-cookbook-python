@@ -1,0 +1,108 @@
+name: PR title
+
+# Enforces the cubrid-lab title rule (CONTRIBUTING.md, "Pull request and
+# commit titles"). The PR title becomes the squash commit title on main.
+#
+# Security: runs on `pull_request` (never `pull_request_target`), requests no
+# token permissions, checks out nothing and receives the title only through an
+# environment variable, so no PR-controlled code or string is executed.
+# The job name "PR title" is the required-status-check context; keep it stable.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: PR title
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          python3 - <<'PY'
+          # BEGIN pr-title-validator
+          import os
+          import re
+          import sys
+
+          TYPES = (
+              "feat", "fix", "docs", "test", "perf", "refactor",
+              "ci", "build", "chore", "style", "revert",
+          )
+          HEADER = re.compile(
+              r"(?P<type>[^\s(!:]+)(?:\((?P<scope>[^()]*)\))?(?P<bang>!)?: (?P<desc>.*)",
+              re.DOTALL,
+          )
+          SCOPE = re.compile(r"[a-z0-9][a-z0-9_-]*")
+          HELP = (
+              "Format: type: description | type(scope): description | "
+              "type!: description | type(scope)!: description",
+              "Allowed types: " + ", ".join(TYPES),
+              "Examples: 'fix: preserve cursor state after END_TRAN',"
+              " 'feat(aio): add charset connection option',"
+              " 'refactor(compiler)!: drop legacy LIMIT rendering'",
+              "Put issue references in the PR body (Closes #123 / Refs #123), not the title.",
+              "Rule: CONTRIBUTING.md, section 'Pull request and commit titles'.",
+          )
+
+          title = os.environ.get("PR_TITLE", "")
+          errors = []
+          warnings = []
+          match = HEADER.fullmatch(title)
+          if match is None:
+              errors.append(
+                  "Title must be 'type: description', 'type(scope): description', "
+                  "'type!: description', or 'type(scope)!: description' with a "
+                  "lowercase type and one space after the colon."
+              )
+          else:
+              kind, scope, desc = match["type"], match["scope"], match["desc"]
+              if kind not in TYPES:
+                  hint = " (use lowercase)" if kind.lower() in TYPES else ""
+                  errors.append(f"Unknown type '{kind}'{hint}.")
+              if scope is not None and SCOPE.fullmatch(scope) is None:
+                  errors.append(
+                      f"Scope '{scope}' must be lowercase letters, digits, '-' or '_'."
+                  )
+              if not desc.strip():
+                  errors.append("Description is empty.")
+              elif desc[0].isspace():
+                  errors.append("Use exactly one space after the colon.")
+              if desc.rstrip() != desc:
+                  errors.append("Remove trailing whitespace.")
+              if desc.endswith("."):
+                  errors.append("Do not end the title with a period.")
+              first = desc.split(" ", 1)[0]
+              if re.fullmatch(r"[A-Z][a-z]+", first):
+                  warnings.append(
+                      f"Description starts with '{first}'; start lowercase unless it is "
+                      "a proper noun or API name."
+                  )
+          if re.search(r"#\d+", title):
+              errors.append("Do not put issue or PR numbers in the title.")
+          if re.search(r"\bwip\b", title, re.IGNORECASE):
+              errors.append("Do not mark work in progress in the title; open a draft PR.")
+          if any(ch.isalpha() and not ch.isascii() for ch in title):
+              errors.append("Write the title in English (ASCII letters only).")
+
+          for message in warnings:
+              print(f"::warning title=PR title::{message}")
+          for message in errors:
+              print(f"::error title=PR title::{message}")
+          if errors:
+              print(f"Title: {title!r}")
+              for line in HELP:
+                  print(line)
+              sys.exit(1)
+          print(f"PR title OK: {title}")
+          # END pr-title-validator
+          PY

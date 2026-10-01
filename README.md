@@ -74,7 +74,7 @@ Benchmark-backed optimization patterns:
 
 ### Pitfalls
 
-7 common anti-patterns that cause real production issues — reserved words, auto-commit differences, connection leaks, and more. See [`pitfalls/`](pitfalls/).
+7 common anti-patterns that cause real production issues — reserved words, auto-commit differences, connection leaks, and more. See [`pitfalls/`](pitfalls/). The reserved-word advice is checked against a live server by [`pitfalls/reserved-words/`](pitfalls/reserved-words/).
 
 ### Fundamentals
 
@@ -165,6 +165,7 @@ cubrid-cookbook-python/
 │   ├── bulk-insert/           # Write batching (benchmarked)
 │   └── connection-pooling/    # Pool configuration
 ├── pitfalls/                  # 7 common anti-patterns
+│   └── reserved-words/        # Live-verified reserved-word recipe
 ├── fundamentals/
 │   ├── connect/               # Connection basics
 │   ├── crud/                  # CRUD operations

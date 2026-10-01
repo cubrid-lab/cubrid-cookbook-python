@@ -1,8 +1,15 @@
 name: Example Request
 description: Suggest a new cookbook example
-title: "[Example]: "
+title: "feat: "
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep the `feat:` title prefix and finish the title in English, for example
+        `feat: add a Django ORM recipe`. You do not need to apply labels;
+        maintainers assign priority and size after triage.
+
   - type: textarea
     id: description
     attributes:

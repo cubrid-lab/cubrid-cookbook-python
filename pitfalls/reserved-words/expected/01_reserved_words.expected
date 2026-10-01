@@ -1,0 +1,12 @@
+=== CUBRID reserved words as column names ===
+
+  anti-pattern: key, value           -> rejected (ProgrammingError)
+  value renamed only: key, val       -> rejected (ProgrammingError)
+  corrected: setting_key, val        -> created
+  double quotes: "key", "value"      -> created
+  square brackets: [key], [value]    -> created
+  backticks: `key`, `value`          -> created
+  not reserved: name                 -> created
+
+  corrected DDL round-trip: [('theme', 'dark')]
+  quoted DDL round-trip:    [('theme', 'dark')]

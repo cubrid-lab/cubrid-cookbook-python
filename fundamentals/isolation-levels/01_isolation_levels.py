@@ -6,20 +6,27 @@ Demonstrates:
 - A two-connection demonstration that dirty reads do NOT occur, even at the
   most permissive level, because CUBRID uses MVCC snapshots
 
-CUBRID uses MVCC (Multi-Version Concurrency Control). In raw SQL the level is
-set with a STRING name, not a numeric code:
+CUBRID uses MVCC (Multi-Version Concurrency Control). This recipe sets the
+level by name:
 
     SET TRANSACTION ISOLATION LEVEL <name>
 
-Only three levels are accepted under MVCC:
-    READ COMMITTED    -> snapshot per statement   (GET code 4, CUBRID default)
-    REPEATABLE READ   -> snapshot per transaction  (GET code 5)
-    SERIALIZABLE      -> full serializable         (GET code 6)
+Only three levels are accepted under MVCC (CUBRID 10.0 and later):
+    READ COMMITTED    -> snapshot per statement   (code 4, CUBRID default)
+    REPEATABLE READ   -> snapshot per transaction  (code 5)
+    SERIALIZABLE      -> accepted, but currently runs as REPEATABLE READ
+                         snapshot isolation         (code 6)
 
-READ UNCOMMITTED is intentionally rejected: MVCC readers never see another
-transaction's uncommitted changes, so dirty reads are impossible at every
-level. (Older CUBRID docs describe six numeric levels; those numeric codes are
-no longer accepted by `SET TRANSACTION ISOLATION LEVEL` under MVCC.)
+The numeric codes 4, 5 and 6 are also accepted in place of the names. READ
+UNCOMMITTED (and the pre-MVCC codes 1-3) are rejected: MVCC readers never see
+another transaction's uncommitted changes, so dirty reads are impossible at
+every level. SERIALIZABLE does not add serializability checks on top of the
+snapshot: the CUBRID manual documents that it is identical to REPEATABLE READ,
+so write-skew anomalies remain possible and must be prevented by the
+application (for example by making conflicting transactions update a common
+row: at REPEATABLE READ or SERIALIZABLE the second concurrent writer fails with
+"Serializable conflict due to concurrent updates").
+See https://www.cubrid.org/manual/en/11.2/sql/transaction.html
 
 The current level is read back with:
     GET TRANSACTION ISOLATION LEVEL TO x  ; SELECT x
@@ -178,7 +185,7 @@ def main() -> None:
     print("CUBRID uses MVCC. Three isolation levels are accepted in raw SQL:")
     print("  READ COMMITTED   - statement-level snapshot (default)")
     print("  REPEATABLE READ  - transaction-level snapshot")
-    print("  SERIALIZABLE     - full serializable")
+    print("  SERIALIZABLE     - currently runs as REPEATABLE READ (write skew possible)")
     print()
 
     conn = get_connection()
@@ -203,7 +210,8 @@ def main() -> None:
     print("--- Choosing an isolation level ---")
     print("  Read-heavy / typical web app : READ COMMITTED  (CUBRID default)")
     print("  Consistent multi-read units  : REPEATABLE READ")
-    print("  Strict serialization         : SERIALIZABLE")
+    print("  SERIALIZABLE                 : same guarantees as REPEATABLE READ today;")
+    print("                                 guard write skew in the application")
     print()
     print("Tip: SQLAlchemy exposes these names via")
     print("     sqlalchemy_cubrid/dialect.py:_ISOLATION_LEVEL_MAP.")

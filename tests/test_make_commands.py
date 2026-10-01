@@ -154,6 +154,44 @@ class OfflineWorkflowTests(unittest.TestCase):
         for name in ("test_make_commands.py", "test_wait_for_cubrid.py"):
             self.assertIn(name, workflow[guards:selection])
 
+    def test_dashboard_has_its_own_required_live_cubrid_job(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        shared = workflow.index("  pytest-suites:")
+        dashboard = workflow.index("  dashboard-pytest:")
+        gate = workflow.index("  ci-gate:")
+        self.assertNotIn("templates/dashboard/tests", workflow[shared:dashboard])
+        self.assertIn("templates/dashboard/tests", workflow[dashboard:gate])
+        self.assertIn("needs: [", workflow[gate:])
+        self.assertIn("dashboard-pytest", workflow[gate:])
+        self.assertIn('cubrid-version: "11.4"', workflow[dashboard:gate])
+
+    def test_dashboard_smoke_uses_separate_owned_container_after_other_suites(self) -> None:
+        workflow = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
+        suites = workflow.index("name: Run Flask and FastAPI pytest suites")
+        start = workflow.index("name: Start isolated dashboard CUBRID")
+        readiness = workflow.index("name: Wait for isolated dashboard CUBRID")
+        dashboard = workflow.index("name: Run isolated Streamlit dashboard pytest suite")
+        cleanup = workflow.index("name: Remove owned dashboard CUBRID container")
+        report = workflow.index("name: Report release smoke result")
+        self.assertLess(suites, start)
+        self.assertLess(start, readiness)
+        self.assertLess(readiness, dashboard)
+        self.assertLess(dashboard, cleanup)
+        self.assertLess(cleanup, report)
+        self.assertNotIn("templates/dashboard/tests", workflow[suites:start])
+        self.assertIn("templates/dashboard/tests", workflow[dashboard:cleanup])
+        self.assertIn("timeout 5s docker exec", workflow[readiness:dashboard])
+        self.assertIn("pycubrid.connect(", workflow[readiness:dashboard])
+        self.assertIn("if: always()", workflow[cleanup:report])
+        self.assertIn('docker rm -f "$dashboard_id"', workflow[cleanup:report])
+        self.assertIn("if: always()", workflow[report:])
+        self.assertIn("SMOKE_RESULT: ${{ job.status }}", workflow[report:])
+
+    def test_flask_fixtures_do_not_delete_dashboard_sales(self) -> None:
+        for recipe in ("01-basic-crud", "07-vendor-feed"):
+            fixture = ROOT / "templates/flask" / recipe / "tests/conftest.py"
+            self.assertNotIn("DROP TABLE IF EXISTS cookbook_sales", fixture.read_text())
+
 
 if __name__ == "__main__":
     unittest.main()
