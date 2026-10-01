@@ -401,7 +401,7 @@ and not missing coverage:
 | Example | Why it is excluded |
 |---------|--------------------|
 | `quickstart/5min-fastapi` | Long-lived ASGI web service (`uvicorn`) exercised via HTTP, not a deterministic one-shot script — it runs until stopped, so there is no single terminal output to golden-capture. |
-| `templates/async-worker` | Celery worker that requires an external broker (Redis) and runs until stopped. |
+| `templates/async-worker` | The long-lived Celery worker requires an external broker (Redis), so it has no one-shot golden. Its CUBRID database tasks are tested separately by `templates/async-worker/tests` without a broker. |
 | `performance/bulk-insert/benchmark.py` | Throughput benchmark — prints wall-clock timings and rows/sec that vary run-to-run. |
 | `performance/connection-pooling/benchmark.py` | Throughput benchmark — timings and speedup factors are nondeterministic. |
 | `performance/fetch-optimization/benchmark.py` | Throughput benchmark — per-strategy timings are nondeterministic. |

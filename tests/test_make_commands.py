@@ -165,6 +165,33 @@ class OfflineWorkflowTests(unittest.TestCase):
         self.assertIn("dashboard-pytest", workflow[gate:])
         self.assertIn('cubrid-version: "11.4"', workflow[dashboard:gate])
 
+    def test_async_worker_has_its_own_required_live_cubrid_job(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        worker = workflow.index("  async-worker-pytest:")
+        gate = workflow.index("  ci-gate:")
+        self.assertIn('cubrid-version: "11.4"', workflow[worker:gate])
+        self.assertIn("templates/async-worker/requirements.txt", workflow[worker:gate])
+        self.assertIn("templates/async-worker/tests", workflow[worker:gate])
+        self.assertIn("async-worker-pytest", workflow[gate:])
+
+    def test_async_worker_smoke_runs_after_verify_under_frozen_driver_constraints(self) -> None:
+        workflow = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
+        freeze = workflow.index("name: Freeze selected driver releases")
+        install = workflow.index("name: Install pytest suite dependencies")
+        verify_drivers = workflow.index("name: Record tested versions")
+        verify_examples = workflow.index("name: Run make verify")
+        worker = workflow.index("name: Run async-worker database tasks")
+        dashboard_switch = workflow.index("name: Start isolated dashboard CUBRID")
+        self.assertLess(freeze, install)
+        self.assertLess(install, verify_drivers)
+        self.assertLess(verify_drivers, verify_examples)
+        self.assertLess(verify_examples, worker)
+        self.assertLess(worker, dashboard_switch)
+        self.assertIn("templates/async-worker/requirements.txt", workflow[install:verify_drivers])
+        self.assertIn("templates/async-worker/tests", workflow[worker:dashboard_switch])
+        self.assertIn("CUBRID_TEST_URL:", workflow[worker:dashboard_switch])
+        self.assertNotIn("continue-on-error", workflow[worker:dashboard_switch])
+
     def test_dashboard_smoke_uses_separate_owned_container_after_other_suites(self) -> None:
         workflow = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
         suites = workflow.index("name: Run Flask and FastAPI pytest suites")

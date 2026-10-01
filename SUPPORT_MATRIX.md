@@ -10,7 +10,9 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 > original CUBRID container, then stops it and runs the **Streamlit dashboard
 > pytest suite** on a separate, disposable CUBRID container of the same
 > version. Every pull request runs representative Flask/FastAPI and dashboard
-> suites in separate live CUBRID 11.4 jobs (`ci.yml`). The
+> suites in separate live CUBRID 11.4 jobs (`ci.yml`). The async-worker's
+> database tasks run after `make verify` on the non-PR 11.2/11.4 matrix and
+> in their own required live CUBRID 11.4 pull-request job. The
 > **Django** recipe is still **run manually** (see [How to
 > Test](#how-to-test-against-a-specific-version)).
 
@@ -120,6 +122,13 @@ when a row no longer matches the repository. Verification is split:
   Each script runs with a 60-second limit; the suite drops its own example
   tables before and after each case and runs twice to verify repeatability.
   `tests/test_ai_agent_offline.py` checks ID handling, MCP errors and cleanup.
+- The **Celery async-worker** database tasks run through
+  `templates/async-worker/tests` without a Redis broker or worker. A dedicated
+  CUBRID 11.4 job gates each pull request; after `make verify`, the non-PR
+  smoke matrix runs the same tests on **11.2 and 11.4** before switching to
+  the dashboard container. The suite asserts persisted job state/result and
+  report/email rows, refuses preexisting worker tables, and removes its own
+  tables afterward. Broker delivery and Celery's result backend are not tested.
 - **CUBRID 11.4** runs in the same CI smoke matrix as 11.2 (its `make verify` goldens
   are checked on both versions).
 
@@ -141,8 +150,8 @@ when a row no longer matches the repository. Verification is split:
 | AI agent template | 5 | pytest (smoke CI incl. PRs, 11.2 + 11.4) |
 | Streamlit templates | 5 | pytest (CI on `main` + nightly, 11.2 + 11.4; also PR CI on 11.4) |
 | Django template | 1 | manual run |
-| Celery async-worker template | 1 | manual run |
-| **Total** | **102** | 66 golden-backed via `make verify` on 11.2 + 11.4; Flask, FastAPI and Streamlit pytest suites in CI on `main` + nightly (plus representative PR CI); AI agent suite on every smoke run; Django and Celery run manually |
+| Celery async-worker template | 1 | database tasks: live pytest (PR CI 11.4; `main` + nightly 11.2 + 11.4); broker/worker manual |
+| **Total** | **102** | 66 golden-backed via `make verify` on 11.2 + 11.4; Flask, FastAPI and Streamlit pytest suites in CI on `main` + nightly (plus representative PR CI); async-worker database tasks and AI agent suite live-tested; Django and Celery broker/worker run manually |
 
 ## Known Limitations by Version
 

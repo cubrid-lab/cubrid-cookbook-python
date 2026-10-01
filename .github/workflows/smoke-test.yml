@@ -375,7 +375,7 @@ jobs:
         if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
         # One explicit list avoids conflicting pins in individual recipe files.
         # PIP_CONSTRAINT also covers these packages' transitive driver requirements.
-        run: pip install flask flask-sqlalchemy fastapi email-validator httpx pytest pytest-asyncio streamlit pandas
+        run: pip install flask flask-sqlalchemy fastapi email-validator httpx pytest pytest-asyncio streamlit pandas -r templates/async-worker/requirements.txt
 
       - name: Record tested versions
         run: |
@@ -536,6 +536,16 @@ jobs:
           if [ "${#failed[@]}" -ne 0 ]; then
             exit 1
           fi
+
+      - name: Run async-worker database tasks (non-PR runs only)
+        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
+        # make verify has finished, including the pycubrid example that also
+        # uses cookbook_jobs with a different schema. The worker suite refuses
+        # to delete a preexisting worker table and cleans up only its own four.
+        timeout-minutes: 5
+        env:
+          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
+        run: python -m pytest templates/async-worker/tests -v --tb=short
 
       - name: Start isolated dashboard CUBRID (non-PR runs only)
         if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
