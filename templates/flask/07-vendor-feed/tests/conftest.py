@@ -16,8 +16,8 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine, make_url
+from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 from sqlalchemy.pool import NullPool
 
 # Make the recipe modules (app, database, models) importable no matter which
@@ -40,26 +40,6 @@ def pytest_report_header() -> str:
     return "database: per-test SQLite file fallback (set CUBRID_TEST_URL to test against CUBRID)"
 
 
-def _drop_cross_recipe_leftovers(engine: Engine) -> None:
-    """Defensively drop tables outside this recipe's own metadata (#142).
-
-    ``templates/dashboard`` (a separate recipe, tested by
-    ``templates/dashboard/tests``) shares this recipe's ``cookbook_products``
-    table name and creates its own ``cookbook_sales`` with a foreign key to
-    it. If that suite's own teardown never ran — its process was killed, or
-    suites ran against a shared database out of the documented order — CUBRID
-    refuses to drop ``cookbook_products`` below with errno=-923 ("primary key
-    ... referred by a foreign key ... is not supposed to be dropped").
-    ``cookbook_sales`` is not a table this recipe (or any other Flask/FastAPI
-    recipe exercised in CI) ever creates, so dropping it here unconditionally
-    is safe. See ``templates/flask/01-basic-crud/tests/conftest.py`` and its
-    ``test_schema_isolation.py`` regression test, which cover the same
-    table-sharing scenario.
-    """
-    with engine.begin() as connection:
-        connection.execute(text("DROP TABLE IF EXISTS cookbook_sales"))
-
-
 @pytest.fixture()
 def database_config(tmp_path: Path) -> Iterator[dict[str, object]]:
     """Yield Flask-SQLAlchemy settings for the test database, starting from empty tables."""
@@ -74,13 +54,11 @@ def database_config(tmp_path: Path) -> Iterator[dict[str, object]]:
     try:
         # A live database outlives the test run, so clear out tables left behind
         # by an interrupted run before the app creates fresh ones.
-        _drop_cross_recipe_leftovers(cleanup_engine)
         metadata.drop_all(bind=cleanup_engine)
         yield {
             "SQLALCHEMY_DATABASE_URI": url,
             "SQLALCHEMY_ENGINE_OPTIONS": {"poolclass": NullPool},
         }
     finally:
-        _drop_cross_recipe_leftovers(cleanup_engine)
         metadata.drop_all(bind=cleanup_engine)
         cleanup_engine.dispose()

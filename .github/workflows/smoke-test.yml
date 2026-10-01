@@ -234,10 +234,12 @@ jobs:
           # Started before dependency install so the image pull and engine
           # initialization overlap with pip install instead of running serially;
           # the readiness gate below then usually finds the engine already up.
-          docker run -d --name cubrid --shm-size 512m \
+          original_id=$(docker run -d --name cubrid --shm-size 512m \
+            --label cookbook.smoke.role=original \
             -e CUBRID_DB=testdb \
             -p 33000:33000 -p 1523:1523 \
-          cubrid/cubrid:${{ matrix.cubrid }}
+            cubrid/cubrid:${{ matrix.cubrid }})
+          printf '%s\n' "$original_id" > "$RUNNER_TEMP/cubrid-original-id"
 
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -481,7 +483,7 @@ jobs:
           print("cubrid-mcp-server real-usage smoke OK")
           PY
 
-      - name: Run Flask, FastAPI and Streamlit dashboard pytest suites (non-PR runs only)
+      - name: Run Flask and FastAPI pytest suites (non-PR runs only)
         if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
         # Each suite's tests/conftest.py switches to live CUBRID when
         # CUBRID_TEST_URL is set, so these run against the container started above.
@@ -493,24 +495,16 @@ jobs:
         # runs without -q so each log shows the conftest's "database: live
         # CUBRID" header.
         #
-        # The dashboard suite shares table names (cookbook_products,
-        # cookbook_sales) with the Flask 01-basic-crud and 07-vendor-feed
-        # suites and leaves a foreign key behind that blocks their own
-        # cookbook_products teardown if the two overlap in time (#142); its
-        # own conftest.py drops both tables in FK-safe order at the end of
-        # its pytest session, so it runs last — after it exits, the shared
-        # schema is clean for whatever runs next. The Flask suites' own
-        # conftest.py also now defensively drops any leftover
-        # cookbook_sales before their own teardown, so this ordering is
-        # belt-and-suspenders, not the only thing preventing the
-        # errno=-923 FK failure #142 fixed.
+        # The dashboard suite shares cookbook_products with Flask and owns
+        # cookbook_sales with an FK to it. It runs only after this original
+        # database is stopped and a separate container is ready below (#142).
         timeout-minutes: 15
         env:
           CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
           CUBRID_VERSION: ${{ matrix.cubrid }}
         run: |
           shopt -s nullglob
-          suites=(templates/flask/*/tests templates/api-service-fastapi/recipes/*/tests templates/dashboard/tests)
+          suites=(templates/flask/*/tests templates/api-service-fastapi/recipes/*/tests)
           if [ "${#suites[@]}" -eq 0 ]; then
             echo "::error::No pytest suites found"
             exit 1
@@ -542,6 +536,114 @@ jobs:
           if [ "${#failed[@]}" -ne 0 ]; then
             exit 1
           fi
+
+      - name: Start isolated dashboard CUBRID (non-PR runs only)
+        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          original_id=$(< "$RUNNER_TEMP/cubrid-original-id")
+          if [[ ! "$original_id" =~ ^[0-9a-f]{64}$ ]] \
+            || [ "$(docker inspect -f '{{.Name}}' "$original_id")" != /cubrid ] \
+            || [ "$(docker inspect -f '{{index .Config.Labels "cookbook.smoke.role"}}' "$original_id")" != original ]; then
+            echo "::error::Refusing to stop a container not owned by this smoke job"
+            exit 1
+          fi
+          docker stop --timeout 10 "$original_id"
+
+          # Reuse this matrix cell's image and host ports, but never its schema.
+          # No volume is attached; this container belongs only to this run.
+          dashboard_id=$(docker run -d --name cubrid-dashboard --shm-size 512m \
+            --label cookbook.smoke.role=dashboard \
+            -e CUBRID_DB=testdb \
+            -p 33000:33000 -p 1523:1523 \
+            cubrid/cubrid:${{ matrix.cubrid }})
+          printf '%s\n' "$dashboard_id" > "$RUNNER_TEMP/cubrid-dashboard-id"
+
+      - name: Wait for isolated dashboard CUBRID
+        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          dashboard_id=$(< "$RUNNER_TEMP/cubrid-dashboard-id")
+          if [[ ! "$dashboard_id" =~ ^[0-9a-f]{64}$ ]] \
+            || [ "$(docker inspect -f '{{.Name}}' "$dashboard_id")" != /cubrid-dashboard ] \
+            || [ "$(docker inspect -f '{{index .Config.Labels "cookbook.smoke.role"}}' "$dashboard_id")" != dashboard ]; then
+            echo "::error::Dashboard readiness target is not this job's container"
+            exit 1
+          fi
+
+          ready=0
+          for attempt in {1..30}; do
+            if timeout 5s docker exec "$dashboard_id" bash -lc "csql -u dba testdb -c 'SELECT 1;'" >/dev/null 2>&1; then
+              echo "Dashboard CUBRID engine ready (attempt $attempt)"
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "::error::Dashboard CUBRID csql readiness exhausted"
+            docker logs --tail 50 "$dashboard_id" || true
+            exit 1
+          fi
+
+          # csql can succeed before the mapped broker accepts real clients.
+          python - <<'PY'
+          import sys
+          import time
+
+          import pycubrid
+
+          last_error = None
+          for attempt in range(1, 31):
+              connection = None
+              try:
+                  connection = pycubrid.connect(
+                      host="localhost", port=33000, database="testdb",
+                      user="dba", password="", connect_timeout=5, read_timeout=5,
+                  )
+                  cursor = connection.cursor()
+                  cursor.execute("SELECT 1")
+                  if cursor.fetchone() != (1,):
+                      raise RuntimeError("dashboard broker SELECT 1 returned an unexpected row")
+                  cursor.close()
+                  print(f"Dashboard external broker ready (attempt {attempt})")
+                  sys.exit(0)
+              except Exception as error:
+                  last_error = error
+                  print(f"Waiting for dashboard broker {attempt}/30: {error}")
+                  time.sleep(2)
+              finally:
+                  if connection is not None:
+                      connection.close()
+          print(f"Dashboard external broker did not become ready: {last_error}")
+          sys.exit(1)
+          PY
+
+      - name: Run isolated Streamlit dashboard pytest suite
+        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
+        timeout-minutes: 5
+        env:
+          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
+        run: python -m pytest templates/dashboard/tests -v --tb=short
+
+      - name: Remove owned dashboard CUBRID container
+        if: always()
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          if [ ! -f "$RUNNER_TEMP/cubrid-dashboard-id" ]; then
+            exit 0
+          fi
+          dashboard_id=$(< "$RUNNER_TEMP/cubrid-dashboard-id")
+          if [[ ! "$dashboard_id" =~ ^[0-9a-f]{64}$ ]] \
+            || [ "$(docker inspect -f '{{.Name}}' "$dashboard_id")" != /cubrid-dashboard ] \
+            || [ "$(docker inspect -f '{{index .Config.Labels "cookbook.smoke.role"}}' "$dashboard_id")" != dashboard ]; then
+            echo "::error::Refusing to remove a container not owned by this smoke job"
+            exit 1
+          fi
+          docker rm -f "$dashboard_id"
 
       - name: Report release smoke result
         if: always()

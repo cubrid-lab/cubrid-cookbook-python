@@ -374,12 +374,20 @@ class WorkflowCallStaticTests(unittest.TestCase):
             VERIFY,
         )
         self.assertNotIn("if: github.event_name != 'pull_request'\n", VERIFY)
-        self.assertEqual(
-            VERIFY.count(
-                "if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'"
-            ),
-            2,
+        call_guard = (
+            "if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'"
         )
+        for step_name in (
+            "Install pytest suite dependencies (non-PR runs only)",
+            "Run Flask and FastAPI pytest suites (non-PR runs only)",
+            "Start isolated dashboard CUBRID (non-PR runs only)",
+            "Wait for isolated dashboard CUBRID",
+            "Run isolated Streamlit dashboard pytest suite",
+        ):
+            start = VERIFY.index(f"- name: {step_name}")
+            end = VERIFY.find("\n      - name:", start + 1)
+            block = VERIFY[start : end if end != -1 else None]
+            self.assertIn(call_guard, block, step_name)
 
     def test_report_job_runs_for_calls(self) -> None:
         self.assertIn("|| inputs.package != '') }}", REPORT[: REPORT.index("\n    steps:")])

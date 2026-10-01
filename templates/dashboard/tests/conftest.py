@@ -9,19 +9,17 @@ suite still runs without a database during local development or in offline
 CI jobs.
 
 Every recipe's ``CREATE TABLE`` statement uses the CUBRID/MySQL-style
-``AUTO_INCREMENT`` keyword, which SQLite rejects outright (its own
-``INTEGER PRIMARY KEY`` column already autoincrements via its ROWID alias).
+``AUTO_INCREMENT`` keyword. SQLite accepts that token in the recipes' DDL as
+part of the column type, but no longer treats the column as the special
+``INTEGER PRIMARY KEY`` ROWID alias: inserting without an ID then stores NULL.
 Rather than changing the recipes themselves — each is documented as a
 standalone, copy-and-run single file — this module injects a SQLAlchemy
-``before_cursor_execute`` hook that strips the keyword for SQLite
-connections only. A live CUBRID run is never touched by the hook, so this is
-the suite's injectable DB layer: only the connection target and dialect
-change, never the recipe source. The hook is registered on SQLAlchemy's
-``Engine`` class (the only way to intercept engines the recipes create
-themselves via their own cached ``get_engine()``), but only for the
-lifetime of this test session: ``_dashboard_schema_lifecycle`` below adds it
-before the session's tests run and removes it again afterward, so it never
-affects any other test module sharing this process.
+``before_cursor_execute`` hook that strips the keyword only for engines
+connected to this suite's SQLite file. The recipes create their own cached
+engines, so the listener must be registered on SQLAlchemy's ``Engine`` class,
+but the fixture-local listener checks the target URL before changing SQL. A
+live CUBRID run does not register the hook at all. The listener is removed at
+the end of the session, including when schema cleanup fails.
 """
 
 from __future__ import annotations
@@ -44,12 +42,12 @@ _AUTO_INCREMENT_RE = re.compile(r"\bAUTO_INCREMENT\b", re.IGNORECASE)
 def _drop_auto_increment_for_sqlite(conn, cursor, statement, parameters, context, executemany):
     """Make the recipes' CUBRID/MySQL-style DDL runnable on SQLite.
 
-    SQLite's ``INTEGER PRIMARY KEY`` already autoincrements and rejects the
-    ``AUTO_INCREMENT`` keyword outright, so this strips it from any
-    statement sent to a SQLite connection. Every other dialect (including a
-    live CUBRID run) is passed through unmodified. Registered and removed by
+    SQLite's ``INTEGER PRIMARY KEY`` already autoincrements, but the extra
+    ``AUTO_INCREMENT`` token prevents that ROWID behavior. Strip it only from
+    statements sent to this suite's SQLite file. Every other dialect (including
+    live CUBRID) is passed through unmodified. Registered and removed by
     ``_dashboard_schema_lifecycle``, not at import time — see the module
-    docstring.
+    docstring. The fixture-local listener filters by URL first.
     """
     if conn.engine.dialect.name == "sqlite" and _AUTO_INCREMENT_RE.search(statement):
         statement = _AUTO_INCREMENT_RE.sub("", statement)
@@ -94,11 +92,11 @@ def _dashboard_schema_lifecycle(dashboard_database_url: str):
     """Start the session with a clean schema and drop it again afterward.
 
     Tables are dropped in FK-safe order (``cookbook_sales`` before its parent
-    ``cookbook_products``) both before and after the session, so an
-    interrupted previous run or a shared live CUBRID database is left clean
-    for the suite and for whatever runs against the same database next. Also
-    registers and removes the SQLite ``AUTO_INCREMENT`` hook (see the module
-    docstring) so it is active only while this session's tests run.
+    ``cookbook_products``) both before and after the session, so an interrupted
+    run in this suite's dedicated live CUBRID database, or its offline SQLite
+    file, does not affect a later dashboard run. Also registers and removes a
+    target-URL-scoped SQLite ``AUTO_INCREMENT`` hook (see the module docstring)
+    only while this session's tests run.
     """
     engine = create_engine(dashboard_database_url)
 
@@ -107,11 +105,26 @@ def _dashboard_schema_lifecycle(dashboard_database_url: str):
             connection.execute(text("DROP TABLE IF EXISTS cookbook_sales"))
             connection.execute(text("DROP TABLE IF EXISTS cookbook_products"))
 
-    event.listen(Engine, "before_cursor_execute", _drop_auto_increment_for_sqlite, retval=True)
+    listener = None
+    if engine.dialect.name == "sqlite":
+
+        def listener(conn, cursor, statement, parameters, context, executemany):
+            if conn.engine.url != engine.url:
+                return statement, parameters
+            return _drop_auto_increment_for_sqlite(
+                conn, cursor, statement, parameters, context, executemany
+            )
+
+        event.listen(Engine, "before_cursor_execute", listener, retval=True)
     try:
         _drop_all()
         yield
     finally:
-        _drop_all()
-        engine.dispose()
-        event.remove(Engine, "before_cursor_execute", _drop_auto_increment_for_sqlite)
+        try:
+            _drop_all()
+        finally:
+            try:
+                engine.dispose()
+            finally:
+                if listener is not None:
+                    event.remove(Engine, "before_cursor_execute", listener)
