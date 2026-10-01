@@ -6,11 +6,12 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 > 3.12** (job matrix), comparing stdout against every recipe that ships a golden
 > (`expected/*.expected`; counts in [Recipe Coverage](#recipe-coverage)); a pull request
 > that touches only examples checks just those examples. On pushes to `main`, the nightly schedule and manual
-> runs, the same job also runs the **Flask and FastAPI pytest suites** against its
-> live CUBRID container on both versions. The **Streamlit** recipes have a pytest
-> suite (`templates/dashboard/tests/test_dashboard.py`) that is green locally
-> against live CUBRID but not yet wired into CI (tracked in #142). The **Django**
-> recipe is still **run manually** (see [How to Test](#how-to-test-against-a-specific-version)).
+> runs, the same job also runs the **Flask, FastAPI and Streamlit dashboard
+> pytest suites** against its live CUBRID container on both versions; every
+> pull request also runs representative Flask, FastAPI and dashboard suites
+> against one live CUBRID 11.4 container (`ci.yml`'s `pytest-suites` job). The
+> **Django** recipe is still **run manually** (see [How to
+> Test](#how-to-test-against-a-specific-version)).
 
 ## CUBRID Server Versions
 
@@ -100,9 +101,15 @@ when a row no longer matches the repository. Verification is split:
   back to SQLite for local runs.
 - The **Streamlit** recipes are covered by `templates/dashboard/tests/test_dashboard.py`
   (`AppTest`-based: seeded table viewer rows, non-empty KPI metrics, and a
-  filter that changes the rendered row count), which runs against live
-  CUBRID when `CUBRID_TEST_URL` is set and falls back to a shared SQLite
-  file otherwise. Not yet wired into CI — tracked in #142. The **Django**
+  filter that changes the rendered row count), which the smoke job runs
+  against its live CUBRID container on **11.2 and 11.4** for every push to
+  `main`, nightly, and on manual runs, and which `ci.yml`'s `pytest-suites`
+  job also runs on every pull request against one live CUBRID 11.4
+  container. It falls back to a shared SQLite file when `CUBRID_TEST_URL`
+  is unset. Its `conftest.py` drops `cookbook_sales` and `cookbook_products`
+  in FK-safe order at the end of its session, so it runs last among the
+  pytest suites and never leaves a dangling foreign key for the Flask suite's
+  own `cookbook_products` teardown (#142). The **Django**
   recipe is still **run manually** (see [How to Test](#how-to-test-against-a-specific-version)).
 - The **FastAPI quickstart** has an offline pytest suite in PR CI for host and
   Compose configuration, startup, HTTP responses, and database failure cleanup.
@@ -131,10 +138,10 @@ when a row no longer matches the repository. Verification is split:
 | FastAPI templates | 12 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
 | FastAPI quickstart | 1 | offline pytest (PR CI, mocked DB-API) |
 | AI agent template | 5 | pytest (smoke CI incl. PRs, 11.2 + 11.4) |
-| Streamlit templates | 5 | pytest (local, live CUBRID or SQLite fallback; not yet in CI — #142) |
+| Streamlit templates | 5 | pytest (CI on `main` + nightly, 11.2 + 11.4; also PR CI on 11.4) |
 | Django template | 1 | manual run |
 | Celery async-worker template | 1 | manual run |
-| **Total** | **102** | 66 golden-backed via `make verify` on 11.2 + 11.4; Flask and FastAPI pytest suites in CI on `main` + nightly; AI agent suite on every smoke run; Streamlit pytest suite runs locally (not yet in CI); Django and Celery run manually |
+| **Total** | **102** | 66 golden-backed via `make verify` on 11.2 + 11.4; Flask, FastAPI and Streamlit pytest suites in CI on `main` + nightly (plus representative PR CI); AI agent suite on every smoke run; Django and Celery run manually |
 
 ## Known Limitations by Version
 
@@ -192,5 +199,10 @@ for f in fundamentals/pandas/*.py; do python3 "$f"; done
 The pytest suites create and drop their tables in whichever database
 `CUBRID_TEST_URL` points at, and a few table names are shared between suites
 (`inventory_items` in FastAPI recipe 09 and Flask recipe 11, `cookbook_products`
-in Flask recipes 01 and 07). Run the suites one after another against a shared
-instance, as the loops above do, or give concurrent runs separate databases.
+in Flask recipes 01 and 07 and the dashboard suite). Run the suites one after
+another against a shared instance, as the loops above do, or give concurrent
+runs separate databases. Run the dashboard suite last: it leaves a foreign key
+(`cookbook_sales` references `cookbook_products`) that blocks Flask recipe
+01's own `cookbook_products` teardown if the two overlap, and its
+`conftest.py` drops both tables in FK-safe order only at the end of its own
+pytest session.
