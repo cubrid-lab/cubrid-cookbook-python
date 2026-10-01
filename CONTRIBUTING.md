@@ -71,6 +71,32 @@ CI runs the same `make check` command. Both required live smoke matrix jobs also
 run the Make/readiness regression guards before selecting driver dependencies.
 The repository is an example collection, so `pip install -e .` is not supported.
 
+### Dependency updates
+
+`.github/dependabot.yml` keeps dependencies current without flooding the queue:
+
+- **GitHub Actions** — checked weekly; all action bumps arrive as one grouped
+  PR. Workflows pin every action by full commit SHA with a `# vX.Y.Z` comment,
+  and each action uses the same pin in every workflow;
+  `tests/test_dependabot_config.py` (part of `make check`) enforces both.
+- **Recipe requirements (pip)** — checked monthly across every standalone
+  recipe directory. Updates are grouped by dependency name, so one PR bumps a
+  package (for example `flask`) in every recipe that uses it instead of one PR
+  per recipe. Major updates of the CUBRID drivers (`pycubrid`,
+  `sqlalchemy-cubrid`, `cubrid-mcp-server`) are ignored: their floors are the
+  support contract in `SUPPORT_MATRIX.md` and move deliberately.
+- Dependabot PR titles use the `chore(deps):` prefix, matching the
+  `type(scope): description` title rule.
+- `dependabot-auto-merge.yml` enables squash auto-merge for patch and minor
+  updates; it completes only after the required checks (CI Gate and smoke
+  tests) pass. Major updates wait for a maintainer. The `docs-sync` and
+  `translation-sync` gates skip Dependabot PRs, since dependency-only bumps
+  carry no doc changes.
+
+When a new recipe adds a `requirements.txt` outside the configured
+`directories` globs, extend the globs in the same PR; the test above fails
+until you do.
+
 ---
 
 ## Adding Examples

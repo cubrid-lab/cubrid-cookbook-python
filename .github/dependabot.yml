@@ -1,0 +1,59 @@
+# Dependabot version updates (#153). Policy: CONTRIBUTING.md "Dependency updates".
+#
+# Titles and squash commits follow the repo's `type(scope): description` rule
+# through the `chore(deps)` prefix (Dependabot appends the colon). Patch/minor
+# updates are auto-merged by dependabot-auto-merge.yml once the required
+# checks (CI Gate, smoke tests) pass; major updates wait for a maintainer.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(deps)"
+    labels: [dependencies, ci]
+    groups:
+      # One PR for all workflow action bumps. Workflows pin actions by commit
+      # SHA with a `# vX.Y.Z` comment; Dependabot updates both together.
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    # Every standalone recipe owns its requirements.txt. Directories without
+    # one are skipped; the root pyproject.toml only configures ruff.
+    directories:
+      - "/fundamentals/*"
+      - "/migration/*"
+      - "/pitfalls/*"
+      - "/quickstart/*"
+      - "/templates/*"
+      - "/templates/flask/*"
+      - "/templates/api-service-fastapi/recipes/*"
+    schedule:
+      interval: monthly
+    # Preserve an existing range that already allows the new version instead
+    # of raising a recipe's documented floor as a side effect of a
+    # minor/patch bump (GitHub's default "auto" strategy can do that).
+    versioning-strategy: increase-if-necessary
+    commit-message:
+      prefix: "chore(deps)"
+    labels: [dependencies]
+    open-pull-requests-limit: 10
+    groups:
+      # Without `group-by`, a multi-directory group opens one PR per recipe
+      # directory. Grouping by dependency name opens a single PR per package
+      # (e.g. flask) that updates every recipe requirements file at once.
+      recipe-requirements:
+        patterns: ["*"]
+        group-by: dependency-name
+    ignore:
+      # The CUBRID driver floors are a documented support contract
+      # (SUPPORT_MATRIX.md) validated against the goldens; a new major release
+      # line is adopted deliberately, not by a bot bump.
+      - dependency-name: pycubrid
+        update-types: ["version-update:semver-major"]
+      - dependency-name: sqlalchemy-cubrid
+        update-types: ["version-update:semver-major"]
+      - dependency-name: cubrid-mcp-server
+        update-types: ["version-update:semver-major"]
