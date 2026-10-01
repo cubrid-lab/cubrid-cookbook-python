@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -140,6 +141,49 @@ class VerifyCommandTests(unittest.TestCase):
 
 
 class OfflineWorkflowTests(unittest.TestCase):
+    def test_python_compatibility_is_a_small_required_live_matrix(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        compatibility = workflow.split("  python-compatibility:\n", 1)[1].split(
+            "  # Single aggregate check", 1
+        )[0]
+        self.assertIn('python: ["3.10", "3.11", "3.12", "3.13", "3.14"]', compatibility)
+        self.assertIn('cubrid-version: "11.4"', compatibility)
+        self.assertIn("python-version: ${{ matrix.python }}", compatibility)
+        for recipe in (
+            "fundamentals/pycubrid/01_connect.py",
+            "fundamentals/sqlalchemy/01_connect_and_session.py",
+        ):
+            self.assertIn(f"python {recipe}", compatibility)
+            self.assertIn(
+                recipe.removesuffix(".py").rsplit("/", 1)[0] + "/expected/", compatibility
+            )
+        self.assertIn("set -euo pipefail", compatibility)
+        self.assertIn("diff -u", compatibility)
+        self.assertNotIn("make verify", compatibility)
+        self.assertNotIn("continue-on-error", compatibility)
+        gate = workflow.split("  ci-gate:\n", 1)[1]
+        self.assertIn("python-compatibility", gate.split("runs-on:", 1)[0])
+        self.assertIn("R_PYTHON_COMPATIBILITY: ${{ needs.python-compatibility.result }}", gate)
+
+    def test_python_compatibility_failure_cancellation_or_skip_blocks_the_gate(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        gate = workflow.split("  ci-gate:\n", 1)[1]
+        script = textwrap.dedent(gate.split("        run: |\n", 1)[1])
+        names = [
+            line.strip().split(":", 1)[0]
+            for line in gate.splitlines()
+            if "R_" in line and ": ${{" in line
+        ]
+        self.assertIn("R_PYTHON_COMPATIBILITY", names)
+        for result in ("success", "failure", "cancelled", "skipped"):
+            with self.subTest(result=result):
+                env = {**os.environ, **dict.fromkeys(names, "success")}
+                env["R_PYTHON_COMPATIBILITY"] = result
+                check = subprocess.run(
+                    ["bash", "-c", script], env=env, capture_output=True, text=True, timeout=5
+                )
+                self.assertEqual(check.returncode == 0, result == "success", check.stdout)
+
     def test_ci_runs_the_contributor_aggregate(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("run: make check", workflow)

@@ -34,12 +34,21 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 
 | Python | Status |
 |--------|--------|
-| **3.14** | ⚠️ Expected to work (not in CI) |
-| **3.13** | ⚠️ Expected to work (not in CI) |
-| **3.12** | ✅ Tested (CI default) |
-| **3.11** | ⚠️ Expected to work (not in CI) |
-| **3.10** | ⚠️ Minimum; expected to work (not in CI) |
+| **3.14** | CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 |
+| **3.13** | CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 |
+| **3.12** | Full smoke matrix default; also in the representative compatibility matrix |
+| **3.11** | CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 |
+| **3.10** | Minimum; CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 |
 | 3.9 | ❌ Not supported (`from __future__ import annotations` patterns) |
+
+The required `ci.yml` compatibility matrix covers Python 3.10–3.14 with
+`fundamentals/pycubrid/01_connect.py` and
+`fundamentals/sqlalchemy/01_connect_and_session.py` on separate CUBRID 11.4
+jobs. Each runs real read-only queries, compares normalized output with its
+existing golden, and checks imports and compilation of the example sources.
+This is not a claim that every framework/template or every server version is
+tested on every Python version; the full smoke matrix remains Python 3.12.
+Failure, cancellation or an unexpected skip in this matrix fails the CI gate.
 
 ## Driver & Framework Versions
 

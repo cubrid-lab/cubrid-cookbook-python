@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Representative Python compatibility matrix (#130)** — required PR/main CI checks Python 3.10–3.14 on CUBRID 11.4 using the existing read-only pycubrid connection and SQLAlchemy engine/session goldens, plus imports and source compilation. This small matrix does not duplicate the full Python 3.12 smoke/framework suite, and failure, cancellation or unexpected skip blocks the CI gate.
 - **Offline contributor command** — `make check` combines lint, documentation, normalizer, golden-coverage, and isolated offline regression suites; `make test-offline` runs the suites without a database. CI uses the same command, and both live smoke jobs run the Make/readiness guards before driver selection.
 - **AI agent template (#111)** — `templates/ai-agent/` with 5 examples: agent state management (sessions, messages, tool calls with JSON columns), MCP tool chain (programmatic server invocation), RAG metadata hybrid (document store with SET tagging + SEQUENCE chunk tracking), agent loop (query → think → act → observe), and AI chatbot backend (SQLAlchemy ORM with JSON LLM I/O). Requires `cubrid-mcp-server>=0.3`.
 - **One-command dashboard demo** — `templates/dashboard/` now ships its own `docker-compose.yml` (CUBRID **11.4** + Streamlit at http://localhost:8501), and the five recipes read `DATABASE_URL` from the environment (default unchanged: `cubrid+pycubrid://dba@localhost:33000/testdb`) so the compose service can point them at the co-located container.

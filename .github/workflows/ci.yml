@@ -138,6 +138,29 @@ jobs:
         pip install pytest -r templates/django/requirements.txt
       test-command: python -m pytest templates/django/tests -v --tb=short
 
+  # Two read-only golden recipes, not the full framework or smoke matrix.
+  python-compatibility:
+    name: Python compatibility (${{ matrix.python }}, CUBRID 11.4)
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
+    with:
+      cubrid-version: "11.4"
+      python-version: ${{ matrix.python }}
+      cubrid-test-url: "cubrid+pycubrid://dba@localhost:33000/testdb"
+      setup-command: >-
+        python -m pip install --upgrade pip &&
+        pip install -r fundamentals/pycubrid/requirements.txt
+        -r fundamentals/sqlalchemy/requirements.txt
+      test-command: |
+        set -euo pipefail
+        python -c 'import pycubrid, sqlalchemy, sqlalchemy_cubrid; print(pycubrid.__version__, sqlalchemy.__version__)'
+        python -m compileall -q fundamentals quickstart templates
+        python fundamentals/pycubrid/01_connect.py | bash scripts/normalize_output.sh | diff -u fundamentals/pycubrid/expected/01_connect.expected -
+        python fundamentals/sqlalchemy/01_connect_and_session.py | bash scripts/normalize_output.sh | diff -u fundamentals/sqlalchemy/expected/01_connect_and_session.expected -
+
   # Single aggregate check for branch protection, mirroring pycubrid's gate.
   # None of the jobs above is path-gated or conditional (they all run on every
   # PR, docs-only included), so anything other than `success` -- failure,
@@ -145,7 +168,7 @@ jobs:
   ci-gate:
     name: CI Gate (all checks must pass)
     if: always()
-    needs: [lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest, async-worker-pytest, django-bridge-pytest]
+    needs: [lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest, async-worker-pytest, django-bridge-pytest, python-compatibility]
     runs-on: ubuntu-latest
     permissions: {}
     steps:
@@ -160,10 +183,11 @@ jobs:
           R_DASHBOARD_PYTEST: ${{ needs.dashboard-pytest.result }}
           R_ASYNC_WORKER_PYTEST: ${{ needs.async-worker-pytest.result }}
           R_DJANGO_BRIDGE_PYTEST: ${{ needs.django-bridge-pytest.result }}
+          R_PYTHON_COMPATIBILITY: ${{ needs.python-compatibility.result }}
         run: |
           set -euo pipefail
           fail=0
-          for var in R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOCS_SITE R_DOC_LINT R_PYTEST_SUITES R_DASHBOARD_PYTEST R_ASYNC_WORKER_PYTEST R_DJANGO_BRIDGE_PYTEST; do
+          for var in R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOCS_SITE R_DOC_LINT R_PYTEST_SUITES R_DASHBOARD_PYTEST R_ASYNC_WORKER_PYTEST R_DJANGO_BRIDGE_PYTEST R_PYTHON_COMPATIBILITY; do
             if [[ "${!var}" != "success" ]]; then
               echo "::error::Required job ${var#R_} result: ${!var}"
               fail=1
