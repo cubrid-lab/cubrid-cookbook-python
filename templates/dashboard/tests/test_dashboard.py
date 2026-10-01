@@ -23,6 +23,13 @@ DASHBOARD_ROOT = Path(__file__).resolve().parent.parent
 RECIPE_PATHS = sorted(DASHBOARD_ROOT.glob("[0-9][0-9]_*.py"))
 RECIPE_IDS = [path.name for path in RECIPE_PATHS]
 
+# AppTest.run()'s default 3-second script-run timeout is tight for a recipe
+# that connects to a live database, creates tables, and seeds rows on every
+# run; it flaked under CI load (first connection after another suite had used
+# the shared CUBRID broker). 30s matches the live-smoke readiness budget used
+# elsewhere in this repo for live CUBRID calls.
+RUN_TIMEOUT = 30
+
 TABLE_VIEWER = DASHBOARD_ROOT / "01_table_viewer.py"
 FILTERS = DASHBOARD_ROOT / "02_filters.py"
 KPIS = DASHBOARD_ROOT / "03_kpis.py"
@@ -31,7 +38,7 @@ KPIS = DASHBOARD_ROOT / "03_kpis.py"
 @pytest.mark.parametrize("recipe_path", RECIPE_PATHS, ids=RECIPE_IDS)
 def test_recipe_runs_without_exception(recipe_path: Path) -> None:
     at = AppTest.from_file(str(recipe_path))
-    at.run()
+    at.run(timeout=RUN_TIMEOUT)
 
     assert not at.exception, (
         f"{recipe_path.name} crashed with exception: "
@@ -42,7 +49,7 @@ def test_recipe_runs_without_exception(recipe_path: Path) -> None:
 def test_table_viewer_renders_seeded_rows() -> None:
     """01_table_viewer.py seeds demo data and renders it on first load."""
     at = AppTest.from_file(str(TABLE_VIEWER))
-    at.run()
+    at.run(timeout=RUN_TIMEOUT)
 
     assert not at.exception
     assert len(at.dataframe) == 1
@@ -54,7 +61,7 @@ def test_table_viewer_renders_seeded_rows() -> None:
 def test_kpi_metrics_are_non_empty() -> None:
     """03_kpis.py's four metric cards all render a populated value."""
     at = AppTest.from_file(str(KPIS))
-    at.run()
+    at.run(timeout=RUN_TIMEOUT)
 
     assert not at.exception
     metrics = at.metric
@@ -66,7 +73,7 @@ def test_kpi_metrics_are_non_empty() -> None:
 def test_filters_change_dataframe_shape() -> None:
     """02_filters.py's category filter narrows the rendered dataframe."""
     at = AppTest.from_file(str(FILTERS))
-    at.run()
+    at.run(timeout=RUN_TIMEOUT)
     assert not at.exception
 
     unfiltered_rows = len(at.dataframe[0].value)
@@ -74,7 +81,7 @@ def test_filters_change_dataframe_shape() -> None:
 
     category_select = at.sidebar.selectbox[0]
     narrower_category = next(c for c in category_select.options if c != "All")
-    at.sidebar.selectbox[0].set_value(narrower_category).run()
+    at.sidebar.selectbox[0].set_value(narrower_category).run(timeout=RUN_TIMEOUT)
 
     assert not at.exception
     filtered_rows = len(at.dataframe[0].value)
