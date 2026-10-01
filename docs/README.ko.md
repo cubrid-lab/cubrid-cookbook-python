@@ -59,7 +59,7 @@ Java JDBC → Python 마이그레이션을 실제 코드 나란히 비교로 제
 |--------|------|
 | [`api-service-fastapi/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/api-service-fastapi) | FastAPI + SQLAlchemy + Docker REST API (12개 레시피) |
 | [`flask/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/flask) | Flask + Flask-SQLAlchemy 패턴 (11개 레시피) |
-| [`django/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/django) | CUBRID 위의 최소 Django 앱 |
+| [`django/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/django) | Django 요청 처리 + 실DB로 검증한 SQLAlchemy/CUBRID 브리지 (네이티브 Django ORM 아님) |
 | [`async-worker/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/async-worker) | Celery 백그라운드 작업 처리 |
 | [`batch-etl/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/batch-etl) | Pandas 데이터 파이프라인 |
 | [`ai-agent/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/ai-agent) | AI 에이전트 상태 저장소 + MCP 도구 체인 + RAG 메타데이터 (실제 DB로 검증하는 스크립트 5개) |
