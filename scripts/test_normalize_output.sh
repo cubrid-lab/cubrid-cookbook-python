@@ -46,6 +46,9 @@ assert "peak memory ratio" \
 assert "datetime with microseconds (space sep)" \
   "  order_no=1000 created_at_utc=2026-08-26 11:03:13.052000 total=10" \
   "  order_no=1000 created_at_utc={{DATETIME}} total=10"
+assert "datetime on a whole second, zero-padded milliseconds (#189)" \
+  "  sku=SKU-100  name=Keyboard  last_seen_utc=2026-08-26 11:03:13.000" \
+  "  sku=SKU-100  name=Keyboard  last_seen_utc={{DATETIME}}"
 assert "bulk-insert perf: execute(insert, rows)" \
   "execute(insert, rows): 0.0664s" \
   "execute(insert, rows): {{TIME}}s"
@@ -87,6 +90,9 @@ assert "does not touch str outside dtypes columns" \
 assert "keeps non-01 dtype column unchanged (not column-anchored)" \
   "quantity            int64" \
   "quantity            int64"
+assert "keeps a bare whole-second time with no fractional part (meaningful, e.g. a fixed timezone-demo timestamp)" \
+  "  id=1 seoul-launch tz=2026-01-15 10:30:00+09:00" \
+  "  id=1 seoul-launch tz={{DATE}} 10:30:00+09:00"
 
 if [ "$fail_count" -ne 0 ]; then
   printf '\n%d check(s) failed\n' "$fail_count"
