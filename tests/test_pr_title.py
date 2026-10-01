@@ -129,6 +129,11 @@ class PrTitleValidatorTest(unittest.TestCase):
             "'type!: description', or 'type(scope)!: description'",
             result.stdout,
         )
+        self.assertIn(
+            "Format: type: description | type(scope): description | "
+            "type!: description | type(scope)!: description",
+            result.stdout,
+        )
 
     def test_workflow_is_unprivileged_and_stable(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
