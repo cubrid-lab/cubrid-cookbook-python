@@ -1,4 +1,4 @@
-fastapi==0.115.0
+fastapi==0.141.1
 uvicorn==0.30.6
 sqlalchemy==2.1.1
 sqlalchemy-cubrid>=1.0
