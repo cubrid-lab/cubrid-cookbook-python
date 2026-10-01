@@ -164,6 +164,24 @@ that owns an `expected/` folder has no matching `expected/<name>.expected`
 golden. To opt a script out, add it to `scripts/verify_exclusions.txt` with a
 reason — but prefer making the example deterministic and adding a golden.
 
+#### Dependency floors
+
+Every standalone example/template `requirements.txt` is installed on its own
+(`pip install -r requirements.txt` in that directory, per its README), so an
+unversioned `pycubrid`/`sqlalchemy-cubrid` line can silently resolve to a
+release far below anything this cookbook runs against. `SUPPORT_MATRIX.md`'s
+"Driver & Framework Versions" table is the single documented floor
+(`pycubrid>=1.6.1`, `sqlalchemy-cubrid>=1.0`); recipes that need more pin a
+higher floor only when SUPPORT_MATRIX.md explains why (the `[^async]`
+footnote's "advanced" SQLAlchemy recipes at `>=1.4.2`; `fundamentals/connect`,
+`fundamentals/orm-basics` and the full example apps under `templates/` at the
+`>=1.7,<2` line the drivers are actually published as; `fundamentals/pycubrid`
+at `>=1.8,<2` for errno-carrying batch errors and the CAS-session fix).
+`scripts/check_dependency_floors.py` (run by `make check`) fails on a bare
+driver requirement, a floor below its applicable minimum, or an undocumented
+custom floor — add it as a named exception in both the script and
+SUPPORT_MATRIX.md instead of pinning it ad hoc.
+
 #### Release smoke dependencies
 
 The smoke job selects `pycubrid` and `sqlalchemy-cubrid` from the package index,

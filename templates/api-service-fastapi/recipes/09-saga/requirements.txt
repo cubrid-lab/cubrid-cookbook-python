@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 sqlalchemy
-pycubrid
-sqlalchemy-cubrid
+pycubrid>=1.7,<2
+sqlalchemy-cubrid>=1.0
 httpx
 pytest
