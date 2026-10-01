@@ -5,4 +5,4 @@ sqlalchemy-cubrid
 pycubrid
 pydantic==2.9.2
 pytest==8.3.3
-httpx==0.27.2
+httpx==0.28.1
