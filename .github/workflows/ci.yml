@@ -92,12 +92,16 @@ jobs:
         -r templates/dashboard/requirements.txt
       # Recipes share top-level module names (database/models/app), so one
       # pytest process cross-imports them and collection fails; run each suite
-      # in its own process (as smoke-test.yml #141 does). This also gives the
-      # dashboard suite's own FK-safe teardown (cookbook_sales before
-      # cookbook_products, see templates/dashboard/tests/conftest.py) a clean
-      # process boundary before the Flask suite reuses the same table names
-      # (#142) — each suite starts and ends in its own process, never
-      # overlapping another suite's tables in time.
+      # in its own process (as smoke-test.yml #141 does). Flask runs first,
+      # then FastAPI, then the dashboard suite last (#142): the dashboard
+      # suite shares cookbook_products/cookbook_sales with the Flask suite,
+      # and its own conftest.py (templates/dashboard/tests/conftest.py) drops
+      # both tables in FK-safe order at the end of its session, so running it
+      # last never leaves a leftover cookbook_sales for the Flask suite's
+      # teardown to trip over on a later run. The Flask suite's own
+      # conftest.py also now defensively drops any leftover cookbook_sales
+      # before its own teardown, so this is a belt-and-suspenders ordering,
+      # not the only thing preventing the errno=-923 FK failure #142 fixed.
       test-command: >-
         for suite in
         templates/flask/01-basic-crud/tests

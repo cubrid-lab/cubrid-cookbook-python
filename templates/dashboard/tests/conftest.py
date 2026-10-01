@@ -16,7 +16,12 @@ standalone, copy-and-run single file — this module injects a SQLAlchemy
 ``before_cursor_execute`` hook that strips the keyword for SQLite
 connections only. A live CUBRID run is never touched by the hook, so this is
 the suite's injectable DB layer: only the connection target and dialect
-change, never the recipe source.
+change, never the recipe source. The hook is registered on SQLAlchemy's
+``Engine`` class (the only way to intercept engines the recipes create
+themselves via their own cached ``get_engine()``), but only for the
+lifetime of this test session: ``_dashboard_schema_lifecycle`` below adds it
+before the session's tests run and removes it again afterward, so it never
+affects any other test module sharing this process.
 """
 
 from __future__ import annotations
@@ -36,14 +41,15 @@ CUBRID_TEST_URL = os.getenv("CUBRID_TEST_URL")
 _AUTO_INCREMENT_RE = re.compile(r"\bAUTO_INCREMENT\b", re.IGNORECASE)
 
 
-@event.listens_for(Engine, "before_cursor_execute", retval=True)
 def _drop_auto_increment_for_sqlite(conn, cursor, statement, parameters, context, executemany):
     """Make the recipes' CUBRID/MySQL-style DDL runnable on SQLite.
 
     SQLite's ``INTEGER PRIMARY KEY`` already autoincrements and rejects the
     ``AUTO_INCREMENT`` keyword outright, so this strips it from any
     statement sent to a SQLite connection. Every other dialect (including a
-    live CUBRID run) is passed through unmodified.
+    live CUBRID run) is passed through unmodified. Registered and removed by
+    ``_dashboard_schema_lifecycle``, not at import time — see the module
+    docstring.
     """
     if conn.engine.dialect.name == "sqlite" and _AUTO_INCREMENT_RE.search(statement):
         statement = _AUTO_INCREMENT_RE.sub("", statement)
@@ -90,7 +96,9 @@ def _dashboard_schema_lifecycle(dashboard_database_url: str):
     Tables are dropped in FK-safe order (``cookbook_sales`` before its parent
     ``cookbook_products``) both before and after the session, so an
     interrupted previous run or a shared live CUBRID database is left clean
-    for the suite and for whatever runs against the same database next.
+    for the suite and for whatever runs against the same database next. Also
+    registers and removes the SQLite ``AUTO_INCREMENT`` hook (see the module
+    docstring) so it is active only while this session's tests run.
     """
     engine = create_engine(dashboard_database_url)
 
@@ -99,9 +107,11 @@ def _dashboard_schema_lifecycle(dashboard_database_url: str):
             connection.execute(text("DROP TABLE IF EXISTS cookbook_sales"))
             connection.execute(text("DROP TABLE IF EXISTS cookbook_products"))
 
+    event.listen(Engine, "before_cursor_execute", _drop_auto_increment_for_sqlite, retval=True)
     try:
         _drop_all()
         yield
     finally:
         _drop_all()
         engine.dispose()
+        event.remove(Engine, "before_cursor_execute", _drop_auto_increment_for_sqlite)

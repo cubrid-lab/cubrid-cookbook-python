@@ -494,11 +494,16 @@ jobs:
         # CUBRID" header.
         #
         # The dashboard suite shares table names (cookbook_products,
-        # cookbook_sales) with the Flask suite and leaves a foreign key behind
-        # that blocks Flask's own cookbook_products teardown if the two
-        # overlap in time (#142); its own conftest.py drops both tables in
-        # FK-safe order at the end of its pytest session, so it runs last —
-        # after it exits, the shared schema is clean for whatever runs next.
+        # cookbook_sales) with the Flask 01-basic-crud and 07-vendor-feed
+        # suites and leaves a foreign key behind that blocks their own
+        # cookbook_products teardown if the two overlap in time (#142); its
+        # own conftest.py drops both tables in FK-safe order at the end of
+        # its pytest session, so it runs last — after it exits, the shared
+        # schema is clean for whatever runs next. The Flask suites' own
+        # conftest.py also now defensively drops any leftover
+        # cookbook_sales before their own teardown, so this ordering is
+        # belt-and-suspenders, not the only thing preventing the
+        # errno=-923 FK failure #142 fixed.
         timeout-minutes: 15
         env:
           CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb

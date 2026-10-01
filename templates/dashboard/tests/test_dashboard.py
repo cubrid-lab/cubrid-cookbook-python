@@ -71,13 +71,17 @@ def test_kpi_metrics_are_non_empty() -> None:
 
 
 def test_filters_change_dataframe_shape() -> None:
-    """02_filters.py's category filter narrows the rendered dataframe."""
+    """02_filters.py's category filter narrows the rendered dataframe.
+
+    The default view is not unfiltered: the sidebar price slider already
+    defaults to a 0-500 USD range, so this only narrows further by category.
+    """
     at = AppTest.from_file(str(FILTERS))
     at.run(timeout=RUN_TIMEOUT)
     assert not at.exception
 
-    unfiltered_rows = len(at.dataframe[0].value)
-    assert unfiltered_rows > 0
+    default_view_rows = len(at.dataframe[0].value)
+    assert default_view_rows > 0
 
     category_select = at.sidebar.selectbox[0]
     narrower_category = next(c for c in category_select.options if c != "All")
@@ -85,5 +89,5 @@ def test_filters_change_dataframe_shape() -> None:
 
     assert not at.exception
     filtered_rows = len(at.dataframe[0].value)
-    assert filtered_rows != unfiltered_rows
-    assert filtered_rows < unfiltered_rows
+    assert filtered_rows != default_view_rows
+    assert filtered_rows < default_view_rows
