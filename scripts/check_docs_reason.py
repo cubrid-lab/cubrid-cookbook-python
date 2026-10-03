@@ -103,6 +103,32 @@ def _empty_caption(raw: str, visible: str | None = None) -> bool:
     return caption is not None and not _reason_text(unescape(caption[1]))
 
 
+def _empty_emphasis(raw_segment: str, text_segment: str) -> bool:
+    """True when a whole-segment emphasis wrapper (``**...**``, ``_..._``, ...)
+    surrounds otherwise-empty content, e.g. a caption reading only
+    ``**<!-- empty -->**`` (#429): the delimiters alone are not visible
+    explanatory text.
+    """
+    wrapper = re.fullmatch(r"(\*{1,3}|_{1,3})(.+)\1", raw_segment.strip())
+    if wrapper is None:
+        return False
+    inner = wrapper[2]
+    if (
+        inner[0].isspace()
+        or inner[-1].isspace()
+        or inner[0] == wrapper[1][0]
+        or inner[-1] == wrapper[1][0]
+    ):
+        return False
+    closing_escape = re.search(r"\\+$", inner)
+    if closing_escape and len(closing_escape[0]) % 2:
+        return False
+    leading = len(raw_segment) - len(raw_segment.lstrip())
+    return not _reason_text(
+        unescape(text_segment[leading + wrapper.start(2) : leading + wrapper.end(2)])
+    )
+
+
 def _empty_composition(text: str, raw: str, origin: int, spans: list[tuple[int, int]]) -> bool:
     while True:
         reduced = list(text)
@@ -110,8 +136,11 @@ def _empty_composition(text: str, raw: str, origin: int, spans: list[tuple[int, 
         for token in _CAPTION_ONLY.finditer(text):
             start, end = origin + token.start(), origin + token.end()
             escaped = re.search(r"\\+$", text[: token.start()])
+            populated = _reason_text(unescape(token[1])) and not _empty_emphasis(
+                raw[token.start(1) : token.end(1)], token[1]
+            )
             if (
-                _reason_text(unescape(token[1]))
+                populated
                 or (escaped and len(escaped[0]) % 2)
                 or any(left < end and start < right for left, right in spans)
             ):
@@ -121,25 +150,9 @@ def _empty_composition(text: str, raw: str, origin: int, spans: list[tuple[int, 
         if not changed:
             if not _reason_text(unescape(text)):
                 return True
-            wrapper = re.fullmatch(r"(\*{1,3}|_{1,3})(.+)\1", raw.strip())
-            if wrapper:
-                inner = wrapper[2]
-                leading = len(raw) - len(raw.lstrip())
-                closing_escape = re.search(r"\\+$", inner)
-                if (
-                    not inner[0].isspace()
-                    and not inner[-1].isspace()
-                    and inner[0] != wrapper[1][0]
-                    and inner[-1] != wrapper[1][0]
-                    and not (closing_escape and len(closing_escape[0]) % 2)
-                    and not any(
-                        left < origin + len(raw) and origin < right for left, right in spans
-                    )
-                ):
-                    return not _reason_text(
-                        unescape(text[leading + wrapper.start(2) : leading + wrapper.end(2)])
-                    )
-            return False
+            if any(left < origin + len(raw) and origin < right for left, right in spans):
+                return False
+            return _empty_emphasis(raw, text)
         text = "".join(reduced)
 
 

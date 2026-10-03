@@ -509,7 +509,10 @@ Use a standalone physical source line outside quoted/commented/code examples.
 A blank line or quoted blank line can end a preceding Markdown quote; ordinary
 prose before or after the reason does not require a blank paragraph separator.
 The docs gate rejects blank reasons, the literal `<reason>` placeholder, and
-markers shown only in quotes, comments, or fenced examples. The existing
+markers shown only in quotes, comments, or fenced examples. The explanation
+must contain visible text: empty emphasized link captions such as
+`[**<!-- empty -->**](/issue)` or `[**![](/img)**](/issue)` do not supply a reason,
+while `[**tests only**](/issue)` does. The existing
 `docs-not-needed` label remains a maintainer-managed exception for this gate.
 
 If you need translation help, name the missing language and reason in the PR.
