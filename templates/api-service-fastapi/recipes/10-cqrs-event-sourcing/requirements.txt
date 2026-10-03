@@ -3,6 +3,6 @@ uvicorn==0.30.6
 sqlalchemy==2.1.1
 sqlalchemy-cubrid>=1.0
 pycubrid>=1.7,<2
-pydantic==2.9.2
+pydantic==2.13.5
 pytest==9.1.1
 httpx==0.28.1
