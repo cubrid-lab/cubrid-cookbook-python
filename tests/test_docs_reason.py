@@ -796,6 +796,24 @@ class DocsReasonWorkflowTests(unittest.TestCase):
         )
         self.assertTrue(has_docs_not_needed_reason("Docs: not needed - tests only <!-- note -->"))
 
+    def test_known_docs_reason_helper_limitations(self) -> None:
+        """Preserve the four case families reviewed in pycubrid#429/#573."""
+        from scripts.check_docs_reason import has_docs_not_needed_reason
+
+        cases = (
+            (True, "`unmatched\n<div>\nDocs: not needed - tests only\n</div>\nlast `"),
+            (False, "Docs: not needed - [<!--[-->](/issue)"),
+            (False, 'Docs: not needed - [<span title="["></span>](/issue)'),
+            (False, "Docs: not needed - []() []()"),
+            (False, "Docs: not needed - [![](/img)](/issue)"),
+            (False, "Docs: not needed - [**<!-- empty -->**](/issue)"),
+            (False, "Docs: not needed - [**![](/img)**](/issue)"),
+            (True, "Docs: not needed - [**tests only**](/issue)"),
+        )
+        for expected, body in cases:
+            with self.subTest(body=body):
+                self.assertEqual(has_docs_not_needed_reason(body), expected)
+
     def test_event_json_exemptions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
