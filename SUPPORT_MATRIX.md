@@ -96,6 +96,14 @@ requested/installed versions, origin, verification commit, actual server version
 when available, and result even on failed runs. See
 [Release smoke dependencies](CONTRIBUTING.md#release-smoke-dependencies).
 
+FastAPI recipe `templates/api-service-fastapi/recipes/10-cqrs-event-sourcing`
+also has dedicated, required Python 3.12 jobs on live CUBRID **11.2 and 11.4**
+in `ci.yml`. They install its own `requirements.txt`, run `pip check`, record
+installed versions with `pip freeze`, and execute its seven existing pytest
+tests with `CUBRID_TEST_URL` set. This validates that recipe's pinned framework
+versions; the driver ranges still resolve normally. The broad non-PR smoke
+suites use a shared dependency list and may install different framework versions.
+
 ## Recipe Coverage
 
 The table below is the source of truth for recipe counts;

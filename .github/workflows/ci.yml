@@ -161,6 +161,27 @@ jobs:
         python fundamentals/pycubrid/01_connect.py | bash scripts/normalize_output.sh | diff -u fundamentals/pycubrid/expected/01_connect.expected -
         python fundamentals/sqlalchemy/01_connect_and_session.py | bash scripts/normalize_output.sh | diff -u fundamentals/sqlalchemy/expected/01_connect_and_session.expected -
 
+  # Recipe 10 has independent pins that broad latest-package smoke cannot validate.
+  cqrs-pinned-pytest:
+    name: CQRS pinned requirements (CUBRID ${{ matrix.cubrid }})
+    strategy:
+      fail-fast: false
+      matrix:
+        cubrid: ["11.2", "11.4"]
+    uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
+    with:
+      cubrid-version: ${{ matrix.cubrid }}
+      python-version: "3.12"
+      cubrid-test-url: "cubrid+pycubrid://dba@localhost:33000/testdb"
+      setup-command: >-
+        python -m pip install --upgrade pip &&
+        python -m pip install -r templates/api-service-fastapi/recipes/10-cqrs-event-sourcing/requirements.txt
+      test-command: |
+        set -euo pipefail
+        python -m pip check
+        python -m pip freeze
+        python -m pytest templates/api-service-fastapi/recipes/10-cqrs-event-sourcing/tests -v --tb=short
+
   # Single aggregate check for branch protection, mirroring pycubrid's gate.
   # None of the jobs above is path-gated or conditional (they all run on every
   # PR, docs-only included), so anything other than `success` -- failure,
@@ -168,7 +189,7 @@ jobs:
   ci-gate:
     name: CI Gate (all checks must pass)
     if: always()
-    needs: [lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest, async-worker-pytest, django-bridge-pytest, python-compatibility]
+    needs: [lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest, async-worker-pytest, django-bridge-pytest, python-compatibility, cqrs-pinned-pytest]
     runs-on: ubuntu-latest
     permissions: {}
     steps:
@@ -184,10 +205,11 @@ jobs:
           R_ASYNC_WORKER_PYTEST: ${{ needs.async-worker-pytest.result }}
           R_DJANGO_BRIDGE_PYTEST: ${{ needs.django-bridge-pytest.result }}
           R_PYTHON_COMPATIBILITY: ${{ needs.python-compatibility.result }}
+          R_CQRS_PINNED_PYTEST: ${{ needs.cqrs-pinned-pytest.result }}
         run: |
           set -euo pipefail
           fail=0
-          for var in R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOCS_SITE R_DOC_LINT R_PYTEST_SUITES R_DASHBOARD_PYTEST R_ASYNC_WORKER_PYTEST R_DJANGO_BRIDGE_PYTEST R_PYTHON_COMPATIBILITY; do
+          for var in R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOCS_SITE R_DOC_LINT R_PYTEST_SUITES R_DASHBOARD_PYTEST R_ASYNC_WORKER_PYTEST R_DJANGO_BRIDGE_PYTEST R_PYTHON_COMPATIBILITY R_CQRS_PINNED_PYTEST; do
             if [[ "${!var}" != "success" ]]; then
               echo "::error::Required job ${var#R_} result: ${!var}"
               fail=1
