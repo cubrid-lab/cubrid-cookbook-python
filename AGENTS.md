@@ -70,6 +70,22 @@ Skipping any phase requires explicit justification. Trivial changes (typos, sing
   routine updates, per-finding progress replies and repeated review requests.
   Preserve contributor history; revisit external PRs only after an author-updated head SHA.
 
+## Issue specification and ownership
+
+- An issue body is the current work specification, not a session transcript. Keep
+  it current; put dated progress, pause and review outcomes in comments, and
+  preserve historical evidence together with its limits.
+- For non-trivial work capture the applicable fields: problem/impact, evidence with
+  revision/environment, reproduction or investigation question, expected behavior,
+  scope and non-goals, relevant files, completion criteria, validation and actual
+  dependencies. Small docs/example tasks use only the fields that apply.
+- GitHub Assignees are the source of truth for implementation ownership. Set the
+  actual implementer in Assignees before implementation starts; comments or claim
+  messages alone do not replace assignment. Agree and record a handoff before
+  changing ownership, and unassign when returning unfinished work.
+- Before closing, preserve contributor evidence and open PRs, and recheck stale
+  dependency/checklist state.
+
 ## Validation
 
 - `make check` from the repository root (offline contributor checks)
@@ -115,9 +131,9 @@ create it with the exact name above before filing the issue. This policy governs
 new issue creation, not bulk renaming or relabeling existing issues unless
 explicitly requested.
 
-Maintainers/triagers own label assignment and creation in the authorized filing
-or triage workflow. Reporters describe urgency and scope without needing GitHub
-label permissions; agents filing for maintainers retain the canonical rules.
+Maintainers/triagers own label policy and assignment. An authorized agent filing
+or triaging on a maintainer's behalf may apply the canonical labels above. Outside
+reporters describe urgency and scope without needing GitHub label permissions.
 
 Priority reflects urgency and impact; size estimates implementation effort and
 helps contributors pick appropriately scoped work.
@@ -147,7 +163,9 @@ Rules:
 - A PR is opened for it: remove `good first issue`, add `status: in progress`.
 - PR merged: the issue closes.
 - PR closed without merging: first check that no other open PR still addresses the issue. Only if none remains, remove `status: in progress` and restore `good first issue`; otherwise keep it in progress.
-- Keep 3–5 genuinely unclaimed good first issues per repository; a good first issue should have a small blast radius and an existing pattern or reference PR to follow, not just a small diff.
+- Keep at least 3 genuinely unclaimed good first issues per repository; a good first issue should have a small blast radius and an existing pattern or reference PR to follow, not just a small diff.
+- Do not implement a `good first issue` unless a maintainer explicitly authorizes that **specific issue**; broad backlog, review or release instructions are not permission.
+- Release/blocker handoff of a good first issue requires explicit maintainer action after checking assignees, comments and open PRs.
 
 ## Documentation definition of done
 
