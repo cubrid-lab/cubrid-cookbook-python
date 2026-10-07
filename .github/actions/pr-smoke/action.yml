@@ -39,7 +39,8 @@ runs:
       run: |
         set -euo pipefail
         # Pull requests select the latest published releases (no release request).
-        python scripts/release_smoke.py select \
+        # Composite steps cannot set timeout-minutes; bound the PyPI lookup here.
+        timeout 10m python scripts/release_smoke.py select \
           --constraints "$RUNNER_TEMP/release-constraints.txt"
         python scripts/release_smoke.py freeze \
           --state "$RUNNER_TEMP/release-drivers.json" \
@@ -117,8 +118,8 @@ runs:
       run: |
         set -euo pipefail
         # Repeat to catch stale fixed demonstration keys and incomplete teardown.
-        python -m pytest tests/test_ai_agent.py -v --tb=short
-        python -m pytest tests/test_ai_agent.py -v --tb=short
+        timeout 5m python -m pytest tests/test_ai_agent.py -v --tb=short
+        timeout 5m python -m pytest tests/test_ai_agent.py -v --tb=short
 
     - name: Run make verify
       shell: bash

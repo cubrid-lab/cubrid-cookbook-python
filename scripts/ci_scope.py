@@ -93,13 +93,19 @@ FAMILIES = (
 )
 # AI-agent examples run inside the smoke lane (no expected/ goldens).
 AI_AGENT = ("templates/ai-agent/*", "tests/test_ai_agent.py")
-# Example trees whose files outside a golden root have no live consumer.
+# Example directories with no live consumer (no goldens, no live suite); the
+# offline checks cover them. Other files in example trees outside a golden root
+# (e.g. a shared helper) fail closed to a full 11.4 verify.
+NO_LIVE_CONSUMER = (
+    "performance/*",
+    "quickstart/5min-fastapi/*",
+    "fundamentals/parameterized-queries/*",
+)
 EXAMPLE_TREES = (
     "fundamentals/*",
     "migration/*",
     "pitfalls/*",
     "quickstart/*",
-    "performance/*",
     "templates/batch-etl/*",
 )
 # Offline tooling and metadata covered by the always-on cheap checks.
@@ -111,8 +117,8 @@ TOOLING = (
     ".gitignore",
     "pyproject.toml",
 )
-# Extra paths that only affect the strict MkDocs build.
-DOCS_SITE = DOCS + ("scripts/stage_docs.py", "scripts/stage_docs.sh")
+# Extra paths that affect the strict MkDocs build (`make docs`).
+DOCS_SITE = DOCS + ("scripts/stage_docs.py", "scripts/stage_docs.sh", "Makefile")
 
 # Same allowlist the former smoke-test.yml PR scoping used: no spaces or shell
 # metacharacters reach $GITHUB_OUTPUT, make or find.
@@ -194,8 +200,11 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
                 cqrs_dual = True
         elif _match(path, AI_AGENT):
             lanes["smoke_114"] = full_verify = True
-        elif root is not None or _match(path, COMPAT + EXAMPLE_TREES + TOOLING):
+        elif root is not None or _match(path, COMPAT + NO_LIVE_CONSUMER + TOOLING):
             pass
+        elif _match(path, EXAMPLE_TREES):
+            # Outside every golden root, e.g. a helper goldens may import.
+            lanes["smoke_114"] = full_verify = True
         else:
             # Unknown path: every PR lane on the representative versions.
             for name in ("web", "dashboard", "async_worker", "django", "cqrs", "smoke_114"):
@@ -205,7 +214,7 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
     if broad or full:
         lanes = dict.fromkeys(lanes, True)
         cqrs_dual = smoke_112 = full_verify = True
-    if full:
+    if broad or full:
         docs_site = True
 
     if full:

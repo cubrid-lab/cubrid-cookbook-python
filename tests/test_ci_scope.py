@@ -105,8 +105,19 @@ class ClassifierTests(unittest.TestCase):
                 self.assertEqual(result["verify_paths"], ".")
 
     def test_example_files_without_live_consumer_stay_offline(self) -> None:
-        result = scope("performance/bulk-insert/bench.py", "quickstart/5min-fastapi/main.py")
+        result = scope(
+            "performance/bulk-insert/bench.py",
+            "quickstart/5min-fastapi/main.py",
+            "fundamentals/parameterized-queries/04_parameterized.py",
+        )
         self.assertEqual(selected(result), set())
+
+    def test_example_tree_file_outside_golden_roots_fails_closed(self) -> None:
+        for path in ("pitfalls/_common.py", "fundamentals/shared.py", "migration/x/helper.py"):
+            with self.subTest(path=path):
+                result = scope(path)
+                self.assertEqual(selected(result), {"smoke_114"})
+                self.assertEqual(result["verify_paths"], ".")
 
     def test_grouped_dependabot_recipe_bump_selects_only_touched_suites(self) -> None:
         flask = [f"templates/flask/{n:02d}-x/requirements.txt" for n in range(1, 12)]
@@ -134,6 +145,7 @@ class ClassifierTests(unittest.TestCase):
                 self.assertEqual(result["cqrs_cubrid"], ["11.2", "11.4"])
                 self.assertEqual(result["python"], ["3.11", "3.14"])
                 self.assertEqual(result["verify_paths"], ".")
+                self.assertTrue(result["docs_site"])
 
     def test_ci_policy_change_runs_every_lane(self) -> None:
         for path in ci_scope.SELF[:1] + (

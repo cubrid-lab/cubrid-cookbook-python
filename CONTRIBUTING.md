@@ -108,18 +108,22 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 | Tier | When | What runs |
 |------|------|-----------|
 | 1 — cheap checks | every pull request | Ruff, `make check`, docs-sync, doc-lint, classification and the gate; the strict docs-site build when docs change |
-| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → representative suites; dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples or AI-agent code → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples |
-| 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with full `make verify`, Python 3.11 + 3.14 compatibility |
+| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → representative suites; dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples; AI-agent code or other files in example trees → the same lane with a full `make verify` |
+| 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with full `make verify`, Python 3.11 + 3.14 compatibility, the docs-site build |
 | 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
 | 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | every golden plus all Flask/FastAPI, async-worker, Django and dashboard suites on CUBRID 11.2 + 11.4 |
 
 - Docs-only pull requests (`*.md`, `docs/`, `mkdocs.yml`, …) start no live CUBRID.
-  Unknown paths fail closed to every pull-request lane on 11.4.
+  Unknown paths fail closed to every recipe family lane and the 11.4 smoke lane
+  with a full `make verify`.
 - CUBRID 11.2 runs on a pull request only for version-sensitive changes:
   `smoke-test.yml`, `scripts/release_smoke.py`, `scripts/mcp_smoke.py`, the
   fan-out paths, or recipe 10's `requirements.txt` (CQRS job only).
-- Example files with no live consumer (for example `performance/`, the FastAPI
-  quickstart) are covered by the offline checks only, on every event.
+- Example directories with no live consumer (`performance/`, the FastAPI
+  quickstart, `fundamentals/parameterized-queries`) are covered by the offline
+  checks only, on every event.
+- The Flask/FastAPI lane runs the representative `01-basic-crud` suites, not the
+  touched recipe's own suite (unchanged; tracked in #227).
 - `smoke-test.yml` does not run on pull requests, so no pull request repeats the
   broad 11.2/11.4 matrix. Its exact release verification inputs, outputs and
   fail-closed reporting are unchanged. To test a change to it before merging, run
