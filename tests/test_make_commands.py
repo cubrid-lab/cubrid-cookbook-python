@@ -146,7 +146,7 @@ class OfflineWorkflowTests(unittest.TestCase):
         compatibility = workflow.split("  python-compatibility:\n", 1)[1].split(
             "  # Single aggregate check", 1
         )[0]
-        self.assertIn('python: ["3.10", "3.11", "3.12", "3.13", "3.14"]', compatibility)
+        self.assertIn('python: ["3.11", "3.12", "3.13", "3.14"]', compatibility)
         self.assertIn('cubrid-version: "11.4"', compatibility)
         self.assertIn("python-version: ${{ matrix.python }}", compatibility)
         for recipe in (

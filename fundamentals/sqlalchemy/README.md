@@ -9,7 +9,7 @@ Connection used by all recipes:
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - CUBRID running on `localhost:33000` (`testdb`, user `dba`)
 
 From repository root:

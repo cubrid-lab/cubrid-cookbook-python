@@ -19,7 +19,7 @@ Celery requires Redis (or RabbitMQ). CUBRID is used for business data, not as Ce
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - Redis running on `localhost:6379`
 - CUBRID running on `localhost:33000` with database `testdb`
 

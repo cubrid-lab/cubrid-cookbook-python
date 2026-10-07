@@ -8,7 +8,7 @@ Complete, runnable Flask project that demonstrates Product CRUD with CUBRID usin
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.11+
 - CUBRID running on `localhost:33000`
 - Database `testdb` available
 

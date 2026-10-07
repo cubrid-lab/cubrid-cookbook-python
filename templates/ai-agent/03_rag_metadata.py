@@ -66,7 +66,7 @@ SAMPLE_DOCS = [
         "source": "https://github.com/cubrid-lab/pycubrid",
         "content": "pycubrid is a pure Python DB-API 2.0 driver for CUBRID. "
         "It supports sync and async connections, LOB handling, "
-        "parameterized queries, and works on Python 3.10+.",
+        "parameterized queries, and works on Python 3.11+.",
         "tags": ["driver", "python", "getting-started"],
         "metadata": {"author": "cubrid-lab", "type": "documentation", "version": "1.7"},
     },

@@ -450,7 +450,7 @@ is built from the repository docs; the repository files stay the source of truth
 This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting.
 
 - **Line length**: 100 characters
-- **Target Python**: 3.10+
+- **Target Python**: 3.11+
 - **Formatter**: `ruff format`
 - **Linter**: `ruff check`
 

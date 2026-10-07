@@ -11,7 +11,7 @@ Run both services in Docker:
 docker compose up -d --build
 ```
 
-Alternatively, run the API on your host with Python 3.10+:
+Alternatively, run the API on your host with Python 3.11+:
 
 ```bash
 docker compose up -d --wait cubrid

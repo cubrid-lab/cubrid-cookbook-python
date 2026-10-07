@@ -7,7 +7,7 @@ The CUBRID Python Cookbook provides runnable code examples for Python developers
 Key facts:
 - Connection: `localhost:33000`, database `testdb`, user `dba`, no password
 - Docker: `docker compose up -d` starts CUBRID 11.2
-- Python 3.10+ required (`from __future__ import annotations` patterns throughout)
+- Python 3.11+ required (`from __future__ import annotations` patterns throughout)
 - All table names prefixed with `cookbook_` to avoid conflicts
 - Parameterized queries only (`?` placeholders) — never string interpolation
 - Reserved words such as `key`, `value`, `count`, `data`, `date` and `day` fail as unquoted column names; rename them (`setting_key`, `val`, `cnt`) or quote them with double quotes, square brackets or backticks. `name` is not reserved. Official list: https://www.cubrid.org/manual/en/11.2/sql/keyword.html

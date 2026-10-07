@@ -13,7 +13,7 @@ Direct database access using the [pycubrid](https://github.com/cubrid-lab/pycubr
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - CUBRID running on `localhost:33000` with database `testdb`
 
 The root project Docker Compose provides CUBRID. Start from the repository root:
