@@ -10,7 +10,7 @@ UP_PROBE_TIMEOUT ?= 5
 UP_INTERVAL ?= 2
 
 # Search roots for `make verify`. Defaults to the whole tree; CI narrows this to
-# only the changed example directories on pull requests (see smoke-test.yml).
+# only the changed example directories on pull requests (see scripts/ci_scope.py).
 VERIFY_PATHS ?= .
 
 help: ## Show this help
@@ -91,6 +91,7 @@ test-offline: ## Run mocked/offline suites in separate processes (no database re
 	$(PYTHON) -m unittest discover -s tests -p 'test_dependency_floors.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_dependabot_config.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_pr_title.py' -v
+	$(PYTHON) -m unittest discover -s tests -p 'test_ci_scope.py' -v
 
 check-docs: ## Check documentation coverage and its doctests
 	$(PYTHON) -m doctest scripts/check_docs_reason.py -v

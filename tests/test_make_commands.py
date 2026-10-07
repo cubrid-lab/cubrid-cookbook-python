@@ -141,12 +141,14 @@ class VerifyCommandTests(unittest.TestCase):
 
 
 class OfflineWorkflowTests(unittest.TestCase):
-    def test_python_compatibility_is_a_small_required_live_matrix(self) -> None:
+    def test_python_compatibility_is_a_small_classified_live_matrix(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         compatibility = workflow.split("  python-compatibility:\n", 1)[1].split(
-            "  # Single aggregate check", 1
+            "  # Recipe 10 has independent pins", 1
         )[0]
-        self.assertIn('python: ["3.11", "3.12", "3.13", "3.14"]', compatibility)
+        # The Python list (3.11-3.14 on broad events) comes from scripts/ci_scope.py.
+        self.assertIn("python: ${{ fromJSON(needs.classify.outputs.python) }}", compatibility)
+        self.assertIn("if: needs.classify.outputs.compat == 'true'", compatibility)
         self.assertIn('cubrid-version: "11.4"', compatibility)
         self.assertIn("python-version: ${{ matrix.python }}", compatibility)
         for recipe in (
@@ -178,6 +180,7 @@ class OfflineWorkflowTests(unittest.TestCase):
         for result in ("success", "failure", "cancelled", "skipped"):
             with self.subTest(result=result):
                 env = {**os.environ, **dict.fromkeys(names, "success")}
+                env["W_PYTHON_COMPATIBILITY"] = "true"
                 env["R_PYTHON_COMPATIBILITY"] = result
                 check = subprocess.run(
                     ["bash", "-c", script], env=env, capture_output=True, text=True, timeout=5

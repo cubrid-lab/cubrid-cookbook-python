@@ -2,30 +2,31 @@
 
 Tested combinations of CUBRID server, Python version, and driver/framework.
 
-> **What "tested" means here**: CI runs `make verify` on **CUBRID 11.2 and 11.4 / Python
-> 3.12** (job matrix), comparing stdout against every recipe that ships a golden
-> (`expected/*.expected`; counts in [Recipe Coverage](#recipe-coverage)); a pull request
-> that touches only examples checks just those examples. On pushes to `main`, the nightly schedule and manual
-> runs, the same matrix job runs the **Flask and FastAPI pytest suites** on its
-> original CUBRID container, then stops it and runs the **Streamlit dashboard
-> pytest suite** on a separate, disposable CUBRID container of the same
-> version. Every pull request runs representative Flask/FastAPI and dashboard
-> suites in separate live CUBRID 11.4 jobs (`ci.yml`). The async-worker's
-> database tasks run after `make verify` on the non-PR 11.2/11.4 matrix and
-> in their own required live CUBRID 11.4 pull-request job. The **Django
-> SQLAlchemy bridge** likewise has a separate required 11.4 pull-request job
-> and runs after the colliding examples in the non-PR 11.2/11.4 matrix.
+> **What "tested" / "CI-verified" means here**: evidence comes from a specific CI
+> tier and event, not from every pull request (see
+> [CI tiers](CONTRIBUTING.md#ci-tiers)). On every push to `main`, the nightly
+> schedule and manual runs, `smoke-test.yml` runs `make verify` on **CUBRID 11.2
+> and 11.4 / Python 3.12**, comparing stdout against every recipe that ships a
+> golden (`expected/*.expected`; counts in [Recipe Coverage](#recipe-coverage)),
+> then the **Flask and FastAPI pytest suites**, the async-worker database tasks
+> and the **Django SQLAlchemy bridge** on the same container, and finally the
+> **Streamlit dashboard pytest suite** on a separate, disposable CUBRID
+> container of the same version. Pull requests run only the live lanes their
+> changed paths select (`scripts/ci_scope.py`), on CUBRID 11.4 / Python 3.12:
+> the touched golden examples, the touched recipe family's suite, and CUBRID
+> 11.2 or Python endpoints only for version-sensitive or shared-infrastructure
+> changes. A docs-only pull request starts no live CUBRID.
 
 ## CUBRID Server Versions
 
 | CUBRID | Status | Notes |
 |--------|--------|-------|
-| **11.2** | ✅ CI-verified | Primary CI target — every golden-backed example output checked by `make verify` (example-only pull requests check just the changed examples) |
-| **11.4** | ✅ CI-verified | Same CAS protocol as 11.2; runs in the smoke-test job matrix (`make verify` goldens, plus isolated Flask/FastAPI and dashboard pytest suites on non-PR runs) |
+| **11.2** | ✅ CI-verified | Every golden-backed example and the recipe pytest suites on `main` pushes, the nightly schedule and release verification; pull requests only for version-sensitive or shared-infrastructure changes |
+| **11.4** | ✅ CI-verified | Same CAS protocol as 11.2; the same broad `main`/nightly/release evidence, plus the representative version for path-selected pull-request lanes |
 | 11.0 | ⚠️ Untested | Should work (same CAS protocol) |
 | 10.2 | ⚠️ Untested | Should work (same CAS protocol) |
-> **Scope note**: CI exercises CUBRID **11.2 and 11.4** (smoke-test job matrix) with
-> Python **3.12**. Older versions (10.2, 11.0) share the same CAS protocol and should
+> **Scope note**: CI exercises CUBRID **11.2 and 11.4** (smoke-test job matrix on
+> `main`, nightly and release verification) with Python **3.12**. Older versions (10.2, 11.0) share the same CAS protocol and should
 > work but are **not exercised in CI**. The drivers (`pycubrid`,
 > `sqlalchemy-cubrid`) themselves run the full 10.2–11.4 matrix in their own
 > repositories.
@@ -36,19 +37,22 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 |--------|--------|
 | **3.14** | CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 |
 | **3.13** | CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 |
-| **3.12** | Full smoke matrix default; also in the representative compatibility matrix |
+| **3.12** | Full smoke matrix default and the representative pull-request Python; also in the compatibility matrix |
 | **3.11** | Minimum; CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 |
 | 3.10 | ❌ Not supported by the current cookbook (upstream end of life 2026-10-01); use an older cookbook/driver combination or upgrade Python |
 | 3.9 | ❌ Not supported |
 
-The required `ci.yml` compatibility matrix covers Python 3.11–3.14 with
+The `ci.yml` compatibility matrix covers Python 3.11–3.14 with
 `fundamentals/pycubrid/01_connect.py` and
 `fundamentals/sqlalchemy/01_connect_and_session.py` on separate CUBRID 11.4
-jobs. Each runs real read-only queries, compares normalized output with its
+jobs on every push to `main`, the weekly schedule and manual runs. Pull
+requests run the 3.11 and 3.14 endpoints only when they change those two
+fundamentals, shared live infrastructure or the CI policy; other pull requests
+rely on the Python 3.12 their selected live lanes use. Each runs real read-only queries, compares normalized output with its
 existing golden, and checks imports and compilation of the example sources.
 This is not a claim that every framework/template or every server version is
 tested on every Python version; the full smoke matrix remains Python 3.12.
-Failure, cancellation or an unexpected skip in this matrix fails the CI gate.
+Failure, cancellation or a skip the classifier did not select fails the CI gate.
 
 ## Driver & Framework Versions
 
@@ -97,8 +101,10 @@ when available, and result even on failed runs. See
 [Release smoke dependencies](CONTRIBUTING.md#release-smoke-dependencies).
 
 FastAPI recipe `templates/api-service-fastapi/recipes/10-cqrs-event-sourcing`
-also has dedicated, required Python 3.12 jobs on live CUBRID **11.2 and 11.4**
-in `ci.yml`. They install its own `requirements.txt`, run `pip check`, record
+also has dedicated Python 3.12 jobs on live CUBRID **11.2 and 11.4** in
+`ci.yml` on every push to `main`, the weekly schedule, manual runs and pull
+requests that change its `requirements.txt` or shared live infrastructure;
+other pull requests that touch the recipe run the 11.4 job only. They install its own `requirements.txt`, run `pip check`, record
 installed versions with `pip freeze`, and execute its seven existing pytest
 tests with `CUBRID_TEST_URL` set. This validates that recipe's pinned framework
 versions; the driver ranges still resolve normally. The broad non-PR smoke
@@ -111,12 +117,14 @@ The table below is the source of truth for recipe counts;
 when a row no longer matches the repository. Verification is split:
 
 - **Golden-backed recipes** carry stdout goldens (`expected/*.expected`) and are
-  checked by `make verify` in CI on **CUBRID 11.2 and 11.4 / Python 3.12**
+  checked by `make verify` on **CUBRID 11.2 and 11.4 / Python 3.12** on `main`,
+  nightly and release verification, and on 11.4 for pull requests that touch them
   (fundamentals, migration, the SQLAlchemy quickstart, the batch-etl template, and
   the reserved-word DDL check behind `pitfalls/`).
 - The **Flask and FastAPI** recipes are covered by pytest suites that the smoke
   job runs against its live CUBRID container on **11.2 and 11.4** for every push
-  to `main`, nightly, and on manual runs (pull requests skip them to stay fast).
+  to `main`, nightly, and on manual runs. Pull requests that touch a Flask or
+  FastAPI recipe run the representative `01-basic-crud` suites on 11.4.
   Each suite's `conftest.py` reads `CUBRID_TEST_URL`; without it the suites fall
   back to SQLite for local runs.
 - The **Streamlit** recipes are covered by `templates/dashboard/tests/test_dashboard.py`
@@ -124,8 +132,8 @@ when a row no longer matches the repository. Verification is split:
   filter that changes the rendered row count). On pushes to `main`, nightly,
   and manual runs, the smoke job runs it on a **separate disposable CUBRID
   container** for each matrix version (**11.2 and 11.4**) after the shared
-  Flask/FastAPI container is stopped. On every pull request, a separate
-  required `ci.yml` job runs it against its own CUBRID **11.4** container.
+  Flask/FastAPI container is stopped. A pull request that touches the dashboard
+  runs a separate `ci.yml` job against its own CUBRID **11.4** container.
   It falls back to a shared SQLite file when `CUBRID_TEST_URL` is unset.
   Its `conftest.py` drops its own `cookbook_sales` and `cookbook_products`
   in FK-safe order, but isolation—not test ordering or cross-recipe deletion—
@@ -134,13 +142,14 @@ when a row no longer matches the repository. Verification is split:
   Compose configuration, startup, HTTP responses, and database failure cleanup.
   It uses mocked DB-API connections rather than a live server.
 - The **five AI agent scripts** run via `tests/test_ai_agent.py` against live
-  **11.2 and 11.4** on every smoke-test trigger, including pull requests.
+  **11.2 and 11.4** on every smoke-test trigger, and on 11.4 for pull requests
+  that touch them or golden examples.
   Each script runs with a 60-second limit; the suite drops its own example
   tables before and after each case and runs twice to verify repeatability.
   `tests/test_ai_agent_offline.py` checks ID handling, MCP errors and cleanup.
 - The **Celery async-worker** database tasks run through
   `templates/async-worker/tests` without a Redis broker or worker. A dedicated
-  CUBRID 11.4 job gates each pull request; after `make verify`, the non-PR
+  CUBRID 11.4 job gates pull requests that touch it; after `make verify`, the non-PR
   smoke matrix runs the same tests on **11.2 and 11.4** before switching to
   the dashboard container. The suite asserts persisted job state/result and
   report/email rows, refuses preexisting worker tables, and removes its own
@@ -148,7 +157,7 @@ when a row no longer matches the repository. Verification is split:
 - The **Django template** uses Django for HTTP requests and SQLAlchemy for
   CUBRID persistence; it has no native Django CUBRID backend or Django ORM
   model. `templates/django/tests` gates the existing `/health` and `/items`
-  bridge on a dedicated live **11.4** PR job and on the **11.2/11.4** non-PR
+  bridge on a dedicated live **11.4** job for pull requests that touch it and on the **11.2/11.4** non-PR
   smoke matrix after golden and FastAPI tests. The suite refuses a preexisting
   `cookbook_items` table and removes only its own table.
 - **CUBRID 11.4** runs in the same CI smoke matrix as 11.2 (its `make verify` goldens
@@ -169,10 +178,10 @@ when a row no longer matches the repository. Verification is split:
 | Flask templates | 11 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
 | FastAPI templates | 12 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
 | FastAPI quickstart | 1 | offline pytest (PR CI, mocked DB-API) |
-| AI agent template | 5 | pytest (smoke CI incl. PRs, 11.2 + 11.4) |
-| Streamlit templates | 5 | pytest (CI on `main` + nightly, 11.2 + 11.4; also PR CI on 11.4) |
-| Django template | 1 | Django HTTP + SQLAlchemy bridge: live pytest (PR CI 11.4; `main` + nightly 11.2 + 11.4); no native Django ORM |
-| Celery async-worker template | 1 | database tasks: live pytest (PR CI 11.4; `main` + nightly 11.2 + 11.4); broker/worker manual |
+| AI agent template | 5 | pytest (smoke CI on `main` + nightly, 11.2 + 11.4; PR CI 11.4 when touched) |
+| Streamlit templates | 5 | pytest (CI on `main` + nightly, 11.2 + 11.4; PR CI 11.4 when touched) |
+| Django template | 1 | Django HTTP + SQLAlchemy bridge: live pytest (PR CI 11.4 when touched; `main` + nightly 11.2 + 11.4); no native Django ORM |
+| Celery async-worker template | 1 | database tasks: live pytest (PR CI 11.4 when touched; `main` + nightly 11.2 + 11.4); broker/worker manual |
 | **Total** | **102** | 66 golden-backed via `make verify` on 11.2 + 11.4; Flask, FastAPI, Streamlit and Django bridge pytest suites in CI; async-worker database tasks and AI agent suite live-tested; Celery broker/worker and native Django ORM are not covered |
 
 ## Known Limitations by Version
