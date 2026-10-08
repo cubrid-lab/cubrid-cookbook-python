@@ -602,10 +602,12 @@ or an AI review does not waive the CI or live checks required before merge.
 
 `.github/CODEOWNERS` routes review requests for a small set of high-blast-radius
 surfaces to the maintainers: `.github/workflows/` (including the reusable
-`smoke-test.yml` release verification contract), `.github/dependabot.yml`,
-`.github/CODEOWNERS`, `SECURITY.md`, and the shared validation and golden-output
-infrastructure (`Makefile`, `scripts/`, `tests/`). Individual recipes are
-intentionally not owned, so ordinary recipe contributions need no special
+`smoke-test.yml` release verification contract) and the composite actions in
+`.github/actions/`, `.github/dependabot.yml`, `.github/CODEOWNERS`, `SECURITY.md`,
+and the shared validation and golden-output infrastructure (`Makefile`,
+`scripts/`, the shared tests in `tests/`, `docker-compose.yml`, `pyproject.toml`).
+Individual recipes, and recipe-specific tests such as `tests/test_ai_agent*.py`,
+are intentionally not owned, so ordinary recipe contributions need no special
 reviewer. CODEOWNERS is routing only, not a security boundary, and does not by
 itself make any approval mandatory.
 

@@ -7,6 +7,8 @@
 # Workflows, including the reusable smoke-test.yml release verification
 # contract that sibling repositories call
 /.github/workflows/ @yeongseon @paikend
+# Composite actions called by ci.yml (PR smoke)
+/.github/actions/ @yeongseon @paikend
 
 # Dependency update policy and this file itself
 /.github/dependabot.yml @yeongseon @paikend
@@ -19,3 +21,10 @@
 /Makefile @yeongseon @paikend
 /scripts/ @yeongseon @paikend
 /tests/ @yeongseon @paikend
+# Shared CI container image selection and the pinned Ruff rule set
+/docker-compose.yml @yeongseon @paikend
+/pyproject.toml @yeongseon @paikend
+
+# Recipe-specific tests under tests/ stay unowned like their recipe
+# (a later rule with no owner overrides /tests/ above).
+/tests/test_ai_agent*.py
