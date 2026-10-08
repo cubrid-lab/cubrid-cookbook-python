@@ -7,8 +7,8 @@ dependency set to inventory installed (#735)::
     uv pip install -p /tmp/tpl-dev/bin/python -e ".[dev]"
     /tmp/tpl-dev/bin/python scripts/generate_third_party_licenses.py --exclude pycubrid
 
-Only the standard library is used, so the generator itself never appears in the
-inventory. A license is read from the PEP 639 ``License-Expression`` field, then
+The default output uses only the standard library, so the generator itself
+never appears in the inventory. A license is read from the PEP 639 ``License-Expression`` field, then
 from ``License ::`` classifiers, then from a short ``License`` field; anything
 else is reported as ``UNKNOWN`` rather than guessed. Any GPL-family mention, or
 an unrecognised license, is categorised ``Needs review`` and must be resolved in
@@ -19,7 +19,8 @@ requirements pull each row in. Every environment marker is evaluated for the
 running interpreter, and extras are followed from the ones requested for the
 ``--exclude``d project (``--extra``) to a fixed point, so a requirement counts
 only when it is active in this environment. It needs the ``packaging``
-distribution in the inventoried environment and fails rather than guessing.
+distribution in the inventoried environment and fails rather than guessing. It
+assumes a fresh environment that holds only the inventoried dependency set.
 """
 
 from __future__ import annotations
@@ -96,7 +97,7 @@ def url_of(dist: metadata.Distribution) -> str:
 def required_by(root: set[str], root_extras: set[str]) -> dict[str, list[str]]:
     """Map each installed distribution to the installed ones whose active requirements need it."""
     try:
-        from packaging.requirements import Requirement
+        from packaging.requirements import InvalidRequirement, Requirement
     except ImportError as exc:  # pragma: no cover - environment dependent
         raise SystemExit("--required-by needs 'packaging' installed in this environment") from exc
     dists = {canonical(field(d, "Name")): d for d in metadata.distributions()}
@@ -109,7 +110,12 @@ def required_by(root: set[str], root_extras: set[str]) -> dict[str, list[str]]:
         changed = False
         for name, dist in dists.items():
             for raw in dist.requires or []:
-                req = Requirement(raw)
+                try:
+                    req = Requirement(raw)
+                except InvalidRequirement as exc:
+                    raise SystemExit(
+                        f"{field(dist, 'Name')}: invalid Requires-Dist {raw!r}"
+                    ) from exc
                 child = canonical(req.name)
                 if child not in dists:
                     continue
@@ -118,7 +124,7 @@ def required_by(root: set[str], root_extras: set[str]) -> dict[str, list[str]]:
                     continue
                 found = parents.setdefault(child, set())
                 parent = field(dist, "Name")
-                if parent not in found:
+                if child != name and parent not in found:
                     found.add(parent)
                     changed = True
                 if not set(req.extras) <= requested[child]:
