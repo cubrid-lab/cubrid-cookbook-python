@@ -22,6 +22,7 @@ jobs:
   classify:
     name: Classify changes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
     outputs:
@@ -73,6 +74,7 @@ jobs:
 
   lint-python:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -88,6 +90,7 @@ jobs:
   quickstart-tests:
     name: Offline checks (no DB)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -101,6 +104,7 @@ jobs:
   docs-sync:
     name: Docs sync gate
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -120,6 +124,7 @@ jobs:
   docs-site:
     name: Docs site build (strict)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # Same action pins as docs.yml, which builds this site for deployment.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -319,6 +324,7 @@ jobs:
     if: always()
     needs: [classify, lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest, async-worker-pytest, django-bridge-pytest, python-compatibility, cqrs-pinned-pytest, smoke-114, smoke-112]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions: {}
     steps:
       - name: Check job results

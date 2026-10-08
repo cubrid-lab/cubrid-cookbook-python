@@ -120,6 +120,7 @@ jobs:
   verify:
     name: Smoke Tests (CUBRID ${{ matrix.cubrid }})
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -577,6 +578,7 @@ jobs:
     # The package input is set only for manual runs and workflow calls.
     if: ${{ always() && (github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch' || inputs.package != '') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     # Read by workflow_call callers (see on.workflow_call.outputs).
     outputs:
       status: ${{ steps.report.outputs.status }}
