@@ -20,6 +20,10 @@ Tiers:
   goldens and recipe suites on these events, so ``ci.yml`` does not repeat them.
 
 Unknown paths and unknown events fail closed to a wider tier.
+
+The strict docs-site build (``make docs``) is not classified: ``ci.yml`` runs it on
+every pull request because it is the guard for README links to deleted or renamed
+examples (#154), which a deletion-only diff would otherwise skip.
 """
 
 from __future__ import annotations
@@ -117,9 +121,6 @@ TOOLING = (
     ".gitignore",
     "pyproject.toml",
 )
-# Extra paths that affect the strict MkDocs build (`make docs`).
-DOCS_SITE = DOCS + ("scripts/stage_docs.py", "scripts/stage_docs.sh", "Makefile")
-
 # Same allowlist the former smoke-test.yml PR scoping used: no spaces or shell
 # metacharacters reach $GITHUB_OUTPUT, make or find.
 SAFE_ROOT = re.compile(r"[A-Za-z0-9._/-]+")
@@ -148,13 +149,12 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
     lanes = dict.fromkeys(
         ("web", "dashboard", "async_worker", "django", "cqrs", "compat", "smoke_114"), False
     )
-    full = broad = cqrs_dual = smoke_112 = full_verify = docs_site = False
+    full = broad = cqrs_dual = smoke_112 = full_verify = False
     verify = set()
 
     if event in MAIN_EVENTS:
         return {
             "tier": "main",
-            "docs_site": True,
             "web": False,
             "dashboard": False,
             "async_worker": False,
@@ -171,8 +171,6 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
         full = True  # unknown event or an unexpected empty diff: fail closed
 
     for path in files:
-        if _match(path, DOCS_SITE):
-            docs_site = True
         if _match(path, DOCS):
             continue
         if _match(path, SELF):
@@ -214,9 +212,6 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
     if broad or full:
         lanes = dict.fromkeys(lanes, True)
         cqrs_dual = smoke_112 = full_verify = True
-    if broad or full:
-        docs_site = True
-
     if full:
         tier = "full"
     elif any(lanes.values()):
@@ -240,7 +235,6 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
 
     return {
         "tier": tier,
-        "docs_site": docs_site,
         "web": lanes["web"],
         "dashboard": lanes["dashboard"],
         "async_worker": lanes["async_worker"],

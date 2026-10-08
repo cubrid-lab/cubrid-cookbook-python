@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import os
 import re
 import subprocess
@@ -10,6 +12,7 @@ import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -55,15 +58,12 @@ class ClassifierTests(unittest.TestCase):
         )
         self.assertEqual(result["tier"], "docs")
         self.assertEqual(selected(result), set())
-        self.assertTrue(result["docs_site"])
         self.assertEqual(result["verify_paths"], "")
 
     def test_tooling_pr_runs_only_cheap_checks(self) -> None:
         result = scope("scripts/check_docs_sync.py", "tests/test_docs_sync.py", "pyproject.toml")
         self.assertEqual(result["tier"], "docs")
         self.assertEqual(selected(result), set())
-        self.assertFalse(result["docs_site"])
-        self.assertTrue(scope("scripts/stage_docs.py")["docs_site"])
 
     def test_each_recipe_family_starts_only_its_suite(self) -> None:
         cases = {
@@ -145,7 +145,6 @@ class ClassifierTests(unittest.TestCase):
                 self.assertEqual(result["cqrs_cubrid"], ["11.2", "11.4"])
                 self.assertEqual(result["python"], ["3.11", "3.14"])
                 self.assertEqual(result["verify_paths"], ".")
-                self.assertTrue(result["docs_site"])
 
     def test_ci_policy_change_runs_every_lane(self) -> None:
         for path in ci_scope.SELF[:1] + (
@@ -156,7 +155,6 @@ class ClassifierTests(unittest.TestCase):
                 result = scope(path)
                 self.assertEqual(result["tier"], "full")
                 self.assertEqual(selected(result), set(LIVE))
-                self.assertTrue(result["docs_site"])
                 self.assertEqual(result["python"], ["3.11", "3.14"])
 
     def test_unknown_path_fails_closed(self) -> None:
@@ -193,6 +191,25 @@ class ClassifierTests(unittest.TestCase):
         self.assertIn('python=["3.12"]\n', text)
         self.assertIn("verify_paths=\n", text)
         self.assertTrue(all("=" in line for line in text.splitlines()))
+
+    def test_main_prints_rendered_scope_from_stdin(self) -> None:
+        stdin = io.StringIO("templates/django/app/views.py\nREADME.md\n")
+        stdout = io.StringIO()
+        with mock.patch.object(sys, "stdin", stdin), contextlib.redirect_stdout(stdout):
+            code = ci_scope.main(["--event", "pull_request", "--root", str(ROOT)])
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            stdout.getvalue(), ci_scope.render(scope("templates/django/app/views.py", "README.md"))
+        )
+        lines = stdout.getvalue().splitlines()
+        self.assertIn("tier=pr", lines)
+        self.assertIn("django=true", lines)
+        self.assertIn("web=false", lines)
+        self.assertIn('python=["3.12"]', lines)
+
+    def test_main_requires_event(self) -> None:
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            ci_scope.main([])
 
 
 def gate_script() -> str:
@@ -235,7 +252,7 @@ class GateTests(unittest.TestCase):
             with self.subTest(job=job):
                 self.assertIsNotNone(output)
                 self.assertIn(f"if: needs.classify.outputs.{output[1]} == 'true'", body)
-        self.assertEqual(len(gate_env_names("W")), 9)
+        self.assertEqual(len(gate_env_names("W")), 8)
 
     def test_classifier_outputs_are_all_exported(self) -> None:
         classify = CI.split("  classify:\n", 1)[1].split("    steps:", 1)[0]
@@ -258,7 +275,13 @@ class GateTests(unittest.TestCase):
                 self.assertNotEqual(check.returncode, 0)
 
     def test_always_required_jobs_cannot_be_skipped(self) -> None:
-        for var in ("R_CLASSIFY", "R_LINT_PYTHON", "R_QUICKSTART_TESTS", "R_DOCS_SYNC"):
+        for var in (
+            "R_CLASSIFY",
+            "R_LINT_PYTHON",
+            "R_QUICKSTART_TESTS",
+            "R_DOCS_SYNC",
+            "R_DOCS_SITE",
+        ):
             with self.subTest(var=var):
                 self.assertNotEqual(self.run_gate(**{var: "skipped"}).returncode, 0)
 
@@ -270,6 +293,20 @@ class GateTests(unittest.TestCase):
 
 
 class WorkflowWiringTests(unittest.TestCase):
+    def test_docs_site_build_runs_on_every_pr(self) -> None:
+        # A PR that only deletes or renames an example linked from a README
+        # classifies as "docs" with no docs path, yet scripts/stage_docs.py must
+        # still fail it (#154): the job has no classifier condition.
+        result = scope("fundamentals/parameterized-queries/removed_example.py")
+        self.assertEqual(result["tier"], "docs")
+        self.assertEqual(selected(result), set())
+        self.assertNotIn("docs_site", result)
+        body = CI.split("  docs-site:\n", 1)[1].split("\n  # ", 1)[0].split("\n\n  ", 1)[0]
+        self.assertNotIn("if:", body)
+        self.assertNotIn("needs:", body)
+        self.assertNotIn("W_DOCS_SITE", CI)
+        self.assertIn("      - run: make docs", body)
+
     def test_required_smoke_check_names_are_plain_ci_jobs(self) -> None:
         for job, version in (("smoke-114", "11.4"), ("smoke-112", "11.2")):
             body = CI.split(f"  {job}:\n", 1)[1].split("\n\n", 1)[0]

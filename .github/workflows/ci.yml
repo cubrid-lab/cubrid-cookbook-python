@@ -26,7 +26,6 @@ jobs:
       contents: read
     outputs:
       tier: ${{ steps.scope.outputs.tier }}
-      docs_site: ${{ steps.scope.outputs.docs_site }}
       web: ${{ steps.scope.outputs.web }}
       dashboard: ${{ steps.scope.outputs.dashboard }}
       async_worker: ${{ steps.scope.outputs.async_worker }}
@@ -116,11 +115,10 @@ jobs:
 
   # Stages the repo docs and builds the MkDocs site with --strict, so a link that
   # breaks when a page is staged under docs/ fails the PR instead of the
-  # post-merge Pages deploy (#154). docs.yml still owns the deploy.
+  # post-merge Pages deploy (#154). Always on: a PR that only deletes or renames
+  # a linked example must still fail here. docs.yml still owns the deploy.
   docs-site:
     name: Docs site build (strict)
-    needs: [classify]
-    if: needs.classify.outputs.docs_site == 'true'
     runs-on: ubuntu-latest
     steps:
       # Same action pins as docs.yml, which builds this site for deployment.
@@ -332,7 +330,6 @@ jobs:
           R_DOCS_SYNC: ${{ needs.docs-sync.result }}
           R_DOC_LINT: ${{ needs.doc-lint.result }}
           R_DOCS_SITE: ${{ needs.docs-site.result }}
-          W_DOCS_SITE: ${{ needs.classify.outputs.docs_site }}
           R_PYTEST_SUITES: ${{ needs.pytest-suites.result }}
           W_PYTEST_SUITES: ${{ needs.classify.outputs.web }}
           R_DASHBOARD_PYTEST: ${{ needs.dashboard-pytest.result }}
