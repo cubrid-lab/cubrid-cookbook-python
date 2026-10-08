@@ -52,7 +52,9 @@ Third-party material actually stored in the repository:
   example output) with Pillow and writes them with imageio, using GitHub-dark
   colors. Its text is rasterised from a system font: DejaVu Sans Mono
   (Bitstream Vera / DejaVu license) when installed, otherwise Liberation Mono
-  (SIL OFL 1.1), otherwise Pillow's built-in default font; which one rendered
+  (the 1.x series that Debian and Ubuntu install at that path is GPL-2.0 with a
+  font exception; Liberation 2.x is SIL OFL 1.1), otherwise Pillow's built-in
+  default font; which one rendered
   the committed file is not recorded. The GIF contains rendered glyph images,
   not a font file, and no third-party image or code. The `demos/*.tape` VHS
   scripts are an alternative recording setup and did not produce the

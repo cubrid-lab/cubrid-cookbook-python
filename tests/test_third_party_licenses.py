@@ -8,6 +8,7 @@ packages, or installing a new package directly from a workflow does.
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import re
 import shlex
@@ -36,7 +37,20 @@ VALUE_OPTIONS = {
     "--prefix",
     "--root",
     "--python",
+    "--python-version",
+    "--platform",
+    "--implementation",
+    "--abi",
+    "--upgrade-strategy",
+    "--config-settings",
+    "--cache-dir",
+    "--trusted-host",
+    "--src",
+    "--report",
+    "--log",
+    "--progress-bar",
 }
+PIP_INSTALL = re.compile(r"\bpip3?\s+(?:-\S+\s+)*install\b")
 
 
 def _load(name: str):  # noqa: ANN202
@@ -91,7 +105,8 @@ def shell_commands(text: str) -> list[str]:
     commands: list[str] = []
     i = 0
     while i < len(lines):
-        match = re.match(r"(\s*)(?:-\s+)?run:\s*(.*)$", lines[i])
+        # ``run:`` steps and command inputs such as ci.yml's ``setup-command:``.
+        match = re.match(r"(\s*)(?:-\s+)?(?:run|[\w-]*command):\s*(.*)$", lines[i])
         i += 1
         if not match:
             continue
@@ -117,10 +132,11 @@ def installs_in(text: str) -> set[str]:
     """Package names a workflow or action ``pip install``s directly (not via ``-r``)."""
     names = set()
     for command in shell_commands(text):
-        for segment in re.split(r"&&|;|\|\|", command):
-            if "pip install" not in segment:
+        for segment in re.split(r"&&|;|\|", command):
+            found = PIP_INSTALL.search(segment)
+            if not found:
                 continue
-            args = segment.split("pip install", 1)[1]
+            args = segment[found.end() :]
             try:
                 tokens = shlex.split(args, comments=True)
             except ValueError:
@@ -131,7 +147,7 @@ def installs_in(text: str) -> set[str]:
                     skip_next = False
                 elif token in VALUE_OPTIONS:
                     skip_next = True
-                elif not token.startswith("-") and "/" not in token:
+                elif not token.startswith("-") and "/" not in token and not token.endswith(".whl"):
                     match = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", token)
                     if match and match.group(0) != "pip":
                         names.add(build.canonical(match.group(0)))
@@ -167,8 +183,13 @@ class RequirementCoverage(unittest.TestCase):
         self.assertEqual(set_table()["DEMO"][1], build.declared_names(build.DEMO))
 
     def test_demo_set_covers_the_gif_renderer_imports(self) -> None:
-        source = (ROOT / "demos" / "render_gif.py").read_text(encoding="utf-8")
-        imported = set(re.findall(r"^\s*(?:from|import)\s+([A-Za-z_][A-Za-z0-9_]*)", source, re.M))
+        tree = ast.parse((ROOT / "demos" / "render_gif.py").read_text(encoding="utf-8"))
+        imported = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported |= {alias.name.split(".")[0] for alias in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                imported.add(node.module.split(".")[0])
         third_party = {"imageio": "imageio", "PIL": "pillow"}
         unknown = imported - set(third_party) - set(sys.stdlib_module_names) - {"__future__"}
         self.assertFalse(unknown, f"demos/render_gif.py imports undeclared modules: {unknown}")
@@ -188,8 +209,13 @@ class RequirementCoverage(unittest.TestCase):
             "      pip install -r a/requirements.txt \\\n"
             "        celery[redis]\n"
             "  - run: pip install ruff==0.16.4\n"
+            "  - uses: ./.github/workflows/live-smoke.yml\n"
+            "    with:\n"
+            "      setup-command: >-\n"
+            "        python -m pip install --upgrade pip &&\n"
+            "        pip3 -q install --upgrade-strategy eager flask | tee log\n"
         )
-        self.assertEqual(installs_in(text), {"pytest", "redis", "celery", "ruff"})
+        self.assertEqual(installs_in(text), {"pytest", "redis", "celery", "ruff", "flask"})
 
     def test_workflow_installs_are_inventoried(self) -> None:
         names = {build.canonical(p["name"]) for p in package_table()}
