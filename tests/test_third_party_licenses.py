@@ -10,13 +10,33 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import shlex
 import sys
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DOC = (ROOT / "THIRD_PARTY_LICENSES.md").read_text(encoding="utf-8")
-WORKFLOWS = ROOT / ".github" / "workflows"
+GITHUB = ROOT / ".github"
+# pip options whose value is the next token, never a package.
+VALUE_OPTIONS = {
+    "-r",
+    "--requirement",
+    "-c",
+    "--constraint",
+    "-e",
+    "--editable",
+    "-i",
+    "--index-url",
+    "--extra-index-url",
+    "-f",
+    "--find-links",
+    "-t",
+    "--target",
+    "--prefix",
+    "--root",
+    "--python",
+}
 
 
 def _load(name: str):  # noqa: ANN202
@@ -61,27 +81,67 @@ def package_table() -> list[dict[str, str]]:
     return [dict(zip(keys, cells)) for cells in rows("### Packages", 6)]
 
 
-def workflow_installs() -> set[str]:
-    """Package names that workflows ``pip install`` directly (not via ``-r``)."""
+def shell_commands(text: str) -> list[str]:
+    """Shell commands of every ``run:`` value in a workflow or action file.
+
+    Folded blocks (``>``/``>-``) become one line, literal blocks (``|``) keep
+    their lines, and a trailing backslash joins a line with the next one.
+    """
+    lines = text.splitlines()
+    commands: list[str] = []
+    i = 0
+    while i < len(lines):
+        match = re.match(r"(\s*)(?:-\s+)?run:\s*(.*)$", lines[i])
+        i += 1
+        if not match:
+            continue
+        indent, value = len(match.group(1)), match.group(2).strip()
+        if value and value[0] not in "|>":
+            commands.append(value)
+            continue
+        block = []
+        while i < len(lines) and (
+            not lines[i].strip() or len(lines[i]) - len(lines[i].lstrip()) > indent
+        ):
+            if not lines[i].lstrip().startswith("#"):  # shell comment lines
+                block.append(lines[i].strip())
+            i += 1
+        if value.startswith(">"):
+            commands.append(" ".join(line for line in block if line))
+        else:
+            commands.extend(re.sub(r"\\\n", " ", "\n".join(block)).splitlines())
+    return commands
+
+
+def installs_in(text: str) -> set[str]:
+    """Package names a workflow or action ``pip install``s directly (not via ``-r``)."""
     names = set()
-    for workflow in sorted(WORKFLOWS.glob("*.yml")):
-        for line in workflow.read_text(encoding="utf-8").splitlines():
-            if line.lstrip().startswith("#") or "pip install" not in line:
+    for command in shell_commands(text):
+        for segment in re.split(r"&&|;|\|\|", command):
+            if "pip install" not in segment:
                 continue
-            tokens = line.split("pip install", 1)[1].split()
+            args = segment.split("pip install", 1)[1]
+            try:
+                tokens = shlex.split(args, comments=True)
+            except ValueError:
+                tokens = args.split()
             skip_next = False
             for token in tokens:
                 if skip_next:
                     skip_next = False
-                    continue
-                if token in {"-r", "--requirement", "-c", "--constraint"}:
+                elif token in VALUE_OPTIONS:
                     skip_next = True
-                    continue
-                if token.startswith("-") or token in {"&&", "pip"}:
-                    continue
-                match = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", token)
-                if match:
-                    names.add(build.canonical(match.group(0)))
+                elif not token.startswith("-") and "/" not in token:
+                    match = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", token)
+                    if match and match.group(0) != "pip":
+                        names.add(build.canonical(match.group(0)))
+    return names
+
+
+def workflow_installs() -> set[str]:
+    names = set()
+    for path in sorted([*GITHUB.rglob("*.yml"), *GITHUB.rglob("*.yaml")]):
+        names |= installs_in(path.read_text(encoding="utf-8"))
     return names
 
 
@@ -102,8 +162,34 @@ class RequirementCoverage(unittest.TestCase):
                 lines = build.requirement_lines(ROOT / path)
                 self.assertEqual(build.declared_names(lines), declared, f"{path} ({set_id})")
 
-    def test_tooling_set_matches_the_build_script(self) -> None:
+    def test_tooling_and_demo_sets_match_the_build_script(self) -> None:
         self.assertEqual(set_table()["TOOLING"][1], build.declared_names(build.TOOLING))
+        self.assertEqual(set_table()["DEMO"][1], build.declared_names(build.DEMO))
+
+    def test_demo_set_covers_the_gif_renderer_imports(self) -> None:
+        source = (ROOT / "demos" / "render_gif.py").read_text(encoding="utf-8")
+        imported = set(re.findall(r"^\s*(?:from|import)\s+([A-Za-z_][A-Za-z0-9_]*)", source, re.M))
+        third_party = {"imageio": "imageio", "PIL": "pillow"}
+        unknown = imported - set(third_party) - set(sys.stdlib_module_names) - {"__future__"}
+        self.assertFalse(unknown, f"demos/render_gif.py imports undeclared modules: {unknown}")
+        expected = {third_party[m] for m in imported & set(third_party)}
+        self.assertLessEqual(expected, set(set_table()["DEMO"][1]))
+
+    def test_install_parser_handles_continuations_quotes_and_options(self) -> None:
+        text = (
+            "steps:\n"
+            "  - name: pip install decoy\n"
+            "    run: >-\n"
+            "      pip install pytest\n"
+            '      "redis>=5" --index-url https://example.invalid/simple\n'
+            "  - run: |\n"
+            "      # a pip install mention in a comment is ignored\n"
+            "      python -m pip install --upgrade pip &&\n"
+            "      pip install -r a/requirements.txt \\\n"
+            "        celery[redis]\n"
+            "  - run: pip install ruff==0.16.4\n"
+        )
+        self.assertEqual(installs_in(text), {"pytest", "redis", "celery", "ruff"})
 
     def test_workflow_installs_are_inventoried(self) -> None:
         names = {build.canonical(p["name"]) for p in package_table()}
@@ -142,7 +228,8 @@ class LicenseClassification(unittest.TestCase):
         record = DOC[DOC.index("## How the inventory was generated") :]
         self.assertRegex(record, r"commit `[0-9a-f]{40}`")
         self.assertRegex(record, r"CPython 3\.\d+\.\d+ on Linux")
-        self.assertIn("scripts/build_license_inventory.py --python 3.12 --write", record)
+        self.assertIn("scripts/build_license_inventory.py --python 3.12", record)
+        self.assertRegex(record, r"--exclude-newer \d{4}-\d{2}-\d{2}T[\d:]+Z --write")
 
 
 if __name__ == "__main__":

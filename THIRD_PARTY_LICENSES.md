@@ -7,10 +7,18 @@ inventory, not legal advice.
 
 ## Scope
 
-- **Covered:** every `requirements*.txt` in the repository, plus the CI and docs
-  tooling that the workflows install directly (`ruff`, `mkdocs-material`,
-  `pymdown-extensions`, `pytest`, `pytest-asyncio`). The repository's
+- **Covered:** every `requirements*.txt` in the repository; the CI and docs
+  tooling that the workflows and the `.github/actions/pr-smoke` action install
+  directly (`TOOLING`: `ruff`, `mkdocs-material`, `pymdown-extensions`,
+  `pytest`, `pytest-asyncio`; the action's `pandas`, `matplotlib` and `pytest`
+  are covered by other sets); and the imports of `demos/render_gif.py`, which
+  renders the demo GIF (`DEMO`: `imageio`, `pillow`). The repository's
   `pyproject.toml` holds only Ruff configuration and declares no dependencies.
+- **Covered by the sets above, not listed separately:** `scripts/release_smoke.py`
+  installs the published drivers (`pycubrid`, `sqlalchemy`,
+  `sqlalchemy-cubrid`, `cubrid-mcp-server`) to smoke-test a release, and the
+  README and docs show `pip install pycubrid` / `sqlalchemy-cubrid` commands;
+  all of these packages appear in the table.
 - **Not flattened:** each example is installed on its own. Requirement files
   with identical contents form one *requirement set*, and every set was
   installed into its own fresh environment. The package table below
@@ -39,11 +47,16 @@ any dependency.
 
 Third-party material actually stored in the repository:
 
-- **`docs/demo-agent-state.gif`** is a terminal recording produced by this
-  project with [VHS](https://github.com/charmbracelet/vhs) (MIT) from
-  `demos/agent-state.tape`, which is part of this repository. It shows this
-  project's own example output rendered with the "Catppuccin Mocha" terminal
-  color theme (MIT); it contains no third-party image, font file or code.
+- **`docs/demo-agent-state.gif`** is produced by this project: `demos/render_gif.py`
+  draws the frames from `demos/agent-state.json` (this project's own recorded
+  example output) with Pillow and writes them with imageio, using GitHub-dark
+  colors. Its text is rasterised from a system font: DejaVu Sans Mono
+  (Bitstream Vera / DejaVu license) when installed, otherwise Liberation Mono
+  (SIL OFL 1.1), otherwise Pillow's built-in default font; which one rendered
+  the committed file is not recorded. The GIF contains rendered glyph images,
+  not a font file, and no third-party image or code. The `demos/*.tape` VHS
+  scripts are an alternative recording setup and did not produce the
+  committed GIF.
 - No other image, font, video, stylesheet or script asset is stored in the
   repository, and no third-party source code is vendored.
 
@@ -53,10 +66,11 @@ Third-party material actually stored in the repository:
   Unlicense and the Python Software Foundation License, as declared by each
   package. The generator also accepts 0BSD, Public Domain and a generic "BSD
   License" declaration as permissive. Most packages fall here.
-- **Weak (file-level) copyleft: MPL**: `certifi` (sets S12, S15, S16, S17,
-  S21, S25 and TOOLING, through `requests` and `httpx`) and `pathspec`
-  (TOOLING only, through `mkdocs`), both MPL-2.0. MPL-2.0 is not a permissive license. Its obligations
-  attach to the MPL-covered files themselves: anyone distributing those files,
+- **Weak (file-level) copyleft: MPL**: `certifi` (through `requests` and
+  `httpx`) and `pathspec` (through `mkdocs`, tooling only), both MPL-2.0; the
+  package table's **Sets** column lists the requirement sets that use them.
+  MPL-2.0 is not a permissive license. Its obligations attach to the
+  MPL-covered files themselves: anyone distributing those files,
   modified or not, must make their source available under MPL-2.0 and keep
   their notices. Because MPL-2.0 is file-level, it never extends to the
   examples' own files (MPL §3.3, "Larger Work"). Separately, this repository
@@ -69,30 +83,32 @@ Third-party material actually stored in the repository:
 
 ### Reviewed entries
 
-- **numpy** (2.5.3; sets S06 `fundamentals/pandas`, S20 `templates/batch-etl`,
-  S21 `templates/dashboard`, pulled in by `pandas`). Its PEP 639 expression,
-  `BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0`, covers numpy's own
-  sources; Zlib and CC0-1.0 are permissive too, but the generator does not
-  auto-accept them. The Linux wheel also bundles compiled libraries, listed in
-  its own `LICENSE.txt`: OpenBLAS (BSD-3-Clause), LAPACK
-  (BSD-3-Clause-Open-MPI) and the GCC runtime (`libgfortran`, `libquadmath`:
-  GPL-3.0-or-later WITH GCC-exception-3.1). The GCC Runtime Library Exception
-  exists so that non-GPL programs can use these runtime libraries; the
-  examples only import numpy, and this repository does not redistribute the
-  wheel. As installed, numpy is permissive plus GPL-3.0-or-later-with-exception
-  runtime libraries.
-- **pillow** (12.3.0; sets S20 and S21, pulled in by `matplotlib` and
-  `streamlit`). Pillow itself is `MIT-CMU`, a permissive historical license.
+- **numpy** (2.5.3, pulled in by `pandas`, `matplotlib` and `imageio`; see the
+  **Sets** column). Its PEP 639 expression, `BSD-3-Clause AND 0BSD AND MIT AND Zlib AND
+  CC0-1.0`, covers numpy's own sources; Zlib and CC0-1.0 are permissive too,
+  but the generator does not auto-accept them. The Linux wheel also bundles
+  compiled libraries, listed in its own `LICENSE.txt`: OpenBLAS
+  (BSD-3-Clause), LAPACK (BSD-3-Clause-Open-MPI), the GCC Fortran runtime
+  `libgfortran` (GPL-3.0-or-later WITH GCC-exception-3.1) and the GCC
+  quad-precision math library `libquadmath` (LGPL-2.1-or-later, dynamically
+  linked). The GCC Runtime Library Exception exists so that non-GPL programs
+  can use the runtime; LGPL-2.1 permits dynamic linking from programs under
+  other licenses. The examples only import numpy, and this repository does not
+  redistribute the wheel. As installed, numpy is permissive plus
+  `libgfortran` (GPL-3.0-or-later with the exception) and `libquadmath`
+  (LGPL-2.1-or-later) as separate shared libraries.
+- **pillow** (12.3.0, pulled in by `matplotlib` and `streamlit`, and imported
+  by `demos/render_gif.py`). Pillow itself is `MIT-CMU`, a permissive historical license.
   The Linux wheel bundles image, compression and font libraries whose notices
-  its `LICENSE` reproduces: AOM, Brotli, bzip2, dav1d, HarfBuzz, Little CMS,
+  its `LICENSE` reproduces, including AOM, Brotli, bzip2, dav1d, HarfBuzz, Little CMS,
   libavif, libjpeg, liblzma, libpng, libtiff, libwebp, libyuv, OpenJPEG, raqm,
-  libXau, libxcb, XDMCP, zlib and zstd, all under permissive or public-domain
-  terms, plus FreeType. FreeType is dual-licensed: the FreeType License
+  Tcl/Tk, libXau, libxcb, XDMCP, zlib and zstd, all under permissive or
+  public-domain terms, plus FreeType. FreeType is dual-licensed: the FreeType License
   (BSD-style, with a credit clause) or GPL-2.0-or-later, at the user's choice.
   The other GPL text in that file belongs to XZ Utils command-line and build
   files that, as it states, do not end up in liblzma. As installed, Pillow is
   permissive, with FreeType usable under the FreeType License.
-- **protobuf** (7.36.2; set S21, pulled in by `streamlit`). Its metadata says
+- **protobuf** (7.36.2, pulled in by `streamlit`). Its metadata says
   only "3-Clause BSD License", a wording the generator does not recognise; its
   `LICENSE` file is the BSD-3-Clause text (Copyright 2008 Google Inc.).
 
@@ -105,8 +121,12 @@ Third-party material actually stored in the repository:
   the generated section below):
 
 ```bash
-python scripts/build_license_inventory.py --python 3.12 --write
+python scripts/build_license_inventory.py --python 3.12 \
+    --exclude-newer 2026-10-09T00:00:00Z --write
 ```
+
+`--exclude-newer` limits resolution to what PyPI offered at that instant, so
+rerunning the command reproduces the same versions.
 
 `scripts/build_license_inventory.py` and `scripts/generate_third_party_licenses.py`
 use only the standard library; the generator is shared with pycubrid,
@@ -114,11 +134,13 @@ sqlalchemy-cubrid and cubrid-mcp-server. It reads the PEP 639
 `License-Expression` field, then `License ::` classifiers, then a short
 `License` field, and never guesses a license. `tests/test_third_party_licenses.py`
 fails when a requirements file is not listed in a set, when a file's declared
-packages differ from its set's, when a package installed directly by a workflow
-is missing from the inventory, when a row's category disagrees with what the
+packages differ from its set's, when a package that a workflow or action installs directly is missing
+from the inventory, when a row's category disagrees with what the
 generator would assign to its license, or when an MPL or "Needs review" row is
 not explained. Version bumps inside a requirements file do not fail it: the
-versions here are a dated snapshot. Regenerate the inventory when a file is
+versions here are a dated snapshot, and a bump that makes two files of one set
+differ only splits that set at the next regeneration (set IDs are table-local
+and are not referenced elsewhere). Regenerate the inventory when a file is
 added or removed, or when its declared packages change.
 
 ## Inventory
@@ -154,9 +176,10 @@ added or removed, or when its declared packages change.
 | S23 | `templates/flask/01-basic-crud/requirements.txt`<br>`templates/flask/02-categories/requirements.txt`<br>`templates/flask/03-inventory-ledger/requirements.txt`<br>`templates/flask/04-purchase-orders/requirements.txt`<br>`templates/flask/05-batch-operations/requirements.txt`<br>`templates/flask/06-case-triage/requirements.txt`<br>`templates/flask/07-vendor-feed/requirements.txt`<br>`templates/flask/08-transactional-outbox/requirements.txt`<br>`templates/flask/10-workflow-engine/requirements.txt`<br>`templates/flask/11-inventory-reservation/requirements.txt` | flask, flask-sqlalchemy, pycubrid, sqlalchemy-cubrid |
 | S24 | `templates/flask/09-rbac/requirements.txt` | flask, flask-sqlalchemy, pycubrid, pytest, sqlalchemy, sqlalchemy-cubrid |
 | S25 | `templates/flask/requirements.txt` | flask, flask-sqlalchemy, httpx, pycubrid, pytest, sqlalchemy, sqlalchemy-cubrid |
-| TOOLING | CI and docs workflows (the TOOLING constant in this script) | mkdocs-material, pymdown-extensions, pytest, pytest-asyncio, ruff |
+| TOOLING | CI and docs workflows and the PR-smoke action (the TOOLING constant in this script) | mkdocs-material, pymdown-extensions, pytest, pytest-asyncio, ruff |
+| DEMO | demos/render_gif.py imports (the DEMO constant in this script) | imageio, pillow |
 
-### Packages (143 rows)
+### Packages (144 rows)
 
 | Name | Observed versions | License | Category | URL | Sets |
 |---|---|---|---|---|---|
@@ -210,6 +233,7 @@ added or removed, or when its declared packages change.
 | httpx | 0.28.1 | BSD License | Permissive | https://github.com/encode/httpx | S12, S15, S16, S17, S25 |
 | httpx-sse | 0.4.3 | MIT | Permissive | https://github.com/florimondmanca/httpx-sse | S12 |
 | idna | 3.20 | BSD-3-Clause | Permissive | https://github.com/kjd/idna | S10, S12, S13, S14, S15, S16, S17, S18, S21, S25, TOOLING |
+| ImageIO | 2.38.1 | BSD-2-Clause | Permissive | https://github.com/imageio/imageio | DEMO |
 | iniconfig | 2.3.1 | MIT | Permissive | https://github.com/pytest-dev/iniconfig | S15, S16, S17, S24, S25, TOOLING |
 | itsdangerous | 2.2.0 | BSD License | Permissive | https://github.com/pallets/itsdangerous/ | S21, S23, S24, S25 |
 | jaraco.classes | 3.4.0 | MIT License | Permissive | https://github.com/jaraco/jaraco.classes | S12 |
@@ -300,8 +324,8 @@ added or removed, or when its declared packages change.
 | Werkzeug | 3.1.9 | BSD-3-Clause | Permissive | https://github.com/pallets/werkzeug/ | S23, S24, S25 |
 | certifi | 2026.7.22 | Mozilla Public License 2.0 (MPL 2.0) | Weak copyleft (MPL) | https://github.com/certifi/python-certifi | S12, S15, S16, S17, S21, S25, TOOLING |
 | pathspec | 1.1.1 | Mozilla Public License 2.0 (MPL 2.0) | Weak copyleft (MPL) | https://github.com/cpburnz/python-pathspec | TOOLING |
-| numpy | 2.5.3 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | Needs review | https://numpy.org | S06, S20, S21 |
-| pillow | 12.3.0 | MIT-CMU | Needs review | https://python-pillow.github.io | S20, S21 |
+| numpy | 2.5.3 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | Needs review | https://numpy.org | DEMO, S06, S20, S21 |
+| pillow | 12.3.0 | MIT-CMU | Needs review | https://python-pillow.github.io | DEMO, S20, S21 |
 | protobuf | 7.36.2 | 3-Clause BSD License | Needs review | https://developers.google.com/protocol-buffers/ | S21 |
 
 <!-- END GENERATED INVENTORY -->
