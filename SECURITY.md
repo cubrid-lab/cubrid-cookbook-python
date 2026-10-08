@@ -1,10 +1,19 @@
 # Security Policy
 
+## Supported Versions
+
+This repository is a collection of examples and is not published as a package.
+Security fixes are applied to `main`, which is the only supported version; the
+latest published release, if any, is updated from `main`.
+
 ## Reporting a Vulnerability
 
 If you discover a security issue in cubrid-cookbook examples, please report it responsibly by emailing:
 
 **Email:** paikend@gmail.com
+
+GitHub private vulnerability reporting is not currently enabled for this
+repository, so email is the supported private route.
 
 **Do not** open a public GitHub issue for security vulnerabilities. Responsible disclosure allows us to address the issue before public disclosure.
 
