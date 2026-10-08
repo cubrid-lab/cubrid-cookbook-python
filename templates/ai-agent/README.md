@@ -71,8 +71,10 @@ backend, even if the supplied URL uses the legacy `cubrid://` scheme.
 Without `CUBRID_TEST_URL`, the five live cases skip; offline tests still run.
 Each script runs in its own process with a 60-second limit; cleanup connections
 have a 10-second connect timeout and a 15-second read timeout. The smoke-test
-matrix runs the suite twice on both CUBRID 11.2 and 11.4 for every trigger,
-including pull requests, to catch stale demonstration keys after teardown.
+matrix runs the suite twice on both CUBRID 11.2 and 11.4 for every `main` push,
+the nightly schedule and release verification, and the CUBRID 11.4 pull-request
+smoke lane runs it twice when a pull request touches this template or golden
+examples, to catch stale demonstration keys after teardown.
 
 ## Architecture
 

@@ -3,7 +3,7 @@
 Runnable Python examples and production-shaped application templates for CUBRID — from a five-minute first query to natural-language database access, everything installs from PyPI.
 
 - **100+ runnable recipes** across pycubrid, SQLAlchemy, pandas, Alembic, JSON, isolation levels, migration, and the application templates (exact counts in the [support matrix](support-matrix.md#recipe-coverage))
-- **Every golden-backed recipe is CI-verified** — `make verify` compares exact stdout against `expected/*.expected` files on a **CUBRID 11.2 + 11.4 job matrix**
+- **Every golden-backed recipe is CI-verified** — `make verify` compares exact stdout against `expected/*.expected` files on a **CUBRID 11.2 + 11.4 job matrix** for every `main` push, nightly and release verification; pull requests check the examples they touch on 11.4
 - **6 application templates**: FastAPI service, Flask app, Django app, Streamlit dashboard, Celery async worker, pandas batch ETL — the dashboard is a one-command `docker compose up` demo
 
 ## The three paths
@@ -22,8 +22,8 @@ Runnable Python examples and production-shaped application templates for CUBRID 
 | SQLAlchemy fundamentals | 7 | `make verify` goldens (CI) |
 | pandas fundamentals | 6 | `make verify` goldens (CI) |
 | Flask / FastAPI templates | 11 + 12 | pytest suites (CI on `main` + nightly, CUBRID 11.2 + 11.4) |
-| Streamlit / Django templates | 5 + 1 | Streamlit: isolated CUBRID pytest suite; Django: HTTP + SQLAlchemy bridge pytest (both PR CI 11.4 and non-PR 11.2 + 11.4) |
-| Celery / batch-ETL templates | 1 + 5 | Celery database tasks: live pytest (PR CI 11.4; `main` + nightly 11.2 + 11.4), broker/worker manual; ETL goldens in `expected/` |
+| Streamlit / Django templates | 5 + 1 | Streamlit: isolated CUBRID pytest suite; Django: HTTP + SQLAlchemy bridge pytest (both PR CI 11.4 when touched and non-PR 11.2 + 11.4) |
+| Celery / batch-ETL templates | 1 + 5 | Celery database tasks: live pytest (PR CI 11.4 when touched; `main` + nightly 11.2 + 11.4), broker/worker manual; ETL goldens in `expected/` |
 | Async · Alembic · JSON · isolation | 4 | `make verify` goldens (CI) |
 | Migration, performance, pitfalls | topic guides | docs |
 

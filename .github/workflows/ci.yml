@@ -1,17 +1,80 @@
 name: CI
 
+# Tiered validation (#222). scripts/ci_scope.py classifies the run; live lanes
+# start only when selected and ci-gate accepts a skip only where the classifier
+# said "false". Pull requests: cheap checks always, then only the touched recipe
+# families on CUBRID 11.4 / Python 3.12. Push, the weekly schedule and manual
+# runs: Python 3.11-3.14 and CQRS on 11.2 + 11.4; smoke-test.yml owns the broad
+# 11.2/11.4 goldens and recipe suites there. See CONTRIBUTING.md "CI tiers".
 on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "30 1 * * 1"
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  classify:
+    name: Classify changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      tier: ${{ steps.scope.outputs.tier }}
+      web: ${{ steps.scope.outputs.web }}
+      dashboard: ${{ steps.scope.outputs.dashboard }}
+      async_worker: ${{ steps.scope.outputs.async_worker }}
+      django: ${{ steps.scope.outputs.django }}
+      cqrs: ${{ steps.scope.outputs.cqrs }}
+      cqrs_cubrid: ${{ steps.scope.outputs.cqrs_cubrid }}
+      compat: ${{ steps.scope.outputs.compat }}
+      python: ${{ steps.scope.outputs.python }}
+      smoke_114: ${{ steps.scope.outputs.smoke_114 }}
+      smoke_112: ${{ steps.scope.outputs.smoke_112 }}
+      verify_paths: ${{ steps.scope.outputs.verify_paths }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # A PR checks out its merge commit; its first parent is the base tip.
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Classify validation scope
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "pull_request" ]; then
+            # Diff the tested merge tree against its base. --no-renames lists both
+            # sides of a move; core.quotePath=false keeps non-ASCII paths matchable
+            # (a still-quoted path matches nothing and fails closed).
+            git rev-parse --verify HEAD^2 >/dev/null
+            git -c core.quotePath=false diff --no-renames --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed.txt"
+            echo "Changed paths:"
+            cat "$RUNNER_TEMP/changed.txt"
+          else
+            : > "$RUNNER_TEMP/changed.txt"
+          fi
+          python3 scripts/ci_scope.py --event "$EVENT" < "$RUNNER_TEMP/changed.txt" > "$RUNNER_TEMP/scope.txt"
+          cat "$RUNNER_TEMP/scope.txt"
+          cat "$RUNNER_TEMP/scope.txt" >> "$GITHUB_OUTPUT"
+          {
+            echo "### CI validation scope"
+            echo '```'
+            cat "$RUNNER_TEMP/scope.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   lint-python:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -27,6 +90,7 @@ jobs:
   quickstart-tests:
     name: Offline checks (no DB)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -40,6 +104,7 @@ jobs:
   docs-sync:
     name: Docs sync gate
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -54,10 +119,12 @@ jobs:
 
   # Stages the repo docs and builds the MkDocs site with --strict, so a link that
   # breaks when a page is staged under docs/ fails the PR instead of the
-  # post-merge Pages deploy (#154). docs.yml still owns the deploy.
+  # post-merge Pages deploy (#154). Always on: a PR that only deletes or renames
+  # a linked example must still fail here. docs.yml still owns the deploy.
   docs-site:
     name: Docs site build (strict)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # Same action pins as docs.yml, which builds this site for deployment.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -76,9 +143,12 @@ jobs:
 
   # `make verify` is golden-file only and never runs the pytest suites, so
   # recipe-level CUBRID-only breakage ships undetected (#131/#127). This job
-  # runs them against one live CUBRID.
+  # runs the representative Flask and FastAPI suites against one live CUBRID
+  # when a Flask/FastAPI recipe or shared live infrastructure changes.
   pytest-suites:
     name: Recipe pytest suites (live CUBRID)
+    needs: [classify]
+    if: needs.classify.outputs.web == 'true'
     uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
     with:
       cubrid-version: "11.4"
@@ -104,6 +174,8 @@ jobs:
 
   dashboard-pytest:
     name: Dashboard pytest suite (isolated CUBRID 11.4)
+    needs: [classify]
+    if: needs.classify.outputs.dashboard == 'true'
     uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
     with:
       cubrid-version: "11.4"
@@ -116,6 +188,8 @@ jobs:
 
   async-worker-pytest:
     name: Async-worker database tasks (live CUBRID 11.4)
+    needs: [classify]
+    if: needs.classify.outputs.async_worker == 'true'
     uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
     with:
       cubrid-version: "11.4"
@@ -128,6 +202,8 @@ jobs:
 
   django-bridge-pytest:
     name: Django SQLAlchemy bridge (live CUBRID 11.4)
+    needs: [classify]
+    if: needs.classify.outputs.django == 'true'
     uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
     with:
       cubrid-version: "11.4"
@@ -139,12 +215,17 @@ jobs:
       test-command: python -m pytest templates/django/tests -v --tb=short
 
   # Two read-only golden recipes, not the full framework or smoke matrix.
+  # Python 3.11-3.14 on push/schedule/dispatch and CI-policy PRs; endpoints
+  # 3.11 + 3.14 for compatibility-surface or shared-infrastructure PRs; every
+  # other PR relies on the Python 3.12 its selected live lanes already use.
   python-compatibility:
     name: Python compatibility (${{ matrix.python }}, CUBRID 11.4)
+    needs: [classify]
+    if: needs.classify.outputs.compat == 'true'
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.12", "3.13", "3.14"]
+        python: ${{ fromJSON(needs.classify.outputs.python) }}
     uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
     with:
       cubrid-version: "11.4"
@@ -162,12 +243,16 @@ jobs:
         python fundamentals/sqlalchemy/01_connect_and_session.py | bash scripts/normalize_output.sh | diff -u fundamentals/sqlalchemy/expected/01_connect_and_session.expected -
 
   # Recipe 10 has independent pins that broad latest-package smoke cannot validate.
+  # 11.2 + 11.4 on push/schedule/dispatch and when its pins or shared live
+  # infrastructure change; 11.4 for other recipe-10 PRs; skipped otherwise.
   cqrs-pinned-pytest:
     name: CQRS pinned requirements (CUBRID ${{ matrix.cubrid }})
+    needs: [classify]
+    if: needs.classify.outputs.cqrs == 'true'
     strategy:
       fail-fast: false
       matrix:
-        cubrid: ["11.2", "11.4"]
+        cubrid: ${{ fromJSON(needs.classify.outputs.cqrs_cubrid) }}
     uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
     with:
       cubrid-version: ${{ matrix.cubrid }}
@@ -182,40 +267,109 @@ jobs:
         python -m pip freeze
         python -m pytest templates/api-service-fastapi/recipes/10-cqrs-event-sourcing/tests -v --tb=short
 
-  # Single aggregate check for branch protection, mirroring pycubrid's gate.
-  # None of the jobs above is path-gated or conditional (they all run on every
-  # PR, docs-only included), so anything other than `success` -- failure,
-  # cancelled or an unexpected skip -- fails the gate.
+  # PR smoke lanes (#222). They keep the exact required check names that
+  # smoke-test.yml used to report on pull requests, so branch protection is
+  # unchanged; a lane skipped by the classifier reports "skipped", which branch
+  # protection accepts and ci-gate accepts only when the classifier said false.
+  # Two plain jobs instead of a matrix: a skipped matrix job would report its
+  # unexpanded name and leave the required check missing.
+  smoke-114:
+    name: Smoke Tests (CUBRID 11.4)
+    needs: [classify]
+    if: needs.classify.outputs.smoke_114 == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # make verify runs untrusted PR example code: never persist the token.
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: ./.github/actions/pr-smoke
+        with:
+          cubrid-version: "11.4"
+          verify-paths: ${{ needs.classify.outputs.verify_paths }}
+
+  smoke-112:
+    name: Smoke Tests (CUBRID 11.2)
+    needs: [classify]
+    if: needs.classify.outputs.smoke_112 == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: ./.github/actions/pr-smoke
+        with:
+          cubrid-version: "11.2"
+          verify-paths: ${{ needs.classify.outputs.verify_paths }}
+
+  # Single aggregate check for branch protection. Fail-closed allow-list:
+  # classify and the always-on cheap checks must succeed; every other lane must
+  # succeed unless classify marked it not applicable (output exactly "false").
+  # A failed, cancelled or unexpectedly skipped lane, or a missing
+  # classification, fails the gate.
   ci-gate:
     name: CI Gate (all checks must pass)
     if: always()
-    needs: [lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest, async-worker-pytest, django-bridge-pytest, python-compatibility, cqrs-pinned-pytest]
+    needs: [classify, lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest, async-worker-pytest, django-bridge-pytest, python-compatibility, cqrs-pinned-pytest, smoke-114, smoke-112]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions: {}
     steps:
       - name: Check job results
         env:
+          TIER: ${{ needs.classify.outputs.tier }}
+          R_CLASSIFY: ${{ needs.classify.result }}
           R_LINT_PYTHON: ${{ needs.lint-python.result }}
           R_QUICKSTART_TESTS: ${{ needs.quickstart-tests.result }}
           R_DOCS_SYNC: ${{ needs.docs-sync.result }}
-          R_DOCS_SITE: ${{ needs.docs-site.result }}
           R_DOC_LINT: ${{ needs.doc-lint.result }}
+          R_DOCS_SITE: ${{ needs.docs-site.result }}
           R_PYTEST_SUITES: ${{ needs.pytest-suites.result }}
+          W_PYTEST_SUITES: ${{ needs.classify.outputs.web }}
           R_DASHBOARD_PYTEST: ${{ needs.dashboard-pytest.result }}
+          W_DASHBOARD_PYTEST: ${{ needs.classify.outputs.dashboard }}
           R_ASYNC_WORKER_PYTEST: ${{ needs.async-worker-pytest.result }}
+          W_ASYNC_WORKER_PYTEST: ${{ needs.classify.outputs.async_worker }}
           R_DJANGO_BRIDGE_PYTEST: ${{ needs.django-bridge-pytest.result }}
+          W_DJANGO_BRIDGE_PYTEST: ${{ needs.classify.outputs.django }}
           R_PYTHON_COMPATIBILITY: ${{ needs.python-compatibility.result }}
+          W_PYTHON_COMPATIBILITY: ${{ needs.classify.outputs.compat }}
           R_CQRS_PINNED_PYTEST: ${{ needs.cqrs-pinned-pytest.result }}
+          W_CQRS_PINNED_PYTEST: ${{ needs.classify.outputs.cqrs }}
+          R_SMOKE_114: ${{ needs.smoke-114.result }}
+          W_SMOKE_114: ${{ needs.classify.outputs.smoke_114 }}
+          R_SMOKE_112: ${{ needs.smoke-112.result }}
+          W_SMOKE_112: ${{ needs.classify.outputs.smoke_112 }}
         run: |
           set -euo pipefail
           fail=0
-          for var in R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOCS_SITE R_DOC_LINT R_PYTEST_SUITES R_DASHBOARD_PYTEST R_ASYNC_WORKER_PYTEST R_DJANGO_BRIDGE_PYTEST R_PYTHON_COMPATIBILITY R_CQRS_PINNED_PYTEST; do
-            if [[ "${!var}" != "success" ]]; then
-              echo "::error::Required job ${var#R_} result: ${!var}"
+          for var in R_CLASSIFY R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOC_LINT R_DOCS_SITE R_PYTEST_SUITES R_DASHBOARD_PYTEST R_ASYNC_WORKER_PYTEST R_DJANGO_BRIDGE_PYTEST R_PYTHON_COMPATIBILITY R_CQRS_PINNED_PYTEST R_SMOKE_114 R_SMOKE_112; do
+            result="${!var:-}"
+            wanted_var="W_${var#R_}"
+            # Lanes without a W_ variable are always required.
+            wanted="${!wanted_var-required}"
+            if [[ "$result" == "success" ]]; then
+              echo "ok      ${var#R_}"
+            elif [[ "$result" == "skipped" && "$wanted" == "false" ]]; then
+              echo "skipped ${var#R_} (not selected for tier '${TIER:-unknown}')"
+            else
+              echo "::error::Job ${var#R_} result '${result}' (selected: '${wanted}')"
               fail=1
             fi
           done
           if [[ "$fail" -ne 0 ]]; then
             exit 1
           fi
-          echo 'All CI checks passed'
+          echo 'All selected CI checks passed'

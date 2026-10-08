@@ -1,0 +1,143 @@
+name: Cookbook PR smoke
+description: >-
+  Pull-request smoke lane for ci.yml (#222): scoped make verify goldens, the
+  AI-agent examples and the cubrid-mcp-server tool surface against one live
+  CUBRID, on the latest published drivers. It mirrors the PR path that
+  smoke-test.yml used to run; smoke-test.yml keeps the broad main/scheduled and
+  exact release verification runs. Runs after checkout and setup-python.
+
+inputs:
+  cubrid-version:
+    description: "CUBRID image tag to start (11.2 or 11.4)"
+    required: true
+  verify-paths:
+    description: "Space-separated make verify roots from scripts/ci_scope.py ('.' = all)"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Start CUBRID container
+      shell: bash
+      env:
+        CUBRID_VERSION: ${{ inputs.cubrid-version }}
+      run: |
+        set -euo pipefail
+        case "$CUBRID_VERSION" in
+          11.2|11.4) ;;
+          *) echo "::error::Unsupported CUBRID version: $CUBRID_VERSION"; exit 1 ;;
+        esac
+        # Started before dependency install so the image pull and engine
+        # initialization overlap with pip install.
+        docker run -d --name cubrid --shm-size 512m \
+          -e CUBRID_DB=testdb \
+          -p 33000:33000 -p 1523:1523 \
+          "cubrid/cubrid:$CUBRID_VERSION"
+
+    - name: Select and freeze released drivers
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Pull requests select the latest published releases (no release request).
+        # Composite steps cannot set timeout-minutes; bound the PyPI lookup here.
+        timeout 10m python scripts/release_smoke.py select \
+          --constraints "$RUNNER_TEMP/release-constraints.txt"
+        python scripts/release_smoke.py freeze \
+          --state "$RUNNER_TEMP/release-drivers.json" \
+          --constraints "$RUNNER_TEMP/release-constraints.txt"
+        echo "PIP_CONSTRAINT=$RUNNER_TEMP/release-constraints.txt" >> "$GITHUB_ENV"
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        # PIP_CONSTRAINT keeps the selected drivers fixed during every install.
+        pip install pandas matplotlib pytest
+        python scripts/release_smoke.py install-mcp --state "$RUNNER_TEMP/release-drivers.json"
+        python scripts/release_smoke.py install-examples --constraints "$PIP_CONSTRAINT"
+
+    - name: Wait for CUBRID readiness
+      shell: bash
+      run: |
+        for i in $(seq 1 60); do
+          if docker exec cubrid bash -lc "csql -u dba testdb -c 'SELECT 1;'" >/dev/null 2>&1; then
+            echo "CUBRID testdb is ready (attempt $i)"
+            exit 0
+          fi
+          echo "Waiting for CUBRID testdb... attempt $i/60"
+          sleep 5
+        done
+        echo "CUBRID testdb did not become ready in time"
+        docker logs cubrid || true
+        exit 1
+
+    - name: Verify external client connectivity
+      shell: bash
+      run: |
+        # csql proves the in-container engine; the broker accepts external TCP
+        # slightly later. Wait until a real pycubrid client can query.
+        python - <<'PY'
+        import os
+        import sys
+        import time
+
+        import pycubrid
+
+        last_error = None
+        for attempt in range(1, 31):
+            try:
+                conn = pycubrid.connect(
+                    host="localhost", port=33000, database="testdb", user="dba", password=""
+                )
+                cursor = conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+                cursor.close()
+                server_version = conn.get_server_version().replace("\n", " ").replace("\r", " ")
+                conn.close()
+                with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
+                    output.write(f"CUBRID_SERVER_VERSION={server_version}\n")
+                print(f"External pycubrid connection OK (attempt {attempt})")
+                sys.exit(0)
+            except Exception as error:
+                last_error = error
+                print(f"Waiting for external broker... attempt {attempt}/30: {error}")
+                time.sleep(3)
+        print(f"External broker not reachable in time: {last_error}")
+        sys.exit(1)
+        PY
+
+    - name: Record tested versions
+      shell: bash
+      run: |
+        set -o pipefail
+        python scripts/release_smoke.py verify \
+          --state "$RUNNER_TEMP/release-drivers.json" --report \
+          | tee -a "$GITHUB_STEP_SUMMARY"
+
+    - name: Test AI agent examples against live CUBRID
+      shell: bash
+      env:
+        CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
+      run: |
+        set -euo pipefail
+        # Repeat to catch stale fixed demonstration keys and incomplete teardown.
+        timeout 5m python -m pytest tests/test_ai_agent.py -v --tb=short
+        timeout 5m python -m pytest tests/test_ai_agent.py -v --tb=short
+
+    - name: Run make verify
+      shell: bash
+      env:
+        VERIFY_PATHS: ${{ inputs.verify-paths }}
+      run: |
+        set -euo pipefail
+        if [ -z "$VERIFY_PATHS" ]; then
+          echo "::error::No verify scope; scripts/ci_scope.py must select one"
+          exit 1
+        fi
+        printf '### PR smoke verify scope: `%s`\n' "$VERIFY_PATHS" >> "$GITHUB_STEP_SUMMARY"
+        make verify VERIFY_PATHS="$VERIFY_PATHS"
+
+    - name: Smoke test cubrid-mcp-server
+      shell: bash
+      run: python scripts/mcp_smoke.py

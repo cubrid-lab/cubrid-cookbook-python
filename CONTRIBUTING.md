@@ -67,8 +67,8 @@ Make/Compose regression tests. `make test-offline` runs just the offline test
 suites. Each suite uses its own process to avoid conflicting recipe module names.
 These checks require no database and do not prove live CUBRID compatibility;
 run the relevant example or `make verify` against CUBRID for that evidence.
-CI runs the same `make check` command. Both required live smoke matrix jobs also
-run the Make/readiness regression guards before selecting driver dependencies.
+CI runs the same `make check` command on every pull request (see
+[CI tiers](#ci-tiers) for which live lanes run on top of it).
 The repository is an example collection, so `pip install -e .` is not supported.
 
 ### Dependency updates
@@ -97,7 +97,82 @@ When a new recipe adds a `requirements.txt` outside the configured
 `directories` globs, extend the globs in the same PR; the test above fails
 until you do.
 
+### CI tiers
+
+Two workflows share live CUBRID validation (#222). `scripts/ci_scope.py`
+classifies each `ci.yml` run from its event and changed paths; a lane starts only
+when selected, and the single required `CI Gate (all checks must pass)` accepts a
+skipped lane only when the classifier said `false` for it. A failed, cancelled or
+unexpectedly skipped lane, or a failed classification, fails the gate.
+
+| Tier | When | What runs |
+|------|------|-----------|
+| 1 — cheap checks | every pull request | Ruff, `make check`, docs-sync, doc-lint, classification and the gate; the strict docs-site build |
+| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → representative suites; dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples; AI-agent code or other files in example trees → the same lane with a full `make verify` |
+| 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with full `make verify`, Python 3.11 + 3.14 compatibility |
+| 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
+| 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | every golden plus all Flask/FastAPI, async-worker, Django and dashboard suites on CUBRID 11.2 + 11.4 |
+
+- Docs-only pull requests (`*.md`, `docs/`, `mkdocs.yml`, …) start no live CUBRID.
+  Unknown paths fail closed to every recipe family lane and the 11.4 smoke lane
+  with a full `make verify`.
+- CUBRID 11.2 runs on a pull request only for version-sensitive changes:
+  `smoke-test.yml`, `scripts/release_smoke.py`, `scripts/mcp_smoke.py`, the
+  fan-out paths, or recipe 10's `requirements.txt` (CQRS job only).
+- Example directories with no live consumer (`performance/`, the FastAPI
+  quickstart, `fundamentals/parameterized-queries`) are covered by the offline
+  checks only, on every event.
+- The Flask/FastAPI lane runs the representative `01-basic-crud` suites, not the
+  touched recipe's own suite (unchanged; tracked in #227).
+- `smoke-test.yml` does not run on pull requests, so no pull request repeats the
+  broad 11.2/11.4 matrix. Its exact release verification inputs, outputs and
+  fail-closed reporting are unchanged. To test a change to it before merging, run
+  `gh workflow run smoke-test.yml -R cubrid-lab/cubrid-cookbook-python --ref <branch>`.
+- The required check names `Smoke Tests (CUBRID 11.2)` and
+  `Smoke Tests (CUBRID 11.4)` now come from the two `ci.yml` pull-request smoke
+  lanes (`.github/actions/pr-smoke`). When the classifier skips a lane its check
+  reports *skipped*, which branch protection accepts; the gate still enforces it.
+- On `main` and schedule events `ci.yml` runs only what `smoke-test.yml` does not
+  cover (Python 3.11–3.14 and CQRS pins on 11.2 + 11.4); its other live jobs
+  report skipped there.
+- Dependabot grouping is unchanged. A grouped multi-directory recipe bump starts
+  only the families it touches (for example a Flask bump: one Flask/FastAPI lane)
+  plus the cheap checks; a GitHub Actions group bump edits `ci.yml` and therefore
+  fans out.
+- The nightly `smoke-test.yml` schedule stays daily: between 2026-09-01 and
+  2026-10-07, 10 of 37 scheduled runs failed in `make verify`, most on days
+  without a `main` push (2026-09-03 to 09-08, 09-25/26), so main pushes alone
+  would have detected those regressions days later.
+
+Measured before/after (#222; "before" = median of real runs since 2026-10-03 with
+the current job set; "after" = the classifier applied to the files of the last 40
+merged pull requests, using the same per-job median durations; billed minutes
+round each job up to a whole minute):
+
+| Event | Before jobs (live) | Before job-min / billed | After jobs (live) | After job-min / billed |
+|-------|-------------------|-------------------------|-------------------|------------------------|
+| Docs-only PR | 21 (12) | 13.3 / 24 | 10 (0) | 1.6 / 10 |
+| Dependabot pip recipe bump | 21 (12) | 13.3 / 24 | 11 (2) | 2.9 / 11 |
+| Path-selected PR (median of `pr` tier) | 21 (12) | 13.3 / 24 | 11.5 (2) | 4.3 / 13 |
+| CI or shared-infrastructure PR | 21 (12) | 13.3 / 24 | 20 (10) | 13.7 / 26 |
+| Last 40 merged PRs, total | 840 (480) | 532 / 960 | 598 (204) | 323 / 734 |
+| Push to `main` (`ci.yml` + `smoke-test.yml`) | 21 (12) | 16.3 / 28 | 17 (8) | 11.9 / 22 |
+| Schedule | 2 (2) daily | 6.1 / 7 per day | unchanged daily, plus `ci.yml` weekly 15 (6) | + ~5.7 / 15 per week |
+
 ---
+
+### Job timeouts
+
+Every executing job sets an integer `timeout-minutes` instead of GitHub's
+360-minute default (#228): 2–5 minutes for gates and small jobs, 10 for lint and
+the docs build, 15 for the offline checks and the docs deploy, 30 for the PR smoke
+lanes, and 60 for `smoke-test.yml`'s `verify` job, whose step-level timeouts add up
+to 57 (plus a few untimed setup steps; the observed maximum is 4 minutes).
+Jobs that call the organization's reusable workflows (`doc-lint`, `live-smoke`)
+cannot set a timeout; those callees are an exact allowlist.
+`tests/test_workflow_timeouts.py` (run by `make check`) reads every workflow and
+fails when an executing job lacks a bounded timeout, when a new external caller is
+not allowlisted, or when `CI Gate` loses `if: always()` or its short timeout.
 
 ## Adding Examples
 
@@ -232,7 +307,7 @@ These inputs are read from the event JSON and follow the same validation, exact
 PyPI install, bounded retry, pinning, origin check and summary as a release
 dispatch; an invalid, unavailable or mismatched release fails instead of testing
 the latest release. A manual run with the default inputs (`package=latest`, empty
-`version`), like pushes, pull requests and the nightly schedule, is an ordinary
+`version`), like pushes and the nightly schedule, is an ordinary
 smoke run on the latest published releases and is reported as not a release
 verification.
 
@@ -535,6 +610,19 @@ pinning the caller alone does not freeze those resources.
 
 Explain unavailable local checks so maintainers can arrange validation. A reason
 or an AI review does not waive the CI or live checks required before merge.
+
+### Code ownership
+
+`.github/CODEOWNERS` routes review requests for a small set of high-blast-radius
+surfaces to the maintainers: `.github/workflows/` (including the reusable
+`smoke-test.yml` release verification contract) and the composite actions in
+`.github/actions/`, `.github/dependabot.yml`, `.github/CODEOWNERS`, `SECURITY.md`,
+and the shared validation and golden-output infrastructure (`Makefile`,
+`scripts/`, the shared tests in `tests/`, `docker-compose.yml`, `pyproject.toml`).
+Individual recipes, and recipe-specific tests such as `tests/test_ai_agent*.py`,
+are intentionally not owned, so ordinary recipe contributions need no special
+reviewer. CODEOWNERS is routing only, not a security boundary, and does not by
+itself make any approval mandatory.
 
 ---
 
