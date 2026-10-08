@@ -164,9 +164,10 @@ round each job up to a whole minute):
 ### Job timeouts
 
 Every executing job sets an integer `timeout-minutes` instead of GitHub's
-360-minute default (#228): 5 minutes for gates and small jobs, 10–15 for lint, the
-offline checks and the docs builds, 30 for the PR smoke lanes, and 60 for
-`smoke-test.yml`'s `verify` job, whose step-level timeouts already add up to 50.
+360-minute default (#228): 2–5 minutes for gates and small jobs, 10 for lint and
+the docs build, 15 for the offline checks and the docs deploy, 30 for the PR smoke
+lanes, and 60 for `smoke-test.yml`'s `verify` job, whose step-level timeouts add up
+to 57 (plus a few untimed setup steps; the observed maximum is 4 minutes).
 Jobs that call the organization's reusable workflows (`doc-lint`, `live-smoke`)
 cannot set a timeout; those callees are an exact allowlist.
 `tests/test_workflow_timeouts.py` (run by `make check`) reads every workflow and

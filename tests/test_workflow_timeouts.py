@@ -29,19 +29,22 @@ JOB_HEADER = re.compile(r"^  ([A-Za-z0-9_-]+):\s*(?:#.*)?$")
 def parse_jobs(text: str) -> dict[str, list[str]]:
     """Return each top-level job's body lines (indented four spaces or more)."""
     lines = text.splitlines()
-    try:
-        start = lines.index("jobs:") + 1
-    except ValueError:
+    starts = [i for i, line in enumerate(lines) if re.match(r"^jobs:\s*(?:#.*)?$", line)]
+    if not starts:
         return {}
     jobs: dict[str, list[str]] = {}
     current = None
-    for line in lines[start:]:
+    for line in lines[starts[0] + 1 :]:
         if line and not line.startswith(" ") and not line.startswith("#"):
             break  # next top-level key
         header = JOB_HEADER.match(line)
         if header:
             current = header.group(1)
             jobs[current] = []
+        elif re.match(r"^  \S", line) and not line.lstrip().startswith("#"):
+            # A job header this parser does not understand must not be merged into
+            # the previous job, where it could borrow that job's timeout.
+            raise ValueError(f"unrecognized job header: {line!r}")
         elif current is not None:
             jobs[current].append(line)
     return jobs
@@ -49,7 +52,7 @@ def parse_jobs(text: str) -> dict[str, list[str]]:
 
 def job_key(body: list[str], key: str) -> str | None:
     for line in body:
-        match = re.match(rf"^    {re.escape(key)}:\s*(.*?)\s*$", line)
+        match = re.match(rf"^    {re.escape(key)}:\s*(.*?)\s*(?:\s#.*)?$", line)
         if match:
             return match.group(1)
     return None
@@ -77,8 +80,10 @@ class WorkflowTimeoutTest(unittest.TestCase):
         paths = sorted([*WORKFLOWS.glob("*.yml"), *WORKFLOWS.glob("*.yaml")])
         self.assertTrue(paths)
         for path in paths:
+            text = path.read_text(encoding="utf-8")
             with self.subTest(workflow=path.name):
-                self.assertEqual(problems(path.name, path.read_text(encoding="utf-8")), [])
+                self.assertTrue(parse_jobs(text), "no jobs parsed; the check would be vacuous")
+                self.assertEqual(problems(path.name, text), [])
 
     def test_parser_sees_every_job(self) -> None:
         # Guards against a parser that silently finds nothing.
