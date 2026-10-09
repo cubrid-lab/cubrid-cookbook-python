@@ -100,15 +100,43 @@ class LintChangelogTests(unittest.TestCase):
             "Subsection '### Added' in [Unreleased] is empty",
         )
 
-    def test_duplicate_section_is_rejected(self) -> None:
+    def test_duplicate_section_is_rejected_after_the_cutoff(self) -> None:
+        for release in ("Unreleased", "0.2.1"):
+            for heading in ("Fixed", "Documentation"):
+                with self.subTest(release=release, heading=heading):
+                    self.assert_rejected(
+                        self.prefix(release)
+                        + f"## [{release}]\n### {heading}\n- First\n### {heading}\n- Second\n",
+                        f"Duplicate subsection heading '### {heading}' in [{release}]",
+                    )
+
+    def test_non_adjacent_duplicate_section_is_rejected_after_the_cutoff(self) -> None:
         for release in ("Unreleased", "0.2.1"):
             with self.subTest(release=release):
                 self.assert_rejected(
                     self.prefix(release)
-                    + f"## [{release}]\n### Fixed\n- First\n### Fixed\n- Second\n",
-                    # The duplicate-heading rule runs first and covers every version.
-                    f"Duplicate subsection heading '### Fixed' in [{release}]",
+                    + f"## [{release}]\n### Changed\n- A\n### Documentation\n- B\n"
+                    "### Changed\n- C\n",
+                    f"Duplicate subsection heading '### Changed' in [{release}]",
                 )
+
+    def test_duplicate_section_in_released_history_is_accepted(self) -> None:
+        # Rule 5 is gated by SECTION_POLICY_CUTOFF: released notes up to the cutoff are
+        # never rewritten.
+        for release in ("0.2.0", "0.1.1", "0.1.0"):
+            for heading in ("Changed", "Documentation", "Docs"):
+                with self.subTest(release=release, heading=heading):
+                    self.assert_valid(
+                        f"## [Unreleased]\n## [{release}]\n### {heading}\n- A\n"
+                        f"### Fixed\n- B\n### {heading}\n- C\n"
+                    )
+
+    def test_duplicate_heading_before_the_first_release_is_rejected(self) -> None:
+        # Only rule 5 sees ### lines before the first "## [" header (rule 6 starts at a release).
+        self.assert_rejected(
+            "# C\n### Foo\n### Foo\n## [Unreleased]\n### Added\n- a\n",
+            "Duplicate subsection heading '### Foo' in []",
+        )
 
     def test_duplicate_section_with_other_spacing_is_rejected(self) -> None:
         self.assert_rejected(
@@ -187,12 +215,6 @@ class LintChangelogTests(unittest.TestCase):
             "## [Unreleased]\n### Fixed\n- x\n## [0.3.0]\n### Fixed\n- y\n"
             "## [0.4.0]\n### Fixed\n- z\n",
             "[0.4.0] should come before [0.3.0]",
-        )
-
-    def test_duplicate_heading_in_every_version_is_rejected(self) -> None:
-        self.assert_rejected(
-            "## [Unreleased]\n### Fixed\n- x\n## [0.1.0]\n### Docs\n- y\n### Docs\n- z\n",
-            "Duplicate subsection heading '### Docs' in [0.1.0]",
         )
 
     def test_fenced_duplicate_heading_is_content(self) -> None:

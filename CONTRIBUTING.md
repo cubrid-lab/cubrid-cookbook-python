@@ -83,6 +83,13 @@ header is an error (`scripts/extract_release_notes.py` is not fence-aware and wo
 truncate the Release body); an unclosed fence is an error. Only fences that start at
 column 0 with three backticks are recognised, not tilde or indented/nested fences.
 
+A duplicate `###` heading within one version section is an error only in `[Unreleased]`
+and in releases after 0.2.0 (`SECTION_POLICY_CUTOFF`); released history up to 0.2.0 is
+never rewritten, and different releases may reuse the same heading names. A duplicate
+heading before the first release header is always an error.
+`scripts/lint_changelog.py` is identical in pycubrid, sqlalchemy-cubrid,
+cubrid-mcp-server and this cookbook except for `SECTION_POLICY_CUTOFF`.
+
 ### Dependency updates
 
 `.github/dependabot.yml` keeps dependencies current without flooding the queue:

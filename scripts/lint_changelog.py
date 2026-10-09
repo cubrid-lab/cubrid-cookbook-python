@@ -9,7 +9,8 @@ Checks:
     2. Exactly one [Unreleased] section
     3. No duplicate version sections
     4. Released versions in descending semver order
-    5. No duplicate ### subsection heading within one version section
+    5. No duplicate ### subsection heading within [Unreleased] or a release newer
+       than SECTION_POLICY_CUTOFF (older releases keep their historical headings)
     6. In [Unreleased] and releases newer than SECTION_POLICY_CUTOFF, every
        ``###`` heading is a standard section, appears once, has content and
        follows the standard order (AGENTS.md "GitHub Release Policy")
@@ -84,8 +85,8 @@ def main() -> int:
     content = changelog.read_text(encoding="utf-8")
     headers = re.findall(r"^## \[(\S+)\]", content, re.MULTILINE)
 
-    # Rule 5: No duplicate ### subsection heading within one version section
-    # (fenced code blocks are ignored so example headings do not trip the check).
+    # Rule 5: No duplicate ### subsection heading within one version section after the
+    # cutoff (fenced code blocks are ignored so example headings do not trip the check).
     # The same pass collects each release's ### sections and their bodies for rule 6;
     # fenced lines count as body content, never as headings.
     section = ""
@@ -115,7 +116,7 @@ def main() -> int:
             continue
         if in_fence:
             continue
-        if line.startswith("### "):
+        if line.startswith("### ") and section_policy_applies(section):
             key = (section, line.strip())
             if key in seen_subsections:
                 print(
