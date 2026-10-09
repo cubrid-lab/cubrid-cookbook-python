@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
 from typing import Any, cast
 
 from flask import Flask, jsonify, request
@@ -11,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 try:
     from .database import db
     from .models import (
+        naive_utc_now,
         WorkflowDefinition,
         WorkflowRun,
         WorkflowStepDefinition,
@@ -19,6 +19,7 @@ try:
 except ImportError:
     from database import db  # pyright: ignore[reportImplicitRelativeImport]
     from models import (  # pyright: ignore[reportImplicitRelativeImport]
+        naive_utc_now,
         WorkflowDefinition,
         WorkflowRun,
         WorkflowStepDefinition,
@@ -144,7 +145,7 @@ def _set_run_completed_if_terminal(workflow_run: WorkflowRun) -> None:
     if step_runs and all(step_run.state in terminal_states for step_run in step_runs.values()):
         has_failure = any(step_run.state == "failed" for step_run in step_runs.values())
         workflow_run.state = "failed" if has_failure else "completed"
-        workflow_run.completed_at = datetime.now(timezone.utc)
+        workflow_run.completed_at = naive_utc_now()
 
 
 def _serialize_workflow(workflow: WorkflowDefinition) -> dict[str, object]:
@@ -410,7 +411,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
                     {
                         "state": "running",
                         "version": WorkflowStepRun.version + 1,
-                        "started_at": step_run.started_at or datetime.now(timezone.utc),
+                        "started_at": step_run.started_at or naive_utc_now(),
                     }
                 )
             )
@@ -442,7 +443,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
                             "last_error_text": None,
                             "attempt_count": claimed_run.attempt_count + 1,
                             "version": WorkflowStepRun.version + 1,
-                            "finished_at": datetime.now(timezone.utc),
+                            "finished_at": naive_utc_now(),
                         }
                     )
                 )
@@ -460,7 +461,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
                             "last_error_text": "forced failure",
                             "attempt_count": claimed_run.attempt_count + 1,
                             "version": WorkflowStepRun.version + 1,
-                            "finished_at": datetime.now(timezone.utc),
+                            "finished_at": naive_utc_now(),
                         }
                     )
                 )
@@ -495,7 +496,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
                 {
                     "state": "completed",
                     "version": WorkflowStepRun.version + 1,
-                    "finished_at": datetime.now(timezone.utc),
+                    "finished_at": naive_utc_now(),
                 }
             )
         )
@@ -579,7 +580,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
                 {
                     "state": "skipped",
                     "version": WorkflowStepRun.version + 1,
-                    "finished_at": datetime.now(timezone.utc),
+                    "finished_at": naive_utc_now(),
                 }
             )
         )

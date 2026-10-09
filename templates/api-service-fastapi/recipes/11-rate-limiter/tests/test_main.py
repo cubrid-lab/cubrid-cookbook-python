@@ -23,7 +23,7 @@ class FrozenTime:
     def __init__(self, start: datetime):
         self.current = start
 
-    def utcnow(self) -> datetime:
+    def now(self) -> datetime:
         return self.current
 
     def advance(self, seconds: int) -> None:
@@ -55,7 +55,7 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
 @pytest.fixture()
 def frozen_time(monkeypatch: pytest.MonkeyPatch) -> FrozenTime:
     clock = FrozenTime(datetime(2026, 1, 1, 0, 0, 0))
-    monkeypatch.setattr(routes, "utcnow", clock.utcnow)
+    monkeypatch.setattr(routes, "naive_utc_now", clock.now)
     return clock
 
 
@@ -169,7 +169,7 @@ def test_burst_allowance(client: TestClient, frozen_time: FrozenTime) -> None:
 
 
 def test_real_clock_is_naive_and_comparable_with_stored_values() -> None:
-    now = routes.utcnow()
+    now = routes.naive_utc_now()
     stored = datetime(2026, 1, 1, 0, 0, 0)  # naive, as read back from a DATETIME column
     assert now.tzinfo is None
     assert (now - stored).total_seconds() > 0

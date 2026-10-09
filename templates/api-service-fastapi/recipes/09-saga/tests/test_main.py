@@ -115,6 +115,49 @@ def test_concurrent_execute_conflict(client: TestClient):
     assert conflict.status_code == 409
 
 
+def _force_processing(order_key: str, age_seconds: int) -> None:
+    from datetime import timedelta
+
+    from sqlalchemy import update
+
+    models = import_module("models")
+    db = app.state.testing_session_local()
+    try:
+        db.execute(
+            update(models.Order)
+            .where(models.Order.order_key == order_key)
+            .values(
+                state="processing",
+                updated_at=models.naive_utc_now() - timedelta(seconds=age_seconds),
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+
+def test_recover_recently_started_order_conflicts(client: TestClient):
+    _seed(client)
+    _create_order(client)
+    _force_processing("O-1", age_seconds=1)
+
+    response = client.post("/orders/O-1/recover", json={"timeout_seconds": 300})
+
+    assert response.status_code == 409
+    assert "timeout is 300s" in response.json()["detail"]
+
+
+def test_recover_stuck_order_resets_to_pending(client: TestClient):
+    _seed(client)
+    _create_order(client)
+    _force_processing("O-1", age_seconds=600)
+
+    response = client.post("/orders/O-1/recover", json={"timeout_seconds": 300})
+
+    assert response.status_code == 200
+    assert response.json()["state"] == "pending"
+
+
 def test_idempotent_after_completion(client: TestClient):
     _seed(client)
     _create_order(client)

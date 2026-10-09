@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timezone
 from typing import cast
 
 from flask import Blueprint, jsonify, request
@@ -16,6 +15,7 @@ _models = importlib.import_module("models")
 PurchaseOrder = _models.PurchaseOrder
 PurchaseOrderLine = _models.PurchaseOrderLine
 Supplier = _models.Supplier
+naive_utc_now = _models.naive_utc_now
 db = importlib.import_module("database").db
 
 purchase_orders_bp = Blueprint("purchase_orders", __name__, url_prefix="/api")
@@ -177,9 +177,7 @@ def submit_purchase_order(order_id: int):
     result = db.session.execute(
         update(PurchaseOrder)
         .where(PurchaseOrder.id == order_id, PurchaseOrder.version == order.version)
-        .values(
-            status="submitted", submitted_at=datetime.now(timezone.utc), version=order.version + 1
-        )
+        .values(status="submitted", submitted_at=naive_utc_now(), version=order.version + 1)
     )
     if cast(CursorResult[object], result).rowcount == 0:
         return jsonify({"error": "Concurrent modification detected."}), 409
@@ -202,9 +200,7 @@ def approve_purchase_order(order_id: int):
     result = db.session.execute(
         update(PurchaseOrder)
         .where(PurchaseOrder.id == order_id, PurchaseOrder.version == order.version)
-        .values(
-            status="approved", approved_at=datetime.now(timezone.utc), version=order.version + 1
-        )
+        .values(status="approved", approved_at=naive_utc_now(), version=order.version + 1)
     )
     if cast(CursorResult[object], result).rowcount == 0:
         return jsonify({"error": "Concurrent modification detected."}), 409
@@ -259,7 +255,7 @@ def receive_purchase_order(order_id: int):
     new_values: dict[str, object] = {"version": order.version + 1}
     if len(order.lines) > 0 and all(line.received_qty >= line.quantity for line in order.lines):
         new_values["status"] = "fulfilled"
-        new_values["fulfilled_at"] = datetime.now(timezone.utc)
+        new_values["fulfilled_at"] = naive_utc_now()
 
     result = db.session.execute(
         update(PurchaseOrder)

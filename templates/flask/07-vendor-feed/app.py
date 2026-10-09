@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
 from typing import cast
 
 from flask import Blueprint, jsonify, request
@@ -16,6 +15,7 @@ CatalogProduct = _models.CatalogProduct
 ImportBatch = _models.ImportBatch
 ImportRow = _models.ImportRow
 Product = _models.Product
+naive_utc_now = _models.naive_utc_now
 db = importlib.import_module("database").db
 
 imports_bp = Blueprint("imports", __name__, url_prefix="/api")
@@ -187,7 +187,7 @@ def validate_import_batch(batch_id: int):
         invalid_count += 1
 
     batch.status = "validated"
-    batch.validated_at = datetime.now(timezone.utc)
+    batch.validated_at = naive_utc_now()
     db.session.commit()
 
     return jsonify(
@@ -265,7 +265,7 @@ def promote_import_batch(batch_id: int):
             skipped_count += 1
 
     batch.status = "promoted"
-    batch.promoted_at = datetime.now(timezone.utc)
+    batch.promoted_at = naive_utc_now()
     db.session.commit()
 
     return jsonify(

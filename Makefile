@@ -95,6 +95,7 @@ test-offline: ## Run mocked/offline suites in separate processes (no database re
 	$(PYTHON) -m unittest discover -s tests -p 'test_ci_scope.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_workflow_timeouts.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_workflow_permissions.py' -v
+	$(PYTHON) -m unittest discover -s tests -p 'test_template_timestamps.py' -v
 
 check-docs: ## Check documentation coverage and its doctests
 	$(PYTHON) -m doctest scripts/check_docs_reason.py -v
