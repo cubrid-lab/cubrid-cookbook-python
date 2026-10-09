@@ -102,6 +102,20 @@ class DependencyFloorTests(unittest.TestCase):
         errors = floors.check(self.tmp, MATRIX)
         self.assertTrue(any("expected pycubrid>=1.8,<2" in e for e in errors), errors)
 
+    def test_fundamentals_alembic_exact_sqlalchemy_floor_is_enforced(self) -> None:
+        target = self.tmp / "fundamentals/alembic/requirements.txt"
+        text = target.read_text().replace("sqlalchemy-cubrid>=1.8", "sqlalchemy-cubrid>=1.0")
+        target.write_text(text)
+        errors = floors.check(self.tmp, MATRIX)
+        self.assertTrue(any("expected sqlalchemy-cubrid>=1.8 in" in e for e in errors), errors)
+
+    def test_stale_alembic_exception_directory_is_reported(self) -> None:
+        shutil.rmtree(self.tmp / "fundamentals/alembic")
+        errors = floors.check(self.tmp, MATRIX)
+        self.assertTrue(
+            any("fundamentals/alembic" in e and "no longer exists" in e for e in errors), errors
+        )
+
     def test_stale_exception_directory_is_reported(self) -> None:
         shutil.rmtree(self.tmp / "fundamentals/pycubrid")
         errors = floors.check(self.tmp, MATRIX)

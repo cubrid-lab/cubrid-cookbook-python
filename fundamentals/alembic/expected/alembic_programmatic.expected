@@ -10,9 +10,11 @@
 [8] Verified: cookbook_alembic_demo dropped after downgrade
 
 --- CUBRID + Alembic notes ---
-  * CubridImpl is registered by importing sqlalchemy_cubrid.alembic_impl.
-  * transactional_ddl = False  -> each DDL statement auto-commits.
+  * Migration impl: CubridImpl (registered automatically by sqlalchemy-cubrid).
+  * transactional_ddl = True  -> ROLLBACK undoes uncommitted DDL
+    (autocommit off, the pycubrid default); a failed upgrade rolls back.
   * No native SEQUENCE support  -> migrations use AUTO_INCREMENT.
   * Identifiers are lowercase-folded with a 254-char max.
 
-For a real project layout (alembic.ini at repo root), see README.md.
+For a real project layout (alembic.ini at repo root), see
+https://github.com/cubrid-lab/sqlalchemy-cubrid/blob/main/docs/ALEMBIC.md

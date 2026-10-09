@@ -75,7 +75,11 @@ The `fundamentals/connect` and `fundamentals/orm-basics` requirements use
 `fundamentals/pycubrid` requires `pycubrid>=1.8,<2`: its
 `16_batch_error_handling` and `20_timezone_datetime` goldens assume the
 `errno`-carrying batch errors (#390) and the CAS session kept across
-`commit()` (#468/#472) that first shipped in pycubrid 1.8.0. These
+`commit()` (#468/#472) that first shipped in pycubrid 1.8.0.
+`fundamentals/alembic` requires `sqlalchemy-cubrid>=1.8`: its golden prints the
+dialect's runtime `transactional_ddl` (`True` since 1.8.0, sqlalchemy-cubrid#503), and its
+`env.py` relies on the automatic `CubridImpl` registration (sqlalchemy-cubrid#504) instead of
+importing `sqlalchemy_cubrid.alembic_impl`. These
 example-specific floors do not change the minimum versions for other recipes
 in the table above.
 
@@ -191,7 +195,7 @@ when a row no longer matches the repository. Verification is split:
 | CARDINALITY() broken | ❌ | ❌ | Use COUNT(*) + TABLE() unnest |
 | Reserved word errors | ⚠️ Cryptic error | ⚠️ Cryptic error | Use double-quotes or rename |
 | No RETURNING clause | ❌ | ❌ | Use LAST_INSERT_ID() |
-| DDL auto-commits | By design | By design | Separate DDL from DML |
+| DDL is transactional only while autocommit is off | By design | By design | Keep autocommit off (pycubrid default) for migrations; commit promptly, since uncommitted DDL holds schema locks |
 | Duplicate index on indexed columns | ❌ | ❌ | Drop `index=True` on primary key / unique columns |
 
 See [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for details and workarounds.

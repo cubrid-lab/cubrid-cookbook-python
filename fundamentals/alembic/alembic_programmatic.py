@@ -2,16 +2,19 @@
 
 Demonstrates:
 - Using ``alembic.command`` and ``alembic.config.Config`` from Python
-- Registering the CUBRID dialect impl (``CubridImpl``) so autogenerate works
+- A default ``env.py``: sqlalchemy-cubrid registers its Alembic impl
+  (``CubridImpl``) automatically, so no extra import is needed
 - Autogenerating a migration from SQLAlchemy ORM metadata
 - Upgrading and downgrading programmatically
 
-sqlalchemy-cubrid ships a ``CubridImpl`` (declared via the ``alembic.ddl``
-entry point) that knows about CUBRID-specific DDL behavior. Alembic does not
-import that entry point automatically, so ``env.py`` imports
-``sqlalchemy_cubrid.alembic_impl`` to register it. Because CUBRID does NOT
-support transactional DDL (``transactional_ddl = False``), Alembic issues each
-DDL statement in its own implicit auto-commit.
+sqlalchemy-cubrid (1.8.0 and later) registers ``CubridImpl`` for every CUBRID
+URL on its own: through Alembic's ``alembic.plugins`` entry point on Alembic
+1.18+, or when the dialect loads on older Alembic releases. CUBRID DDL is
+transactional while autocommit is off (pycubrid's default), so ``CubridImpl``
+sets ``transactional_ddl = True``: by default the whole ``upgrade`` runs in one
+transaction, and a failure rolls back every revision in that run. The recipe
+reads that value from the configured Alembic ``MigrationContext`` at runtime
+instead of printing a fixed string.
 
 This recipe runs Alembic against a TEMP DIRECTORY so it is fully
 self-contained: no project-level ``alembic.ini`` required. Because the demo
@@ -67,8 +70,10 @@ def _build_alembic_config(workdir: Path) -> Any:
     return cfg
 
 
-# env.py restricts autogenerate to the demo table, registers CubridImpl, and
-# imports the ORM Base whose metadata Alembic compares against. %r is filled
+# env.py restricts autogenerate to the demo table and imports the ORM Base whose
+# metadata Alembic compares against. It does not import
+# sqlalchemy_cubrid.alembic_impl: sqlalchemy-cubrid registers CubridImpl
+# automatically (1.8.0 and later). %r is filled
 # with the directory that holds this module so the import resolves.
 _ENV_PY_TEMPLATE = '''
 """Alembic environment for the cookbook recipe."""
@@ -79,10 +84,6 @@ import sys
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-
-# Register the CUBRID Alembic impl so context.configure() finds a "cubrid"
-# dialect implementation (Alembic does not load the entry point on its own).
-import sqlalchemy_cubrid.alembic_impl  # noqa: F401
 
 sys.path.insert(0, %r)
 
@@ -189,6 +190,24 @@ def _table_exists() -> bool:
         engine.dispose()
 
 
+def _describe_migration_impl() -> tuple[str, bool]:
+    """Return the Alembic impl class name and its ``transactional_ddl`` flag.
+
+    ``MigrationContext.configure`` looks the impl up by ``dialect.name``, the
+    same way ``context.configure()`` in env.py does, so this reports what the
+    migrations above actually ran with rather than a hard-coded value.
+    """
+    from alembic.runtime.migration import MigrationContext
+
+    engine = create_engine(DATABASE_URL)
+    try:
+        with engine.connect() as conn:
+            impl = MigrationContext.configure(conn).impl
+            return type(impl).__name__, impl.transactional_ddl
+    finally:
+        engine.dispose()
+
+
 def main() -> None:
     import alembic.command  # local import: keep top-level importable
 
@@ -247,13 +266,16 @@ def main() -> None:
     _reset_demo_state()
 
     print()
+    impl_name, transactional_ddl = _describe_migration_impl()
     print("--- CUBRID + Alembic notes ---")
-    print("  * CubridImpl is registered by importing sqlalchemy_cubrid.alembic_impl.")
-    print("  * transactional_ddl = False  -> each DDL statement auto-commits.")
+    print(f"  * Migration impl: {impl_name} (registered automatically by sqlalchemy-cubrid).")
+    print(f"  * transactional_ddl = {transactional_ddl}  -> ROLLBACK undoes uncommitted DDL")
+    print("    (autocommit off, the pycubrid default); a failed upgrade rolls back.")
     print("  * No native SEQUENCE support  -> migrations use AUTO_INCREMENT.")
     print("  * Identifiers are lowercase-folded with a 254-char max.")
     print()
-    print("For a real project layout (alembic.ini at repo root), see README.md.")
+    print("For a real project layout (alembic.ini at repo root), see")
+    print("https://github.com/cubrid-lab/sqlalchemy-cubrid/blob/main/docs/ALEMBIC.md")
 
 
 if __name__ == "__main__":

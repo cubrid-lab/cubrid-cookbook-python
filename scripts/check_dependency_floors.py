@@ -74,6 +74,15 @@ EXACT_PYCUBRID_FLOOR = {
     "fundamentals/pycubrid": "1.8,<2",
 }
 
+# fundamentals/alembic's golden prints the dialect's runtime
+# ``transactional_ddl`` (True since 1.8.0, sqlalchemy-cubrid#503), and its
+# env.py relies on the automatic CubridImpl registration
+# (sqlalchemy-cubrid#504) instead of importing ``sqlalchemy_cubrid.alembic_impl``;
+# both first shipped in sqlalchemy-cubrid 1.8.0.
+EXACT_SQLALCHEMY_FLOOR = {
+    "fundamentals/alembic": "1.8",
+}
+
 # "Advanced" SQLAlchemy recipes are pinned to the floor documented in the
 # [^async] footnote (sqlalchemy-cubrid 1.2.3 first shipped the async dialect
 # entry points; this cookbook pins 1.4.2 to match every advanced recipe).
@@ -144,6 +153,12 @@ def check(root: Path, matrix: str) -> list[str]:
                 if actual != expected:
                     errors.append(f"{where}: expected pycubrid>={expected} in {directory}")
                 continue
+            if driver == "sqlalchemy-cubrid" and directory in EXACT_SQLALCHEMY_FLOOR:
+                expected = EXACT_SQLALCHEMY_FLOOR[directory]
+                actual = base + (upper or "")
+                if actual != expected:
+                    errors.append(f"{where}: expected sqlalchemy-cubrid>={expected} in {directory}")
+                continue
             if driver == "pycubrid" and directory in template_pycubrid_dirs:
                 actual = base + (upper or "")
                 if actual != TEMPLATE_PYCUBRID_FLOOR:
@@ -180,6 +195,7 @@ def check(root: Path, matrix: str) -> list[str]:
 
     for label, dirs in (
         ("fundamentals/pycubrid exception", EXACT_PYCUBRID_FLOOR),
+        ("fundamentals/alembic exception", EXACT_SQLALCHEMY_FLOOR),
         ("advanced SQLAlchemy floor", {d: None for d in ADVANCED_SQLALCHEMY_DIRS}),
     ):
         for directory in dirs:
