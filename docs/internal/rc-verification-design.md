@@ -26,21 +26,27 @@ PyPI. A cookbook failure can therefore only mark an already-public release as
 
 ### Evidence from the last release (2026-10-09, version 1.10.0 of both drivers)
 
-| Release run | Failed cookbook cell | Cause | Passing cell duration |
-| --- | --- | --- | --- |
-| pycubrid [37871725585](https://github.com/cubrid-lab/pycubrid/actions/runs/37871725585) | `Smoke Tests (CUBRID 11.2)`, step *Select released drivers* | `pycubrid==1.10.0` not resolvable from the PyPI simple index for ~50 s after upload (6 attempts, `ResolutionImpossible`) | 11.4: 3 min 15 s |
-| sqlalchemy-cubrid [37871732934](https://github.com/cubrid-lab/sqlalchemy-cubrid/actions/runs/37871732934) | `Smoke Tests (CUBRID 11.4)`, same step | same, for `sqlalchemy-cubrid==1.10.0` | 11.2: 3 min 19 s |
+| Release run | PyPI upload done | Passing cell resolved the version | Failing cell still failing at | Failed cell |
+| --- | --- | --- | --- | --- |
+| pycubrid [37871725585](https://github.com/cubrid-lab/pycubrid/actions/runs/37871725585) | 01:59:16 | 02:00:03 (CUBRID 11.4, +47 s) | 02:00:51 (+95 s) | `Smoke Tests (CUBRID 11.2)`, step *Select released drivers* |
+| sqlalchemy-cubrid [37871732934](https://github.com/cubrid-lab/sqlalchemy-cubrid/actions/runs/37871732934) | 02:00:39 | 02:01:15 (CUBRID 11.2, +36 s) | 02:02:25 (+106 s) | `Smoke Tests (CUBRID 11.4)`, same step |
+
+(UTC. Each failing cell exhausted the 6 bounded attempts of
+`release_smoke.py select` with `ResolutionImpossible`; each passing cell then
+took about 3 min 15 s in total.)
 
 These are the "one post-publish cookbook failure" each driver's
 `docs/CI_POLICY.md` records in its two-release sample. Neither was a recipe
-regression: in each run the other CUBRID cell installed the same release a few
-seconds later and passed. Two conclusions follow:
+regression. The pattern is **stale data on some PyPI CDN nodes**, not a fixed
+propagation delay: in the same run, one cell already resolved the new version
+while the other, started at the same second, kept getting an index page
+without it for up to ~95–106 s after upload. Two conclusions follow:
 
-1. A pre-publish check against the **built artifact** removes the index
-   propagation race from the gating signal entirely (no index is involved).
-2. The post-publish check keeps that race. Its retry budget is a separate,
-   cookbook-only fix (follow-up C4) and is out of scope here, because #240
-   requires post-publish verification to stay unchanged.
+1. A pre-publish check against the **built artifact** removes the index from
+   the gating signal entirely (no index lookup for the candidate).
+2. The post-publish check keeps the stale-node exposure. Fixing it is a
+   separate, cookbook-only change (follow-up C4) and is out of scope here,
+   because #240 requires post-publish verification to stay unchanged.
 
 The callers also pin different cookbook commits: pycubrid and sqlalchemy-cubrid
 use `16f3a91` (22 commits behind `main` on 2026-10-09), cubrid-mcp-server uses
@@ -50,9 +56,10 @@ use `16f3a91` (22 commits behind `main` on 2026-10-09), cubrid-mcp-server uses
 
 Goals:
 
-- A caller can pass the wheel its `build` job produced and get a pass/fail
-  **before** `publish` runs, and `publish` depends on that result.
-- The bytes verified are the bytes uploaded to PyPI.
+- A caller can pass the distribution its `build` job produced and get a
+  pass/fail **before** `publish` runs, and `publish` depends on that result.
+- The bytes verified are the bytes uploaded to PyPI, and that holds even
+  though third-party code now runs between `build` and `publish` (section 8).
 - Post-publish verification (`verify-cookbook` / `require-cookbook`, the
   `release-verification-<request_id>` artifact and its schema) is unchanged.
 - No secrets, no PAT, no new token scopes, no new schedules, minimal extra jobs.
@@ -61,7 +68,7 @@ Non-goals:
 
 - Changing which recipes or suites the cookbook runs (#240 "Out of scope").
 - Changing the drivers' own `integration-full.yml` matrix.
-- Coordinated multi-package releases (see section 7.4).
+- Verifying two unpublished candidates together (see section 7.4).
 
 ## 3. Constraints
 
@@ -78,72 +85,96 @@ Non-goals:
   workflow cannot set one, so the callee's job timeouts are the bound.
 - **The canonical release workflow** is kept identical across the three
   callers except for the package-specific lines, so a caller change lands in
-  all three repositories.
+  all three repositories. The same holds for `scripts/release_detect.py`
+  (byte-identical today except the workflow filename in its docstring) and
+  `scripts/release_summary.py`: every change below to either script is made
+  identically in all three repositories.
 
 ## 4. Options considered
 
-### Option A — Artifact mode: verify the caller's built wheel from the same run (recommended)
+### Option A — Artifact mode: verify the caller's built distribution from the same run (recommended)
 
-Add two optional `workflow_call` inputs to `smoke-test.yml`:
+Add optional `workflow_call` inputs to `smoke-test.yml`:
 
 | Input | Rule |
 | --- | --- |
 | `candidate_artifact` | name of an artifact uploaded earlier **in the caller's run** (for example `release-dist`); `^[A-Za-z0-9._-]{1,100}$`; empty = today's published mode |
-| `candidate_hashes` | required with `candidate_artifact`: the JSON object `{"<filename>": "<sha256 hex>", ...}` the caller's `build` job already outputs (`needs.build.outputs.sha256`) |
+| `candidate_hashes` | required with `candidate_artifact`: the JSON object `{"<filename>": "<sha256 hex>", ...}` the caller's `build` job already outputs (`needs.build.outputs.sha256`); keys `^[A-Za-z0-9._+-]{1,200}$`, values `^[0-9a-f]{64}$` |
+| `candidate_artifact_id` | optional: the numeric `artifact-id` output of the caller's `upload-artifact` step; when set, the artifact is downloaded by ID instead of by name (section 8.1) |
 
 A reusable workflow's jobs are jobs of the caller's run, so
 `actions/download-artifact` in the cookbook jobs downloads the caller's
-`release-dist` artifact by name with the runner's own artifact token. No token
-input, no cross-run API call and no permission beyond `contents: read`.
+artifact with the runner's own job-scoped artifact token. No token input, no
+cross-run API call and no permission beyond `contents: read`.
 
 Flow in each smoke job (`release_smoke.py select` in candidate mode):
 
-1. Validate `package`, `version`, `request_id`, `candidate_artifact` and
-   `candidate_hashes` from `RELEASE_INPUT_*` (never shell code), as today.
-2. Download the artifact into `$RUNNER_TEMP/candidate/`.
-3. Require exactly one wheel whose normalized name and version match
-   `package`/`version` (`pycubrid-1.10.0-*.whl`,
-   `sqlalchemy_cubrid-1.10.0-*.whl`, `cubrid_mcp_server-…`), recompute its
-   SHA-256 and require it to equal the `candidate_hashes` entry. Any extra,
-   missing or mismatching wheel fails before install.
-4. `pip install <wheel>` (dependencies from PyPI), then the existing bootstrap
+1. Validate `package`, `version`, `request_id` and the candidate inputs from
+   `RELEASE_INPUT_*` (never shell code), as today.
+2. Download the artifact into `$RUNNER_TEMP/candidate/` (by ID when
+   `candidate_artifact_id` is set).
+3. **Check the whole file set.** The set of downloaded file names must equal
+   the set of `candidate_hashes` keys exactly (the caller's `release-dist`
+   holds the wheel **and** the sdist), and every file's recomputed SHA-256,
+   sdist included, must equal its entry. Any extra, missing or mismatching
+   file fails before anything is installed.
+4. Among those files, require exactly one wheel whose normalized name and
+   version match `package`/`version` (`pycubrid-1.10.0-*.whl`,
+   `sqlalchemy_cubrid-1.10.0-*.whl`, `cubrid_mcp_server-…`). **Only the wheel
+   is installed**; the sdist is hash-checked but never built or installed.
+5. `pip install <wheel>` (dependencies from PyPI), then the existing bootstrap
    with `--constraint` pinning `package==version`; export
    `PIP_FIND_LINKS=$RUNNER_TEMP/candidate` so every later install (example
    requirements, framework suites, the MCP server) can satisfy the pin from
-   the candidate directory and never from the index.
-5. `freeze`/`verify`/`summary` accept, **for the requested package only**, an
-   origin of `candidate artifact`: `direct_url.json` must be a `file://` URL
-   inside `$RUNNER_TEMP/candidate/` naming the verified wheel. Every other
-   driver must still come from the package index. The publication retry loop
-   is skipped (there is no publication to wait for).
-6. The rest of the job (all goldens, AI-agent, Flask/FastAPI, async-worker,
+   the candidate directory and never from the index. The publication retry
+   loop is skipped (there is no publication to wait for).
+6. `freeze`/`verify`/`summary` accept, **for the requested package only**, an
+   origin of `candidate artifact`: its `direct_url.json` must exist and be a
+   `file://` URL inside `$RUNNER_TEMP/candidate/` naming the verified wheel.
+   In candidate mode a **missing** `direct_url.json` for the requested package
+   is a failure (it means the package came from an index, not the artifact).
+   Every other driver must still come from the package index, exactly as in
+   published mode.
+7. The rest of the job (all goldens, AI-agent, Flask/FastAPI, async-worker,
    Django and dashboard suites, MCP smoke) is unchanged.
 
 Outputs and report: the same four outputs plus a new `source` output
-(`index` or `artifact`). The report JSON gains additive fields `source` and
-`candidate_sha256` (no schema bump: existing consumers read the same keys). To
-allow two calls in one caller run (pre- and post-publish), candidate mode uses
-distinct artifact names — `release-candidate-part-cubrid-<v>` for the matrix
-parts and `release-candidate-verification-<request_id>` for the report — so it
-can never overwrite or be mistaken for the published-mode parts the post-publish
-report downloads with `release-verification-part-*`. Published-mode names stay
-as they are.
+(`index` or `artifact`). Each part artifact and the report JSON gain the
+additive fields `source` and `candidate_sha256` (the verified wheel's digest;
+no schema bump: existing consumers read the same keys). In candidate mode
+`build_report` requires every part to carry the same `candidate_sha256`, equal
+to the wheel's entry in `candidate_hashes`; a part with a different or missing
+digest fails the report. To allow two calls in one caller run (pre- and
+post-publish), candidate mode uses distinct artifact names —
+`release-candidate-part-cubrid-<v>` for the matrix parts and
+`release-candidate-verification-<request_id>` for the report — so it can never
+overwrite or be mistaken for the published-mode parts the post-publish report
+downloads with `release-verification-part-*`. Published-mode names stay as
+they are. CONTRIBUTING's "Call the workflow at most once per caller run" is
+relaxed explicitly to "at most once per mode per caller run" (one candidate
+call and one published call).
 
 Caller shape (canonical release workflow, pycubrid shown):
 
 ```yaml
+  build:
+    outputs:
+      sha256: ${{ steps.hashes.outputs.sha256 }}
+      dist_artifact_id: ${{ steps.upload-dist.outputs.artifact-id }}   # new, optional (section 8.1)
+
   verify-candidate:
     name: Cookbook candidate verification
     needs: [detect, build]
     if: needs.build.result == 'success'
     permissions:
-      contents: read                  # all the called workflow needs
+      contents: read                  # required; `{}` is a startup failure (section 12)
     uses: cubrid-lab/cubrid-cookbook-python/.github/workflows/smoke-test.yml@<40-hex main commit> # main
     with:
       package: pycubrid
       version: ${{ needs.detect.outputs.version }}
       request_id: pycubrid-rc-v${{ needs.detect.outputs.version }}-${{ github.run_id }}-${{ github.run_attempt }}
       candidate_artifact: release-dist
+      candidate_artifact_id: ${{ needs.build.outputs.dist_artifact_id }}
       candidate_hashes: ${{ needs.build.outputs.sha256 }}
 
   require-candidate:
@@ -167,21 +198,74 @@ Caller shape (canonical release workflow, pycubrid shown):
 
   publish:
     needs: [detect, consistency, matrix, build, require-candidate]   # was [detect, consistency, matrix, build]
+    steps:
+      # ... download release-dist (by ID when dist_artifact_id is set), then,
+      # BEFORE the tag step, replace the trust anchor of today's
+      # `sha256sum -c ../release-meta/SHA256SUMS` check:
+      - name: Check dist/ against the build job's hash output
+        env:
+          EXPECTED: ${{ needs.build.outputs.sha256 }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, sys
+          expected = json.loads(os.environ["EXPECTED"])
+          files = {p.name: p for p in pathlib.Path("dist").iterdir()}
+          if not expected or set(files) != set(expected):
+              sys.exit(f"::error::dist/ {sorted(files)} != build output {sorted(expected)}")
+          for name, digest in expected.items():
+              if hashlib.sha256(files[name].read_bytes()).hexdigest() != digest:
+                  sys.exit(f"::error::{name}: SHA-256 differs from the build job output")
+          PY
+
+  summary:
+    needs: [detect, consistency, matrix, build, verify-candidate, require-candidate, publish, verify-cookbook, require-cookbook]
 ```
 
-`publish` already downloads the same `release-dist` artifact and re-checks it
-against the recorded hashes, so the wheel the cookbook verified is byte for
-byte the wheel uploaded to PyPI. The post-publish `verify-cookbook` and
-`require-cookbook` jobs stay exactly as they are.
+The integrity argument rests on `needs.build.outputs.sha256`, not on any
+artifact. Today `publish` checks `dist/` only against
+`release-meta/SHA256SUMS`, which is itself an artifact; with Option A, jobs
+that run unpinned third-party code execute in the same run between `build`
+and `publish`, and any job in a run can replace a same-named artifact of that
+run (section 8.1). A job output, by contrast, is fixed when the `build` job
+finishes and cannot be changed by a later job. So the required change, in P1,
+S1 and M1, is: **before the tag step, `publish` verifies the downloaded
+`dist/` against `needs.build.outputs.sha256`; the file set must equal the map
+keys exactly and every digest must match.** The `SHA256SUMS` check may stay
+as a redundant check but is no longer the trust anchor. Downloading by
+`artifact-id` (the `build` job outputs it; both the cookbook and `publish`
+download by that ID) is an optional second layer: a replaced artifact gets a
+new ID. With both in place, the wheel the cookbook verified and the files
+uploaded to PyPI are byte for byte the files `build` hashed. The post-publish
+`verify-cookbook` and `require-cookbook` jobs stay exactly as they are.
 
 | Pros | Cons |
 | --- | --- |
-| Verifies the exact bytes that are published (hash-checked on both sides) | Requires a cookbook change to `smoke-test.yml` and `release_smoke.py`, plus a caller change in three repos |
-| No index involved: removes the propagation race from the gate | Adds ~3.5 min wall time between `build` and `publish` |
-| No token, no secrets, `contents: read` only; reuses the existing workflow, matrix and report | A new origin class (`candidate artifact`) in the provenance checks must be kept narrow (requested package only) |
-| Works for dry-run (`--ref <branch> -f action=dry-run`) and resume (`build` re-runs) | Candidate cannot depend on another unpublished candidate (section 7.4) |
+| Verifies the exact bytes that are published (both sides checked against the immutable `build` output) | Requires a cookbook change to `smoke-test.yml` and `release_smoke.py`, plus a caller change in three repos (including the `publish` hash check) |
+| No index involved: removes the stale-CDN failure class from the gate | Adds ~3.5 min wall time between `build` and `publish` |
+| No token, no secrets, `contents: read` only; reuses the existing workflow, matrix and report | Third-party code runs in the release run before `publish` (threat model in section 8.1) |
+| Works for dry-run (`--ref <branch> -f action=dry-run`) and for the untagged `resume` of section 7.3 | A new origin class (`candidate artifact`) in the provenance checks must be kept narrow (requested package only); a candidate cannot depend on another unpublished candidate (section 7.4) |
 
-### Option B — Commit mode: the cookbook builds the driver from the tag commit
+### Variant A2 — `build` stops waiting for `matrix`, so the candidate check runs in parallel
+
+Change `build` from `needs: [detect, matrix]` to `needs: [detect, consistency]`;
+`verify-candidate` then starts about 30 s after `consistency` and runs
+alongside the ~7-minute `matrix`, and `publish` still needs `matrix`, `build`
+and `require-candidate`. The candidate check would add almost nothing to the
+critical path (it finishes inside the matrix window), with the same jobs and
+the same integrity rule.
+
+**Rejected for the first rollout.** The saving is about 3.5 minutes of wall
+time on a release that happens a few times a month, while the cost moves the
+wrong way: every release whose matrix fails would still spend ~10 billed
+cookbook minutes (the CI cost decisions favour not spending minutes on a
+candidate already rejected), and the "matrix gates everything after it"
+invariant that `RELEASING.md`, the `build` job comment and the ordered
+`PRE_PUBLISH` reporting in `scripts/release_summary.py` rely on would have to
+be rewritten in three repositories. It is a one-line `needs:` change and can
+be adopted later if release latency starts to matter; the integrity argument
+does not change, because it rests on the `build` job output either way.
+
+### Option B — Commit mode: the cookbook builds the driver from the release commit
 
 Add a `candidate_sha` input (40-hex driver commit). The cookbook installs
 `<package> @ git+https://github.com/cubrid-lab/<package>.git@<sha>`, the
@@ -205,7 +289,7 @@ then the caller uploads to PyPI.
 | --- | --- |
 | Exercises a real index install, close to what users do | A second Trusted Publisher, environment and `id-token: write` job per repo |
 | | TestPyPI versions are immutable too: a failed candidate burns the version on TestPyPI and every retry needs a new one |
-| | `--extra-index-url` mixes indexes (dependency-confusion class of risk) and TestPyPI has its own propagation race — the exact failure seen on 2026-10-09 |
+| | `--extra-index-url` mixes indexes (dependency-confusion class of risk) and TestPyPI has its own CDN staleness — the exact failure class seen on 2026-10-09 |
 | | More jobs and more moving parts than A for no stronger guarantee |
 
 ### Baseline — keep post-publish only, yank on failure
@@ -215,14 +299,19 @@ is what happens today and is what #240 asks to replace.
 
 ## 5. Recommendation
 
-**Option A**, blocking, with post-publish verification unchanged.
+**Option A** (sequential, not Variant A2), blocking, with post-publish
+verification unchanged, **and** the `publish` hash check moved onto the
+`build` job output.
 
 It is the only option that verifies the published bytes themselves, it adds no
 secret or permission, it reuses `smoke-test.yml`, its matrix and its report
 contract, and it removes the failure class actually observed. Option B's
-latency advantage is real but small (about 3.5 minutes on a ~12-minute release run)
-and it trades away byte identity; it can be added later as a separate
-`driver-main.yml` dispatch input if ad-hoc commit testing is wanted.
+latency advantage is real but small (about 3.5 minutes on a ~12-minute release
+run) and it trades away byte identity; it can be added later as a separate
+`driver-main.yml` dispatch input if ad-hoc commit testing is wanted. Option A
+is only sound together with the `publish` change in section 4: without it,
+adding pre-publish third-party code to the run would weaken today's integrity
+instead of strengthening it.
 
 ## 6. Scope of the candidate run
 
@@ -237,6 +326,8 @@ and it trades away byte identity; it can be added later as a separate
   realism, not more server versions. Dropping 11.2 would save one job but leave
   11.2 recipe regressions to the post-publish check, which cannot block.
 - **Python:** 3.12, as today.
+- **Distribution files:** every file of the artifact is hash-checked (wheel and
+  sdist); only the wheel is installed.
 - **Other drivers:** resolved from PyPI. A pycubrid candidate runs with the
   latest published sqlalchemy-cubrid (and vice versa), which is what users get
   the moment the candidate is published.
@@ -248,6 +339,7 @@ and it trades away byte identity; it can be added later as a separate
 | Check | Mode | Effect on failure |
 | --- | --- | --- |
 | `verify-candidate` + `require-candidate` (new) | **Blocking** | `publish` does not run: no tag, no PyPI upload, no Release |
+| `publish` hash check against `needs.build.outputs.sha256` (changed) | **Blocking** | `publish` stops before the tag step |
 | `verify-cookbook` + `require-cookbook` (unchanged) | Blocking for the run's verdict, cannot undo publish | Release run fails; the release is reported as not verified |
 | `driver-main.yml` (unchanged) | Advisory | Tracking issue only |
 
@@ -258,8 +350,8 @@ Measured on 2026-10-09 (runs above): a passing cookbook smoke cell takes about
 
 | | Today | With Option A |
 | --- | --- | --- |
-| Jobs per release run | 34 (pycubrid) / 35 (sqlalchemy-cubrid) | +4: two smoke cells, one report, one `require-candidate` |
-| Extra runner minutes per release | — | ~7 (billed ~9 with per-job rounding) |
+| Jobs per release run | 32 (pycubrid) / 33 (sqlalchemy-cubrid) | +4: two smoke cells, one report, one `require-candidate` |
+| Extra runner minutes per release | — | ~7 (billed ~10 with per-job rounding up to whole minutes: 4 + 4 + 1 + 1) |
 | Wall time `build` → `publish` | ~4 s | ~3.5 min |
 | Bound on the added wall time | — | callee job timeouts: 60 min (`verify`) and 5 min (`report`); the caller's `require-candidate` 5 min |
 | New schedules | — | none |
@@ -271,46 +363,75 @@ bound; it is not lowered here because the post-publish path shares it.
 ### 7.3 Failure handling and override
 
 1. **Infrastructure flake** (runner, Docker pull, CUBRID start): re-run failed
-   jobs (`gh run rerun <id> --failed`). `release-dist` (14-day retention) and
-   the `build` hashes are reused; nothing is published yet.
-   Nothing has been tagged or uploaded, so no version is burned.
-2. **Real recipe failure caused by the driver:** fix the driver on `main`. The
-   version was never tagged or published, but today's `resume` requires an
-   existing tag (`scripts/release_detect.py`) and a push releases only when
-   `__version__` changes, so P1 must add one recovery path: `resume` accepts an
-   **absent** tag when `__version__` and the dated CHANGELOG section at `main`
-   match the requested version, and then builds from `main` (which includes the
-   fix). The alternative, with no workflow change, is to release the fix as the
-   next patch version.
+   jobs (`gh run rerun <id> --failed`). `build` is not re-run, so
+   `release-dist` (14-day retention), its artifact ID and the `build` hash
+   output are reused (section 12); nothing is published yet, so no version is
+   burned.
+2. **Real recipe failure caused by the driver:** fix the driver on `main` and
+   **always release the fix as the next patch version** (X.Y.Z+1) through a
+   normal release PR. X.Y.Z was never tagged or published, so nothing is
+   yanked, but it is not resumed either: the reviewed X.Y.Z commit is the one
+   that failed, and a new version keeps "version = reviewed release commit"
+   true. The CHANGELOG can note that X.Y.Z was never published.
 3. **Recipe failure caused by the cookbook** (a cookbook bug exposed by the
-   candidate): fix the cookbook on `main`, bump the caller's pin in a PR to the
-   driver's `main`, then use the same untagged `resume`
+   candidate; the driver is fine): fix the cookbook on `main`, bump the
+   caller's pin in a PR to the driver's `main` (it does not change
+   `__version__`, so its push is "no release"), then dispatch an untagged
+   `resume` from `main`
    (`gh workflow run publish-pypi.yml -f action=resume -f version=X.Y.Z`).
+   P1/S1/M1 extend `resume` in `scripts/release_detect.py` for this case only:
+   - the release content is **exactly the commit on `main` where
+     `__version__` first became X.Y.Z** (the release-PR merge commit, found on
+     the first-parent history of `origin/main`; ambiguity is an error), never
+     the `main` head;
+   - tag `vX.Y.Z` must be **absent** (an existing tag keeps today's `resume`
+     path unchanged);
+   - X.Y.Z must be **absent on PyPI** (checked with the JSON API, fail closed
+     on any error other than "not found");
+   - CHANGELOG.md at that commit must have the dated `## [X.Y.Z] - YYYY-MM-DD`
+     section.
+
+   The workflow file and therefore the cookbook pin come from the current
+   `main` (the dispatched commit, `github.sha`), as release tooling already
+   does today for `resume`; only the release content comes from the detected
+   commit. `release_detect.py` stays identical across the three repositories.
 4. **Override (emergency only):** a new recovery input on the release
    workflow, `cookbook_override_reason` (non-empty free text, `resume` only,
    dispatched from `main`), makes `require-candidate` pass with a warning and
-   records the reason in the release summary. It runs in the existing `pypi`
-   environment, so required reviewers (where configured) approve the publish as
-   today. The post-publish `verify-cookbook` still runs and is not overridable.
-   This is optional: without it, path 3 is the only way through.
+   records the reason in the release summary. The post-publish
+   `verify-cookbook` still runs and is not overridable. **Gating today:** the
+   `pypi` environment of all three callers has no required reviewers, only a
+   deployment branch policy (`main`). As things stand the override would
+   therefore be **self-service for anyone who can dispatch the workflow**
+   (repository write access). Recommendation: the maintainer configures
+   required reviewers on the `pypi` environment before P2/S2/M2 land, so an
+   override (and every publish) needs a second person. That is a repository
+   settings change for the maintainer, not part of these PRs; if it is not
+   made, P2/S2/M2 must document the override as self-service. The override is
+   optional: without it, path 3 is the only way through a cookbook-caused
+   failure.
 
 ### 7.4 Coordinated releases (pycubrid and sqlalchemy-cubrid together)
 
 Candidate mode installs only the requested package from the artifact; the other
 driver comes from PyPI. If a sqlalchemy-cubrid candidate requires an
 unpublished pycubrid (for example `pycubrid>=1.11` while PyPI has 1.10.x), its
-candidate install fails at resolution. Release order is therefore pycubrid
-first, then sqlalchemy-cubrid, as today; the sqlalchemy-cubrid candidate
-verification then also exercises the just-published pycubrid. Verifying two
-unpublished candidates together is out of scope.
+candidate install fails at resolution and nothing is published.
+
+Release PRs that depend on each other must therefore **merge sequentially**:
+merge the pycubrid release PR, wait until its release run has published (and
+`pip index versions pycubrid` shows the new version), then merge the
+sqlalchemy-cubrid release PR, whose candidate verification then also exercises
+the just-published pycubrid. Independent release PRs may still merge together,
+as on 2026-10-09, when both 1.10.0 release runs started within seconds of each
+other. Verifying two unpublished candidates together is out of scope.
 
 ## 8. Security
 
 - **Least privilege:** the calling job grants `contents: read` only; the
   cookbook workflow's top-level `permissions` stay `contents: read`. The
-  candidate jobs run before `publish`, so they are never in a job holding
-  `contents: write` or `id-token: write`, and `publish` does not trust any
-  output of the cookbook beyond the pass/fail gate.
+  candidate jobs never hold `contents: write` or `id-token: write`, and
+  `publish` trusts no output of the cookbook beyond the pass/fail gate.
 - **No secrets:** no `secrets: inherit`, no PAT, no `COOKBOOK_DISPATCH_TOKEN`.
   Artifact download inside the same run uses the runner's own artifact token.
 - **Pinned refs:** callers pin the cookbook by full commit SHA; every cookbook
@@ -319,12 +440,71 @@ unpublished candidates together is out of scope.
 - **Input handling:** the new inputs reach `release_smoke.py` only as
   `RELEASE_INPUT_*` environment variables, are validated by regex/JSON parsing
   before any download or install, and never enter shell code.
-- **Integrity:** the wheel's SHA-256 must match the caller's `build` output,
-  and `publish` re-checks the same hashes before upload. A tampered or swapped
-  artifact fails one side or the other.
-- **Code execution:** the candidate wheel is the caller's own build and runs in
-  the same sandbox the cookbook already uses for untrusted example code
-  (`persist-credentials: false`, read-only token).
+- **Integrity:** both the cookbook and `publish` check the full file set and
+  every digest against `needs.build.outputs.sha256`, an immutable job output.
+  No artifact is a trust anchor (section 8.1).
+- **Provenance:** in candidate mode the requested package must have a
+  `direct_url.json` pointing at the verified wheel; its absence is a failure.
+
+### 8.1 Threat model: unpinned dependencies in the same run as the publish job
+
+What changes. The cookbook jobs install unpinned packages from PyPI (pandas,
+matplotlib, Flask, FastAPI, Django, Streamlit, every example's requirements)
+and run example code. Under `workflow_call` those jobs are jobs of the
+**caller's** release run — the run whose `publish` job holds
+`id-token: write` (PyPI Trusted Publishing) and `contents: write`. The
+`matrix` and the post-publish call already run third-party code in that run;
+Option A is the first to run such a broad, unpinned set **between `build` and
+`publish`**, so a compromised dependency would be in a position to tamper with
+what `publish` reads.
+
+What such code can reach (high level only):
+
+- **Not the publish credentials.** The OIDC token request credential is
+  provided only to jobs that declare `id-token: write`, and the
+  `contents: write` token belongs to the `publish` job. The candidate jobs run
+  on separate runners with a read-only token and no secrets.
+- **The job-scoped artifact/cache token.** Every job receives a runtime token
+  that lets the actions in that job upload and download the run's artifacts and
+  read and write the Actions cache. Code running in the job can obtain it, so
+  for that token's lifetime it can act on the **run's** artifacts: upload new
+  ones and replace an existing artifact of the same name (the same mechanism
+  `upload-artifact`'s `overwrite: true` uses). That includes `release-dist` and
+  `release-meta` (`SHA256SUMS`, release notes, SBOM). This is why neither
+  artifact can be the trust anchor for `publish`.
+- **The cache.** `smoke-test.yml` restores and, on a key miss, **saves**
+  `~/.cache/pip` with `actions/cache`. Under `workflow_call` that cache belongs
+  to the **caller** repository and the caller's ref (`main` for a release), so
+  an entry written by a candidate job is restored by later cookbook calls in
+  that repository (the post-publish call, the next release's candidate check).
+  `publish` itself uses no cache.
+
+Mitigations (required unless marked optional):
+
+1. `publish` verifies `dist/` against `needs.build.outputs.sha256` before the
+   tag step: exact file-set equality and every digest (P1/S1/M1). A replaced
+   `release-dist` then fails the run before anything is tagged or uploaded.
+2. The cookbook verifies the same file set and digests from the same job
+   output before installing anything (C1), so the bytes it tests are the bytes
+   `publish` accepts.
+3. Optional: `build` outputs the `artifact-id` of the `release-dist` upload,
+   and both the cookbook and `publish` download by ID (`artifact-ids` input of
+   `actions/download-artifact`; C1 confirms the cookbook's pinned v4.3.0
+   supports it or bumps it). A replaced artifact has a different ID. The same
+   can be applied to `release-meta` so the Release notes and SBOM attached to
+   the GitHub Release are the ones `build` produced; alternatively `build`
+   adds their digests to its output.
+4. In candidate mode the cookbook does not **save** the pip cache: it uses
+   `actions/cache/restore` only (or `PIP_NO_CACHE_DIR=1`), so a candidate job
+   cannot seed the caller's cache (C1). Published mode is unchanged by #240;
+   whether it should also stop saving is a separate cookbook decision.
+5. The candidate jobs keep `persist-credentials: false`, `contents: read` and
+   no secrets, and never run in a job that holds a publish credential.
+
+Residual risk: a compromised dependency can still make the candidate check
+fail or pass dishonestly (a gate result is only as trustworthy as the code it
+runs), and can still do whatever it can do today in the post-publish call. It
+cannot change the bytes uploaded to PyPI without failing mitigation 1.
 
 ## 9. Rollout
 
@@ -332,15 +512,13 @@ Order matters: a caller must never reference an input the pinned cookbook
 commit does not declare (startup failure of the whole release run).
 
 1. **cubrid-cookbook-python (C1–C3):** implement artifact mode, contract tests,
-   and document it in CONTRIBUTING's "Release verification contract". Validate
-   with the offline suites and a caller dry-run (step 2). Merge; note the
-   resulting `main` SHA.
-2. **pycubrid (P1):** bump the pin of both cookbook calls to that SHA, add
-   `verify-candidate` + `require-candidate`, make `publish` need
-   `require-candidate`. Validate with
+   and document it in CONTRIBUTING's "Release verification contract"
+   (including the relaxed "at most once per mode per caller run" rule).
+   Validate with the offline suites and a caller dry-run (step 2). Merge; note
+   the resulting `main` SHA.
+2. **pycubrid (P1):** see the P1 row in section 11. Validate with
    `gh workflow run publish-pypi.yml --ref <branch> -f action=dry-run -f version=<current __version__>`
-   (#240 "Validation": a dry-run with a locally built wheel). Update
-   `RELEASING.md` and `docs/CI_POLICY.md`.
+   (#240 "Validation": a dry-run with a locally built wheel).
 3. **sqlalchemy-cubrid (S1):** the same change (canonical workflow), validated
    the same way.
 4. **cubrid-mcp-server (M1):** the same change in `release.yml`; the cookbook's
@@ -349,7 +527,8 @@ commit does not declare (startup failure of the whole release run).
    both the candidate and the post-publish reports are present and agree.
 
 Rollback: revert the caller PR (removes the pre-publish gate); the cookbook
-inputs are optional and harmless when unused.
+inputs are optional and harmless when unused. The `publish` hash check against
+the `build` output is worth keeping even after a rollback.
 
 ## 10. Keeping the pinned SHA current across callers
 
@@ -367,21 +546,42 @@ inputs are optional and harmless when unused.
 
 | Id | Repository | Title | Priority / size |
 | --- | --- | --- | --- |
-| C1 | cubrid-cookbook-python | `feat(ci): artifact (candidate) mode for the smoke-test workflow_call contract` — `candidate_artifact` / `candidate_hashes` inputs, `source` output, hash and provenance checks in `release_smoke.py`, namespaced candidate artifacts, `install-mcp` support, CONTRIBUTING contract update | high / M |
-| C2 | cubrid-cookbook-python | `test: contract tests for the candidate inputs` — extend `tests/test_release_workflow_call.py` (declared inputs/outputs, env-only data path, candidate artifact names never match `release-verification-part-*`, hash mismatch / extra wheel / wrong version fail before install, published mode unchanged) | high / S |
+| C1 | cubrid-cookbook-python | `feat(ci): artifact (candidate) mode for the smoke-test workflow_call contract` — `candidate_artifact` / `candidate_hashes` / optional `candidate_artifact_id` inputs; `source` output; exact file-set and every-digest check (sdist included), wheel-only install; candidate provenance (missing `direct_url.json` fails); namespaced candidate artifacts; `candidate_sha256` on every part, matched by `build_report`; restore-only pip cache in candidate mode; `install-mcp` support; CONTRIBUTING contract update relaxing "at most once per caller run" to "once per mode" | high / M |
+| C2 | cubrid-cookbook-python | `test: contract tests for the candidate inputs` — extend `tests/test_release_workflow_call.py` (declared inputs/outputs, env-only data path, candidate artifact names never match `release-verification-part-*`; extra file, missing file, sdist or wheel digest mismatch, wrong version fail before install; missing `direct_url.json` fails; parts with differing `candidate_sha256` fail the report; no cache save in candidate mode; published mode unchanged) | high / S |
 | C3 | cubrid-cookbook-python | `docs: pin-currency policy for release-contract callers` — section 10 in CONTRIBUTING | medium / XS |
-| C4 | cubrid-cookbook-python | `fix(ci): wall-clock publication budget for post-publish verification` — the 2026-10-09 failures exhausted 6 attempts in ~50 s; use a time-based budget with backoff (separate from #240) | medium / S |
-| P1 | pycubrid | `ci(release): verify the built wheel against the cookbook before publish` — `verify-candidate`, `require-candidate`, `publish` needs it, pin bump, `resume` of an untagged candidate (section 7.3), RELEASING.md and CI_POLICY.md | high / M |
-| P2 | pycubrid | `ci(release): optional cookbook_override_reason recovery input` (section 7.3, step 4) | low / S |
-| S1 | sqlalchemy-cubrid | same as P1 | high / M |
+| C4 | cubrid-cookbook-python | `fix(ci): robust publication wait for post-publish verification` — the 2026-10-09 failures were stale PyPI CDN nodes up to ~95–106 s after upload, not a fixed delay; install with `--no-cache-dir` (the restored `~/.cache/pip` can hold a stale index page) and/or poll the PyPI JSON API (`/pypi/<package>/<version>/json`) before installing, with a wall-clock budget, rather than only waiting longer (separate from #240) | medium / S |
+| P1 | pycubrid | `ci(release): verify the built distribution against the cookbook before publish` — `build` outputs `dist_artifact_id` (optional); `verify-candidate` + `require-candidate`; `publish` needs `require-candidate` and verifies `dist/` against `needs.build.outputs.sha256` (exact file set, every digest) before tagging, optionally downloading by artifact ID; `summary` job `needs` gains `verify-candidate` and `require-candidate`, and `scripts/release_summary.py` reads those job names (pre-publish state and a candidate row); untagged `resume` for cookbook-caused failures in `scripts/release_detect.py` (section 7.3, step 3); pin bump; `tests/test_workflow_timeouts.py` `EXTERNAL_REUSABLE_CALLERS` gains `("publish-pypi.yml", "verify-candidate")`; `tests/test_release_workflows.py` asserts that `publish` reads the build job's hash output (`needs.build.outputs.sha256`) rather than only `release-meta/SHA256SUMS`; update `RELEASING.md:120-121` ("PyPI cookbook verification checks the published version, not an unpublished local candidate artifact"), the rest of `RELEASING.md` and `docs/CI_POLICY.md` | high / M |
+| P2 | pycubrid | `ci(release): optional cookbook_override_reason recovery input` (section 7.3, step 4) — blocked on the maintainer configuring required reviewers on the `pypi` environment, or documented as self-service | low / S |
+| S1 | sqlalchemy-cubrid | same as P1 (this repository has no `tests/test_workflow_timeouts.py`; skip that item) | high / M |
 | S2 | sqlalchemy-cubrid | same as P2 | low / S |
-| M1 | cubrid-mcp-server | same as P1 for `release.yml`; bump the pin from `fe01e71` | medium / M |
+| M1 | cubrid-mcp-server | same as P1 for `release.yml` (allowlist entry `("release.yml", "verify-candidate")`, `RELEASING.md:120-121`); bump the pin from `fe01e71` | medium / M |
 | M2 | cubrid-mcp-server | same as P2 | low / S |
 
-## 12. Open questions
+## 12. Questions
 
-- Whether `actions/download-artifact` in a re-run attempt reliably sees
-  artifacts uploaded by an earlier attempt of the same run; the pycubrid
-  partial-upload recovery already relies on it, and the P1 dry-run should
-  confirm it for the called jobs.
-- Whether the override (P2/S2/M2) is wanted at all; the design works without it.
+Answered:
+
+- **Do re-run attempts see artifacts uploaded by earlier attempts?** Yes.
+  Artifacts belong to the workflow run, not to an attempt: a job re-run with
+  `gh run rerun <id> --failed` downloads artifacts that jobs of earlier
+  attempts uploaded. The cookbook already depends on this — its part uploads
+  set `overwrite: true` (#188) precisely because a re-run job's upload would
+  otherwise collide with the same-named artifact from the earlier attempt — and
+  `publish`'s partial-upload recovery downloads `release-dist` from the
+  attempt that ran `build`. For candidate mode this means a re-run of a failed
+  candidate cell reuses the original `release-dist`, its artifact ID and the
+  `build` hash output. The P1 dry-run should still exercise one forced
+  failure and `--failed` re-run as a smoke check.
+- **Can the calling job use `permissions: {}`?** No. A called workflow can only
+  keep or reduce the permissions its caller grants, and `smoke-test.yml`
+  declares top-level `permissions: contents: read` (its jobs check out this
+  repository with `actions/checkout`). A caller granting `{}` makes GitHub
+  reject the run at startup because the nested jobs request more than they are
+  allowed. `contents: read` is the minimum; artifact upload/download does not
+  need any `GITHUB_TOKEN` permission (it uses the runtime token).
+
+Open:
+
+- Whether the override (P2/S2/M2) is wanted at all; the design works without
+  it, and it depends on the `pypi` environment reviewer decision in section
+  7.3.
