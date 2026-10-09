@@ -4,7 +4,8 @@ Patterns for efficiently processing large SELECT result sets.
 
 ## Problem
 
-As row count increases, Python-side parsing time grows proportionally:
+As row count increases, Python-side parsing time grows proportionally
+(historical figures, pycubrid 0.5.0+16a8634, CUBRID 11.2, undated):
 
 ```
 100 rows:   fetch 0.03ms  (1.4% of total)
@@ -27,7 +28,7 @@ cursor.execute("SELECT order_id, total_amt FROM cookbook_orders")
 ### 2. fetchall() vs fetchone() Loop
 
 ```python
-# ❌ Slow — fetchone() loop incurs per-call Python function overhead
+# fetchone() loop — one Python call per row
 rows = []
 while True:
     row = cursor.fetchone()
@@ -35,13 +36,15 @@ while True:
         break
     rows.append(row)
 
-# ✅ Fast — fetchall() uses internal slice-based bulk fetch
+# fetchall() — one call, returns the whole result as a list
 cursor.execute("SELECT order_id, total_amt FROM cookbook_orders")
 rows = cursor.fetchall()
 ```
 
-> Since pycubrid 0.5.0+, `fetchall()` uses slice-based bulk fetch internally,
-> making it **19% faster** than a `fetchone()` loop.
+> Measured on pycubrid 1.10.0 (CUBRID 11.4.6, 2026-10-09, median of 5 runs, 10K rows x 5 columns):
+> `fetchall()` 52 ms vs `fetchone()` loop 52 ms (50-225 ms; the first run was cold). On 1.10.0 there is
+> no measurable speed difference, so choose `fetchall()` for simplicity and `fetchmany()`/`yield_per`
+> to bound memory. The earlier "19% faster than a `fetchone()` loop" claim (pycubrid 0.5.0) no longer holds.
 
 ### 3. Server-Side Pagination
 
@@ -84,5 +87,6 @@ for row in session.execute(stmt).scalars():
 
 ## Benchmark Reference
 
-- SELECT 10K fetch: 96ms → 78ms after optimization (**−19%**)
+- pycubrid 1.10.0 (2026-10-09, median of 5): 10K rows, 5 columns `fetchall()` 52 ms; 2 columns 28 ms; `SELECT *` 50 ms
+- Historical (pycubrid 0.5.0+16a8634): SELECT 10K fetch 96ms → 78ms after optimization (−19%)
 - Full details: [cubrid-benchmark/experiments/driver-comparison](https://github.com/cubrid-lab/cubrid-benchmark/tree/main/experiments/driver-comparison)

@@ -32,11 +32,11 @@ Reduction                —            75%         81%
 
 Our [benchmark results](../../performance/) show pycubrid performs well after recent optimizations:
 
-- **SELECT 10K rows**: 78ms total (fetch + parse)
-- **Connection**: 1.7ms
-- **Single INSERT + COMMIT**: ~55ms (COMMIT is the dominant cost at ~47ms)
+- **Connection**: a query on a fresh connection took ~5.9 ms vs ~0.8 ms pooled (pycubrid 1.10.0, 2026-10-09)
+- **Single INSERT + COMMIT**: ~36 ms per row (pycubrid 1.10.0, 2026-10-09)
 
-> COMMIT is 7× more expensive than INSERT execute. Batch your writes!
+> Per-row COMMIT ran at ~28 rows/s vs ~1,279 rows/s with a COMMIT every 500 rows (pycubrid 1.10.0). Batch your writes!
+> Earlier 0.5.0 figures are kept as historical in the [benchmark results](../../performance/).
 
 ## File Overview
 

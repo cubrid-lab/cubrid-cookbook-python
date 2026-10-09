@@ -4,9 +4,10 @@ Patterns for reducing connection creation overhead through pooling and reuse.
 
 ## Problem
 
-CUBRID connection creation costs **~1.66ms** (after optimization).
-In a web application creating a new connection per request:
-- At 1000 req/s → 1.66 seconds spent on connection creation alone
+On pycubrid 1.10.0 / CUBRID 11.4.6 (2026-10-09, median of 5 runs, i5-9400F, Python 3.12) a `SELECT 1` on a
+fresh engine and connection (`NullPool`) took **~5.9 ms** (5.6-5.9) versus **~0.8 ms** (0.8-0.9) from a pool
+(7.2x faster, 6.2-7.3). In a web application creating a new connection per request:
+- At 1000 req/s → ~5.1 seconds of extra work per second of traffic, so one core cannot keep up
 - Actual impact is worse due to GC, TCP handshake overhead, etc.
 
 ## Solutions
@@ -29,11 +30,11 @@ engine = create_engine(
     pool_pre_ping=True,  # Validate connections before use
 )
 
-# First request: creates connection (~1.66ms)
+# First request: creates connection (~5.9ms including engine creation)
 with engine.connect() as conn:
     result = conn.execute(text("SELECT 1"))
 
-# Second request: reuses from pool (~0.01ms)
+# Second request: reuses from pool (~0.8ms)
 with engine.connect() as conn:
     result = conn.execute(text("SELECT 1"))
 ```
@@ -102,5 +103,6 @@ engine = create_engine(
 
 ## Benchmark Reference
 
-- Connection creation: 1.66ms (optimized from 2.24ms, **−26%**)
+- pycubrid 1.10.0 (2026-10-09, median of 5): NullPool 5.9 ms/query, pool_size=5 0.8 ms/query (7.2x)
+- Historical (pycubrid 0.5.0+16a8634): connection creation 1.66ms (optimized from 2.24ms, −26%)
 - Full details: [cubrid-benchmark/experiments/driver-comparison](https://github.com/cubrid-lab/cubrid-benchmark/tree/main/experiments/driver-comparison)

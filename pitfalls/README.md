@@ -4,7 +4,7 @@ Common mistakes when working with CUBRID + Python, and how to avoid them.
 
 ## 1. Creating a New Connection Per Request
 
-**Problem**: Each connection costs ~1.66ms. At scale this adds up fast and may exhaust server connection limits.
+**Problem**: A fresh engine and connection took ~5.9 ms per query versus ~0.8 ms from a pool (pycubrid 1.10.0, 2026-10-09). At scale this adds up fast and may exhaust server connection limits.
 
 ```python
 # ❌ Anti-pattern — new connection on every request
@@ -78,13 +78,13 @@ for cat in categories:
 
 ## 3. Committing Per Row in Batch Operations
 
-**Problem**: COMMIT is the most expensive operation (~47ms). Per-row commits make batch inserts ~70× slower.
+**Problem**: COMMIT is the most expensive operation (INSERT + COMMIT ~36 ms per row on pycubrid 1.10.0, 2026-10-09). Per-row commits made inserts about 45x slower than a COMMIT every 500 rows.
 
 ```python
-# ❌ Anti-pattern — COMMIT per row (10K rows ≈ 470 seconds)
+# ❌ Anti-pattern — COMMIT per row (10K rows ≈ 357 s, extrapolated from the 500-row run, pycubrid 1.10.0)
 for i in range(10000):
     cursor.execute("INSERT INTO cookbook_logs (msg) VALUES (?)", (f"log_{i}",))
-    conn.commit()  # 47ms × 10,000 = 470 seconds
+    conn.commit()  # ~36 ms × 10,000 ≈ 357 seconds (extrapolated)
 ```
 
 **Fix**: Batch your commits.
@@ -95,7 +95,7 @@ BATCH_SIZE = 1000
 for batch_start in range(0, 10000, BATCH_SIZE):
     for i in range(batch_start, min(batch_start + BATCH_SIZE, 10000)):
         cursor.execute("INSERT INTO cookbook_logs (msg) VALUES (?)", (f"log_{i}",))
-    conn.commit()  # 47ms × 10 = 0.47 seconds total
+    conn.commit()  # only 10 COMMITs instead of 10,000
 ```
 
 See: [performance/bulk-insert/](../performance/bulk-insert/)

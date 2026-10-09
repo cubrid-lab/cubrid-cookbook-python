@@ -4,8 +4,8 @@ Strategies for efficiently inserting large volumes of data.
 
 ## Problem
 
-A single-row INSERT + COMMIT costs ~47ms for the COMMIT alone.
-Inserting 10,000 rows with individual COMMITs takes **~470 seconds** (7.8 minutes).
+Each INSERT + COMMIT round trip costs ~36 ms (pycubrid 1.10.0, CUBRID 11.4.6, 2026-10-09, median of 5 runs;
+range 29-39 ms), i.e. ~28 rows/s. Inserting 10,000 rows with individual COMMITs would take about 6 minutes.
 
 ## Solutions
 
@@ -47,11 +47,14 @@ conn.close()
 
 **Performance comparison:**
 
-| Strategy | 10K rows | COMMIT count |
-|----------|----------|-------------|
-| Per-row COMMIT | ~477s | 10,000 |
-| 1000-row batch | ~12s | 10 |
-| Single COMMIT | ~7s | 1 |
+Measured with `benchmark.py` on pycubrid 1.10.0 / CUBRID 11.4.6 (2026-10-09), median of 5 runs
+(min-max), i5-9400F, Python 3.12:
+
+| Strategy | Rows | Time | Throughput (rows/s) |
+|----------|------|------|---------------------|
+| Per-row COMMIT | 500 | 17.98 s (14.54-19.64) | 28 (25-34) |
+| COMMIT every 500 rows | 5,000 | 3.91 s (3.60-4.65) | 1,279 (1,075-1,388) |
+| Single COMMIT | 5,000 | 3.39 s (3.36-3.84) | 1,477 (1,301-1,489) |
 
 > ⚠️ A single COMMIT risks full rollback on failure. Batching is safer in production.
 
@@ -102,10 +105,11 @@ with Session(engine) as session:
 
 ## Key Insight
 
-COMMIT cost is **7× more expensive** than the INSERT itself (47ms vs 7ms).
+On pycubrid 1.10.0 a per-row INSERT + COMMIT ran at ~28 rows/s versus ~1,279 rows/s with a COMMIT every 500 rows (about 45x).
 Reducing COMMIT frequency is the single most effective optimization for write-heavy workloads.
 
 ## Benchmark Reference
 
-- INSERT execute: 7.10ms, COMMIT: 51.32ms
+- pycubrid 1.10.0 (2026-10-09): see the table above; INSERT + COMMIT ~36 ms per row; 10K-row per-row-COMMIT time (~357 s) is extrapolated from the 500-row run
+- Historical (pycubrid 0.5.0+16a8634, CUBRID 11.2): INSERT execute 7.10ms, COMMIT 51.32ms
 - Full details: [cubrid-benchmark/experiments/driver-comparison](https://github.com/cubrid-lab/cubrid-benchmark/tree/main/experiments/driver-comparison)
