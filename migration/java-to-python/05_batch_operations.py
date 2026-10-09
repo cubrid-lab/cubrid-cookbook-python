@@ -26,7 +26,7 @@ Python pycubrid (what you'll write):
 No addBatch loop. No type casting. One call.
 
 Performance note from our benchmarks:
-    COMMIT is ~47ms (the dominant cost). INSERT execute is only ~7ms.
+    COMMIT is the dominant cost (INSERT + COMMIT ~36 ms per row on pycubrid 1.10.0).
     For bulk writes, batch your inserts and commit once at the end.
 """
 
@@ -143,7 +143,7 @@ def batch_insert_chunked(conn: pycubrid.Connection) -> None:
 def batch_insert_single_commit(conn: pycubrid.Connection) -> None:
     """Single-commit batch for maximum throughput.
 
-    COMMIT is the most expensive operation (~47ms per our benchmarks).
+    COMMIT is the most expensive operation (pycubrid 1.10.0 benchmarks).
     Minimizing commits maximizes throughput for trusted data.
 
     Trade-off: If insertion fails mid-batch, all rows roll back.

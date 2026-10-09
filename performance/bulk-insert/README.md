@@ -110,6 +110,6 @@ Reducing COMMIT frequency is the single most effective optimization for write-he
 
 ## Benchmark Reference
 
-- pycubrid 1.10.0 (2026-10-09): see the table above; INSERT + COMMIT ~36 ms per row
+- pycubrid 1.10.0 (2026-10-09): see the table above; INSERT + COMMIT ~36 ms per row; 10K-row per-row-COMMIT time (~357 s) is extrapolated from the 500-row run
 - Historical (pycubrid 0.5.0+16a8634, CUBRID 11.2): INSERT execute 7.10ms, COMMIT 51.32ms
 - Full details: [cubrid-benchmark/experiments/driver-comparison](https://github.com/cubrid-lab/cubrid-benchmark/tree/main/experiments/driver-comparison)

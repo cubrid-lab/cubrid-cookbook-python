@@ -66,8 +66,8 @@ driver-optimization table and the row-count scaling table below are historical.
 
 ## Key Takeaways
 
-1. **≤ 500 rows**: Network + server time dominates — client-side optimization has minimal effect
-2. **≥ 1,000 rows**: Fetch parsing is 60%+ of total time (0.5.0 data) — SELECT only needed columns (2 vs 5 columns: 28 vs 52 ms for 10K rows on 1.10.0)
+1. **≤ 500 rows** (historical, pycubrid 0.5.0): Network + server time dominates — client-side optimization has minimal effect
+2. **≥ 1,000 rows**: Fetch parsing was 60%+ of total time (historical, pycubrid 0.5.0 data) — SELECT only needed columns (2 vs 5 columns: 28 vs 52 ms for 10K rows on 1.10.0)
 3. **Connections**: a query on a fresh connection took ~5.9 ms vs ~0.8 ms pooled (pycubrid 1.10.0, 2026-10-09) — pooling is essential
 4. **Transactions**: INSERT + COMMIT per row ran at ~28 rows/s vs ~1,279 rows/s with a COMMIT every 500 rows (pycubrid 1.10.0, 2026-10-09) — batch your COMMITs
 
