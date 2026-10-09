@@ -199,6 +199,8 @@ class WorkflowCallInputTests(unittest.TestCase):
             self.assertRaisesRegex(ValueError, "unavailable after 6 attempts"),
         ):
             smoke.select_releases("workflow_call", self.event, self.constraints)
+        # The path that failed on 2026-10-09: the call must wait for PyPI first (C4).
+        self.wait.assert_called_once_with("pycubrid", "1.8.0")
         self.assertEqual(install.call_count, 6)
         command = install.call_args.args[0]
         self.assertIn("pycubrid==1.8.0", command)

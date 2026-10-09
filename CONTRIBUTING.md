@@ -364,8 +364,9 @@ that exact version is listed with at least one wheel or sdist, backing off
 5, 10, 20, then 30 seconds between polls within a 600-second wall-clock budget.
 HTTP errors, malformed JSON, another version or a release without files all
 count as "not served yet"; when the budget runs out the job fails with
-`PyPI does not serve <package>==<version> after N s` and never falls back to
-another version. This absorbs stale PyPI CDN nodes, which on 2026-10-09 hid a
+`PyPI does not serve <package>==<version> after N s (<last reason>)`, naming
+the last error or what PyPI served instead (version and wheel/sdist count),
+and never falls back to another version. This absorbs stale PyPI CDN nodes, which on 2026-10-09 hid a
 fresh driver upload from one smoke cell for about 95–106 seconds while the other
 cell already installed it. Because the JSON API and the simple index can still
 briefly disagree, the install itself (`pip install --no-cache-dir`) is then

@@ -141,18 +141,36 @@ class WaitForPyPITests(unittest.TestCase):
         self.assertEqual(self.wait(Responses(b"garbage", server_error, release())).sleeps, [5, 10])
 
     def test_the_wrong_version_is_never_accepted(self) -> None:
+        # The timeout reason names what PyPI served instead, to diagnose stale CDN nodes.
         wrong = [
-            release(version="1.9.0"),
-            release(version="1.10.0rc1"),
-            release(version="1.10"),
-            release(name="sqlalchemy-cubrid"),
-            release(types=()),
-            release(types=("bdist_egg",)),
+            (release(version="1.9.0"), "served pycubrid 1.9.0 with 2 wheel/sdist files"),
+            (release(version="1.10.0rc1"), "served pycubrid 1.10.0rc1 with 2 wheel/sdist files"),
+            (release(version="1.10"), "served pycubrid 1.10 with 2 wheel/sdist files"),
+            (
+                release(name="sqlalchemy-cubrid"),
+                "served sqlalchemy-cubrid 1.10.0 with 2 wheel/sdist files",
+            ),
+            (release(types=()), "served pycubrid 1.10.0 with 0 wheel/sdist files"),
+            (release(types=("bdist_egg",)), "served pycubrid 1.10.0 with 0 wheel/sdist files"),
         ]
-        for document in wrong:
+        for document, reason in wrong:
             with self.subTest(document=document):
-                with self.assertRaisesRegex(ValueError, "does not serve pycubrid==1.10.0"):
+                with self.assertRaises(ValueError) as raised:
                     self.wait(Responses(document), timeout=60)
+                self.assertEqual(
+                    str(raised.exception),
+                    f"PyPI does not serve pycubrid==1.10.0 after 60 s ({reason})",
+                )
+
+    def test_default_budget_is_600_seconds(self) -> None:
+        self.assertEqual(smoke.PUBLICATION_TIMEOUT, 600)
+        fake = FakeTime()
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(ValueError) as raised:
+            smoke.wait_for_pypi(
+                "pycubrid", "1.10.0", sleep=fake.sleep, fetch=Responses(not_found), clock=fake.clock
+            )
+        self.assertEqual(fake.now, 600)
+        self.assertIn("after 600 s", str(raised.exception))
 
     def test_name_normalization_follows_pypi(self) -> None:
         fake = FakeTime()
@@ -241,13 +259,13 @@ class SelectWaitsForPyPITests(unittest.TestCase):
             with self.subTest(event=event_name):
                 with (
                     patch.object(smoke, "wait_for_pypi") as wait,
-                    patch.object(smoke, "fetch_pypi") as fetch,
+                    patch.object(smoke.urllib.request, "urlopen") as urlopen,
                     patch.object(smoke.subprocess, "run") as install,
                     patch.object(smoke.subprocess, "check_call") as bootstrap,
                 ):
                     smoke.select_releases(event_name, path, self.constraints)
                 wait.assert_not_called()
-                fetch.assert_not_called()
+                urlopen.assert_not_called()
                 install.assert_not_called()
                 bootstrap.assert_called_once()
 

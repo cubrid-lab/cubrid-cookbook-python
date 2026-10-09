@@ -164,16 +164,19 @@ def normalize_name(name: str) -> str:
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
-def pypi_serves(document: bytes, package: str, version: str) -> bool:
-    """Whether a PyPI release JSON document lists exactly package==version with a file."""
+def pypi_mismatch(document: bytes, package: str, version: str) -> str | None:
+    """None if a PyPI release JSON document lists exactly package==version with a
+    wheel or sdist; otherwise what PyPI served instead (for stale-CDN diagnosis)."""
     data = json.loads(document)
     info = data["info"]
-    if normalize_name(info["name"]) != normalize_name(package) or info["version"] != version:
-        return False
-    return any(
+    files = sum(
         isinstance(item, dict) and item.get("packagetype") in PYPI_FILE_TYPES
         for item in data["urls"]
     )
+    name, served = info["name"], info["version"]
+    if normalize_name(name) == normalize_name(package) and served == version and files:
+        return None
+    return f"served {name} {served} with {files} wheel/sdist files"
 
 
 def wait_for_pypi(
@@ -193,9 +196,9 @@ def wait_for_pypi(
     start = clock()
     for attempt in itertools.count(1):
         try:
-            if pypi_serves(fetch(url), package, version):
+            reason = pypi_mismatch(fetch(url), package, version)
+            if reason is None:
                 return
-            reason = "version or files not listed"
         except Exception as error:  # Every failure means "not served yet".
             reason = f"{type(error).__name__}: {error}"
         remaining = timeout - (clock() - start)
