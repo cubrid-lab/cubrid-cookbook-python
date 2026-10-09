@@ -5,10 +5,14 @@ from __future__ import annotations
 import doctest
 import importlib.util
 import re
+import contextlib
+import io
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -158,6 +162,20 @@ class DependencyFloorTests(unittest.TestCase):
         errors = floors.check(self.tmp, MATRIX)
         self.assertTrue(any("expected sqlalchemy-cubrid>=1.0" in e for e in errors), errors)
 
+    def test_driver_names_are_case_and_separator_insensitive(self) -> None:
+        target = self.tmp / "migration/java-to-python/requirements.txt"
+        target.write_text("PyCUBRID>=1.7,<2\nsqlalchemy_cubrid>=1.0\n")
+        errors = floors.check(self.tmp, MATRIX)
+        self.assertTrue(
+            any("expected pycubrid>=1.6.1, no upper bound (global floor)" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(any("sqlalchemy-cubrid" in e for e in errors), errors)
+        target.write_text("PyCUBRID>=1.6.1\nSQLAlchemy.Cubrid>=0.9\n")
+        errors = floors.check(self.tmp, MATRIX)
+        self.assertTrue(any("expected sqlalchemy-cubrid>=1.0" in e for e in errors), errors)
+        self.assertEqual(floors.parse_driver_requirement("pycubrid-extra>=1"), None)
+
     def test_fundamentals_async_exact_sqlalchemy_floor_is_enforced(self) -> None:
         target = self.tmp / "fundamentals/async/requirements.txt"
         text = target.read_text().replace("sqlalchemy-cubrid>=1.5", "sqlalchemy-cubrid>=1.4.2")
@@ -200,6 +218,65 @@ class FloorLaneTests(unittest.TestCase):
         documented |= {("pycubrid", v) for v in lane.NO_REQUIREMENTS_FLOORS.values() if v}
         installed = {(d, v) for _, pins, _ in self.plan for d, v in pins.items()}
         self.assertEqual(documented - installed, set())
+
+    def test_async_floor_is_documented_in_the_support_matrix(self) -> None:
+        self.assertEqual(self.dirs["fundamentals/async"][1]["sqlalchemy-cubrid"], "1.5")
+        flat = " ".join(MATRIX.split())
+        self.assertIn("≥ 1.5 for the async `cubrid+aiopycubrid://` recipe", flat)
+        self.assertIn("`fundamentals/async` pins `≥ 1.5`", flat)
+
+    def test_directory_without_a_driver_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "d").mkdir()
+            (Path(tmp) / "d/requirements.txt").write_text("sqlalchemy>=2.0\n")
+            with self.assertRaisesRegex(ValueError, "declares no"):
+                lane.directory_floors(Path(tmp), "d", MATRIX)
+
+    def test_unpinned_installed_driver_is_a_problem(self) -> None:
+        # sqlalchemy-cubrid pulls in pycubrid; if the set does not pin it, it floats.
+        pins = {"sqlalchemy-cubrid": "1.5"}
+        self.assertEqual(lane.floor_problems({"sqlalchemy-cubrid": "1.5.0"}, pins), [])
+        problems = lane.floor_problems({"sqlalchemy-cubrid": "1.5.0", "pycubrid": "1.9.0"}, pins)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("pycubrid", problems[0])
+        self.assertTrue(lane.floor_problems({}, pins))
+
+    def test_a_failing_set_does_not_stop_the_remaining_sets(self) -> None:
+        plan = [
+            ("one", {"pycubrid": "1.7"}, ("fundamentals/crud",)),
+            ("two", {"pycubrid": "1.7"}, ("fundamentals/crud",)),
+        ]
+        calls = []
+
+        def install(venv, pins, dirs):
+            calls.append(venv.name)
+            if venv.name == "one":
+                raise subprocess.CalledProcessError(1, ["pip", "install"])
+            return Path("python")
+
+        out = io.StringIO()
+        with (
+            mock.patch.object(lane, "plan", return_value=plan),
+            mock.patch.object(lane, "_install", side_effect=install),
+            mock.patch.object(lane, "_installed", return_value={"pycubrid": "1.7.0"}),
+            mock.patch.object(lane, "_wait_ready"),
+            mock.patch.object(lane, "_run_golden", return_value=[]),
+            contextlib.redirect_stdout(out),
+        ):
+            code = lane.run([], Path("work"))
+        self.assertEqual(calls, ["one", "two"])
+        self.assertEqual(code, 1)
+        self.assertRegex(out.getvalue(), r"\| `one` .*FAIL")
+        self.assertRegex(out.getvalue(), r"\| `two` .*pass")
+
+    def test_goldens_run_with_a_short_timeout_and_no_stdin(self) -> None:
+        self.assertEqual(lane.SCRIPT_TIMEOUT, 60)
+        with mock.patch.object(lane.subprocess, "run") as run:
+            run.return_value = subprocess.CompletedProcess([], 0, stdout=b"")
+            lane._run_golden(Path("python"), Path("s.py"), ROOT / "README.md")
+        first = run.call_args_list[0].kwargs
+        self.assertIs(first["stdin"], subprocess.DEVNULL)
+        self.assertEqual(first["timeout"], 60)
 
     def test_directory_specific_floors_run_on_their_own_directory(self) -> None:
         for label, exact in (

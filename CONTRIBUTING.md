@@ -121,7 +121,7 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   on pull requests that change `SUPPORT_MATRIX.md`, the floor checker or lane, or
   the `requirements.txt` of a directory the lane runs (`ci_scope.FLOORS`), on the
   weekly `ci.yml` schedule and on manual `ci.yml` runs — not on pushes to `main`,
-  since the floors are fixed releases. One job, about 3 minutes.
+  since the floors are fixed releases; edits to a lane directory's code do not select it, the weekly schedule covers them. One job, about 3 minutes.
   Unknown paths fail closed to every recipe family lane and the 11.4 smoke lane
   with a full `make verify`.
 - CUBRID 11.2 runs on a pull request only for version-sensitive changes:

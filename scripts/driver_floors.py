@@ -78,7 +78,7 @@ FLOOR_SETS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("alembic", ("fundamentals/alembic",)),
 )
 
-SCRIPT_TIMEOUT = 300
+SCRIPT_TIMEOUT = 60
 READY_TIMEOUT = 180
 
 
@@ -100,6 +100,8 @@ def directory_floors(root: Path, directory: str, matrix: str) -> dict[str, str]:
         if not match:
             raise ValueError(f"{req.relative_to(root)}: no '>=' floor for {driver}: {line!r}")
         found[driver] = match.group(1)
+    if not found:
+        raise ValueError(f"{req.relative_to(root)}: declares no pycubrid/sqlalchemy-cubrid driver")
     return found
 
 
@@ -161,10 +163,42 @@ def _install(venv: Path, pins: dict[str, str], dirs: tuple[str, ...]) -> Path:
     return python
 
 
-def _installed(python: Path, drivers: list[str]) -> dict[str, str]:
-    code = "import importlib.metadata as m, sys\nfor d in sys.argv[1:]: print(d, m.version(d))\n"
-    out = _run([str(python), "-c", code, *drivers], capture_output=True).stdout
+def _installed(python: Path) -> dict[str, str]:
+    """Versions of every driver in the venv (absent drivers are omitted)."""
+    code = (
+        "import importlib.metadata as m, sys\n"
+        "for d in sys.argv[1:]:\n"
+        "    try: print(d, m.version(d))\n"
+        "    except m.PackageNotFoundError: pass\n"
+    )
+    out = _run([str(python), "-c", code, *floors.DRIVERS], capture_output=True).stdout
     return dict(line.split(" ", 1) for line in out.splitlines())
+
+
+def floor_problems(installed: dict[str, str], pins: dict[str, str]) -> list[str]:
+    """Pinned drivers must be at their floor and no other driver may be installed.
+
+    An unpinned driver (even a transitive one such as the ``pycubrid`` that
+    ``sqlalchemy-cubrid`` depends on) would float to the latest release.
+
+    >>> floor_problems({"pycubrid": "1.7.0"}, {"pycubrid": "1.7"})
+    []
+    >>> floor_problems({"pycubrid": "1.9.0", "sqlalchemy-cubrid": "1.5"}, {"sqlalchemy-cubrid": "1.5"})
+    ['pycubrid 1.9.0 is installed but not pinned (it would float)']
+    >>> floor_problems({}, {"pycubrid": "1.7"})
+    ['pycubrid installed None, floor 1.7']
+    """
+    problems = [
+        f"{d} installed {installed.get(d)}, floor {v}"
+        for d, v in sorted(pins.items())
+        if not same_release(installed.get(d, "0"), v)
+    ]
+    problems += [
+        f"{d} {v} is installed but not pinned (it would float)"
+        for d, v in sorted(installed.items())
+        if d not in pins
+    ]
+    return problems
 
 
 def _wait_ready(python: Path) -> None:
@@ -186,6 +220,7 @@ def _run_golden(python: Path, script: Path, expected: Path) -> list[str]:
         proc = subprocess.run(
             [str(python), str(script)],
             cwd=REPO_ROOT,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             timeout=SCRIPT_TIMEOUT,
@@ -219,36 +254,37 @@ def run(selected: list[str], workdir: Path) -> int:
     ready = False
     for name, pins, dirs in sets:
         print(f"::group::floor set {name}: " + ", ".join(f"{d}=={v}" for d, v in pins.items()))
-        python = _install(workdir / name, pins, dirs)
-        installed = _installed(python, sorted(pins))
-        problems = [
-            f"{d} installed {installed.get(d)}, floor {v}"
-            for d, v in sorted(pins.items())
-            if not same_release(installed.get(d, "0"), v)
-        ]
-        if not ready:
-            _wait_ready(python)
-            ready = True
+        installed: dict[str, str] = {}
+        problems: list[str] = []
         passed = 0
         total = 0
-        for directory in dirs:
-            for expected in sorted((REPO_ROOT / directory / "expected").glob("*.expected")):
-                total += 1
-                script = expected.parent.parent / f"{expected.stem}.py"
-                label = script.relative_to(REPO_ROOT).as_posix()
-                issues = (
-                    _run_golden(python, script, expected)
-                    if script.is_file()
-                    else ["no matching script"]
-                )
-                if issues:
-                    problems.append(f"{label}: {issues[0]}")
-                    print(f"  FAIL {label}: " + "\n".join(issues))
-                else:
-                    passed += 1
-                    print(f"  PASS {label}")
-        if total == 0:
-            problems.append("no goldens found")
+        try:
+            python = _install(workdir / name, pins, dirs)
+            installed = _installed(python)
+            problems = floor_problems(installed, pins)
+            if not ready:
+                _wait_ready(python)
+                ready = True
+            for directory in dirs:
+                for expected in sorted((REPO_ROOT / directory / "expected").glob("*.expected")):
+                    total += 1
+                    script = expected.parent.parent / f"{expected.stem}.py"
+                    label = script.relative_to(REPO_ROOT).as_posix()
+                    issues = (
+                        _run_golden(python, script, expected)
+                        if script.is_file()
+                        else ["no matching script"]
+                    )
+                    if issues:
+                        problems.append(f"{label}: {issues[0]}")
+                        print(f"  FAIL {label}: " + "\n".join(issues))
+                    else:
+                        passed += 1
+                        print(f"  PASS {label}")
+            if total == 0:
+                problems.append("no goldens found")
+        except subprocess.CalledProcessError as exc:
+            problems.append(f"command failed ({exc.returncode}): {' '.join(map(str, exc.cmd))}")
         print("::endgroup::")
         for problem in problems:
             print(f"::error::floor set {name}: {problem}")
@@ -257,7 +293,7 @@ def run(selected: list[str], workdir: Path) -> int:
             f"| `{name}` | "
             + ", ".join(f"`{d}=={v}`" for d, v in sorted(pins.items()))
             + " | "
-            + ", ".join(f"`{d} {installed.get(d, '?')}`" for d in sorted(pins))
+            + ", ".join(f"`{d} {v}`" for d, v in sorted(installed.items()))
             + f" | {passed}/{total} | {'pass' if not problems else 'FAIL'} |"
         )
     summary = [

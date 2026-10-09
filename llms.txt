@@ -34,7 +34,7 @@ Core database patterns using pycubrid (DB-API 2.0) and SQLAlchemy ORM.
 - [sqlalchemy](fundamentals/sqlalchemy/): Numbered SQLAlchemy ORM examples
 - [pandas](fundamentals/pandas/): Pandas data analysis with CUBRID
 
-- [async](fundamentals/async/): Native async I/O with `pycubrid.aio` and the SQLAlchemy async engine (`cubrid+aiopycubrid://`); the recipe requires pycubrid >= 1.6.0 and sqlalchemy-cubrid >= 1.4.2
+- [async](fundamentals/async/): Native async I/O with `pycubrid.aio` and the SQLAlchemy async engine (`cubrid+aiopycubrid://`); the recipe requires pycubrid >= 1.6.1 and sqlalchemy-cubrid >= 1.5
 - [alembic](fundamentals/alembic/): Programmatic Alembic migrations with a default `env.py` (sqlalchemy-cubrid >= 1.8 registers `CubridImpl` automatically); prints the dialect's runtime `transactional_ddl` (True: DDL rolls back while autocommit is off)
 - [json](fundamentals/json/): Native JSON columns with JSON_EXTRACT / JSON_UNQUOTE patterns
 - [isolation-levels](fundamentals/isolation-levels/): The three isolation levels CUBRID accepts under MVCC — READ COMMITTED (4, default), REPEATABLE READ (5) and SERIALIZABLE (6, which CUBRID currently runs as REPEATABLE READ snapshot isolation, so write skew is still possible); READ UNCOMMITTED and codes 1–3 are rejected. Includes a two-connection demonstration that dirty reads do not occur

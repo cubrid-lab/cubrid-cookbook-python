@@ -36,7 +36,11 @@ MATRIX_PATH = REPO_ROOT / "SUPPORT_MATRIX.md"
 DRIVERS = ("pycubrid", "sqlalchemy-cubrid")
 # Optional extras (``sqlalchemy-cubrid[pycubrid]>=1.0``) and whitespace around
 # the specifier (``pycubrid >= 1.6.1``) are valid pip syntax (#241).
-REQ_LINE_RE = re.compile(r"^(pycubrid|sqlalchemy-cubrid)\s*(?:\[[^\]]*\])?(.*)$")
+# Names match case-insensitively with PEP 503 normalisation (``PyCUBRID``,
+# ``sqlalchemy_cubrid``, ``sqlalchemy.cubrid``).
+REQ_LINE_RE = re.compile(
+    r"^(pycubrid|sqlalchemy[-_.]cubrid)(?![\w.-])\s*(?:\[[^\]]*\])?(.*)$", re.IGNORECASE
+)
 FLOOR_RE = re.compile(r"^>=([0-9][\w.]*?)(,<[0-9][\w.]*)?$")
 
 # The full example apps under templates/ (and their standalone per-recipe
@@ -116,6 +120,10 @@ def parse_driver_requirement(line: str) -> tuple[str, str] | None:
     ('sqlalchemy-cubrid', '>=1.0')
     >>> parse_driver_requirement("pycubrid>=1.7, <2")
     ('pycubrid', '>=1.7,<2')
+    >>> parse_driver_requirement("PyCUBRID>=1.7,<2")
+    ('pycubrid', '>=1.7,<2')
+    >>> parse_driver_requirement("sqlalchemy_cubrid>=1.0")
+    ('sqlalchemy-cubrid', '>=1.0')
     >>> parse_driver_requirement("sqlalchemy>=2.0") is None
     True
     """
@@ -123,6 +131,7 @@ def parse_driver_requirement(line: str) -> tuple[str, str] | None:
     if not match:
         return None
     driver, rest = match.groups()
+    driver = re.sub(r"[-_.]+", "-", driver).lower()
     return driver, re.sub(r"\s+", "", rest)
 
 
