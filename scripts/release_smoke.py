@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import os
 import re
 import subprocess
 import sys
 import time
-from collections.abc import Mapping
+import urllib.request
+from collections.abc import Callable, Mapping
 from importlib import metadata
 from pathlib import Path
 
@@ -29,6 +31,13 @@ REPORT_SCHEMA = 1
 DEFAULT_PYTHON = "3.12"
 RELEASE_CELLS = frozenset({("11.2", "3.12"), ("11.4", "3.12"), ("11.4", "3.11")})
 REPORT_PART = "release-verification-part.json"
+# Before installing a requested release, wait until PyPI's JSON API lists exactly
+# that version with a file (design C4): on 2026-10-09 stale PyPI CDN nodes hid a
+# fresh upload from one cell for ~95-106 s. Anonymous requests only, no tokens.
+PYPI_RELEASE_URL = "https://pypi.org/pypi/{package}/{version}/json"
+PUBLICATION_TIMEOUT = 600  # seconds; total wall-clock budget of wait_for_pypi
+PUBLICATION_DELAYS = (5, 10, 20, 30)  # backoff between polls; the last value repeats
+PYPI_FILE_TYPES = frozenset({"bdist_wheel", "sdist"})
 # Another repository's release workflow calls smoke-test.yml (on: workflow_call).
 # GITHUB_EVENT_NAME/GITHUB_EVENT_PATH then describe the CALLER's event, so the
 # workflow flags the call and passes its inputs through the environment instead.
@@ -142,6 +151,68 @@ def verify_request(request: dict[str, str]) -> None:
         )
 
 
+def fetch_pypi(url: str) -> bytes:
+    """GET one PyPI JSON document; HTTP errors (such as 404) raise."""
+    request = urllib.request.Request(
+        url, headers={"Accept": "application/json", "User-Agent": "cubrid-cookbook-release-smoke"}
+    )
+    with urllib.request.urlopen(request, timeout=15) as response:
+        return response.read()
+
+
+def normalize_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def pypi_serves(document: bytes, package: str, version: str) -> bool:
+    """Whether a PyPI release JSON document lists exactly package==version with a file."""
+    data = json.loads(document)
+    info = data["info"]
+    if normalize_name(info["name"]) != normalize_name(package) or info["version"] != version:
+        return False
+    return any(
+        isinstance(item, dict) and item.get("packagetype") in PYPI_FILE_TYPES
+        for item in data["urls"]
+    )
+
+
+def wait_for_pypi(
+    package: str,
+    version: str,
+    timeout: float = PUBLICATION_TIMEOUT,
+    sleep: Callable[[float], None] = time.sleep,
+    fetch: Callable[[str], bytes] = fetch_pypi,
+    clock: Callable[[], float] = time.monotonic,
+) -> None:
+    """Poll PyPI until it serves package==version, or fail after ``timeout`` seconds.
+
+    Any HTTP, network or JSON error, and any other version or a release without a
+    wheel or sdist, counts as "not yet served"; there is no fallback version.
+    """
+    url = PYPI_RELEASE_URL.format(package=package, version=version)
+    start = clock()
+    for attempt in itertools.count(1):
+        try:
+            if pypi_serves(fetch(url), package, version):
+                return
+            reason = "version or files not listed"
+        except Exception as error:  # Every failure means "not served yet".
+            reason = f"{type(error).__name__}: {error}"
+        remaining = timeout - (clock() - start)
+        if remaining <= 0:
+            break
+        delay = min(PUBLICATION_DELAYS[min(attempt, len(PUBLICATION_DELAYS)) - 1], remaining)
+        print(
+            f"PyPI does not serve {package}=={version} yet ({reason}); poll {attempt}, "
+            f"retrying in {delay:.0f} s",
+            file=sys.stderr,
+        )
+        sleep(delay)
+    raise ValueError(
+        f"PyPI does not serve {package}=={version} after {clock() - start:.0f} s ({reason})"
+    )
+
+
 def select_releases(
     event_name: str,
     event_path: Path | None,
@@ -154,6 +225,7 @@ def select_releases(
     bootstrap = [sys.executable, "-m", "pip", "install", *DRIVERS, "sqlalchemy"]
     if request is not None:
         requirement = f"{request['package']}=={request['version']}"
+        wait_for_pypi(request["package"], request["version"])
         constraints.write_text(requirement + "\n", encoding="utf-8")
         command = [
             sys.executable,
@@ -161,6 +233,7 @@ def select_releases(
             "pip",
             "install",
             "--disable-pip-version-check",
+            "--no-cache-dir",
             "--index-url",
             "https://pypi.org/simple",
             "--constraint",

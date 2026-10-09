@@ -233,12 +233,16 @@ jobs:
             pip-smoke-${{ runner.os }}-
 
       - name: Select released drivers
-        timeout-minutes: 10
+        # Worst case for a requested release: the 600 s PyPI publication wait
+        # plus the 410 s install retry budget (~17 min), plus the bootstrap install.
+        timeout-minutes: 20
         run: |
           # Reads the event JSON directly; untrusted payload fields and manual
-          # inputs never enter shell code. Requested releases (repository_dispatch
-          # or a pinned workflow_dispatch) get six bounded PyPI attempts, with no
-          # artifact or latest-release fallback.
+          # inputs never enter shell code. A requested release (repository_dispatch,
+          # a pinned workflow_dispatch or a workflow_call) first waits, up to 600 s,
+          # until the PyPI JSON API serves exactly that version with a wheel or sdist
+          # (stale CDN nodes, 2026-10-09), then gets six bounded --no-cache-dir
+          # installs, with no artifact or latest-release fallback. Other runs never poll.
           python scripts/release_smoke.py select \
             --constraints "$RUNNER_TEMP/release-constraints.txt"
 

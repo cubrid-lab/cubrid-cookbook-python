@@ -82,6 +82,10 @@ class WorkflowCallInputTests(unittest.TestCase):
         distribution = patch.object(smoke.metadata, "distribution", self.distribution)
         distribution.start()
         self.addCleanup(distribution.stop)
+        # No network: the PyPI publication wait has its own tests (test_release_pypi_wait.py).
+        wait = patch.object(smoke, "wait_for_pypi")
+        self.wait = wait.start()
+        self.addCleanup(wait.stop)
         # The caller's own event: a release push, whose JSON has no request at all.
         self.event.write_text(json.dumps({"ref": "refs/tags/v1.8.0", "after": "0" * 40}))
 

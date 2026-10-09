@@ -85,6 +85,10 @@ class ReleaseVerificationTests(unittest.TestCase):
         distribution = patch.object(smoke.metadata, "distribution", self.distribution)
         distribution.start()
         self.addCleanup(distribution.stop)
+        # No network: the PyPI publication wait has its own tests (test_release_pypi_wait.py).
+        wait = patch.object(smoke, "wait_for_pypi")
+        self.wait = wait.start()
+        self.addCleanup(wait.stop)
 
     def distribution(self, name: str) -> SimpleNamespace:
         if name not in self.versions:

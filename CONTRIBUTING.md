@@ -358,9 +358,20 @@ fundamentals require the current `>=1.7,<2` release line.
 Release dispatches accept `pycubrid`, `sqlalchemy-cubrid`, or `cubrid-mcp-server`
 with a canonical `vMAJOR.MINOR.PATCH` ref, matching the upstream dispatch format.
 The job reads the event JSON, validates the request before installation, and
-installs that exact release from PyPI. Publication is retried up to six times,
-with a 60-second installer timeout and 10 seconds between attempts; the maximum
-requested-install budget is 410 seconds. An unavailable release fails explicitly.
+installs that exact release from PyPI. Before installing, it polls the PyPI JSON
+API (`https://pypi.org/pypi/<package>/<version>/json`, anonymous, no token) until
+that exact version is listed with at least one wheel or sdist, backing off
+5, 10, 20, then 30 seconds between polls within a 600-second wall-clock budget.
+HTTP errors, malformed JSON, another version or a release without files all
+count as "not served yet"; when the budget runs out the job fails with
+`PyPI does not serve <package>==<version> after N s` and never falls back to
+another version. This absorbs stale PyPI CDN nodes, which on 2026-10-09 hid a
+fresh driver upload from one smoke cell for about 95–106 seconds while the other
+cell already installed it. Because the JSON API and the simple index can still
+briefly disagree, the install itself (`pip install --no-cache-dir`) is then
+retried up to six times, with a 60-second installer timeout and 10 seconds
+between attempts (at most 410 seconds). The *Select released drivers* step allows
+20 minutes for both budgets. Runs without a requested release never poll PyPI.
 The requested package is pinned through later installs and checked again for its
 exact version and package-index origin before tests.
 
@@ -520,8 +531,8 @@ job of its **own** run with its own `GITHUB_TOKEN` — no PAT, no
 | `installed_version` | the version every smoke job installed, empty unless they agree |
 | `artifact` | report artifact name in the caller's run (`release-verification-<request_id>`) |
 
-The called run behaves exactly like a release dispatch: the exact PyPI install with
-the bounded publication retry, no fallback to the latest release or to `main`, both
+The called run behaves exactly like a release dispatch: the exact PyPI install after
+the bounded PyPI publication wait and install retry, no fallback to the latest release or to `main`, both
 CUBRID jobs, the same report job and `release-verification.json` schema (with
 `run.event` = `workflow_call` and `run.commit` = the cookbook commit tested). The
 caller job fails when the verification fails; the outputs are still set, so a
