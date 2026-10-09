@@ -22,6 +22,11 @@ grep -v 'this attribute may be set' | \
 #   - tracemalloc peak memory: "peak_memory=  123.4 KB" -> "peak_memory={{MEM}} KB"
 #   - derived memory ratio:    "(largest / smallest): 12.3x" -> "...: {{RATIO}}x"
 #   - datetime w/ microseconds: "{{DATE}} 11:03:13.052000" -> "{{DATETIME}}"
+#     A whole-second value (Python omits the fraction when it is .000) is also
+#     mapped, but only when NOT followed by a UTC offset (+09:00), "Z", or an
+#     uppercase zone name (" Asia/Seoul", " UTC"): those are fixed, meaningful
+#     values (see 20_timezone_datetime). The comma-fraction logging form is
+#     claimed earlier by {{TIMESTAMP}}.
 #   - bulk-insert perf summary:  "execute(insert, rows): 0.06s" -> "...: {{TIME}}s"
 #   - pandas string-dtype spelling: pandas 2.2 renders SQL string columns as
 #     "object"; newer pandas (PDEP-14 default) renders them as "str". The lesson
@@ -45,6 +50,7 @@ sed -E \
   -e 's/[{][{]DATE[}][}] [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]+/{{TIMESTAMP}}/g' \
   -e 's/[{][{]DATE[}][}]T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+/{{DATETIME}}/g' \
   -e 's/[{][{]DATE[}][}] [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+/{{DATETIME}}/g' \
+  -e 's/([{][{]DATE[}][}][T ][0-9]{2}:[0-9]{2}:[0-9]{2})($| [^A-Z]|[^-+.0-9A-Za-z ])/{{DATETIME}}\2/g' \
   -e 's/\[generated in [0-9.]+s]/[generated in {{TIME}}s]/g' \
   -e "s/ \(errno=-?[0-9]+, description='[^']*', sqlstate='[^']*'\)//g" \
   -e 's/in [0-9]+\.[0-9]+ seconds/in {{TIME}}s/g' \
