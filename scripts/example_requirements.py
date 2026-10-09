@@ -10,6 +10,7 @@ Shared by ``make deps`` (one pip resolver call over every file) and
 
 Usage:
     python scripts/example_requirements.py [ROOT ...]          # print the files
+                                                              # (fails on a path with whitespace)
     python scripts/example_requirements.py --check [ROOT ...]  # verify pre-flight
 
 ``--check`` fails once, listing every requirement whose distribution is not
@@ -72,12 +73,16 @@ def main(argv: list[str]) -> int:
                 print(f"  ✗ {entry}", file=sys.stderr)
             return 1
         return 0
-    files = [path for root in roots for path in requirement_files(root)]
+    files = [path.as_posix() for root in roots for path in requirement_files(root)]
+    # `make deps` splits this output on whitespace, so reject such a path
+    # before printing anything rather than emit a partial list.
+    spaced = [path for path in files if any(character.isspace() for character in path)]
+    if spaced:
+        for path in spaced:
+            print(f"Requirements path contains whitespace: {path!r}", file=sys.stderr)
+        return 1
     for path in files:
-        if any(character.isspace() for character in path.as_posix()):
-            print(f"Requirements path contains whitespace: {path}", file=sys.stderr)
-            return 1
-        print(path.as_posix())
+        print(path)
     return 0
 
 

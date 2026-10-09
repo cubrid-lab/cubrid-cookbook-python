@@ -269,15 +269,23 @@ run `make up`, `make deps`, `make verify`. `make deps` installs `pytest`,
 example (a directory that owns `expected/`) in one pip resolver call, so
 `PIP_CONSTRAINT` applies to all of them. The same discovery
 (`scripts/example_requirements.py`) backs `scripts/release_smoke.py
-install-examples` in CI. Before running anything, `make verify` checks that the
+install-examples` in CI; it fails, and so does `make deps`, if a
+golden-backed `requirements.txt` path contains whitespace. Before running anything, `make verify` checks that the
 selected examples' requirements are installed and stops once with "run
 `make deps` first" if not.
 
 Each script runs through `scripts/run_example.py` with a `VERIFY_TIMEOUT`
 wall-clock limit (default 60 seconds; the slowest golden took about 7 seconds on
-CUBRID 11.4). On timeout the script's whole process group is killed. Every
+CUBRID 11.4) and stdin redirected from `/dev/null`. The script runs in its own
+process group, and the whole group (including helpers it started) is killed on
+timeout, when the script exits, and when the runner gets SIGINT, SIGTERM or
+SIGHUP (it then exits 128 + the signal number). The runner is POSIX-only and
+exits with "run_example.py requires POSIX process groups" elsewhere. Every
 result is classified as `✓ PASS`, `✗ MISMATCH` (with a diff), `✗ EXEC-ERROR`
-(exit status and the last 20 output lines), `⏱ TIMEOUT` (the last 20 lines),
+(exit status and the last 20 output lines; a script killed by a signal N reports
+128 + N), `⏱ TIMEOUT` (the last 20 lines; only when exit 124 comes with the
+runner's `run_example: timed out after` line, so a script that itself exits 124
+is an `EXEC-ERROR`),
 `✗ NORMALIZE-ERROR`, `✗ READ-ERROR` (golden read error) or `? SKIP`, and the
 summary counts each class. Under GitHub Actions each failure also emits an
 `::error file=...::` annotation.

@@ -17,8 +17,6 @@ VERIFY_PATHS ?= .
 # The slowest golden took 7.2s on CUBRID 11.4 (2026-10-09); 60s leaves room for
 # slower CI runners without letting a hang consume the job timeout.
 VERIFY_TIMEOUT ?= 60
-# requirements.txt of every golden-backed example, for `make deps`.
-DEPS_REQUIREMENTS = $(shell $(PYTHON) scripts/example_requirements.py)
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -41,8 +39,15 @@ clean: ## Stop and remove all data
 	@echo "✓ Cleaned up all containers and volumes"
 
 deps: ## Install the drivers, pytest and every golden-backed example's requirements (one pip call; honours PIP_CONSTRAINT)
-	$(if $(strip $(DEPS_REQUIREMENTS)),,$(error No golden-backed requirements.txt found; run make deps from the repository root))
-	$(PIP) install pytest 'sqlalchemy-cubrid[pycubrid]' $(addprefix -r ,$(DEPS_REQUIREMENTS))
+	@set -f; \
+	files=$$($(PYTHON) scripts/example_requirements.py) || exit 1; \
+	if [ -z "$$files" ]; then \
+		echo "ERROR: No golden-backed requirements.txt found; run make deps from the repository root" >&2; \
+		exit 1; \
+	fi; \
+	set --; for file in $$files; do set -- "$$@" -r "$$file"; done; \
+	echo "$(PIP) install pytest 'sqlalchemy-cubrid[pycubrid]' $$*"; \
+	$(PIP) install pytest 'sqlalchemy-cubrid[pycubrid]' "$$@"
 
 verify: check-coverage ## Verify example outputs against expected results (VERIFY_PATHS scopes the search roots, VERIFY_TIMEOUT limits each script)
 	@echo "Verifying example outputs in: $(VERIFY_PATHS) (timeout $(VERIFY_TIMEOUT)s per script)"
@@ -74,7 +79,8 @@ verify: check-coverage ## Verify example outputs against expected results (VERIF
 		fi; \
 		$(PYTHON) scripts/run_example.py --timeout $(VERIFY_TIMEOUT) -- $(PYTHON) "$$script" < /dev/null > "$$raw" 2>&1; \
 		status=$$?; \
-		if [ $$status -eq 124 ]; then \
+		last=$$(tail -n 1 "$$raw"); \
+		if [ $$status -eq 124 ] && [ "$${last#run_example: timed out after }" != "$$last" ]; then \
 			echo "  ⏱ TIMEOUT $$script (over $(VERIFY_TIMEOUT)s); last 20 lines:"; \
 			tail -n 20 "$$raw" | sed 's/^/      /'; \
 			annotate TIMEOUT "$$script" "exceeded VERIFY_TIMEOUT=$(VERIFY_TIMEOUT)s"; \
