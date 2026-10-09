@@ -16,8 +16,13 @@ Tiers:
 * ``full`` - a pull request that changes the CI policy itself: every lane, both
   CUBRID versions and the Python 3.11/3.14 endpoints.
 * ``main`` - push, schedule or manual dispatch: Python 3.11-3.14 compatibility
-  and CQRS on both CUBRID versions. ``smoke-test.yml`` owns the broad 11.2/11.4
+  and CQRS on both CUBRID versions; the weekly schedule and manual runs also
+  install the documented driver floors (``floors``, #241). ``smoke-test.yml`` owns the broad 11.2/11.4
   goldens and recipe suites on these events, so ``ci.yml`` does not repeat them.
+
+Pull requests that change a documented driver floor (``FLOORS``) also run the
+exact-floor lane (``scripts/driver_floors.py``) on CUBRID 11.4, even when the
+change is otherwise docs-only (``SUPPORT_MATRIX.md``).
 
 Unknown paths and unknown events fail closed to a wider tier.
 
@@ -44,6 +49,10 @@ CUBRID_ENDPOINTS = ["11.2", "11.4"]
 
 PR_EVENTS = {"pull_request"}
 MAIN_EVENTS = {"push", "schedule", "workflow_dispatch"}
+# Floors are fixed releases: re-checking them on every push adds nothing, but the
+# weekly schedule catches a new release of a non-pinned dependency (SQLAlchemy,
+# pandas, ...) breaking an old driver.
+FLOOR_EVENTS = {"schedule", "workflow_dispatch"}
 
 CQRS_ROOT = "templates/api-service-fastapi/recipes/10-cqrs-event-sourcing"
 
@@ -73,6 +82,27 @@ RELEASE_SMOKE = (
     ".github/workflows/smoke-test.yml",
     "scripts/release_smoke.py",
     "scripts/mcp_smoke.py",
+)
+# Where the documented driver floors live (#241): the support contract, its
+# checker, the floor lane, and the requirements of every directory the lane runs
+# (scripts/driver_floors.py FLOOR_SETS; tests/test_dependency_floors.py keeps them in
+# sync). Any floor change elsewhere must also edit SUPPORT_MATRIX.md or the
+# checker, which selects the lane. Matched before DOCS.
+FLOORS = (
+    "SUPPORT_MATRIX.md",
+    "scripts/check_dependency_floors.py",
+    "scripts/driver_floors.py",
+    "fundamentals/alembic/requirements.txt",
+    "fundamentals/async/requirements.txt",
+    "fundamentals/connect/requirements.txt",
+    "fundamentals/json/requirements.txt",
+    "fundamentals/orm-basics/requirements.txt",
+    "fundamentals/pandas/requirements.txt",
+    "fundamentals/pycubrid/requirements.txt",
+    "fundamentals/sqlalchemy/requirements.txt",
+    "migration/java-to-python/requirements.txt",
+    "pitfalls/reserved-words/requirements.txt",
+    "quickstart/5min-sqlalchemy/requirements.txt",
 )
 # Shared live infrastructure every live suite depends on: fan out to all of
 # them, both CUBRID versions and the Python endpoints.
@@ -147,7 +177,8 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
     files = sorted({p.strip() for p in paths if p.strip()})
     roots = sorted(roots)
     lanes = dict.fromkeys(
-        ("web", "dashboard", "async_worker", "django", "cqrs", "compat", "smoke_114"), False
+        ("web", "dashboard", "async_worker", "django", "cqrs", "compat", "smoke_114", "floors"),
+        False,
     )
     full = broad = cqrs_dual = smoke_112 = full_verify = False
     verify = set()
@@ -166,11 +197,14 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
             "smoke_114": False,
             "smoke_112": False,
             "verify_paths": "",
+            "floors": event in FLOOR_EVENTS,
         }
     if event not in PR_EVENTS or not files:
         full = True  # unknown event or an unexpected empty diff: fail closed
 
     for path in files:
+        if _match(path, FLOORS):
+            lanes["floors"] = True
         if _match(path, DOCS):
             continue
         if _match(path, SELF):
@@ -246,6 +280,7 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
         "smoke_114": lanes["smoke_114"],
         "smoke_112": smoke_112,
         "verify_paths": verify_paths,
+        "floors": lanes["floors"],
     }
 
 

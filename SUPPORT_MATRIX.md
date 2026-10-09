@@ -59,7 +59,7 @@ Failure, cancellation or a skip the classifier did not select fails the CI gate.
 | Component | Version | Status |
 |-----------|---------|--------|
 | pycubrid | ≥ 1.6.1 | ✅ Required |
-| sqlalchemy-cubrid | ≥ 1.0 | ✅ Required for SQLAlchemy recipes (≥ 1.4.2 for the async `cubrid+aiopycubrid://` recipe [^async]) |
+| sqlalchemy-cubrid | ≥ 1.0 | ✅ Required for SQLAlchemy recipes (≥ 1.4.2 for the advanced recipes, ≥ 1.5 for the async `cubrid+aiopycubrid://` recipe [^async]) |
 | SQLAlchemy | 2.0–2.2 | ✅ Async recipes install the `sqlalchemy[asyncio]` extra for the required greenlet runtime |
 | Flask | ≥ 3.0 | ✅ |
 | Flask-SQLAlchemy | ≥ 3.1 | ✅ |
@@ -68,7 +68,7 @@ Failure, cancellation or a skip the classifier did not select fails the CI gate.
 | Streamlit | ≥ 1.30 | ✅ |
 | Django | ≥ 5.2 | ✅ (minimal recipe; floor checked with `manage.py check` and the `/health`, `/items` views on 4.2, 5.0 and 5.2, CI runs the live bridge suite on the latest release) |
 
-[^async]: The sync SQLAlchemy dialect (`cubrid+pycubrid://`) works from `sqlalchemy-cubrid` 1.0. The async dialect (`cubrid+aiopycubrid://`, used by `fundamentals/async/02_async_sqlalchemy.py`) first became installable from PyPI in 1.2.3 (its entry points were missing from the 1.2.0–1.2.1 releases and 1.2.2 was yanked; 1.2.1 only shipped the `get_pool_class()`/`create_async_engine()` fix), and this cookbook pins it to `≥ 1.4.2` to match the floor of the other advanced SQLAlchemy recipes (pandas, ORM, Django, dashboard).
+[^async]: The sync SQLAlchemy dialect (`cubrid+pycubrid://`) works from `sqlalchemy-cubrid` 1.0. The async dialect (`cubrid+aiopycubrid://`, used by `fundamentals/async/02_async_sqlalchemy.py`) first became installable from PyPI in 1.2.3 (its entry points were missing from the 1.2.0–1.2.1 releases and 1.2.2 was yanked; 1.2.1 only shipped the `get_pool_class()`/`create_async_engine()` fix), but 1.4.x fails with SQLAlchemy 2.1 (which its metadata allows; the async adapter calls the removed `await_` attribute), so `fundamentals/async` pins `≥ 1.5`, the first release the floor lane passes on. The other advanced SQLAlchemy recipes (pandas, Django, dashboard) keep `≥ 1.4.2`; `fundamentals/sqlalchemy` needs `≥ 1.9` (see below).
 
 The `fundamentals/connect` and `fundamentals/orm-basics` requirements use
 `pycubrid>=1.7,<2`; ORM basics also uses `sqlalchemy-cubrid>=1.7,<2`.
@@ -88,6 +88,24 @@ dialect's runtime `transactional_ddl` (`True` since 1.8.0, sqlalchemy-cubrid#503
 importing `sqlalchemy_cubrid.alembic_impl`. These
 example-specific floors do not change the minimum versions for other recipes
 in the table above.
+
+`fundamentals/crud`, `fundamentals/error-handling`, `fundamentals/lob-handling` and
+`fundamentals/transactions` have goldens but no `requirements.txt`; they import only
+`pycubrid` and follow the global floor, except `fundamentals/lob-handling`, which needs
+`pycubrid>=1.7` (on 1.6.x its CLOB values come back with escaped newlines).
+
+These floors are installed and run, not only checked as text (#241). The
+`Driver floors (CUBRID 11.4)` job in `ci.yml` runs `scripts/driver_floors.py`,
+which installs each documented floor exactly (`pycubrid==X`,
+`sqlalchemy-cubrid==Y`, read from the recipes' own `requirements.txt`) in its own
+virtual environment and compares the goldens of representative directories
+(the global-floor pycubrid and SQLAlchemy examples, the four directories without a `requirements.txt`, `fundamentals/pandas`,
+`async`, `sqlalchemy`, `pycubrid`, `alembic`, `connect` and `orm-basics`) with live CUBRID 11.4
+output on Python 3.12. It runs on pull requests that change `SUPPORT_MATRIX.md`,
+the floor checker or lane, or one of those directories' `requirements.txt`, on
+the weekly `ci.yml` schedule and on manual `ci.yml` runs; other dependencies
+(SQLAlchemy, pandas, …) resolve to their latest compatible releases.
+`tests/test_dependency_floors.py` fails if a documented floor is not exercised.
 
 The full example apps under `templates/` (`flask`, `api-service-fastapi`,
 `ai-agent`, `async-worker`, `batch-etl`, and each of their standalone

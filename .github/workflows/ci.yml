@@ -4,7 +4,8 @@ name: CI
 # start only when selected and ci-gate accepts a skip only where the classifier
 # said "false". Pull requests: cheap checks always, then only the touched recipe
 # families on CUBRID 11.4 / Python 3.12. Push, the weekly schedule and manual
-# runs: Python 3.11-3.14 and CQRS on 11.2 + 11.4; smoke-test.yml owns the broad
+# runs: Python 3.11-3.14 and CQRS on 11.2 + 11.4 (schedule and manual runs also
+# the exact driver floors, #241); smoke-test.yml owns the broad
 # 11.2/11.4 goldens and recipe suites there. See CONTRIBUTING.md "CI tiers".
 on:
   pull_request:
@@ -43,6 +44,7 @@ jobs:
       smoke_114: ${{ steps.scope.outputs.smoke_114 }}
       smoke_112: ${{ steps.scope.outputs.smoke_112 }}
       verify_paths: ${{ steps.scope.outputs.verify_paths }}
+      floors: ${{ steps.scope.outputs.floors }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -287,6 +289,40 @@ jobs:
         python -m pip freeze
         python -m pytest templates/api-service-fastapi/recipes/10-cqrs-event-sourcing/tests -v --tb=short
 
+  # Documented driver floors installed exactly, not only checked as text (#241).
+  # scripts/driver_floors.py reads each floor set's pins from the recipes' own
+  # requirements.txt, installs pycubrid==X / sqlalchemy-cubrid==Y in a separate
+  # venv per set and diffs representative goldens against live CUBRID 11.4.
+  # Selected by pull requests that change a floor (ci_scope.FLOORS), the weekly
+  # schedule and manual runs; not by pushes to main (floors are fixed releases).
+  driver-floors:
+    name: Driver floors (CUBRID 11.4)
+    needs: [classify]
+    if: needs.classify.outputs.floors == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      cubrid:
+        image: cubrid/cubrid:11.4
+        env:
+          CUBRID_DB: testdb
+        ports:
+          - 33000:33000
+        options: --shm-size 512m
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Runs PR example code: never persist the token.
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install each documented floor and run its goldens
+        # The script waits for the broker (up to 180 s) before the first golden.
+        run: python scripts/driver_floors.py run
+
   # PR smoke lanes (#222). They keep the exact required check names that
   # smoke-test.yml used to report on pull requests, so branch protection is
   # unchanged; a lane skipped by the classifier reports "skipped", which branch
@@ -342,7 +378,7 @@ jobs:
   ci-gate:
     name: CI Gate (all checks must pass)
     if: always()
-    needs: [classify, lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest, async-worker-pytest, django-bridge-pytest, python-compatibility, cqrs-pinned-pytest, smoke-114, smoke-112]
+    needs: [classify, lint-python, quickstart-tests, docs-sync, docs-site, doc-lint, pytest-suites, dashboard-pytest, async-worker-pytest, django-bridge-pytest, python-compatibility, cqrs-pinned-pytest, driver-floors, smoke-114, smoke-112]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
@@ -368,6 +404,8 @@ jobs:
           W_PYTHON_COMPATIBILITY: ${{ needs.classify.outputs.compat }}
           R_CQRS_PINNED_PYTEST: ${{ needs.cqrs-pinned-pytest.result }}
           W_CQRS_PINNED_PYTEST: ${{ needs.classify.outputs.cqrs }}
+          R_DRIVER_FLOORS: ${{ needs.driver-floors.result }}
+          W_DRIVER_FLOORS: ${{ needs.classify.outputs.floors }}
           R_SMOKE_114: ${{ needs.smoke-114.result }}
           W_SMOKE_114: ${{ needs.classify.outputs.smoke_114 }}
           R_SMOKE_112: ${{ needs.smoke-112.result }}
@@ -375,7 +413,7 @@ jobs:
         run: |
           set -euo pipefail
           fail=0
-          for var in R_CLASSIFY R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOC_LINT R_DOCS_SITE R_PYTEST_SUITES R_DASHBOARD_PYTEST R_ASYNC_WORKER_PYTEST R_DJANGO_BRIDGE_PYTEST R_PYTHON_COMPATIBILITY R_CQRS_PINNED_PYTEST R_SMOKE_114 R_SMOKE_112; do
+          for var in R_CLASSIFY R_LINT_PYTHON R_QUICKSTART_TESTS R_DOCS_SYNC R_DOC_LINT R_DOCS_SITE R_PYTEST_SUITES R_DASHBOARD_PYTEST R_ASYNC_WORKER_PYTEST R_DJANGO_BRIDGE_PYTEST R_PYTHON_COMPATIBILITY R_CQRS_PINNED_PYTEST R_DRIVER_FLOORS R_SMOKE_114 R_SMOKE_112; do
             result="${!var:-}"
             wanted_var="W_${var#R_}"
             # Lanes without a W_ variable are always required.

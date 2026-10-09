@@ -113,7 +113,15 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 | 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
 | 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | every golden plus all Flask/FastAPI, async-worker, Django and dashboard suites on CUBRID 11.2 + 11.4 |
 
-- Docs-only pull requests (`*.md`, `docs/`, `mkdocs.yml`, …) start no live CUBRID.
+- Docs-only pull requests (`*.md`, `docs/`, `mkdocs.yml`, …) start no live CUBRID,
+  except `SUPPORT_MATRIX.md`, which documents the driver floors.
+- `Driver floors (CUBRID 11.4)` (#241) installs every documented driver floor
+  exactly (`scripts/driver_floors.py`, one virtual environment per floor set,
+  Python 3.12) and diffs representative goldens against live CUBRID 11.4. It runs
+  on pull requests that change `SUPPORT_MATRIX.md`, the floor checker or lane, or
+  the `requirements.txt` of a directory the lane runs (`ci_scope.FLOORS`), on the
+  weekly `ci.yml` schedule and on manual `ci.yml` runs — not on pushes to `main`,
+  since the floors are fixed releases. One job, about 3 minutes.
   Unknown paths fail closed to every recipe family lane and the 11.4 smoke lane
   with a full `make verify`.
 - CUBRID 11.2 runs on a pull request only for version-sensitive changes:
@@ -254,7 +262,7 @@ release far below anything this cookbook runs against. `SUPPORT_MATRIX.md`'s
 "Driver & Framework Versions" table is the single documented floor
 (`pycubrid>=1.6.1`, `sqlalchemy-cubrid>=1.0`); recipes that need more pin a
 higher floor only when SUPPORT_MATRIX.md explains why (the `[^async]`
-footnote's "advanced" SQLAlchemy recipes at `>=1.4.2`; `fundamentals/connect`,
+footnote's "advanced" SQLAlchemy recipes at `>=1.4.2` and `fundamentals/async` at `>=1.5`; `fundamentals/connect`,
 `fundamentals/orm-basics` and the full example apps under `templates/` at the
 `>=1.7,<2` line the drivers are actually published as; `fundamentals/pycubrid`
 at `>=1.9,<2` for errno-carrying batch errors, the CAS-session fix and typed collection binding;
@@ -262,7 +270,13 @@ at `>=1.9,<2` for errno-carrying batch errors, the CAS-session fix and typed col
 `scripts/check_dependency_floors.py` (run by `make check`) fails on a bare
 driver requirement, a floor below its applicable minimum, or an undocumented
 custom floor — add it as a named exception in both the script and
-SUPPORT_MATRIX.md instead of pinning it ad hoc.
+SUPPORT_MATRIX.md instead of pinning it ad hoc. The checker accepts extras
+(`sqlalchemy-cubrid[pycubrid]>=1.0`) and spaces around the specifier. Floors are
+also installed and run: the `Driver floors (CUBRID 11.4)` CI lane
+(`scripts/driver_floors.py`, see [CI tiers](#ci-tiers)) installs each floor with
+`==` and runs representative goldens; a new directory-specific floor must be
+added to a floor set there, or `tests/test_dependency_floors.py` fails. Run it
+locally against `make up` with `python scripts/driver_floors.py run`.
 
 #### Release smoke dependencies
 

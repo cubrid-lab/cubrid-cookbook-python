@@ -223,7 +223,7 @@ async def list_items():
     return await asyncio.to_thread(sync_fetch_items)
 ```
 
-Options A and B are demonstrated end to end in [fundamentals/async/](../fundamentals/async/), whose `requirements.txt` pins the tested floors: `pycubrid >= 1.6.0`, `sqlalchemy-cubrid >= 1.4.2` (the release this cookbook requires for the `cubrid+aiopycubrid://` dialect) and `sqlalchemy[asyncio]`.
+Options A and B are demonstrated end to end in [fundamentals/async/](../fundamentals/async/), whose `requirements.txt` pins the tested floors: `pycubrid >= 1.6.1`, `sqlalchemy-cubrid >= 1.5` (the first release whose `cubrid+aiopycubrid://` dialect works with SQLAlchemy 2.1) and `sqlalchemy[asyncio]`.
 
 > **Recommendation**: In an asyncio application, use `pycubrid.aio` or the `cubrid+aiopycubrid://` engine. With synchronous code, keep handlers synchronous (FastAPI threads them automatically) or offload the call to a thread — never call the sync API directly inside `async def`.
 

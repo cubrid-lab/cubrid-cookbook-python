@@ -22,7 +22,17 @@ import ci_scope  # noqa: E402
 CI = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 SMOKE = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
 ROOTS = ci_scope.example_roots(ROOT)
-LIVE = ("web", "dashboard", "async_worker", "django", "cqrs", "compat", "smoke_114", "smoke_112")
+LIVE = (
+    "web",
+    "dashboard",
+    "async_worker",
+    "django",
+    "cqrs",
+    "compat",
+    "smoke_114",
+    "smoke_112",
+    "floors",
+)
 CQRS = ci_scope.CQRS_ROOT
 
 
@@ -53,11 +63,17 @@ class ClassifierTests(unittest.TestCase):
             "docs/README.ko.md",
             "templates/flask/01-basic-crud/README.md",
             "fundamentals/pycubrid/README.md",
-            "SUPPORT_MATRIX.md",
             "mkdocs.yml",
         )
         self.assertEqual(result["tier"], "docs")
         self.assertEqual(selected(result), set())
+        self.assertEqual(result["verify_paths"], "")
+
+    def test_support_matrix_change_runs_only_the_floor_lane(self) -> None:
+        # SUPPORT_MATRIX.md documents the driver floors (#241): docs otherwise.
+        result = scope("SUPPORT_MATRIX.md", "README.md")
+        self.assertEqual(result["tier"], "pr")
+        self.assertEqual(selected(result), {"floors"})
         self.assertEqual(result["verify_paths"], "")
 
     def test_tooling_pr_runs_only_cheap_checks(self) -> None:
@@ -95,7 +111,8 @@ class ClassifierTests(unittest.TestCase):
 
     def test_compatibility_surface_adds_python_endpoints(self) -> None:
         result = scope("fundamentals/sqlalchemy/requirements.txt")
-        self.assertEqual(selected(result), {"compat", "smoke_114"})
+        # A floor-lane directory's requirements also re-run the exact floors (#241).
+        self.assertEqual(selected(result), {"compat", "smoke_114", "floors"})
         self.assertEqual(result["python"], ["3.11", "3.14"])
         self.assertEqual(result["verify_paths"], "fundamentals/sqlalchemy")
 
@@ -128,7 +145,7 @@ class ClassifierTests(unittest.TestCase):
         result = scope(
             "fundamentals/pandas/requirements.txt", "templates/dashboard/requirements.txt"
         )
-        self.assertEqual(selected(result), {"dashboard", "smoke_114"})
+        self.assertEqual(selected(result), {"dashboard", "smoke_114", "floors"})
         self.assertEqual(result["verify_paths"], "fundamentals/pandas")
 
     def test_release_smoke_change_runs_both_smoke_lanes_fully(self) -> None:
@@ -185,7 +202,8 @@ class ClassifierTests(unittest.TestCase):
                 self.assertEqual(result["tier"], "main")
                 self.assertEqual(result["python"], ["3.11", "3.12", "3.13", "3.14"])
                 self.assertEqual(result["cqrs_cubrid"], ["11.2", "11.4"])
-                self.assertEqual(selected(result), {"compat", "cqrs"})
+                floors = {"floors"} if event != "push" else set()
+                self.assertEqual(selected(result), {"compat", "cqrs"} | floors)
 
     def test_render_is_github_output_lines(self) -> None:
         text = ci_scope.render(scope("templates/django/app/views.py"))
@@ -254,7 +272,7 @@ class GateTests(unittest.TestCase):
             with self.subTest(job=job):
                 self.assertIsNotNone(output)
                 self.assertIn(f"if: needs.classify.outputs.{output[1]} == 'true'", body)
-        self.assertEqual(len(gate_env_names("W")), 8)
+        self.assertEqual(len(gate_env_names("W")), 9)
 
     def test_classifier_outputs_are_all_exported(self) -> None:
         classify = CI.split("  classify:\n", 1)[1].split("    steps:", 1)[0]
