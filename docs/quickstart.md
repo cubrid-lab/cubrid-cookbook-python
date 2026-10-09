@@ -26,11 +26,11 @@ The expected output is checked by CI on CUBRID 11.2 and 11.4 — compare against
 ## 2. ORM and application templates (sqlalchemy-cubrid)
 
 ```bash
-pip install sqlalchemy-cubrid   # pulls SQLAlchemy 2.x
+pip install 'sqlalchemy-cubrid[pycubrid]'   # pulls SQLAlchemy 2.x and pycubrid
 python fundamentals/sqlalchemy/01_connect_and_session.py
 ```
 
-Production-shaped starters live in `templates/` — a FastAPI service, Flask app, Django app, Streamlit dashboard, Celery async worker, and a pandas batch ETL. The dashboard is a one-command demo:
+Production-shaped starters live in `templates/` — a FastAPI service, Flask app, Django app, Streamlit dashboard, Celery async worker, a pandas batch ETL, and AI-agent examples (`templates/ai-agent`: agent state, MCP tool chain, RAG metadata). The dashboard is a one-command demo:
 
 ```bash
 cd templates/dashboard
@@ -52,7 +52,13 @@ Claude Desktop / Claude Code / Cursor config blocks are in the [cubrid-mcp-serve
 
 ## Verify a full checkout
 
+Use a Python 3.11+ virtual environment:
+
 ```bash
-pip install pycubrid sqlalchemy sqlalchemy-cubrid
-make verify                   # every golden-backed example against your local CUBRID
+python3 -m venv .venv && source .venv/bin/activate   # Python 3.11 or later
+make up                       # start CUBRID and wait until it is ready
+make deps                     # drivers, pytest and every golden-backed example's requirements
+make verify                   # runs every golden-backed example against your local CUBRID
 ```
+
+`make deps` installs everything in one pip call and honours `PIP_CONSTRAINT`. `make verify` stops early with "run `make deps` first" when an example requirement is missing, limits each script to `VERIFY_TIMEOUT` seconds (default 60), and reports each result as pass, mismatch, exec error, timeout, normalizer/read error or skip.

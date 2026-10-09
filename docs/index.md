@@ -11,7 +11,7 @@ Runnable Python examples and production-shaped application templates for CUBRID 
 | Path | Installs | Start |
 |------|----------|-------|
 | Driver — first query in 5 minutes | `pip install pycubrid` | [Quick Start](quickstart.md) |
-| ORM & application templates | `pip install sqlalchemy-cubrid` | [Quick Start](quickstart.md#2-orm-and-application-templates-sqlalchemy-cubrid) |
+| ORM & application templates | `pip install 'sqlalchemy-cubrid[pycubrid]'` | [Quick Start](quickstart.md#2-orm-and-application-templates-sqlalchemy-cubrid) |
 | Natural language over the database | `uvx cubrid-mcp-server` | [Quick Start](quickstart.md#3-natural-language-over-the-database-cubrid-mcp-server) |
 
 ## What's inside

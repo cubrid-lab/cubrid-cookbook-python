@@ -28,11 +28,11 @@ python fundamentals/pycubrid/01_connect.py
 ## 2. ORM과 애플리케이션 템플릿 (sqlalchemy-cubrid)
 
 ```bash
-pip install sqlalchemy-cubrid   # SQLAlchemy 2.x를 끌어옴
+pip install 'sqlalchemy-cubrid[pycubrid]'   # SQLAlchemy 2.x와 pycubrid를 끌어옴
 python fundamentals/sqlalchemy/01_connect_and_session.py
 ```
 
-프로덕션형 시작점은 `templates/`에 있습니다 — FastAPI 서비스, Flask 앱, Django 앱, Streamlit 대시보드, Celery 비동기 워커, pandas 배치 ETL. 대시보드는 원커맨드 데모입니다:
+프로덕션형 시작점은 `templates/`에 있습니다 — FastAPI 서비스, Flask 앱, Django 앱, Streamlit 대시보드, Celery 비동기 워커, pandas 배치 ETL, AI 에이전트 예제(`templates/ai-agent`: 에이전트 상태, MCP 도구 체인, RAG 메타데이터). 대시보드는 원커맨드 데모입니다:
 
 ```bash
 cd templates/dashboard
@@ -54,10 +54,16 @@ Claude Desktop / Claude Code / Cursor 설정 블록은 [cubrid-mcp-server README
 
 ## 전체 체크아웃 검증
 
+Python 3.11 이상의 가상 환경을 사용하세요:
+
 ```bash
-pip install pycubrid sqlalchemy sqlalchemy-cubrid
+python3 -m venv .venv && source .venv/bin/activate   # Python 3.11 이상
+make up                       # CUBRID를 시작하고 준비될 때까지 대기
+make deps                     # 드라이버, pytest, 골든 기반 모든 예제의 requirements
 make verify                   # 골든 기반 모든 예제를 로컬 CUBRID에 대해 실행
 ```
+
+`make deps`는 한 번의 pip 호출로 모두 설치하며 `PIP_CONSTRAINT`를 따릅니다. `make verify`는 예제 요구 패키지가 빠져 있으면 "run `make deps` first"를 출력하고 바로 멈추며, 스크립트마다 `VERIFY_TIMEOUT`초(기본 60)로 실행 시간을 제한하고, 결과를 통과·불일치(mismatch)·실행 오류·타임아웃·정규화/읽기 오류·건너뜀으로 구분해 보고합니다.
 
 ## 다음 단계
 

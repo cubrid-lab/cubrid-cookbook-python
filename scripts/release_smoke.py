@@ -13,6 +13,10 @@ from collections.abc import Mapping
 from importlib import metadata
 from pathlib import Path
 
+# Tests load this file by path, so make its sibling helper importable either way.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from example_requirements import requirement_files  # noqa: E402
+
 DRIVERS = ("pycubrid", "sqlalchemy-cubrid")
 PACKAGES = (*DRIVERS, "cubrid-mcp-server")
 MANUAL_LATEST = "latest"  # workflow_dispatch default: no pinned release.
@@ -215,25 +219,20 @@ def verify(state: Path) -> None:
 def install_examples(root: Path, constraints: Path) -> None:
     if not constraints.is_file():
         raise ValueError(f"Missing release constraints: {constraints}")
-    roots = sorted({p.parent for p in root.glob("**/expected") if p.is_dir()})
-    for example in roots:
-        if any(part.startswith(".") for part in example.relative_to(root).parts):
-            continue
-        requirements = example / "requirements.txt"
-        if requirements.is_file():
-            print(f"Installing example requirements: {requirements}", file=sys.stderr)
-            subprocess.check_call(
-                [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "install",
-                    "--constraint",
-                    str(constraints.resolve()),
-                    "-r",
-                    str(requirements),
-                ]
-            )
+    for requirements in requirement_files(root):
+        print(f"Installing example requirements: {requirements}", file=sys.stderr)
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--constraint",
+                str(constraints.resolve()),
+                "-r",
+                str(requirements),
+            ]
+        )
 
 
 def install_mcp(state: Path) -> None:

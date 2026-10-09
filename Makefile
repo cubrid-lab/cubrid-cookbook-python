@@ -1,9 +1,10 @@
 SHELL := /bin/bash
-.PHONY: help up down status clean verify demo lint test-offline check check-docs test-normalize check-coverage docs
+.PHONY: help up down status clean deps verify demo lint test-offline check check-docs test-normalize check-coverage docs
 
 DOCKER_COMPOSE := docker compose
 NORMALIZE := bash scripts/normalize_output.sh
 PYTHON := python3
+PIP := $(PYTHON) -m pip
 RUFF := ruff
 UP_TIMEOUT ?= 120
 UP_PROBE_TIMEOUT ?= 5
@@ -12,6 +13,12 @@ UP_INTERVAL ?= 2
 # Search roots for `make verify`. Defaults to the whole tree; CI narrows this to
 # only the changed example directories on pull requests (see scripts/ci_scope.py).
 VERIFY_PATHS ?= .
+# Wall-clock limit in seconds for each verified script (scripts/run_example.py).
+# The slowest golden took 7.2s on CUBRID 11.4 (2026-10-09); 60s leaves room for
+# slower CI runners without letting a hang consume the job timeout.
+VERIFY_TIMEOUT ?= 60
+# requirements.txt of every golden-backed example, for `make deps`.
+DEPS_REQUIREMENTS = $(shell $(PYTHON) scripts/example_requirements.py)
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -33,19 +40,29 @@ clean: ## Stop and remove all data
 	$(DOCKER_COMPOSE) down -v
 	@echo "✓ Cleaned up all containers and volumes"
 
-verify: check-coverage ## Verify example outputs against expected results (VERIFY_PATHS scopes the search roots)
-	@echo "Verifying example outputs in: $(VERIFY_PATHS)"
+deps: ## Install the drivers, pytest and every golden-backed example's requirements (one pip call; honours PIP_CONSTRAINT)
+	$(if $(strip $(DEPS_REQUIREMENTS)),,$(error No golden-backed requirements.txt found; run make deps from the repository root))
+	$(PIP) install pytest 'sqlalchemy-cubrid[pycubrid]' $(addprefix -r ,$(DEPS_REQUIREMENTS))
+
+verify: check-coverage ## Verify example outputs against expected results (VERIFY_PATHS scopes the search roots, VERIFY_TIMEOUT limits each script)
+	@echo "Verifying example outputs in: $(VERIFY_PATHS) (timeout $(VERIFY_TIMEOUT)s per script)"
 	@set -o pipefail; \
 	roots=( $(VERIFY_PATHS) ); \
 	if [ "$${#roots[@]}" -eq 0 ]; then echo "ERROR: VERIFY_PATHS must name a directory" >&2; exit 1; fi; \
 	for root in "$${roots[@]}"; do \
 		if [ ! -d "$$root" ]; then echo "ERROR: Verify root is not a directory: $$root" >&2; exit 1; fi; \
 	done; \
+	$(PYTHON) scripts/example_requirements.py --check "$${roots[@]}" || exit 1; \
 	if ! expected_files=$$(find "$${roots[@]}" -path '*/expected/*.expected' | sort); then \
 		echo "ERROR: Golden discovery failed" >&2; exit 1; \
 	fi; \
 	if [ -z "$$expected_files" ]; then echo "ERROR: No golden targets found" >&2; exit 1; fi; \
-	PASS=0; FAIL=0; SKIP=0; \
+	raw=$$(mktemp "$${TMPDIR:-/tmp}/verify.XXXXXX") || exit 1; \
+	trap 'rm -f "$$raw"' EXIT; \
+	annotate() { \
+		if [ -n "$$GITHUB_ACTIONS" ]; then echo "::error file=$${2#./},title=make verify $$1::$$3"; fi; \
+	}; \
+	PASS=0; MISMATCH=0; EXEC=0; TIMEOUT=0; NORMALIZE=0; READ=0; SKIP=0; \
 	while IFS= read -r expected; do \
 		dir=$$(dirname "$$(dirname "$$expected")"); \
 		base=$$(basename "$$expected" .expected); \
@@ -55,26 +72,49 @@ verify: check-coverage ## Verify example outputs against expected results (VERIF
 			SKIP=$$((SKIP + 1)); \
 			continue; \
 		fi; \
-		actual=$$(set -o pipefail; $(PYTHON) "$$script" 2>&1 | $(NORMALIZE)); \
-		if [ $$? -ne 0 ]; then \
-			echo "  ✗ FAIL $$script (script error)"; \
-			FAIL=$$((FAIL + 1)); \
+		$(PYTHON) scripts/run_example.py --timeout $(VERIFY_TIMEOUT) -- $(PYTHON) "$$script" < /dev/null > "$$raw" 2>&1; \
+		status=$$?; \
+		if [ $$status -eq 124 ]; then \
+			echo "  ⏱ TIMEOUT $$script (over $(VERIFY_TIMEOUT)s); last 20 lines:"; \
+			tail -n 20 "$$raw" | sed 's/^/      /'; \
+			annotate TIMEOUT "$$script" "exceeded VERIFY_TIMEOUT=$(VERIFY_TIMEOUT)s"; \
+			TIMEOUT=$$((TIMEOUT + 1)); \
+			continue; \
+		fi; \
+		if [ $$status -ne 0 ]; then \
+			echo "  ✗ EXEC-ERROR $$script (exit $$status); last 20 lines:"; \
+			tail -n 20 "$$raw" | sed 's/^/      /'; \
+			annotate EXEC-ERROR "$$script" "script exited with status $$status"; \
+			EXEC=$$((EXEC + 1)); \
+			continue; \
+		fi; \
+		if ! actual=$$($(NORMALIZE) < "$$raw"); then \
+			echo "  ✗ NORMALIZE-ERROR $$script (output normalizer failed)"; \
+			annotate NORMALIZE-ERROR "$$script" "output normalizer failed"; \
+			NORMALIZE=$$((NORMALIZE + 1)); \
 			continue; \
 		fi; \
 		if ! expected_content=$$(cat "$$expected"); then \
-			echo "  ✗ FAIL $$expected (golden read error)"; FAIL=$$((FAIL + 1)); continue; \
+			echo "  ✗ READ-ERROR $$expected (golden read error)"; \
+			annotate READ-ERROR "$$expected" "golden read error"; \
+			READ=$$((READ + 1)); \
+			continue; \
 		fi; \
 		if [ "$$actual" = "$$expected_content" ]; then \
 			echo "  ✓ PASS $$script"; \
 			PASS=$$((PASS + 1)); \
 		else \
-			echo "  ✗ FAIL $$script"; \
+			echo "  ✗ MISMATCH $$script"; \
 			diff <(echo "$$actual") <(echo "$$expected_content") || true; \
-			FAIL=$$((FAIL + 1)); \
+			annotate MISMATCH "$$script" "output differs from $$expected"; \
+			MISMATCH=$$((MISMATCH + 1)); \
 		fi; \
 	done <<< "$$expected_files"; \
+	FAIL=$$((MISMATCH + EXEC + TIMEOUT + NORMALIZE + READ)); \
 	echo ""; \
-	echo "Results: $$PASS passed, $$FAIL failed, $$SKIP skipped"; \
+	echo "Results: $$PASS passed, $$FAIL failed, $$SKIP skipped" \
+		"($$MISMATCH mismatch, $$EXEC exec-error, $$TIMEOUT timeout," \
+		"$$NORMALIZE normalize-error, $$READ read-error)"; \
 	[ "$$PASS" -gt 0 ] && [ "$$FAIL" -eq 0 ] && [ "$$SKIP" -eq 0 ]
 
 lint: ## Check Python lint and formatting

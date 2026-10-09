@@ -21,7 +21,12 @@ class VerifyCommandTests(unittest.TestCase):
         self.root = Path(directory.name)
         scripts = self.root / "scripts"
         scripts.mkdir()
-        for name in ("check_expected_coverage.py", "normalize_output.sh"):
+        for name in (
+            "check_expected_coverage.py",
+            "example_requirements.py",
+            "normalize_output.sh",
+            "run_example.py",
+        ):
             shutil.copyfile(ROOT / "scripts" / name, scripts / name)
 
     def example(self, directory: str = "recipes", name: str = "ok", code: str = "print('row')"):
@@ -39,16 +44,39 @@ class VerifyCommandTests(unittest.TestCase):
         command.chmod(0o755)
         return {**os.environ, "PATH": f"{binaries}{os.pathsep}{os.environ['PATH']}"}
 
-    def verify(self, paths: str | None = None, *, env=None, normalize: str | None = None):
+    def verify(
+        self,
+        paths: str | None = None,
+        *,
+        env=None,
+        normalize: str | None = None,
+        timeout: int | None = None,
+    ):
         command = ["make", "--no-print-directory", "-f", str(ROOT / "Makefile"), "verify"]
         command.append(f"PYTHON={sys.executable}")
         if paths is not None:
             command.append(f"VERIFY_PATHS={paths}")
         if normalize is not None:
             command.append(f"NORMALIZE={normalize}")
+        if timeout is not None:
+            command.append(f"VERIFY_TIMEOUT={timeout}")
         return subprocess.run(
-            command, cwd=self.root, env=env, capture_output=True, text=True, timeout=5
+            command, cwd=self.root, env=env, capture_output=True, text=True, timeout=10
         )
+
+    def assert_counts(self, result, **counts: int) -> None:
+        defaults = {
+            "passed": 0,
+            "mismatch": 0,
+            "exec-error": 0,
+            "timeout": 0,
+            "normalize-error": 0,
+            "read-error": 0,
+        }
+        defaults.update({key.replace("_", "-"): value for key, value in counts.items()})
+        summary = result.stdout.rsplit("Results: ", 1)[-1]
+        for label, value in defaults.items():
+            self.assertIn(f"{value} {label}", summary, result.stdout)
 
     def test_missing_root_fails(self) -> None:
         self.assertNotEqual(self.verify("missing").returncode, 0)
@@ -138,6 +166,124 @@ class VerifyCommandTests(unittest.TestCase):
         result = self.verify()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("1 passed, 0 failed, 0 skipped", result.stdout)
+
+    def test_sleeping_script_times_out_and_fails(self) -> None:
+        # The child also starts a grandchild sleeper that would keep stdout open.
+        self.example(
+            name="slow",
+            code=(
+                "import subprocess, sys, time\n"
+                "print('started', flush=True)\n"
+                "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+                "time.sleep(60)"
+            ),
+        )
+        self.example(name="good")
+        result = self.verify(timeout=1)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("⏱ TIMEOUT ./recipes/slow.py", result.stdout)
+        self.assertIn("      started", result.stdout)
+        self.assert_counts(result, passed=1, timeout=1)
+        self.assertIn("1 passed, 1 failed, 0 skipped", result.stdout)
+
+    def test_each_failure_class_has_its_own_label_and_count(self) -> None:
+        self.example(name="crash", code="print('before crash')\nraise SystemExit(7)")
+        self.example(name="wrong", code="print('different')")
+        self.example(name="good")
+        result = self.verify()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("✗ EXEC-ERROR ./recipes/crash.py (exit 7)", result.stdout)
+        self.assertIn("      before crash", result.stdout)
+        self.assertIn("✗ MISMATCH ./recipes/wrong.py", result.stdout)
+        self.assertIn("✓ PASS ./recipes/good.py", result.stdout)
+        self.assert_counts(result, passed=1, mismatch=1, exec_error=1)
+        self.assertIn("1 passed, 2 failed, 0 skipped", result.stdout)
+
+    def test_normalizer_and_read_errors_are_classified(self) -> None:
+        self.example()
+        result = self.verify(normalize="false")
+        self.assertIn("✗ NORMALIZE-ERROR ./recipes/ok.py", result.stdout)
+        self.assert_counts(result, normalize_error=1)
+        env = self.fake_command("cat", "exit 7")
+        result = self.verify(env=env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("✗ READ-ERROR ./recipes/expected/ok.expected", result.stdout)
+        self.assert_counts(result, read_error=1)
+
+    def test_failures_are_annotated_under_github_actions(self) -> None:
+        self.example(name="crash", code="raise SystemExit(3)")
+        self.example(name="good")
+        result = self.verify(env={**os.environ, "GITHUB_ACTIONS": "true"})
+        self.assertIn("::error file=recipes/crash.py,title=make verify EXEC-ERROR::", result.stdout)
+        self.assertNotIn("recipes/good.py,title", result.stdout)
+        result = self.verify(env={k: v for k, v in os.environ.items() if k != "GITHUB_ACTIONS"})
+        self.assertNotIn("::error", result.stdout)
+
+    def test_missing_example_dependency_fails_once_before_running(self) -> None:
+        self.example(code="raise SystemExit('must not run')")
+        (self.root / "recipes/requirements.txt").write_text(
+            "# comment\nno-such-cookbook-distribution>=1\n", encoding="utf-8"
+        )
+        result = self.verify()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("run `make deps`", result.stderr)
+        self.assertIn("no-such-cookbook-distribution", result.stderr)
+        self.assertNotIn("EXEC-ERROR", result.stdout)
+
+
+class DepsCommandTests(unittest.TestCase):
+    def test_dry_run_installs_every_golden_root_requirements_in_one_call(self) -> None:
+        result = subprocess.run(
+            ["make", "--no-print-directory", "-n", "deps", f"PYTHON={sys.executable}"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commands = [line for line in result.stdout.splitlines() if " pip install " in line]
+        self.assertEqual(len(commands), 1, result.stdout)
+        command = commands[0]
+        self.assertIn("'sqlalchemy-cubrid[pycubrid]'", command)
+        self.assertIn(" pytest ", command)
+        roots = sorted(
+            {
+                path.parent.parent.relative_to(ROOT)
+                for path in ROOT.glob("**/expected/*.expected")
+                if not any(part.startswith(".") for part in path.relative_to(ROOT).parts)
+            }
+        )
+        self.assertTrue(roots)
+        with_requirements = [root for root in roots if (ROOT / root / "requirements.txt").is_file()]
+        self.assertTrue(with_requirements)
+        for root in with_requirements:
+            self.assertIn(f"-r {(root / 'requirements.txt').as_posix()}", command)
+
+    def test_requirement_discovery_skips_hidden_and_non_golden_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name, golden in (
+                ("golden", True),
+                ("nested/golden", True),
+                (".venv/golden", True),
+                ("plain", False),
+            ):
+                (root / name).mkdir(parents=True)
+                (root / name / "requirements.txt").touch()
+                if golden:
+                    (root / name / "expected").mkdir()
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "scripts/example_requirements.py")],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            result.stdout.splitlines(),
+            ["golden/requirements.txt", "nested/golden/requirements.txt"],
+        )
 
 
 class OfflineWorkflowTests(unittest.TestCase):
