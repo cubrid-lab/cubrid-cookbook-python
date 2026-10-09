@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import ci_scope  # noqa: E402
+import driver_floors  # noqa: E402
 from test_workflow_timeouts import parse_jobs  # noqa: E402
 
 CI = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
@@ -407,7 +408,8 @@ class DriverMainAdvisoryTests(unittest.TestCase):
 
     def test_ci_calls_it_only_on_the_existing_weekly_schedule(self) -> None:
         job = self.job(CI, "driver-main-advisory")
-        self.assertIn("if: github.event_name == 'schedule'", job)
+        # Exact line: an `||` extra event (e.g. pull_request) must fail.
+        self.assertRegex(job, r"(?m)^    if: github\.event_name == 'schedule'$")
         self.assertIn("uses: ./.github/workflows/driver-main.yml", job)
         self.assertNotIn("needs:", job)
 
@@ -447,6 +449,26 @@ class DriverMainAdvisoryTests(unittest.TestCase):
         guard = self.job(DRIVER_MAIN, "guard")
         self.assertIn("if: github.repository == 'cubrid-lab/cubrid-cookbook-python'", guard)
         self.assertIn('[ "$EVENT" = "schedule" ]', guard)
+        self.assertRegex(
+            guard,
+            r'(?m)^ +if \[ "\$EVENT" = "schedule" \] && \[ "\$age_days" -ge "\$ACTIVE_DAYS" \]; then$',
+        )
+        self.assertRegex(DRIVER_MAIN, r'(?m)^  ACTIVE_DAYS: "8"$')
+
+    def test_commit_verification_and_report_default_branch_clause(self) -> None:
+        recipes = self.job(DRIVER_MAIN, "recipes")
+        self.assertRegex(recipes, r"(?m)^ +ok &= got == want$")
+        report = self.job(DRIVER_MAIN, "report")
+        self.assertRegex(
+            report,
+            r"(?m)^      && github\.ref == format\('refs/heads/\{0\}', "
+            r"github\.event\.repository\.default_branch\)$",
+        )
+
+    def test_recipes_match_the_driver_floor_sets(self) -> None:
+        block = DRIVER_MAIN.split("  RECIPES: >-\n", 1)[1].split("\n\n", 1)[0]
+        floor_dirs = {d for _, dirs in driver_floors.FLOOR_SETS for d in dirs}
+        self.assertEqual(set(block.split()), floor_dirs)
 
     def test_recipes_are_golden_directories(self) -> None:
         block = DRIVER_MAIN.split("  RECIPES: >-\n", 1)[1].split("\n\n", 1)[0]

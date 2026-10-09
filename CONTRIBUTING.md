@@ -162,7 +162,9 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   last 8 days, and the lane runs only in the upstream repository. Its recipe job
   has `continue-on-error`, so a break leaves the run green; the run summary and
   one tracking issue ("ci: cookbook recipes failing against driver main",
-  opened, commented on and closed automatically) carry the signal. No pull
+  opened, commented on and closed automatically) carry the signal. The issue is
+  closed only by the next run that actually executes the recipes; when both
+  drivers are idle for 8 or more days, close it with a manual dispatch. No pull
   request runs it, and it cannot block a merge.
 
 Measured before/after (#222; "before" = median of real runs since 2026-10-03 with

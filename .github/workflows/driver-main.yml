@@ -16,7 +16,9 @@ name: Driver main advisory
 # Activity guard: a scheduled call is skipped when neither driver's main branch
 # has a commit newer than ACTIVE_DAYS (nothing new since the last weekly run),
 # and the whole lane runs only in the upstream repository, not in forks. A
-# manual dispatch always runs.
+# manual dispatch always runs. An open tracking issue is closed only by the next
+# run that actually executes the recipes, so when both drivers are idle for
+# ACTIVE_DAYS or more, close it with a manual dispatch.
 on:
   workflow_dispatch:
   workflow_call:
