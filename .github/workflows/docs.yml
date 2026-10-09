@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - run: pip install mkdocs-material pymdown-extensions
+      - run: pip install -r .github/requirements-docs.txt
       - run: bash scripts/stage_docs.sh
       - run: mkdocs build --strict
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
