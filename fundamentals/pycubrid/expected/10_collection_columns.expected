@@ -1,33 +1,57 @@
 ✓ Created table 'cookbook_collections'
-✓ Inserted collection examples
+✓ Inserted collection examples with typed parameters
 
 After insert:
-Collections (2 rows):
+Collections (3 rows):
   id=1 name=Doc Workflow
-    contains_tag_blue=1 contains_permission_8=0
-    matches_steps_v1=1 matches_steps_v2=0
+    tags=['api', 'beta', 'blue'] (frozenset)
+    permissions=[1, 1, 2, 3] (list)
+    ordered_steps=['draft', 'review', 'publish'] (list)
   id=2 name=Incident Flow
-    contains_tag_blue=0 contains_permission_8=1
-    matches_steps_v1=0 matches_steps_v2=0
+    tags=['critical', 'ops'] (frozenset)
+    permissions=[7, 8, 8] (list)
+    ordered_steps=['detect', 'mitigate', 'report'] (list)
+  id=3 name=Empty Collections
+    tags=[] (frozenset)
+    permissions=[] (list)
+    ordered_steps=[] (list)
+  rows with tag 'blue' and no permission 8: [1]
+  rows whose tags are a subset of ops/critical/api: [2, 3]
 
 Before update:
-Collections (2 rows):
+Collections (3 rows):
   id=1 name=Doc Workflow
-    contains_tag_blue=1 contains_permission_8=0
-    matches_steps_v1=1 matches_steps_v2=0
+    tags=['api', 'beta', 'blue'] (frozenset)
+    permissions=[1, 1, 2, 3] (list)
+    ordered_steps=['draft', 'review', 'publish'] (list)
   id=2 name=Incident Flow
-    contains_tag_blue=0 contains_permission_8=1
-    matches_steps_v1=0 matches_steps_v2=0
+    tags=['critical', 'ops'] (frozenset)
+    permissions=[7, 8, 8] (list)
+    ordered_steps=['detect', 'mitigate', 'report'] (list)
+  id=3 name=Empty Collections
+    tags=[] (frozenset)
+    permissions=[] (list)
+    ordered_steps=[] (list)
+  rows with tag 'blue' and no permission 8: [1]
+  rows whose tags are a subset of ops/critical/api: [2, 3]
 
 ✓ Updated row id=1 collections (rows affected: 1)
 
 After update:
-Collections (2 rows):
+Collections (3 rows):
   id=1 name=Doc Workflow
-    contains_tag_blue=1 contains_permission_8=0
-    matches_steps_v1=0 matches_steps_v2=1
+    tags=['api', 'beta', 'blue', 'stable'] (frozenset)
+    permissions=[1, 2, 2, 4] (list)
+    ordered_steps=['draft', 'review', 'approve', 'publish'] (list)
   id=2 name=Incident Flow
-    contains_tag_blue=0 contains_permission_8=1
-    matches_steps_v1=0 matches_steps_v2=0
+    tags=['critical', 'ops'] (frozenset)
+    permissions=[7, 8, 8] (list)
+    ordered_steps=['detect', 'mitigate', 'report'] (list)
+  id=3 name=Empty Collections
+    tags=[] (frozenset)
+    permissions=[] (list)
+    ordered_steps=[] (list)
+  rows with tag 'blue' and no permission 8: [1]
+  rows whose tags are a subset of ops/critical/api: [2, 3]
 
 ✓ Cleaned up table 'cookbook_collections'

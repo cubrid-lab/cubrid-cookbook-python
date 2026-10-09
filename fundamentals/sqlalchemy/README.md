@@ -1,6 +1,6 @@
 # SQLAlchemy Recipes (Standalone Scripts)
 
-Six copy-paste friendly SQLAlchemy 2.0 scripts for CUBRID.
+Seven copy-paste friendly SQLAlchemy 2.0 scripts for CUBRID.
 Each recipe is a single `.py` file you can run directly with `python3`.
 
 Connection used by all recipes:
@@ -38,6 +38,8 @@ pip install -r requirements.txt
    - CUBRID `ON DUPLICATE KEY UPDATE` and `REPLACE INTO` via `sqlalchemy_cubrid.dml`
 6. `06_reflection.py`
    - Runtime schema discovery with `inspect()` and Inspector API
+7. `07_collection_types.py`
+   - `SET`/`MULTISET`/`SEQUENCE` columns: bind Python lists/sets, read `frozenset`/`list` back with `?decode_collections=true` (needs `pycubrid>=1.9` and `sqlalchemy-cubrid>=1.9`)
 
 ## Run
 
@@ -48,6 +50,7 @@ python3 03_relationships.py
 python3 04_bulk_insert.py
 python3 05_cubrid_upsert.py
 python3 06_reflection.py
+python3 07_collection_types.py
 ```
 
 ## Notes

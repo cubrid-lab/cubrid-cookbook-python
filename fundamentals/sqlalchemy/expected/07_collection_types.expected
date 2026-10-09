@@ -5,21 +5,21 @@
       phone_numbers MULTISET(20)   duplicates allowed
       checklist     SEQUENCE(200)  ordered, duplicates allowed
 
-[2] Inserted 3 rows with collection columns
+[2] Inserted 3 rows by binding Python lists to collection columns
 
 [3] All rows:
     id=1  title='First task'
-      tags          = ['cubrid', 'demo', 'python']
-      phone_numbers = ['555-1000', '555-1000', '555-2000']
-      checklist     = ['open editor', 'write code', 'run tests']
+      tags          = ['cubrid', 'demo', 'python']  (frozenset)
+      phone_numbers = ['555-1000', '555-1000', '555-2000']  (list)
+      checklist     = ['open editor', 'write code', 'run tests']  (list)
     id=2  title='Second task'
-      tags          = ['orm', 'python']
-      phone_numbers = ['555-3000']
-      checklist     = ['review PR', 'merge']
+      tags          = ['orm', 'python']  (frozenset)
+      phone_numbers = ['555-3000']  (list)
+      checklist     = ['review PR', 'merge']  (list)
     id=3  title='Third task'
-      tags          = ['rust', 'systems']
-      phone_numbers = ['555-4000', '555-4000']
-      checklist     = ['benchmark', 'profile', 'optimize', 'benchmark']
+      tags          = ['rust', 'systems']  (frozenset)
+      phone_numbers = ['555-4000', '555-4000']  (list)
+      checklist     = ['benchmark', 'profile', 'optimize', 'benchmark']  (list)
 
 [4] Rows whose tags include 'python' (server-side 'python' IN tags):
     id=1  title='First task'  tags=['cubrid', 'demo', 'python']
@@ -27,7 +27,7 @@
 
 [5] Semantic difference (observe duplicates/ordering):
     SET        tags          = ['cubrid', 'demo', 'python']
-                -> unique, CUBRID normalizes to sorted order
+                -> unique (the duplicate input 'python' was dropped)
     MULTISET   phone_numbers = ['555-1000', '555-1000', '555-2000']
                 -> duplicates PRESERVED (555-1000 appears twice)
     SEQUENCE   checklist     = ['open editor', 'write code', 'run tests']

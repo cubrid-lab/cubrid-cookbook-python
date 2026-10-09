@@ -70,8 +70,14 @@ TEMPLATE_SQLALCHEMY_FLOOR = "1.7,<2"
 # fundamentals/pycubrid's 16_batch_error_handling and 20_timezone_datetime
 # goldens assume the errno-carrying batch errors (#390) and the CAS session
 # kept across commit() (#468/#472) that first shipped in pycubrid 1.8.0.
+#
+# fundamentals/pycubrid's and fundamentals/sqlalchemy's collection recipes
+# (10_collection_columns, 07_collection_types) bind collections with the typed
+# Set/Multiset/Sequence parameters, which first shipped in pycubrid 1.9.0
+# (#567); fundamentals/sqlalchemy also needs sqlalchemy-cubrid 1.9.
 EXACT_PYCUBRID_FLOOR = {
-    "fundamentals/pycubrid": "1.8,<2",
+    "fundamentals/pycubrid": "1.9,<2",
+    "fundamentals/sqlalchemy": "1.9,<2",
 }
 
 # fundamentals/alembic's golden prints the dialect's runtime
@@ -81,6 +87,7 @@ EXACT_PYCUBRID_FLOOR = {
 # both first shipped in sqlalchemy-cubrid 1.8.0.
 EXACT_SQLALCHEMY_FLOOR = {
     "fundamentals/alembic": "1.8",
+    "fundamentals/sqlalchemy": "1.9",
 }
 
 # "Advanced" SQLAlchemy recipes are pinned to the floor documented in the

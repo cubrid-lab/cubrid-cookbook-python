@@ -160,7 +160,10 @@ def keyword_search(
     results = []
     rows = cur.fetchall()
     for row in rows:
-        # The released driver returns raw collection payloads; TABLE() reads elements.
+        # This template keeps the pycubrid>=1.7 floor and the default connection, which
+        # returns raw collection payloads; TABLE() reads elements on any version.
+        # With decode_collections=True the column itself decodes (see
+        # fundamentals/pycubrid/10_collection_columns.py).
         cur.execute(
             "SELECT t.tag FROM rag_documents, TABLE(tags) AS t(tag) WHERE id = ?",
             [row[0]],

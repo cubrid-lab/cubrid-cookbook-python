@@ -47,8 +47,10 @@ are closed even if a demonstration raises.
 With released pycubrid 1.7.x, INSERT IDs must be read from `cursor.lastrowid`
 before commit. Collection members are bound inside `{?, ...}` expressions;
 `TABLE(collection)` reads SET and SEQUENCE elements as ordinary scalar rows.
-See the [collection recipe](../../fundamentals/sqlalchemy/07_collection_types.py)
-for the driver limitations. The MCP demo completes the initialization handshake,
+This template keeps the `pycubrid>=1.7` floor and the default connection, which returns
+collection columns as raw bytes. `decode_collections=True` and typed
+`Set`/`Multiset`/`Sequence` binding (pycubrid 1.9+) are shown in the
+[collection recipe](../../fundamentals/sqlalchemy/07_collection_types.py). The MCP demo completes the initialization handshake,
 requires successful read responses, and verifies that writes are rejected in
 read-only mode; connection or protocol errors fail instead of printing success.
 

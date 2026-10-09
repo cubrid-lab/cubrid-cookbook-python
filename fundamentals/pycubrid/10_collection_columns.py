@@ -2,11 +2,23 @@
 
 Demonstrates:
 - Creating collection-typed columns
-- Inserting collection literals
-- Updating collection values
-- Reading collection columns back
+- Binding collection values with ``pycubrid.types.Set`` / ``Multiset`` / ``Sequence``
+- Reading collection columns back as Python containers with ``decode_collections=True``
+- Updating collection values and filtering with server-side predicates
 
-Collection literals use CUBRID syntax: SET{...}, MULTISET{...}, LIST{...}.
+Driver requirements (why this recipe needs ``pycubrid>=1.9``):
+- ``decode_collections=True`` (``connect()`` option, since 1.2.0) makes SET come
+  back as ``frozenset`` and MULTISET/SEQUENCE (``LIST``) as ``list``. Without it
+  the driver returns raw wire ``bytes``.
+- The typed parameters ``Set``, ``Multiset`` and ``Sequence`` (since 1.9.0) bind a
+  collection through ``?`` placeholders; they are sent as ``SET{...}``,
+  ``MULTISET{...}`` and ``SEQUENCE{...}`` literals. A plain Python ``list``,
+  ``tuple`` or ``set`` is still rejected with ``ProgrammingError``.
+- Decoded values are plain containers, not these types: wrap them again
+  (for example ``Set(row[1])``) to bind them.
+
+Inline literals such as ``SET{'a','b'}`` remain valid SQL; typed binding just
+removes the need to build them by hand.
 """
 
 from __future__ import annotations
@@ -14,6 +26,7 @@ from __future__ import annotations
 # pyright: reportAttributeAccessIssue=false, reportMissingImports=false
 
 import pycubrid
+from pycubrid.types import Multiset, Sequence, Set
 
 
 DB_CONFIG = {
@@ -22,6 +35,7 @@ DB_CONFIG = {
     "database": "testdb",
     "user": "dba",
     "password": "",
+    "decode_collections": True,
 }
 
 
@@ -52,18 +66,37 @@ def insert_examples(cursor):
     cursor.execute(
         """
         INSERT INTO cookbook_collections (id, name, tags, permissions, ordered_steps)
-        VALUES (?, ?, SET{'blue','beta','api'}, MULTISET{1,1,2,3}, LIST{'draft','review','publish'})
+        VALUES (?, ?, ?, ?, ?)
         """,
-        (1, "Doc Workflow"),
+        (
+            1,
+            "Doc Workflow",
+            Set(["blue", "beta", "api", "beta"]),  # SET drops the duplicate 'beta'
+            Multiset([1, 1, 2, 3]),  # MULTISET keeps duplicates
+            Sequence(["draft", "review", "publish"]),  # SEQUENCE keeps order
+        ),
     )
     cursor.execute(
         """
         INSERT INTO cookbook_collections (id, name, tags, permissions, ordered_steps)
-        VALUES (?, ?, SET{'ops','critical'}, MULTISET{7,8,8}, LIST{'detect','mitigate','report'})
+        VALUES (?, ?, ?, ?, ?)
         """,
-        (2, "Incident Flow"),
+        (
+            2,
+            "Incident Flow",
+            Set(["ops", "critical"]),
+            Multiset([7, 8, 8]),
+            Sequence(["detect", "mitigate", "report"]),
+        ),
     )
-    print("✓ Inserted collection examples")
+    cursor.execute(
+        """
+        INSERT INTO cookbook_collections (id, name, tags, permissions, ordered_steps)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (3, "Empty Collections", Set([]), Multiset([]), Sequence([])),
+    )
+    print("✓ Inserted collection examples with typed parameters")
 
 
 def update_collections(cursor):
@@ -73,47 +106,50 @@ def update_collections(cursor):
     cursor.execute(
         """
         UPDATE cookbook_collections
-           SET tags = SET{'blue','beta','api','stable'},
-               permissions = MULTISET{1,2,2,4},
-               ordered_steps = LIST{'draft','review','approve','publish'}
+           SET tags = ?,
+               permissions = ?,
+               ordered_steps = ?
          WHERE id = ?
         """,
-        (1,),
+        (
+            Set(["blue", "beta", "api", "stable"]),
+            Multiset([1, 2, 2, 4]),
+            Sequence(["draft", "review", "approve", "publish"]),
+            1,
+        ),
     )
     print(f"\n✓ Updated row id=1 collections (rows affected: {cursor.rowcount})")
 
 
 def read_collections(cursor):
-    def as_int(value):
-        if isinstance(value, (bytes, bytearray)):
-            return int.from_bytes(value, byteorder="big", signed=False)
-        if isinstance(value, str):
-            return int.from_bytes(value.encode("latin1"), byteorder="big", signed=False)
-        return int(value)
-
+    # With decode_collections=True the columns arrive as Python containers:
+    # SET -> frozenset (unordered, so sort for stable output),
+    # MULTISET -> list (duplicates kept), LIST/SEQUENCE -> list (order kept).
     cursor.execute(
-        """
-        SELECT
-            id,
-            name,
-            'blue' IN tags,
-            8 IN permissions,
-            ordered_steps = LIST{'draft','review','publish'},
-            ordered_steps = LIST{'draft','review','approve','publish'}
-          FROM cookbook_collections
-         ORDER BY id
-        """
+        "SELECT id, name, tags, permissions, ordered_steps FROM cookbook_collections ORDER BY id"
     )
     rows = cursor.fetchall()
     print(f"Collections ({len(rows)} rows):")
     for row in rows:
-        has_blue = as_int(row[2])
-        has_perm_8 = as_int(row[3])
-        steps_v1 = as_int(row[4])
-        steps_v2 = as_int(row[5])
+        tags, permissions, steps = row[2], row[3], row[4]
         print(f"  id={row[0]} name={row[1]}")
-        print(f"    contains_tag_blue={has_blue} contains_permission_8={has_perm_8}")
-        print(f"    matches_steps_v1={steps_v1} matches_steps_v2={steps_v2}")
+        print(f"    tags={sorted(tags)} ({type(tags).__name__})")
+        print(f"    permissions={sorted(permissions)} ({type(permissions).__name__})")
+        print(f"    ordered_steps={steps} ({type(steps).__name__})")
+
+    # Server-side membership and subset predicates work in WHERE clauses; a typed
+    # parameter can be bound on the right-hand side of SUBSETEQ.
+    cursor.execute(
+        "SELECT id FROM cookbook_collections WHERE 'blue' IN tags AND 8 NOT IN permissions"
+    )
+    print(f"  rows with tag 'blue' and no permission 8: {[r[0] for r in cursor.fetchall()]}")
+    cursor.execute(
+        "SELECT id FROM cookbook_collections WHERE tags SUBSETEQ ? ORDER BY id",
+        (Set(["ops", "critical", "api"]),),
+    )
+    print(
+        f"  rows whose tags are a subset of ops/critical/api: {[r[0] for r in cursor.fetchall()]}"
+    )
 
 
 def cleanup(conn):

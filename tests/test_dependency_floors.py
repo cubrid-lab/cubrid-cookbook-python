@@ -100,7 +100,14 @@ class DependencyFloorTests(unittest.TestCase):
         target = self.tmp / "fundamentals/pycubrid/requirements.txt"
         target.write_text("pycubrid>=1.7,<2\n")
         errors = floors.check(self.tmp, MATRIX)
-        self.assertTrue(any("expected pycubrid>=1.8,<2" in e for e in errors), errors)
+        self.assertTrue(any("expected pycubrid>=1.9,<2" in e for e in errors), errors)
+
+    def test_fundamentals_sqlalchemy_collection_floors_are_enforced(self) -> None:
+        target = self.tmp / "fundamentals/sqlalchemy/requirements.txt"
+        target.write_text("sqlalchemy>=2.0\npycubrid>=1.8,<2\nsqlalchemy-cubrid>=1.4.2\n")
+        errors = floors.check(self.tmp, MATRIX)
+        self.assertTrue(any("expected pycubrid>=1.9,<2" in e for e in errors), errors)
+        self.assertTrue(any("expected sqlalchemy-cubrid>=1.9 in" in e for e in errors), errors)
 
     def test_fundamentals_alembic_exact_sqlalchemy_floor_is_enforced(self) -> None:
         target = self.tmp / "fundamentals/alembic/requirements.txt"

@@ -28,10 +28,14 @@ make up
 pip install -r requirements.txt
 ```
 
-These recipes use the published `pycubrid>=1.8,<2` release line: the
+These recipes use the published `pycubrid>=1.9,<2` release line: the
 `16_batch_error_handling.py` and `20_timezone_datetime.py` goldens assume the
 `errno`-carrying batch errors (#390) and the CAS session kept across
-`commit()` (#468/#472) that first shipped in 1.8.0. The smoke workflow
+`commit()` (#468/#472) that first shipped in 1.8.0, and
+`10_collection_columns.py` binds collections with the typed
+`Set`/`Multiset`/`Sequence` parameters that first shipped in 1.9.0 (#567).
+Reading collections as `frozenset`/`list` needs only the `decode_collections=True`
+connect option (1.2.0+); without it the driver returns raw `bytes`. The smoke workflow
 constrains installation to its selected published driver version.
 
 ## Examples
@@ -47,7 +51,7 @@ constrains installation to its selected published driver version.
 | `07_merge_upsert.py` | Idempotent sync with MERGE | `MERGE INTO ... USING`, staging tables, deactivate missing rows |
 | `08_hierarchy_connect_by.py` | Tree traversal | `CONNECT BY PRIOR`, `START WITH`, `LEVEL`, org charts |
 | `09_serial_order_numbers.py` | Business IDs with SERIAL | `CREATE SERIAL`, `NEXT_VALUE`, sequential order numbers |
-| `10_collection_columns.py` | Native collection columns | `SET`, `MULTISET`, `LIST` types, inline collection storage |
+| `10_collection_columns.py` | Native collection columns | `SET`, `MULTISET`, `LIST`, typed `Set`/`Multiset`/`Sequence` binding, `decode_collections=True` |
 | `11_bulk_etl_pipeline.py` | Chunked ETL pipeline | staging table, `executemany()` chunks, validation, upsert apply |
 | `12_pool_retry_worker.py` | Connection pool & retry | minimal pool, exponential backoff, transient error recovery |
 | `13_atomic_counters.py` | Atomic counters | `ON DUPLICATE KEY UPDATE`, hot-path metrics, rankings |

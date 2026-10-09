@@ -72,10 +72,16 @@ Failure, cancellation or a skip the classifier did not select fails the CI gate.
 
 The `fundamentals/connect` and `fundamentals/orm-basics` requirements use
 `pycubrid>=1.7,<2`; ORM basics also uses `sqlalchemy-cubrid>=1.7,<2`.
-`fundamentals/pycubrid` requires `pycubrid>=1.8,<2`: its
+`fundamentals/pycubrid` requires `pycubrid>=1.9,<2`: its
 `16_batch_error_handling` and `20_timezone_datetime` goldens assume the
 `errno`-carrying batch errors (#390) and the CAS session kept across
-`commit()` (#468/#472) that first shipped in pycubrid 1.8.0.
+`commit()` (#468/#472) that first shipped in pycubrid 1.8.0, and its
+`10_collection_columns` binds collections with the typed
+`Set`/`Multiset`/`Sequence` parameters that first shipped in pycubrid 1.9.0 (#567).
+`fundamentals/sqlalchemy` requires `pycubrid>=1.9,<2` and `sqlalchemy-cubrid>=1.9`:
+`07_collection_types` binds Python lists/sets to SET/MULTISET/SEQUENCE columns
+(sqlalchemy-cubrid 1.9 wrapping them in pycubrid 1.9's typed parameters) and reads
+them back decoded through the `?decode_collections=true` URL option (pycubrid 1.2.0+).
 `fundamentals/alembic` requires `sqlalchemy-cubrid>=1.8`: its golden prints the
 dialect's runtime `transactional_ddl` (`True` since 1.8.0, sqlalchemy-cubrid#503), and its
 `env.py` relies on the automatic `CubridImpl` registration (sqlalchemy-cubrid#504) instead of

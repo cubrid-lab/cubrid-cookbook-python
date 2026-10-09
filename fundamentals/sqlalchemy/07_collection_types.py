@@ -2,8 +2,8 @@
 
 Demonstrates:
 - Defining CUBRID collection columns with sqlalchemy_cubrid.types
-- Inserting collection values with CUBRID collection literals (``{...}``)
-- Reading collection elements back with the ``TABLE(col)`` unnest join
+- Binding Python lists/sets to collection columns (INSERT and UPDATE)
+- Reading collection columns back as ``frozenset``/``list`` via ``decode_collections``
 - The semantic difference between the three collection kinds
 
 CUBRID has three native collection types:
@@ -12,22 +12,22 @@ CUBRID has three native collection types:
     MULTISET   Unordered, duplicates OK.   e.g. multiset of phone numbers.
     SEQUENCE   Ordered, duplicates OK.     e.g. ordered checklist steps.
 
-Known driver limitation (why this recipe uses SQL, not ORM binding)
--------------------------------------------------------------------
-As of the current ``pycubrid`` driver, collection columns cannot be round
--tripped through bound parameters:
+Driver requirements (why this recipe needs ``pycubrid>=1.9``)
+-------------------------------------------------------------
+  * READ: ``?decode_collections=true`` on the engine URL is forwarded to
+    ``pycubrid.connect(decode_collections=True)`` (pycubrid 1.2.0+), so SET
+    columns come back as ``frozenset`` and MULTISET/SEQUENCE as ``list``.
+    Without it the driver returns raw wire ``bytes``.
+  * WRITE: ``sqlalchemy-cubrid>=1.9`` with ``pycubrid>=1.9`` wraps a Python
+    ``list``/``tuple``/``set`` bound to a SET/MULTISET/SEQUENCE column in
+    ``pycubrid.types.Set``/``Multiset``/``Sequence`` (typed parameters, new in
+    pycubrid 1.9.0) and sends it as a ``SET{...}``/``MULTISET{...}``/
+    ``SEQUENCE{...}`` literal. A SEQUENCE is ordered, so pass a ``list`` or
+    ``tuple`` for it, never a ``set``. Older drivers reject collection
+    parameters with ``ProgrammingError``.
 
-  * INSERT: binding a Python ``set``/``list`` to a collection column raises
-    ``ProgrammingError("unsupported parameter type")`` in
-    ``pycubrid._cursor_common.format_parameter``.
-  * SELECT: a collection column comes back as an opaque binary-encoded
-    string, not a decoded Python list.
-
-So this recipe still models the columns with ``sqlalchemy_cubrid.types`` (the
-DDL is generated correctly), but writes values with CUBRID collection
-literals and reads them back with the ``TABLE(collection)`` unnest join,
-which returns one properly decoded element per row. If/when the driver gains
-collection parameter binding, the insert/read paths can be simplified.
+Nothing is built by hand: values are bound as ordinary Python containers and
+read back as ordinary Python containers.
 
 Run:
     python 07_collection_types.py
@@ -37,11 +37,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import Connection, Integer, String, create_engine, text
+from sqlalchemy import Integer, String, create_engine, insert, select, text, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy_cubrid.types import MULTISET, SEQUENCE, SET
 
-DATABASE_URL = "cubrid+pycubrid://dba@localhost:33000/testdb"
+DATABASE_URL = "cubrid+pycubrid://dba@localhost:33000/testdb?decode_collections=true"
 
 
 class Base(DeclarativeBase):
@@ -60,29 +60,6 @@ class CookbookCollectionDemo(Base):
     checklist: Mapped[Any] = mapped_column(SEQUENCE(String(200)))  # ordered
 
 
-def _literal(value: str) -> str:
-    """Render a Python string as a single-quoted SQL literal (escapes quotes)."""
-    return "'" + value.replace("'", "''") + "'"
-
-
-def _collection_literal(values: list[str]) -> str:
-    """Render a Python list as a CUBRID collection literal: ``{'a', 'b'}``."""
-    return "{" + ", ".join(_literal(v) for v in values) + "}"
-
-
-def _read_collection(conn: Connection, column: str, row_id: int) -> list[str]:
-    """Read one collection column back as a Python list via ``TABLE()`` unnest.
-
-    ``TABLE(col)`` expands a collection into one row per element, preserving
-    SEQUENCE order and MULTISET duplicates. SET elements come back in CUBRID's
-    normalized (sorted) order.
-    """
-    stmt = text(
-        f"SELECT t.elem FROM cookbook_collection_demo, TABLE({column}) AS t(elem) WHERE id = :id"
-    )
-    return [r[0] for r in conn.execute(stmt, {"id": row_id})]
-
-
 def main() -> None:
     print("=== CUBRID Collection Types (SET / MULTISET / SEQUENCE) ===")
     print()
@@ -99,7 +76,7 @@ def main() -> None:
         {
             "id": 1,
             "title": "First task",
-            "tags": ["python", "cubrid", "demo"],
+            "tags": ["python", "cubrid", "demo", "python"],
             "phone_numbers": ["555-1000", "555-1000", "555-2000"],
             "checklist": ["open editor", "write code", "run tests"],
         },
@@ -121,81 +98,73 @@ def main() -> None:
 
     with engine.begin() as conn:
         # --------------------------------------------------------------
-        # INSERT: collection values via CUBRID collection literals.
-        # (Bound set/list params are rejected by the driver; see module docstring.)
+        # INSERT: bind plain Python containers. The dialect wraps each one
+        # in the typed collection parameter that matches its column.
+        # (A duplicated 'python' in a SET value is dropped by the server.)
         # --------------------------------------------------------------
-        for r in rows:
-            conn.execute(
-                text(
-                    "INSERT INTO cookbook_collection_demo "
-                    "(id, title, tags, phone_numbers, checklist) VALUES "
-                    f"({r['id']}, {_literal(r['title'])}, "
-                    f"{_collection_literal(r['tags'])}, "
-                    f"{_collection_literal(r['phone_numbers'])}, "
-                    f"{_collection_literal(r['checklist'])})"
-                )
-            )
+        conn.execute(insert(CookbookCollectionDemo), rows)
     print()
-    print(f"[2] Inserted {len(rows)} rows with collection columns")
+    print(f"[2] Inserted {len(rows)} rows by binding Python lists to collection columns")
 
     with engine.connect() as conn:
         # --------------------------------------------------------------
-        # SELECT: read collections back with the TABLE() unnest join.
+        # SELECT: collections arrive decoded (decode_collections=true).
+        # SET is a frozenset (unordered), so sort it for stable output.
         # --------------------------------------------------------------
         print()
         print("[3] All rows:")
-        ids = [
-            r[0] for r in conn.execute(text("SELECT id FROM cookbook_collection_demo ORDER BY id"))
-        ]
-        for row_id in ids:
-            title = conn.execute(
-                text("SELECT title FROM cookbook_collection_demo WHERE id = :id"),
-                {"id": row_id},
-            ).scalar_one()
-            print(f"    id={row_id}  title={title!r}")
-            print(f"      tags          = {_read_collection(conn, 'tags', row_id)}")
-            print(f"      phone_numbers = {_read_collection(conn, 'phone_numbers', row_id)}")
-            print(f"      checklist     = {_read_collection(conn, 'checklist', row_id)}")
+        for row in conn.execute(select(CookbookCollectionDemo).order_by(CookbookCollectionDemo.id)):
+            print(f"    id={row.id}  title={row.title!r}")
+            print(f"      tags          = {sorted(row.tags)}  ({type(row.tags).__name__})")
+            print(
+                f"      phone_numbers = {row.phone_numbers}  ({type(row.phone_numbers).__name__})"
+            )
+            print(f"      checklist     = {row.checklist}  ({type(row.checklist).__name__})")
 
         # --------------------------------------------------------------
         # FILTER: ``value IN column`` membership on a SET column (server-side).
         # --------------------------------------------------------------
         print()
         print("[4] Rows whose tags include 'python' (server-side 'python' IN tags):")
-        for row_id, title in conn.execute(
+        for row_id, title, tags in conn.execute(
             text(
-                "SELECT id, title FROM cookbook_collection_demo WHERE 'python' IN tags ORDER BY id"
+                "SELECT id, title, tags FROM cookbook_collection_demo "
+                "WHERE 'python' IN tags ORDER BY id"
             )
         ):
-            tags = _read_collection(conn, "tags", row_id)
-            print(f"    id={row_id}  title={title!r}  tags={tags}")
+            print(f"    id={row_id}  title={title!r}  tags={sorted(tags)}")
 
         # --------------------------------------------------------------
         # Demonstrate the SEMANTIC difference between the three kinds.
         # --------------------------------------------------------------
+        first = conn.execute(
+            select(CookbookCollectionDemo).where(CookbookCollectionDemo.id == 1)
+        ).one()
         print()
         print("[5] Semantic difference (observe duplicates/ordering):")
-        print(f"    SET        tags          = {_read_collection(conn, 'tags', 1)}")
-        print("                -> unique, CUBRID normalizes to sorted order")
-        print(f"    MULTISET   phone_numbers = {_read_collection(conn, 'phone_numbers', 1)}")
+        print(f"    SET        tags          = {sorted(first.tags)}")
+        print("                -> unique (the duplicate input 'python' was dropped)")
+        print(f"    MULTISET   phone_numbers = {sorted(first.phone_numbers)}")
         print("                -> duplicates PRESERVED (555-1000 appears twice)")
-        print(f"    SEQUENCE   checklist     = {_read_collection(conn, 'checklist', 1)}")
+        print(f"    SEQUENCE   checklist     = {first.checklist}")
         print("                -> order PRESERVED (open editor first, run tests last)")
 
     with engine.begin() as conn:
         # --------------------------------------------------------------
-        # UPDATE: replace a collection column with a new literal value.
+        # UPDATE: replace a collection column with a new bound list.
         # --------------------------------------------------------------
         new_checklist = ["benchmark", "optimize", "benchmark", "ship"]
         conn.execute(
-            text(
-                "UPDATE cookbook_collection_demo "
-                f"SET checklist = {_collection_literal(new_checklist)} WHERE id = 3"
-            )
+            update(CookbookCollectionDemo)
+            .where(CookbookCollectionDemo.id == 3)
+            .values(checklist=new_checklist)
         )
     with engine.connect() as conn:
+        updated = conn.execute(
+            select(CookbookCollectionDemo.checklist).where(CookbookCollectionDemo.id == 3)
+        ).scalar_one()
         print()
-        print(f"[6] Updated checklist for id=3: {_read_collection(conn, 'checklist', 3)}")
+        print(f"[6] Updated checklist for id=3: {updated}")
         print("    (SEQUENCE preserves the new order and the duplicate 'benchmark')")
 
     Base.metadata.drop_all(engine)

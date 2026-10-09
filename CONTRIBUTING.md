@@ -257,7 +257,8 @@ higher floor only when SUPPORT_MATRIX.md explains why (the `[^async]`
 footnote's "advanced" SQLAlchemy recipes at `>=1.4.2`; `fundamentals/connect`,
 `fundamentals/orm-basics` and the full example apps under `templates/` at the
 `>=1.7,<2` line the drivers are actually published as; `fundamentals/pycubrid`
-at `>=1.8,<2` for errno-carrying batch errors and the CAS-session fix).
+at `>=1.9,<2` for errno-carrying batch errors, the CAS-session fix and typed collection binding;
+`fundamentals/sqlalchemy` at `pycubrid>=1.9,<2` and `sqlalchemy-cubrid>=1.9` for typed collection binding).
 `scripts/check_dependency_floors.py` (run by `make check`) fails on a bare
 driver requirement, a floor below its applicable minimum, or an undocumented
 custom floor — add it as a named exception in both the script and
