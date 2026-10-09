@@ -216,8 +216,8 @@ class WorkflowCallInputTests(unittest.TestCase):
         with patch.dict(smoke.os.environ, call_env()):
             request = smoke.read_request("workflow_call", self.event)
             smoke.freeze(self.state, self.constraints, request)
-            for cubrid in ("11.2", "11.4"):
-                directory = self.parts / f"release-verification-part-cubrid-{cubrid}"
+            for cubrid, python in (("11.2", "3.12"), ("11.4", "3.12"), ("11.4", "3.11")):
+                directory = self.parts / f"release-verification-part-cubrid-{cubrid}-py{python}"
                 directory.mkdir(parents=True)
                 text = io.StringIO()
                 with contextlib.redirect_stdout(text):
@@ -230,6 +230,7 @@ class WorkflowCallInputTests(unittest.TestCase):
                         "success",
                         directory / smoke.REPORT_PART,
                         cubrid,
+                        python,
                     )
                 self.assertIn("release workflow call: pycubrid v1.8.0", text.getvalue())
             with contextlib.redirect_stdout(io.StringIO()):

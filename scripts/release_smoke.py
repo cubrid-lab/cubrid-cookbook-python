@@ -24,6 +24,10 @@ RELEASE_TAG = re.compile(r"v(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)"
 # Upstream correlation id; also used verbatim in the run name and artifact name.
 REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{8,80}")
 REPORT_SCHEMA = 1
+# The cells a release verification must report, mirroring the smoke-test.yml
+# matrix (cubrid x python, plus the Python 3.11 include); a test keeps them in sync.
+DEFAULT_PYTHON = "3.12"
+RELEASE_CELLS = frozenset({("11.2", "3.12"), ("11.4", "3.12"), ("11.4", "3.11")})
 REPORT_PART = "release-verification-part.json"
 # Another repository's release workflow calls smoke-test.yml (on: workflow_call).
 # GITHUB_EVENT_NAME/GITHUB_EVENT_PATH then describe the CALLER's event, so the
@@ -356,7 +360,8 @@ def summary(
 def cell(part: dict[str, object]) -> str:
     """Name a smoke matrix cell: the CUBRID version plus a non-default Python."""
     python = part.get("python")
-    return f"CUBRID {part.get('cubrid')}" + (f", Python {python}" if python else "")
+    show = python and python != DEFAULT_PYTHON
+    return f"CUBRID {part.get('cubrid')}" + (f", Python {python}" if show else "")
 
 
 def build_report(
@@ -376,6 +381,16 @@ def build_report(
         reasons.append("no smoke job reported a result")
     if verify_result != "success":
         reasons.append(f"smoke jobs finished with {verify_result or 'unknown'}")
+    if request is not None:
+        seen = [(p.get("cubrid"), p.get("python")) for p in parts]
+        for key in sorted(RELEASE_CELLS):
+            name = cell({"cubrid": key[0], "python": key[1]})
+            if key not in seen:
+                reasons.append(f"{name}: no result reported")
+            elif seen.count(key) > 1:
+                reasons.append(f"{name}: reported {seen.count(key)} times")
+        for key in sorted(set(seen) - RELEASE_CELLS, key=str):
+            reasons.append(f"unexpected smoke cell: CUBRID {key[0]}, Python {key[1]}")
     for p in parts:
         if p.get("installed_version") != requested:
             reasons.append(
