@@ -526,6 +526,10 @@ following job with `if: always()` can report them.
   `release-verification-part-cubrid-11.4-py3.11` and `release-verification-<request_id>`. Call the workflow at most once per
   caller run.
 
+A pre-publish **candidate mode** (verifying the caller's built wheel before
+`publish`) is proposed in [docs/internal/rc-verification-design.md](docs/internal/rc-verification-design.md)
+(#240); it is not implemented yet, and the contract above is unchanged.
+
 Run the smoke dependency guards without a database or network:
 
 ```bash
