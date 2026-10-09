@@ -78,8 +78,7 @@ they have content: Upgrade notes, Added, Changed, Deprecated, Removed, Fixed,
 Security, Performance, Documentation, CI, Tests. Write `Documentation`, not
 `Docs`, and put tooling entries under `CI` or `Changed`. `make check-docs` runs
 `scripts/lint_changelog.py`, which enforces this for `[Unreleased]` and for releases
-after 0.2.0. The legacy `### Previous Releases` block at the end of `[Unreleased]`
-is not checked and is never rewritten.
+after 0.2.0.
 
 ### Dependency updates
 

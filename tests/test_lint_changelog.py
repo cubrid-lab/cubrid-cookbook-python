@@ -106,7 +106,8 @@ class LintChangelogTests(unittest.TestCase):
                 self.assert_rejected(
                     self.prefix(release)
                     + f"## [{release}]\n### Fixed\n- First\n### Fixed\n- Second\n",
-                    f"Duplicate subsection '### Fixed' in [{release}]",
+                    # The duplicate-heading rule runs first and covers every version.
+                    f"Duplicate subsection heading '### Fixed' in [{release}]",
                 )
 
     def test_duplicate_section_with_other_spacing_is_rejected(self) -> None:
@@ -147,24 +148,6 @@ class LintChangelogTests(unittest.TestCase):
             "ERROR: Unclosed code fence in CHANGELOG.md",
         )
 
-    def test_previous_releases_block_is_not_checked(self) -> None:
-        self.assert_valid(
-            "## [Unreleased]\n### Added\n- New\n### Previous Releases\n- Old\n"
-            "### Changed\n- Old\n### Fixed\n- Old\n### Changed\n- Old again\n"
-        )
-
-    def test_previous_releases_block_ends_with_its_release(self) -> None:
-        self.assert_rejected(
-            "## [Unreleased]\n### Previous Releases\n- Old\n## [0.2.1]\n### Docs\n- A\n",
-            "'### Docs' in [0.2.1] is not a standard section",
-        )
-
-    def test_headings_before_the_historical_block_are_still_checked(self) -> None:
-        self.assert_rejected(
-            "## [Unreleased]\n### Docs\n- A\n### Previous Releases\n- Old\n",
-            "'### Docs' in [Unreleased] is not a standard section",
-        )
-
     def test_same_section_across_releases_is_valid(self) -> None:
         # The order and duplicate checks restart for every release.
         self.assert_valid(
@@ -174,6 +157,41 @@ class LintChangelogTests(unittest.TestCase):
 
     def test_changelog_without_release_sections_is_rejected(self) -> None:
         self.assert_rejected("# Changelog\n### Added\n- x\n", "No version sections found")
+
+    def test_first_section_must_be_unreleased(self) -> None:
+        self.assert_rejected(
+            "## [0.3.0]\n### Fixed\n- x\n## [Unreleased]\n### Fixed\n- y\n",
+            "First section must be [Unreleased], got [0.3.0]",
+        )
+
+    def test_unreleased_must_appear_once(self) -> None:
+        self.assert_rejected(
+            "## [Unreleased]\n### Fixed\n- x\n## [Unreleased]\n### Added\n- y\n",
+            "Found 2 [Unreleased] sections, expected exactly 1",
+        )
+
+    def test_duplicate_version_is_rejected(self) -> None:
+        self.assert_rejected(
+            "## [Unreleased]\n### Fixed\n- x\n## [0.3.0]\n### Fixed\n- y\n"
+            "## [0.3.0]\n### Added\n- z\n",
+            "ERROR: Duplicate version section [0.3.0]",
+        )
+
+    def test_versions_must_descend(self) -> None:
+        self.assert_rejected(
+            "## [Unreleased]\n### Fixed\n- x\n## [0.3.0]\n### Fixed\n- y\n"
+            "## [0.4.0]\n### Fixed\n- z\n",
+            "[0.4.0] should come before [0.3.0]",
+        )
+
+    def test_duplicate_heading_in_every_version_is_rejected(self) -> None:
+        self.assert_rejected(
+            "## [Unreleased]\n### Fixed\n- x\n## [0.1.0]\n### Docs\n- y\n### Docs\n- z\n",
+            "Duplicate subsection heading '### Docs' in [0.1.0]",
+        )
+
+    def test_fenced_duplicate_heading_is_content(self) -> None:
+        self.assert_valid("## [Unreleased]\n### Added\n```\n### Added\n```\n- x\n")
 
 
 if __name__ == "__main__":

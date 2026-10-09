@@ -138,16 +138,14 @@ added. If Releases are introduced later, these rules apply unchanged.
 
 ### Release notes
 
-- `CHANGELOG.md` is the single source of truth. A Release body is the CHANGELOG
-  section plus one `**Full Changelog**` compare link.
+- `CHANGELOG.md` is the single source of truth. The Release body is the extracted
+  CHANGELOG section plus one `**Full Changelog**` compare link.
 - Allowed `###` sections, in this order, only when they have content: Upgrade notes,
   Added, Changed, Deprecated, Removed, Fixed, Security, Performance, Documentation, CI,
   Tests. `scripts/lint_changelog.py` enforces this for `[Unreleased]` and for releases
-  after 0.2.0 (the latest tag).
+  after 0.2.0.
 - Use `Documentation`, not `Docs`. Put release automation and tooling entries under
   `CI` or `Changed`.
-- The legacy `### Previous Releases` block at the end of `[Unreleased]` predates these
-  sections. The lint does not check it and its text stays as written.
 - Never bulk-rewrite historical notes or regenerate them from current `main`. A
   selective fix needs a dry-run diff and maintainer approval. Never invent PR or commit
   references. Note formatting never changes tags, dates, artifacts or publish state.
