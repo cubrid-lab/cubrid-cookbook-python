@@ -8,15 +8,21 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
 
-permissions:
-  contents: write
-  pull-requests: write
+# Token permissions are granted per job (least privilege), never workflow-wide.
+permissions: {}
 
 jobs:
   auto-merge:
-    if: github.actor == 'dependabot[bot]'
+    # pull_request_target runs with a write-capable token: require both the
+    # actor and the PR author to be Dependabot before doing anything.
+    if: >-
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Fetch Dependabot metadata
         id: metadata
