@@ -130,17 +130,22 @@ class LintChangelogTests(unittest.TestCase):
         )
 
     def test_fenced_lines_are_content_not_headings(self) -> None:
-        self.assert_valid(
-            "## [Unreleased]\n### Added\n```\n### Docs\n## [9.9.9]\n```\n### Fixed\n- Entry\n"
+        self.assert_valid("## [Unreleased]\n### Added\n```\n### Docs\n```\n### Fixed\n- Entry\n")
+
+    def test_fenced_release_header_is_rejected(self) -> None:
+        # extract_release_notes.py is not fence-aware, so a fenced "## [9.9.9]" would truncate
+        # the Release body; it fails closed instead of being read as content.
+        self.assert_rejected(
+            "## [Unreleased]\n### Added\n```\n## [9.9.9]\n### Added\n```\n### Added\n- x\n",
+            "ERROR: Release header inside an open code fence in CHANGELOG.md",
         )
 
-    def test_fenced_version_does_not_split_the_release(self) -> None:
-        # A fenced "## [9.9.9]" must not start a release, so the later "### Added"
-        # repeats the first one in [Unreleased].
-        result = self.lint(
-            "## [Unreleased]\n### Added\n```\n## [9.9.9]\n### Added\n```\n### Added\n- x\n"
+    def test_fence_opened_in_unreleased_and_closed_after_a_release_is_rejected(self) -> None:
+        # The fence would hide the real [0.4.0] header and everything up to the closing fence.
+        self.assert_rejected(
+            "## [Unreleased]\n### Added\n```\n- x\n## [0.4.0] - 2026-01-01\n### Added\n- y\n```\n",
+            "ERROR: Release header inside an open code fence in CHANGELOG.md",
         )
-        self.assertEqual(result.returncode, 1)
 
     def test_unclosed_code_fence_is_rejected(self) -> None:
         self.assert_rejected(

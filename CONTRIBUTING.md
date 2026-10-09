@@ -78,7 +78,10 @@ they have content: Upgrade notes, Added, Changed, Deprecated, Removed, Fixed,
 Security, Performance, Documentation, CI, Tests. Write `Documentation`, not
 `Docs`, and put tooling entries under `CI` or `Changed`. `make check-docs` runs
 `scripts/lint_changelog.py`, which enforces this for `[Unreleased]` and for releases
-after 0.2.0.
+after 0.2.0. A fenced `###` line is entry content, never a heading; a fenced `## [` release
+header is an error (`scripts/extract_release_notes.py` is not fence-aware and would
+truncate the Release body); an unclosed fence is an error. Only fences that start at
+column 0 with three backticks are recognised, not tilde or indented/nested fences.
 
 ### Dependency updates
 

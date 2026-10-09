@@ -93,6 +93,12 @@ def main() -> int:
     releases: list[tuple[str, list[tuple[str, str]]]] = []
     in_fence = False
     for line in content.splitlines():
+        if in_fence and line.startswith("## ["):
+            print(
+                "ERROR: Release header inside an open code fence in CHANGELOG.md",
+                file=sys.stderr,
+            )
+            return 1
         section_match = None if in_fence else re.match(r"^## \[(\S+)\]", line)
         if section_match:
             section = section_match.group(1)
