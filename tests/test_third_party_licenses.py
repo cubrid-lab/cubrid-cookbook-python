@@ -166,6 +166,8 @@ class RequirementCoverage(unittest.TestCase):
         listed = [p for paths, _ in set_table().values() for p in paths]
         self.assertEqual(len(listed), len(set(listed)), "a file is listed in two sets")
         on_disk = {f.relative_to(ROOT).as_posix() for f in build.requirement_files()}
+        # The docs pins live in .github/ (skipped by the scan) and are the DOCS set.
+        on_disk.add(build.DOCS_PINS.relative_to(ROOT).as_posix())
         self.assertEqual(
             set(listed),
             on_disk,
@@ -181,6 +183,33 @@ class RequirementCoverage(unittest.TestCase):
     def test_tooling_and_demo_sets_match_the_build_script(self) -> None:
         self.assertEqual(set_table()["TOOLING"][1], build.declared_names(build.TOOLING))
         self.assertEqual(set_table()["DEMO"][1], build.declared_names(build.DEMO))
+
+    def test_docs_tools_come_from_the_pin_file_not_tooling(self) -> None:
+        pins = build.requirement_lines(build.DOCS_PINS)
+        pinned = {build.canonical(re.split(r"[=<>!~ ]", line, 1)[0]) for line in pins}
+        self.assertTrue(
+            {"mkdocs", "mkdocs-material", "pymdown-extensions"} <= pinned, "docs pins changed"
+        )
+        for line in pins:
+            self.assertRegex(line, r"^[A-Za-z0-9._-]+==\S+$", f"docs tool is not pinned: {line}")
+        unpinned = pinned & set(build.declared_names(build.TOOLING))
+        self.assertFalse(unpinned, f"docs tools listed in TOOLING without the pin file: {unpinned}")
+        paths, declared = set_table()["DOCS"]
+        self.assertEqual(paths, [build.DOCS_PINS.relative_to(ROOT).as_posix()])
+        self.assertEqual(declared, build.declared_names(pins))
+
+    def test_inventoried_docs_tool_versions_equal_the_pins(self) -> None:
+        rows_by_name: dict[str, list[dict[str, str]]] = {}
+        for package in package_table():
+            rows_by_name.setdefault(build.canonical(package["name"]), []).append(package)
+        for line in build.requirement_lines(build.DOCS_PINS):
+            name, version = line.split("==", 1)
+            with self.subTest(package=name):
+                found = rows_by_name.get(build.canonical(name), [])
+                self.assertEqual(len(found), 1, f"{name} must have exactly one inventory row")
+                versions = [v.strip() for v in found[0]["versions"].split(",")]
+                self.assertIn(version, versions, f"{name} pinned {version}, inventory {versions}")
+                self.assertIn("DOCS", [s.strip() for s in found[0]["sets"].split(",")])
 
     def test_demo_set_covers_the_gif_renderer_imports(self) -> None:
         tree = ast.parse((ROOT / "demos" / "render_gif.py").read_text(encoding="utf-8"))

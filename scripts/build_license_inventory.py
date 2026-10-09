@@ -5,7 +5,9 @@ example, so the requirement files are grouped by their normalised contents and
 each distinct set is installed into its own fresh ``uv`` virtual environment;
 nothing is flattened into one shared install. The CI and docs tooling that the
 workflows and the composite PR-smoke action install directly (``TOOLING``) and
-the demo GIF renderer's imports (``DEMO``) are two more sets. In every environment
+the demo GIF renderer's imports (``DEMO``) are two more sets, and the pinned documentation
+build tools in ``.github/requirements-docs.txt`` (``DOCS``) are a third, so the inventory
+records the versions the docs workflows install. In every environment
 ``scripts/generate_third_party_licenses.py`` (standard library only) reports the
 installed distributions, and the results are consolidated with the sets that
 pulled each one in. The generated section between the markers in
@@ -36,9 +38,14 @@ GENERATOR = ROOT / "scripts" / "generate_third_party_licenses.py"
 BEGIN = "<!-- BEGIN GENERATED INVENTORY: scripts/build_license_inventory.py -->"
 END = "<!-- END GENERATED INVENTORY -->"
 
-# Installed directly by .github/workflows (ci.yml, docs.yml, smoke-test.yml) and
-# .github/actions/pr-smoke rather than through a requirements file.
-TOOLING = ("ruff==0.16.4", "mkdocs-material", "pymdown-extensions", "pytest", "pytest-asyncio")
+# Installed directly by .github/workflows (ci.yml, smoke-test.yml) and
+# .github/actions/pr-smoke rather than through a requirements file. The docs
+# build tools are not listed here: they come from DOCS_PINS so their versions
+# cannot drift from what docs.yml and the ci.yml docs-site job install.
+TOOLING = ("ruff==0.16.4", "pytest", "pytest-asyncio")
+# Pinned docs build tools; requirement_files() skips dot-directories, so this
+# file is read explicitly as its own set.
+DOCS_PINS = ROOT / ".github" / "requirements-docs.txt"
 # Imported by demos/render_gif.py, which renders docs/demo-agent-state.gif.
 DEMO = ("imageio", "pillow")
 
@@ -116,6 +123,7 @@ def requirement_sets(root: Path = ROOT) -> list[tuple[str, list[str], list[Path]
     ordered = sorted(groups.items(), key=lambda item: str(item[1][0]))
     sets = [(f"S{i:02d}", list(lines), files) for i, (lines, files) in enumerate(ordered, 1)]
     sets.append(("TOOLING", list(TOOLING), []))
+    sets.append(("DOCS", requirement_lines(DOCS_PINS), [DOCS_PINS]))
     sets.append(("DEMO", list(DEMO), []))
     return sets
 
