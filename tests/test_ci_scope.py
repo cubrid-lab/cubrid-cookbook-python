@@ -69,6 +69,8 @@ class ClassifierTests(unittest.TestCase):
         cases = {
             "templates/flask/05-batch-operations/app.py": {"web"},
             "templates/api-service-fastapi/recipes/02-orders/main.py": {"web"},
+            "templates/api-service-fastapi/app/main.py": {"web"},
+            "templates/api-service-fastapi/tests/test_root_app.py": {"web"},
             "templates/dashboard/03_kpis.py": {"dashboard"},
             "templates/async-worker/tasks/__init__.py": {"async_worker"},
             "templates/django/app/views.py": {"django"},
@@ -293,6 +295,20 @@ class GateTests(unittest.TestCase):
 
 
 class WorkflowWiringTests(unittest.TestCase):
+    def test_root_fastapi_app_smoke_test_is_wired_with_its_own_requirements(self) -> None:
+        # The root app has its own requirements (pydantic-settings is not in the
+        # shared lists), so both live lanes must install them and run its suite.
+        suite = "templates/api-service-fastapi/tests"
+        requirements = "-r templates/api-service-fastapi/requirements.txt"
+        pytest_suites = CI[CI.index("  pytest-suites:") : CI.index("  dashboard-pytest:")]
+        for name, text in (("ci.yml pytest-suites", pytest_suites), ("smoke-test.yml", SMOKE)):
+            with self.subTest(workflow=name):
+                self.assertIn(suite, text)
+                self.assertIn(requirements, text)
+        self.assertTrue(
+            (ROOT / "templates/api-service-fastapi/tests/test_root_app.py").is_file(),
+        )
+
     def test_docs_site_build_runs_on_every_pr(self) -> None:
         # A PR that only deletes or renames an example linked from a README
         # classifies as "docs" with no docs path, yet scripts/stage_docs.py must

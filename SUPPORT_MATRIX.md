@@ -66,7 +66,7 @@ Failure, cancellation or a skip the classifier did not select fails the CI gate.
 | FastAPI | ≥ 0.100 | ✅ |
 | Pandas | ≥ 2.0 | ✅ |
 | Streamlit | ≥ 1.30 | ✅ |
-| Django | ≥ 5.0 | ✅ (minimal recipe) |
+| Django | ≥ 5.2 | ✅ (minimal recipe; floor checked with `manage.py check` and the `/health`, `/items` views on 4.2, 5.0 and 5.2, CI runs the live bridge suite on the latest release) |
 
 [^async]: The sync SQLAlchemy dialect (`cubrid+pycubrid://`) works from `sqlalchemy-cubrid` 1.0. The async dialect (`cubrid+aiopycubrid://`, used by `fundamentals/async/02_async_sqlalchemy.py`) first became installable from PyPI in 1.2.3 (its entry points were missing from the 1.2.0–1.2.1 releases and 1.2.2 was yanked; 1.2.1 only shipped the `get_pool_class()`/`create_async_engine()` fix), and this cookbook pins it to `≥ 1.4.2` to match the floor of the other advanced SQLAlchemy recipes (pandas, ORM, Django, dashboard).
 

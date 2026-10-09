@@ -328,7 +328,7 @@ jobs:
         if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
         # One explicit list avoids conflicting pins in individual recipe files.
         # PIP_CONSTRAINT also covers these packages' transitive driver requirements.
-        run: pip install flask flask-sqlalchemy fastapi email-validator httpx pytest pytest-asyncio streamlit pandas -r templates/async-worker/requirements.txt -r templates/django/requirements.txt
+        run: pip install flask flask-sqlalchemy fastapi email-validator httpx pytest pytest-asyncio streamlit pandas -r templates/async-worker/requirements.txt -r templates/django/requirements.txt -r templates/api-service-fastapi/requirements.txt
 
       - name: Record tested versions
         run: |
@@ -380,7 +380,7 @@ jobs:
           CUBRID_VERSION: ${{ matrix.cubrid }}
         run: |
           shopt -s nullglob
-          suites=(templates/flask/*/tests templates/api-service-fastapi/recipes/*/tests)
+          suites=(templates/flask/*/tests templates/api-service-fastapi/tests templates/api-service-fastapi/recipes/*/tests)
           if [ "${#suites[@]}" -eq 0 ]; then
             echo "::error::No pytest suites found"
             exit 1
