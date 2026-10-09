@@ -198,6 +198,8 @@ when a row no longer matches the repository. Verification is split:
 | DDL is transactional only while autocommit is off | By design | By design | Keep autocommit off (pycubrid default) for migrations; commit promptly, since uncommitted DDL holds schema locks |
 | Duplicate index on indexed columns | ❌ | ❌ | Drop `index=True` on primary key / unique columns |
 
+Verified live on CUBRID 11.2 and 11.4 (this cookbook) and on 10.2 and 11.4 (sqlalchemy-cubrid's transactional-DDL tests).
+
 See [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for details and workarounds.
 
 ## Docker Images

@@ -12,7 +12,7 @@
 --- CUBRID + Alembic notes ---
   * Migration impl: CubridImpl (registered automatically by sqlalchemy-cubrid).
   * transactional_ddl = True  -> ROLLBACK undoes uncommitted DDL
-    (autocommit off, the pycubrid default); a failed upgrade rolls back.
+    (autocommit off, the pycubrid default); by default a failed upgrade rolls back.
   * No native SEQUENCE support  -> migrations use AUTO_INCREMENT.
   * Identifiers are lowercase-folded with a 254-char max.
 

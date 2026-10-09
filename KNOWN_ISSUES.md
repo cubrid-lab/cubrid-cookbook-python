@@ -73,11 +73,16 @@ commit. What decides when it commits is the client's autocommit mode:
   every connection): DDL stays uncommitted until `COMMIT`, and `ROLLBACK`
   undoes it, together with any DML in the same transaction. This is why
   sqlalchemy-cubrid's Alembic implementation reports `transactional_ddl = True`
-  (since 1.8.0): a failed `alembic upgrade` rolls back the whole run, including
-  the `alembic_version` update.
-- **Autocommit on** (`conn.autocommit = True`, csql's default auto-commit mode,
+  (since 1.8.0): by default a failed `alembic upgrade` rolls back the whole run,
+  including the `alembic_version` update (see the `transaction_per_migration`
+  caveat below).
+- **Autocommit on** (`conn.autocommit = True`, SQLAlchemy
+  `isolation_level="AUTOCOMMIT"`, csql's default auto-commit mode,
   or a client such as JDBC that defaults to autocommit): every statement,
   DDL or DML, commits on its own, so there is nothing left to roll back.
+
+Verified live on CUBRID 11.2 and 11.4 (this cookbook) and on 10.2 and 11.4
+(sqlalchemy-cubrid's transactional-DDL tests).
 
 ```python
 conn = pycubrid.connect(...)  # autocommit is off by default

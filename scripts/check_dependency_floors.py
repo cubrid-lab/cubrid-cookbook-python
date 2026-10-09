@@ -195,7 +195,7 @@ def check(root: Path, matrix: str) -> list[str]:
 
     for label, dirs in (
         ("fundamentals/pycubrid exception", EXACT_PYCUBRID_FLOOR),
-        ("fundamentals/alembic exception", EXACT_SQLALCHEMY_FLOOR),
+        ("exact sqlalchemy-cubrid floor exception", EXACT_SQLALCHEMY_FLOOR),
         ("advanced SQLAlchemy floor", {d: None for d in ADVANCED_SQLALCHEMY_DIRS}),
     ):
         for directory in dirs:

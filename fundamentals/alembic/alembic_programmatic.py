@@ -7,9 +7,9 @@ Demonstrates:
 - Autogenerating a migration from SQLAlchemy ORM metadata
 - Upgrading and downgrading programmatically
 
-sqlalchemy-cubrid (1.8.0 and later) registers ``CubridImpl`` for every CUBRID
-URL on its own: through Alembic's ``alembic.plugins`` entry point on Alembic
-1.18+, or when the dialect loads on older Alembic releases. CUBRID DDL is
+sqlalchemy-cubrid (1.8.0 and later) registers ``CubridImpl`` automatically:
+when the dialect loads, or, on sqlalchemy-cubrid 1.9.0+ with Alembic 1.18+ and
+Alembic not yet imported, through the ``alembic.plugins`` entry point. CUBRID DDL is
 transactional while autocommit is off (pycubrid's default), so ``CubridImpl``
 sets ``transactional_ddl = True``: by default the whole ``upgrade`` runs in one
 transaction, and a failure rolls back every revision in that run. The recipe
@@ -270,7 +270,7 @@ def main() -> None:
     print("--- CUBRID + Alembic notes ---")
     print(f"  * Migration impl: {impl_name} (registered automatically by sqlalchemy-cubrid).")
     print(f"  * transactional_ddl = {transactional_ddl}  -> ROLLBACK undoes uncommitted DDL")
-    print("    (autocommit off, the pycubrid default); a failed upgrade rolls back.")
+    print("    (autocommit off, the pycubrid default); by default a failed upgrade rolls back.")
     print("  * No native SEQUENCE support  -> migrations use AUTO_INCREMENT.")
     print("  * Identifiers are lowercase-folded with a 254-char max.")
     print()
