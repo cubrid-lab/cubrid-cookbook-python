@@ -23,6 +23,7 @@ updates:
     # Every standalone recipe owns its requirements.txt. Directories without
     # one are skipped; the root pyproject.toml only configures ruff.
     directories:
+      - "/.github"
       - "/fundamentals/*"
       - "/migration/*"
       - "/pitfalls/*"

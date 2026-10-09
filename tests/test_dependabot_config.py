@@ -76,6 +76,40 @@ class DependabotConfigTests(unittest.TestCase):
         self.assertIn("versioning-strategy: increase-if-necessary", pip)
 
 
+class DocsToolPinTests(unittest.TestCase):
+    """The strict docs build must install the pinned tools (#247)."""
+
+    REQUIREMENTS = CONFIG.parent / "requirements-docs.txt"
+    INSTALL = "pip install -r .github/requirements-docs.txt"
+    TOOLS = ("mkdocs", "mkdocs-material", "pymdown-extensions")
+
+    def test_docs_tools_are_exactly_pinned(self) -> None:
+        lines = [
+            line.strip()
+            for line in self.REQUIREMENTS.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.startswith("#")
+        ]
+        pinned = dict(line.split("==", 1) for line in lines if re.fullmatch(r"[\w.-]+==\S+", line))
+        self.assertEqual(len(pinned), len(lines), f"unpinned entry in {lines}")
+        for tool in self.TOOLS:
+            self.assertIn(tool, pinned)
+
+    def test_every_docs_build_uses_the_pinned_file(self) -> None:
+        for name in ("docs.yml", "ci.yml"):
+            with self.subTest(workflow=name):
+                text = (WORKFLOWS / name).read_text(encoding="utf-8")
+                self.assertIn(self.INSTALL, text)
+                self.assertNotRegex(text, r"pip install\s+(?!-r)[^\n]*mkdocs")
+                self.assertNotRegex(text, r"pip install\s+(?!-r)[^\n]*pymdown")
+
+    def test_dependabot_covers_the_docs_requirements(self) -> None:
+        config = CONFIG.read_text(encoding="utf-8")
+        self.assertTrue(
+            any(_matches("/.github", p) for p in _pip_directories(config)),
+            ".github/requirements-docs.txt is not covered by the pip `directories` globs",
+        )
+
+
 class WorkflowPinTests(unittest.TestCase):
     def test_actions_are_sha_pinned_and_aligned(self) -> None:
         pins: dict[str, set[tuple[str, str]]] = {}
