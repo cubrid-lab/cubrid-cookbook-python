@@ -31,6 +31,9 @@ USES_CHECKOUT = re.compile(r"^(\s*)(- )?uses:\s*[\"']?actions/checkout@")
 # ``scope`` is "top" for the workflow-level block or the job id for a job-level one.
 WRITE_ALLOWLIST: dict[str, set[tuple[str, str]]] = {
     "docs.yml": {("top", "pages"), ("top", "id-token")},
+    # The advisory driver-main lane (#239) reports to one tracking issue.
+    "ci.yml": {("driver-main-advisory", "issues")},
+    "driver-main.yml": {("report", "issues")},
     "dependabot-auto-merge.yml": {
         ("auto-merge", "contents"),
         ("auto-merge", "pull-requests"),

@@ -143,6 +143,19 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   2026-10-07, 10 of 37 scheduled runs failed in `make verify`, most on days
   without a `main` push (2026-09-03 to 09-08, 09-25/26), so main pushes alone
   would have detected those regressions days later.
+- **Advisory driver-main lane (#239), never gated.** `.github/workflows/driver-main.yml`
+  installs `pycubrid` and `sqlalchemy-cubrid` from their `main` branches (pinned
+  to the commits resolved at the start of the run, and verified after install)
+  and runs `make verify` on representative golden directories against CUBRID
+  11.4. It has no schedule of its own: the weekly `ci.yml` schedule calls it
+  (job `driver-main-advisory`, outside `CI Gate`), and it can be dispatched with
+  `gh workflow run driver-main.yml -R cubrid-lab/cubrid-cookbook-python`. A
+  scheduled call is skipped when neither driver's `main` has a commit from the
+  last 8 days, and the lane runs only in the upstream repository. Its recipe job
+  has `continue-on-error`, so a break leaves the run green; the run summary and
+  one tracking issue ("ci: cookbook recipes failing against driver main",
+  opened, commented on and closed automatically) carry the signal. No pull
+  request runs it, and it cannot block a merge.
 
 Measured before/after (#222; "before" = median of real runs since 2026-10-03 with
 the current job set; "after" = the classifier applied to the files of the last 40

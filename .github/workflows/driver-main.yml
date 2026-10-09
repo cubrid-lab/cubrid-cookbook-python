@@ -1,0 +1,254 @@
+name: Driver main advisory
+
+# Advisory canary (#239): installs pycubrid and sqlalchemy-cubrid from their
+# `main` branches (pinned to the commits resolved at the start of the run) and
+# runs representative recipe goldens against live CUBRID 11.4, so a driver
+# regression shows up before it is released. It never gates anything:
+#
+# * The recipe job has continue-on-error, so a driver-main break leaves the run
+#   green; the step summary and one tracking issue carry the signal.
+# * No pull request trigger, and ci-gate in ci.yml does not need it
+#   (tests/test_ci_scope.py fails if that changes).
+# * No schedule of its own: ci.yml calls it from its existing weekly schedule
+#   (`driver-main-advisory` job). Run it on demand with
+#   `gh workflow run driver-main.yml -R cubrid-lab/cubrid-cookbook-python`.
+#
+# Activity guard: a scheduled call is skipped when neither driver's main branch
+# has a commit newer than ACTIVE_DAYS (nothing new since the last weekly run),
+# and the whole lane runs only in the upstream repository, not in forks. A
+# manual dispatch always runs.
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  ACTIVE_DAYS: "8"
+  # Same representative goldens as the exact-floor lane (#241): the global
+  # pycubrid/SQLAlchemy examples, the advanced SQLAlchemy, async, ORM, alembic
+  # and pycubrid fundamentals.
+  RECIPES: >-
+    fundamentals/crud fundamentals/error-handling fundamentals/lob-handling
+    fundamentals/transactions fundamentals/json pitfalls/reserved-words
+    migration/java-to-python quickstart/5min-sqlalchemy fundamentals/pandas
+    fundamentals/async fundamentals/connect fundamentals/orm-basics
+    fundamentals/pycubrid fundamentals/sqlalchemy fundamentals/alembic
+
+jobs:
+  guard:
+    name: Resolve driver main commits
+    if: github.repository == 'cubrid-lab/cubrid-cookbook-python'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      run: ${{ steps.resolve.outputs.run }}
+      pycubrid_sha: ${{ steps.resolve.outputs.pycubrid_sha }}
+      sqlalchemy_cubrid_sha: ${{ steps.resolve.outputs.sqlalchemy_cubrid_sha }}
+    steps:
+      - name: Resolve main commits and check for recent activity
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          newest=0
+          for repo in pycubrid sqlalchemy-cubrid; do
+            sha="$(git ls-remote "https://github.com/cubrid-lab/${repo}.git" refs/heads/main | cut -f1)"
+            test -n "$sha"
+            date="$(gh api "repos/cubrid-lab/${repo}/commits/${sha}" --jq .commit.committer.date)"
+            epoch="$(date -d "$date" +%s)"
+            if [ "$epoch" -gt "$newest" ]; then newest="$epoch"; fi
+            echo "${repo}@main is ${sha} (${date})"
+            echo "${repo//-/_}_sha=${sha}" >> "$GITHUB_OUTPUT"
+          done
+          age_days=$(( ($(date +%s) - newest) / 86400 ))
+          if [ "$EVENT" = "schedule" ] && [ "$age_days" -ge "$ACTIVE_DAYS" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Neither driver main changed in ${age_days} days; skipping the scheduled run." \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  recipes:
+    name: Recipes against driver main (CUBRID 11.4, advisory)
+    needs: [guard]
+    if: needs.guard.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Advisory: a failure here never fails the run; the report job records it.
+    continue-on-error: true
+    permissions:
+      contents: read
+    outputs:
+      status: ${{ steps.status.outputs.status }}
+    services:
+      cubrid:
+        image: cubrid/cubrid:11.4
+        env:
+          CUBRID_DB: testdb
+        ports:
+          - 33000:33000
+        options: --shm-size 512m
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install recipe requirements with both drivers from main
+        env:
+          PYCUBRID_SHA: ${{ needs.guard.outputs.pycubrid_sha }}
+          SQLALCHEMY_CUBRID_SHA: ${{ needs.guard.outputs.sqlalchemy_cubrid_sha }}
+        run: |
+          set -euo pipefail
+          reqs=()
+          for dir in $RECIPES; do
+            if [ -f "$dir/requirements.txt" ]; then reqs+=(-r "$dir/requirements.txt"); fi
+          done
+          # One resolve: the direct references replace the PyPI drivers, and a
+          # recipe pin that main no longer satisfies fails here.
+          python -m pip install --upgrade pip
+          python -m pip install "${reqs[@]}" \
+            "pycubrid @ git+https://github.com/cubrid-lab/pycubrid.git@${PYCUBRID_SHA}" \
+            "sqlalchemy-cubrid @ git+https://github.com/cubrid-lab/sqlalchemy-cubrid.git@${SQLALCHEMY_CUBRID_SHA}"
+          python -m pip check
+
+      - name: Verify both drivers came from the resolved main commits
+        env:
+          PYCUBRID_SHA: ${{ needs.guard.outputs.pycubrid_sha }}
+          SQLALCHEMY_CUBRID_SHA: ${{ needs.guard.outputs.sqlalchemy_cubrid_sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          from importlib import metadata
+
+          rows = []
+          ok = True
+          for dist, env in (("pycubrid", "PYCUBRID_SHA"), ("sqlalchemy-cubrid", "SQLALCHEMY_CUBRID_SHA")):
+              want = os.environ[env]
+              info = json.loads(metadata.distribution(dist).read_text("direct_url.json") or "{}")
+              got = info.get("vcs_info", {}).get("commit_id", "")
+              version = metadata.version(dist)
+              ok &= got == want
+              rows.append(f"| {dist} | {version} | `{got[:12] or 'not from git'}` |")
+          summary = "\n".join(
+              ["### Drivers under test (main)", "", "| Driver | Version | Commit |", "|---|---|---|", *rows, ""]
+          )
+          print(summary)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
+              out.write(summary + "\n")
+          sys.exit(0 if ok else "a driver was not installed from the resolved main commit")
+          PY
+
+      - name: Wait for CUBRID
+        run: |
+          for i in $(seq 1 36); do
+            if python -c "import pycubrid; pycubrid.connect(host='localhost', port=33000, database='testdb', user='dba', password='').close()" 2>/dev/null; then
+              echo "CUBRID ready (attempt $i)"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::CUBRID did not accept connections in time"
+          exit 1
+
+      - name: Run representative goldens
+        run: |
+          set -euo pipefail
+          printf '### Recipes run against driver main\n\n%s\n' "$RECIPES" >> "$GITHUB_STEP_SUMMARY"
+          make verify VERIFY_PATHS="$RECIPES"
+
+      # Recorded even when an earlier step fails; with job-level
+      # continue-on-error the report job cannot rely on needs.<job>.result.
+      - name: Record job status
+        id: status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: echo "status=$JOB_STATUS" >> "$GITHUB_OUTPUT"
+
+  # Opens (or comments on) one tracking issue when the recipes fail against
+  # driver main and closes it once they pass again (the sqlalchemy-cubrid
+  # upstream-canary pattern). No continue-on-error: a red run means reporting
+  # itself broke. Only for the default branch, so a dispatch from a feature
+  # branch never touches the shared issue.
+  report:
+    name: Report driver main status
+    needs: [guard, recipes]
+    if: >-
+      !cancelled()
+      && needs.guard.outputs.run == 'true'
+      && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: driver-main-advisory-report
+      cancel-in-progress: false
+    permissions:
+      issues: write
+    steps:
+      - name: Open, update or close the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ISSUE_TITLE: "ci: cookbook recipes failing against driver main"
+          STATUS: ${{ needs.recipes.outputs.status }}
+          RESULT: ${{ needs.recipes.result }}
+          PYCUBRID_SHA: ${{ needs.guard.outputs.pycubrid_sha }}
+          SQLALCHEMY_CUBRID_SHA: ${{ needs.guard.outputs.sqlalchemy_cubrid_sha }}
+          COOKBOOK_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          table="| Driver | main commit tested |
+          |---|---|
+          | pycubrid | [\`${PYCUBRID_SHA:0:12}\`](https://github.com/cubrid-lab/pycubrid/commit/${PYCUBRID_SHA}) |
+          | sqlalchemy-cubrid | [\`${SQLALCHEMY_CUBRID_SHA:0:12}\`](https://github.com/cubrid-lab/sqlalchemy-cubrid/commit/${SQLALCHEMY_CUBRID_SHA}) |"
+          tested="Cookbook: [\`${COOKBOOK_SHA:0:12}\`](https://github.com/${GH_REPO}/commit/${COOKBOOK_SHA})"
+
+          # jq runs once per page, so keep the first line in bash instead of
+          # piping to head (which could SIGPIPE gh under pipefail).
+          issue="$(gh api --paginate "repos/${GH_REPO}/issues?state=open&labels=ci&per_page=100" \
+            --jq 'first(.[] | select(.pull_request == null and .title == env.ISSUE_TITLE) | .number) // empty')"
+          issue="${issue%%$'\n'*}"
+
+          # Passed only if the job recorded "success" itself.
+          if [ "$STATUS" != "success" ] || [ "$RESULT" != "success" ]; then
+            body="Representative cookbook recipes failed against the drivers' \`main\` branches (status: ${STATUS:-none}, result: ${RESULT}). This is advisory: released drivers and pull requests are unaffected.
+
+          ${table}
+
+          ${tested}
+          Run: ${RUN_URL}
+
+          Updated by \`.github/workflows/driver-main.yml\`; closed automatically once the recipes pass again."
+            if [ -n "$issue" ]; then
+              gh issue comment "$issue" --body "$body"
+            else
+              gh issue create --title "$ISSUE_TITLE" --label ci --body "$body"
+            fi
+            printf '## Recipes failed against driver main (advisory)\n\n%s\n' "$table" >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$issue" ]; then
+            gh issue close "$issue" --comment "Recipes pass against driver main again.
+
+          ${table}
+
+          ${tested}
+          Run: ${RUN_URL}"
+          else
+            echo "Recipes passed against driver main; no open tracking issue."
+          fi

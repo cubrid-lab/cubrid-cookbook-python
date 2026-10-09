@@ -18,12 +18,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import ci_scope  # noqa: E402
+from test_workflow_timeouts import parse_jobs  # noqa: E402
 
 CI = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 SMOKE = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
 ROOTS = ci_scope.example_roots(ROOT)
 LIVE = ("web", "dashboard", "async_worker", "django", "cqrs", "compat", "smoke_114", "smoke_112")
 CQRS = ci_scope.CQRS_ROOT
+DRIVER_MAIN = (ROOT / ".github/workflows/driver-main.yml").read_text(encoding="utf-8")
+# Jobs that must never feed ci-gate (#239): advisory lanes only.
+ADVISORY_JOBS = {"driver-main-advisory"}
 
 
 def scope(*paths: str, event: str = "pull_request") -> dict[str, object]:
@@ -238,7 +242,9 @@ class GateTests(unittest.TestCase):
         gate = CI.split("  ci-gate:\n", 1)[1]
         needs = gate.split("needs: [", 1)[1].split("]", 1)[0].split(", ")
         jobs = re.findall(r"^  ([a-z0-9-]+):\n", CI.split("\njobs:\n", 1)[1], re.MULTILINE)
-        self.assertEqual(sorted(needs), sorted(j for j in jobs if j != "ci-gate"))
+        self.assertEqual(
+            sorted(needs), sorted(j for j in jobs if j != "ci-gate" and j not in ADVISORY_JOBS)
+        )
         loop = gate_script().split("for var in ", 1)[1].split(";", 1)[0].split()
         self.assertEqual(sorted(loop), sorted(gate_env_names("R")))
         for job in needs:
@@ -364,6 +370,73 @@ class WorkflowWiringTests(unittest.TestCase):
         triggers = "\n" + CI.split("\non:\n", 1)[1].split("\nconcurrency:", 1)[0]
         for trigger in ("pull_request:", "push:", "schedule:", "workflow_dispatch:"):
             self.assertIn(f"\n  {trigger}", triggers)
+
+
+class DriverMainAdvisoryTests(unittest.TestCase):
+    """The driver-main lane (#239) is advisory: it can never block a merge."""
+
+    def job(self, text: str, name: str) -> str:
+        return "\n".join(parse_jobs(text)[name])
+
+    def test_advisory_job_is_not_part_of_the_gate(self) -> None:
+        gate = CI.split("  ci-gate:\n", 1)[1]
+        needs = gate.split("needs: [", 1)[1].split("]", 1)[0].split(", ")
+        for job in ADVISORY_JOBS:
+            with self.subTest(job=job):
+                self.assertNotIn(job, needs)
+                self.assertNotIn(job.upper().replace("-", "_"), gate)
+                self.assertNotIn(f"needs.{job}", CI)
+
+    def test_ci_calls_it_only_on_the_existing_weekly_schedule(self) -> None:
+        job = self.job(CI, "driver-main-advisory")
+        self.assertIn("if: github.event_name == 'schedule'", job)
+        self.assertIn("uses: ./.github/workflows/driver-main.yml", job)
+        self.assertNotIn("needs:", job)
+
+    def test_workflow_adds_no_schedule_and_no_pull_request_trigger(self) -> None:
+        triggers = DRIVER_MAIN.split("\non:\n", 1)[1].split("\npermissions:", 1)[0]
+        self.assertEqual(
+            re.findall(r"^  ([a-z_]+):", triggers, re.M), ["workflow_dispatch", "workflow_call"]
+        )
+        self.assertNotIn("cron", DRIVER_MAIN)
+
+    def test_recipe_job_cannot_fail_the_run(self) -> None:
+        job = self.job(DRIVER_MAIN, "recipes")
+        self.assertIn("continue-on-error: true", job)
+        self.assertIn("if: always()", job)  # status recorded for the report job
+        report = self.job(DRIVER_MAIN, "report")
+        self.assertNotIn("continue-on-error", report)
+        self.assertIn("issues: write", report)
+
+    def test_drivers_come_from_main_commits(self) -> None:
+        job = self.job(DRIVER_MAIN, "recipes")
+        for repo, env in (
+            ("pycubrid", "PYCUBRID_SHA"),
+            ("sqlalchemy-cubrid", "SQLALCHEMY_CUBRID_SHA"),
+        ):
+            with self.subTest(repo=repo):
+                self.assertIn(f"git+https://github.com/cubrid-lab/{repo}.git@${{{env}}}", job)
+        self.assertIn("refs/heads/main", DRIVER_MAIN)
+        self.assertIn('read_text("direct_url.json")', job)
+
+    def test_safe_concurrency_and_activity_guard(self) -> None:
+        self.assertIn(
+            "group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' "
+            "&& github.ref || github.run_id }}",
+            DRIVER_MAIN,
+        )
+        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", DRIVER_MAIN)
+        guard = self.job(DRIVER_MAIN, "guard")
+        self.assertIn("if: github.repository == 'cubrid-lab/cubrid-cookbook-python'", guard)
+        self.assertIn('[ "$EVENT" = "schedule" ]', guard)
+
+    def test_recipes_are_golden_directories(self) -> None:
+        block = DRIVER_MAIN.split("  RECIPES: >-\n", 1)[1].split("\n\n", 1)[0]
+        recipes = block.split()
+        self.assertGreaterEqual(len(recipes), 10)
+        for recipe in recipes:
+            with self.subTest(recipe=recipe):
+                self.assertIn(recipe, ROOTS)
 
 
 if __name__ == "__main__":

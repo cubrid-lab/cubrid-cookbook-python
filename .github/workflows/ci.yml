@@ -334,6 +334,20 @@ jobs:
           cubrid-version: "11.2"
           verify-paths: ${{ needs.classify.outputs.verify_paths }}
 
+  # Advisory only (#239), never part of ci-gate: the weekly schedule also runs
+  # representative goldens against pycubrid and sqlalchemy-cubrid `main`
+  # (.github/workflows/driver-main.yml; also dispatchable on its own). Its
+  # recipe job has continue-on-error and a failure is reported to one tracking
+  # issue, so a driver-main break never blocks contributors. issues: write is
+  # for that report job only.
+  driver-main-advisory:
+    name: Driver main advisory
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/driver-main.yml
+
   # Single aggregate check for branch protection. Fail-closed allow-list:
   # classify and the always-on cheap checks must succeed; every other lane must
   # succeed unless classify marked it not applicable (output exactly "false").
