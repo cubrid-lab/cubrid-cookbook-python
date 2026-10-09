@@ -153,6 +153,8 @@ check-docs: ## Check documentation coverage and its doctests
 	$(PYTHON) scripts/check_docs_sync.py
 	$(PYTHON) scripts/check_support_matrix_counts.py
 	$(PYTHON) scripts/check_dependency_floors.py
+	$(PYTHON) -m unittest discover -s tests -p 'test_lint_changelog.py' -v
+	$(PYTHON) scripts/lint_changelog.py
 
 check: lint test-offline check-docs check-coverage test-normalize ## Run offline contributor checks
 

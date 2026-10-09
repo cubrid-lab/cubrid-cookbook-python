@@ -109,6 +109,49 @@ period, no issue numbers in pull request titles (use `Closes #N` /
 `Refs #N` in the body). Pull requests are squash-merged and the pull request
 title becomes the commit title. The `PR title` check enforces it.
 
+## GitHub Release Policy
+
+This repository currently publishes no GitHub Releases, and no release automation is
+added. If Releases are introduced later, these rules apply unchanged.
+
+### Titles
+
+- A Release title equals its tag exactly. Stable tags and titles are `vMAJOR.MINOR.PATCH`.
+- No package name, feature, date or suffix in a title (not `cubrid-cookbook-python 1.2.3`,
+  `v1.2.3 — Foo`, `v1.2.3 (corrected)` or `Release v1.2.3`). Drafts follow the same rule.
+- Never move, delete or recreate a tag to fix a title. Never delete and recreate a
+  published Release.
+- Metadata edits keep the notes, assets, published state and prerelease state. When
+  editing a draft through the API, always resend `tag_name`: a PATCH without it resets
+  the draft's tag to `untagged-…`. `gh release edit` resends `tag_name` automatically;
+  raw `gh api` PATCHes must include it.
+- Agents verify these rules whenever they touch release automation.
+
+### Stale drafts
+
+- Inspect drafts before preparing a release. Never assume a draft is pending.
+- Classify each draft against its tag:
+  - Already shipped (the tag exists): publish it with `make_latest=false`, or remove
+    it, only after maintainer approval.
+  - Never shipped: never publish it. Delete it only after maintainer approval.
+- Never delete drafts automatically. Preserve their notes and assets.
+
+### Release notes
+
+- `CHANGELOG.md` is the single source of truth. A Release body is the CHANGELOG
+  section plus one `**Full Changelog**` compare link.
+- Allowed `###` sections, in this order, only when they have content: Upgrade notes,
+  Added, Changed, Deprecated, Removed, Fixed, Security, Performance, Documentation, CI,
+  Tests. `scripts/lint_changelog.py` enforces this for `[Unreleased]` and for releases
+  after 0.2.0 (the latest tag).
+- Use `Documentation`, not `Docs`. Put release automation and tooling entries under
+  `CI` or `Changed`.
+- The legacy `### Previous Releases` block at the end of `[Unreleased]` predates these
+  sections. The lint does not check it and its text stays as written.
+- Never bulk-rewrite historical notes or regenerate them from current `main`. A
+  selective fix needs a dry-run diff and maintainer approval. Never invent PR or commit
+  references. Note formatting never changes tags, dates, artifacts or publish state.
+
 ## Issue Labeling (cubrid-lab org standard)
 
 When creating an issue in **any cubrid-lab repository**, assign exactly one
