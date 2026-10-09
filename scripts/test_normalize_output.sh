@@ -49,6 +49,25 @@ assert "datetime with microseconds (space sep)" \
 assert "datetime on a whole second, zero-padded milliseconds (#189)" \
   "  sku=SKU-100  name=Keyboard  last_seen_utc=2026-08-26 11:03:13.000" \
   "  sku=SKU-100  name=Keyboard  last_seen_utc={{DATETIME}}"
+for sep_name in "space:" "T:T"; do
+  sep_label="${sep_name%%:*}"; sep="${sep_name#*:}"; sep="${sep:- }"
+  assert "datetime whole second, no fraction (${sep_label} sep)" \
+    "  at=2026-08-26${sep}11:03:13 end" "  at={{DATETIME}} end"
+  assert "datetime milliseconds (${sep_label} sep)" \
+    "  at=2026-08-26${sep}11:03:13.052 end" "  at={{DATETIME}} end"
+  assert "datetime microseconds (${sep_label} sep)" \
+    "  at=2026-08-26${sep}11:03:13.052000 end" "  at={{DATETIME}} end"
+done
+assert "keeps fixed whole-second zone-name value" \
+  "  ts=2026-01-15 10:30:00 Asia/Seoul" "  ts={{DATE}} 10:30:00 Asia/Seoul"
+assert "keeps fixed whole-second UTC-name value" \
+  "  ts=2026-01-15 10:30:00 UTC" "  ts={{DATE}} 10:30:00 UTC"
+assert "keeps whole-second Z-suffixed value" \
+  "  ts=2026-01-15T10:30:00Z" "  ts={{DATE}}T10:30:00Z"
+assert "datetime whole second at end of line" \
+  "  at=2026-08-26 11:03:13" "  at={{DATETIME}}"
+assert "logging comma-fraction stays TIMESTAMP" \
+  "2026-08-26 11:03:13,052 INFO x" "{{TIMESTAMP}} INFO x"
 assert "bulk-insert perf: execute(insert, rows)" \
   "execute(insert, rows): 0.0664s" \
   "execute(insert, rows): {{TIME}}s"
@@ -72,6 +91,12 @@ assert "pandas int64 dtype line canonicalized (is_active)" \
   "is_active int64"
 
 # --- Guardrail: rules must NOT touch meaningful data ---
+assert "keeps plain date followed by text" \
+  "Date: 2026-08-26 is a Wednesday" \
+  "Date: {{DATE}} is a Wednesday"
+assert "keeps HH:MM:SS duration without a date" \
+  "elapsed 01:02:03 total" \
+  "elapsed 01:02:03 total"
 assert "keeps SQL text" \
   "Executing: SELECT id, name FROM users WHERE age > 30" \
   "Executing: SELECT id, name FROM users WHERE age > 30"
