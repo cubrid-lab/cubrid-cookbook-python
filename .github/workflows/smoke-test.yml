@@ -118,13 +118,21 @@ env:
 
 jobs:
   verify:
-    name: Smoke Tests (CUBRID ${{ matrix.cubrid }})
+    name: Smoke Tests (CUBRID ${{ matrix.cubrid }}${{ matrix.python != '3.12' && format(', Python {0}', matrix.python) || '' }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         cubrid: ["11.2", "11.4"]
+        python: ["3.12"]
+        # Python 3.11 is the supported minimum. Only a release verification
+        # (the same condition as the concurrency group above) adds one extra
+        # cell, CUBRID 11.4 on 3.11; main, the schedule and other manual runs
+        # keep the two Python 3.12 cells. Existing job and artifact names stay.
+        include: >-
+          ${{ fromJSON((github.event_name == 'repository_dispatch' || (inputs.package && inputs.package != 'latest'))
+          && '[{"cubrid": "11.4", "python": "3.11"}]' || '[]') }}
     steps:
       - name: Detect release workflow call
         # A called job's github context is the caller's; job.workflow_ref/_sha/
@@ -197,7 +205,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python }}
 
       - name: Check golden coverage
         # Guard against issue #89: a script inside an expected/-owning directory
@@ -546,6 +554,7 @@ jobs:
         env:
           SMOKE_RESULT: ${{ job.status }}
           CUBRID_VERSION: ${{ matrix.cubrid }}
+          PYTHON_VERSION: ${{ matrix.python }}
         run: |
           set -o pipefail
           # Release requests also write this job's machine-readable result.
@@ -554,6 +563,7 @@ jobs:
             --result "$SMOKE_RESULT" \
             --part "$RUNNER_TEMP/release-verification-part.json" \
             --cubrid "$CUBRID_VERSION" \
+            --python "$PYTHON_VERSION" \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload release verification result
@@ -561,7 +571,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: release-verification-part-cubrid-${{ matrix.cubrid }}
+          name: release-verification-part-cubrid-${{ matrix.cubrid }}${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}
           path: ${{ runner.temp }}/release-verification-part.json
           if-no-files-found: ignore
           retention-days: 7

@@ -269,6 +269,7 @@ def summary(
     result: str,
     part: Path | None = None,
     cubrid: str = "",
+    python: str = "",
 ) -> None:
     """Report facts even if selection, publication or validation failed.
 
@@ -335,6 +336,7 @@ def summary(
             json.dumps(
                 {
                     "cubrid": cubrid,
+                    "python": python or None,
                     "request_valid": valid_request,
                     "installed_version": None if version == "unavailable" else version,
                     "origin": origin,
@@ -349,6 +351,12 @@ def summary(
         )
     if invalid_success:
         raise ValueError("A successful smoke result requires final version and origin verification")
+
+
+def cell(part: dict[str, object]) -> str:
+    """Name a smoke matrix cell: the CUBRID version plus a non-default Python."""
+    python = part.get("python")
+    return f"CUBRID {part.get('cubrid')}" + (f", Python {python}" if python else "")
 
 
 def build_report(
@@ -371,13 +379,12 @@ def build_report(
     for p in parts:
         if p.get("installed_version") != requested:
             reasons.append(
-                f"CUBRID {p.get('cubrid')}: installed {p.get('installed_version')} "
+                f"{cell(p)}: installed {p.get('installed_version')} "
                 f"differs from requested {requested}"
             )
         elif p.get("verification") != "passed" or p.get("result") != "success":
             reasons.append(
-                f"CUBRID {p.get('cubrid')}: verification {p.get('verification')}, "
-                f"result {p.get('result')}"
+                f"{cell(p)}: verification {p.get('verification')}, result {p.get('result')}"
             )
     return {
         "schema_version": REPORT_SCHEMA,
@@ -389,7 +396,7 @@ def build_report(
         "status": "failure" if reasons else "success",
         "reasons": reasons,
         "run": run,
-        "matrix": sorted(parts, key=lambda p: str(p.get("cubrid"))),
+        "matrix": sorted(parts, key=lambda p: (str(p.get("cubrid")), str(p.get("python")))),
     }
 
 
@@ -485,6 +492,7 @@ def main() -> None:
     final.add_argument("--result", required=True)
     final.add_argument("--part", type=Path)
     final.add_argument("--cubrid", default="")
+    final.add_argument("--python", default="")
     combine = commands.add_parser("report")
     event_arguments(combine)
     combine.add_argument("--parts", type=Path, required=True)
@@ -536,6 +544,7 @@ def main() -> None:
                 args.result,
                 args.part,
                 args.cubrid,
+                args.python,
             )
     except (ValueError, OSError, metadata.PackageNotFoundError) as error:
         parser.exit(1, f"Release smoke check failed: {error}\n")

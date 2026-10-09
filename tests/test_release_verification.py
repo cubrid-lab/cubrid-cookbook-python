@@ -35,6 +35,7 @@ REPORT_KEYS = {
 }
 PART_KEYS = {
     "cubrid",
+    "python",
     "request_valid",
     "installed_version",
     "origin",
@@ -104,9 +105,9 @@ class ReleaseVerificationTests(unittest.TestCase):
         smoke.freeze(self.state, self.constraints, request)
         self.write_parts(event_name, cubrids)
 
-    def write_parts(self, event_name: str, cubrids=("11.2", "11.4")) -> None:
+    def write_parts(self, event_name: str, cubrids=("11.2", "11.4"), python: str = "3.12") -> None:
         for cubrid in cubrids:
-            directory = self.parts / f"release-verification-part-cubrid-{cubrid}"
+            directory = self.parts / f"release-verification-part-cubrid-{cubrid}-py{python}"
             directory.mkdir(parents=True, exist_ok=True)
             with contextlib.redirect_stdout(io.StringIO()), contextlib.suppress(ValueError):
                 smoke.summary(
@@ -118,6 +119,7 @@ class ReleaseVerificationTests(unittest.TestCase):
                     "success",
                     directory / smoke.REPORT_PART,
                     cubrid,
+                    python,
                 )
 
     def report(self, event_name: str, verify_result: str = "success") -> tuple[bool, str]:
@@ -367,7 +369,13 @@ class ReleaseVerificationTests(unittest.TestCase):
         self.assertIn("      request_id:\n", WORKFLOW[: WORKFLOW.index("concurrency:")])
         verify = WORKFLOW[WORKFLOW.index("\n  verify:") : WORKFLOW.index("\n  report:")]
         self.assertIn('--part "$RUNNER_TEMP/release-verification-part.json"', verify)
-        self.assertIn("name: release-verification-part-cubrid-${{ matrix.cubrid }}", verify)
+        # The default cells keep their documented artifact names; only the extra
+        # Python cell gets a -py suffix so it cannot overwrite the 11.4 result.
+        self.assertIn(
+            "name: release-verification-part-cubrid-${{ matrix.cubrid }}"
+            "${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}",
+            verify,
+        )
         report = WORKFLOW[WORKFLOW.index("\n  report:") :]
         self.assertIn("needs: verify", report)
         self.assertIn("always() && (github.event_name == 'repository_dispatch'", report)
@@ -377,6 +385,69 @@ class ReleaseVerificationTests(unittest.TestCase):
         # Re-running failed jobs must be able to replace both artifacts.
         self.assertEqual(WORKFLOW.count("overwrite: true"), 2)
         self.assertNotIn("pypi", report.lower())
+
+    def test_report_lists_a_python_311_cell_and_names_its_failure(self) -> None:
+        self.payload(request_id="test-238-a1b2c3")
+        self.run_matrix("repository_dispatch")
+        self.write_parts("repository_dispatch", ("11.4",), "3.11")
+        passed, _ = self.report("repository_dispatch")
+        self.assertTrue(passed)
+        report = json.loads(self.output.read_text())
+        self.assertEqual(
+            [(part["cubrid"], part["python"]) for part in report["matrix"]],
+            [("11.2", "3.12"), ("11.4", "3.11"), ("11.4", "3.12")],
+        )
+        # A failed 3.11 cell fails the release and says which cell it was.
+        failed = self.parts / "release-verification-part-cubrid-11.4-py3.11" / smoke.REPORT_PART
+        part = json.loads(failed.read_text())
+        failed.write_text(json.dumps({**part, "result": "failure"}))
+        passed, _ = self.report("repository_dispatch")
+        self.assertFalse(passed)
+        report = json.loads(self.output.read_text())
+        self.assertEqual(report["status"], "failure")
+        self.assertEqual(
+            report["reasons"],
+            ["CUBRID 11.4, Python 3.11: verification passed, result failure"],
+        )
+
+    def test_release_verification_adds_only_a_python_311_cell(self) -> None:
+        verify = WORKFLOW[WORKFLOW.index("\n  verify:") : WORKFLOW.index("\n  report:")]
+        strategy = verify[verify.index("    strategy:") : verify.index("    steps:")]
+        # Default cells: the two CUBRID versions on the current Python 3.12.
+        self.assertIn('        cubrid: ["11.2", "11.4"]\n', strategy)
+        self.assertIn('        python: ["3.12"]\n', strategy)
+        # The one extra cell is CUBRID 11.4 on the supported minimum, 3.11 ...
+        self.assertEqual(
+            re.findall(r"\[\{[^]]*\}\]", strategy), ['[{"cubrid": "11.4", "python": "3.11"}]']
+        )
+        self.assertIn(
+            '&& \'[{"cubrid": "11.4", "python": "3.11"}]\' || \'[]\'', " ".join(strategy.split())
+        )
+        # ... added only for a release verification, the concurrency group's condition.
+        condition = "github.event_name == 'repository_dispatch' || (inputs.package && inputs.package != 'latest')"
+        self.assertIn(condition, " ".join(strategy.split()))
+        self.assertIn(condition, " ".join(WORKFLOW[WORKFLOW.index("concurrency:") :].split()))
+        # Setup uses the cell's Python, with no stray hard-coded version left.
+        self.assertIn("python-version: ${{ matrix.python }}", verify)
+        self.assertNotIn(
+            "python-version:", verify.replace("python-version: ${{ matrix.python }}", "")
+        )
+        self.assertIn('--python "$PYTHON_VERSION"', verify)
+        self.assertIn("PYTHON_VERSION: ${{ matrix.python }}", verify)
+        # The job name of the existing cells does not change; the extra cell is labelled.
+        self.assertIn(
+            "name: Smoke Tests (CUBRID ${{ matrix.cubrid }}"
+            "${{ matrix.python != '3.12' && format(', Python {0}', matrix.python) || '' }})",
+            verify,
+        )
+        # No new trigger or schedule: still the single daily cron.
+        self.assertEqual(WORKFLOW.count("cron:"), 1)
+
+    def test_summary_command_records_the_python_of_the_cell(self) -> None:
+        self.payload(request_id="test-238-a1b2c3")
+        self.run_matrix("repository_dispatch", ("11.4",))
+        part = json.loads(next(self.parts.glob(f"**/{smoke.REPORT_PART}")).read_text())
+        self.assertEqual(part["python"], "3.12")
 
 
 if __name__ == "__main__":

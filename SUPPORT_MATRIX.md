@@ -38,7 +38,7 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 | **3.14** | CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 |
 | **3.13** | CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 |
 | **3.12** | Full smoke matrix default and the representative pull-request Python; also in the compatibility matrix |
-| **3.11** | Minimum; CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 |
+| **3.11** | Minimum; CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4; also the full release-verification smoke on CUBRID 11.4 |
 | 3.10 | ❌ Not supported by the current cookbook (upstream end of life 2026-10-01); use an older cookbook/driver combination or upgrade Python |
 | 3.9 | ❌ Not supported |
 
@@ -51,7 +51,8 @@ fundamentals, shared live infrastructure or the CI policy; other pull requests
 rely on the Python 3.12 their selected live lanes use. Each runs real read-only queries, compares normalized output with its
 existing golden, and checks imports and compilation of the example sources.
 This is not a claim that every framework/template or every server version is
-tested on every Python version; the full smoke matrix remains Python 3.12.
+tested on every Python version; the full smoke matrix remains Python 3.12, except that a
+release verification (`smoke-test.yml`) also runs one full CUBRID 11.4 smoke job on Python 3.11.
 Failure, cancellation or a skip the classifier did not select fails the CI gate.
 
 ## Driver & Framework Versions

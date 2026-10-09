@@ -111,7 +111,7 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 | 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → representative suites; dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples; AI-agent code or other files in example trees → the same lane with a full `make verify` |
 | 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with full `make verify`, Python 3.11 + 3.14 compatibility |
 | 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
-| 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | every golden plus all Flask/FastAPI, async-worker, Django and dashboard suites on CUBRID 11.2 + 11.4 |
+| 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | every golden plus all Flask/FastAPI, async-worker, Django and dashboard suites on CUBRID 11.2 + 11.4 (Python 3.12); a release verification adds one CUBRID 11.4 cell on Python 3.11, the supported minimum |
 
 - Docs-only pull requests (`*.md`, `docs/`, `mkdocs.yml`, …) start no live CUBRID,
   except `SUPPORT_MATRIX.md`, which documents the driver floors.
@@ -415,8 +415,8 @@ Each request gets its own non-cancelling concurrency group (event, package, vers
 request id and run), so two verifications never replace each other and a called run
 never shares the caller's group.
 
-**Result.** The run's `conclusion` is `success` only when both CUBRID smoke jobs pass
-and every job installed exactly the requested version from PyPI. The
+**Result.** The run's `conclusion` is `success` only when every smoke job passes (CUBRID 11.2 and
+11.4 on Python 3.12, plus CUBRID 11.4 on Python 3.11) and every job installed exactly the requested version from PyPI. The
 `Release verification report` job then publishes, for every release request:
 
 - a job summary table (`request_id`, `package`, `requested_version`,
@@ -440,10 +440,11 @@ and every job installed exactly the requested version from PyPI. The
   "run": {"id": "…", "attempt": "1", "url": "https://github.com/…/actions/runs/…",
           "commit": "<cookbook SHA>", "event": "repository_dispatch"},
   "matrix": [
-    {"cubrid": "11.2", "request_valid": true, "installed_version": "1.8.0",
+    {"cubrid": "11.2", "python": "3.12", "request_valid": true, "installed_version": "1.8.0",
      "origin": "package index", "server": "11.2.x", "verification": "passed",
      "result": "success"},
-    {"cubrid": "11.4", "…": "…"}
+    {"cubrid": "11.4", "python": "3.12", "…": "…"},
+    {"cubrid": "11.4", "python": "3.11", "…": "…"}
   ]
 }
 ```
@@ -519,9 +520,10 @@ following job with `if: always()` can report them.
   artifacts are uploaded to and downloaded from the caller's run with the runner's
   own artifact token. The call inherits no secrets.
 - The jobs appear in the caller's run as `<calling job> / Smoke Tests (CUBRID 11.2)`,
-  `… (CUBRID 11.4)` and `… / Release verification report`, and upload the artifacts
-  `release-verification-part-cubrid-11.2`, `release-verification-part-cubrid-11.4`
-  and `release-verification-<request_id>`. Call the workflow at most once per
+  `… (CUBRID 11.4)`, `… (CUBRID 11.4, Python 3.11)` and
+  `… / Release verification report`, and upload the artifacts
+  `release-verification-part-cubrid-11.2`, `release-verification-part-cubrid-11.4`,
+  `release-verification-part-cubrid-11.4-py3.11` and `release-verification-<request_id>`. Call the workflow at most once per
   caller run.
 
 Run the smoke dependency guards without a database or network:

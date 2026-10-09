@@ -440,7 +440,11 @@ class ReleaseDispatchTests(unittest.TestCase):
         # (via release_smoke.py), never via interpolation.
         jobs = workflow[workflow.index("\njobs:") :]
         report_condition = "|| inputs.package != '') }}"
-        self.assertEqual(jobs.count("inputs."), 1)
+        # The verify job's strategy (the release-only Python 3.11 cell) is the only
+        # other use; it is a boolean condition, never part of a step.
+        strategy = jobs[jobs.index("    strategy:") : jobs.index("    steps:")]
+        self.assertEqual(strategy.count("inputs."), 2)
+        self.assertEqual(jobs.count("inputs.") - strategy.count("inputs."), 1)
         self.assertEqual(jobs.count(report_condition), 1)
         self.assertNotIn("client_payload", jobs)
         header = workflow[: workflow.index("\njobs:")]
