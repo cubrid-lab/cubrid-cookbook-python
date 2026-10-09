@@ -18,7 +18,8 @@ name: Driver main advisory
 # and the whole lane runs only in the upstream repository, not in forks. A
 # manual dispatch always runs. An open tracking issue is closed only by the next
 # run that actually executes the recipes, so when both drivers are idle for
-# ACTIVE_DAYS or more, close it with a manual dispatch.
+# ACTIVE_DAYS or more, close it with a manual dispatch on main once the
+# recipes pass (a dispatch from another branch never touches the issue).
 on:
   workflow_dispatch:
   workflow_call:

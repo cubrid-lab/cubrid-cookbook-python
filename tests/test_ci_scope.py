@@ -468,7 +468,9 @@ class DriverMainAdvisoryTests(unittest.TestCase):
     def test_recipes_match_the_driver_floor_sets(self) -> None:
         block = DRIVER_MAIN.split("  RECIPES: >-\n", 1)[1].split("\n\n", 1)[0]
         floor_dirs = {d for _, dirs in driver_floors.FLOOR_SETS for d in dirs}
-        self.assertEqual(set(block.split()), floor_dirs)
+        recipes = block.split()
+        self.assertEqual(len(recipes), len(set(recipes)), "duplicate recipe in RECIPES")
+        self.assertEqual(set(recipes), floor_dirs)
 
     def test_recipes_are_golden_directories(self) -> None:
         block = DRIVER_MAIN.split("  RECIPES: >-\n", 1)[1].split("\n\n", 1)[0]
