@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
+
+
+def naive_utc_now() -> datetime:
+    """Naive UTC timestamp; CUBRID DATETIME columns store no timezone."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class ApiClient(Base):
@@ -18,12 +23,12 @@ class ApiClient(Base):
     window_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
     burst_allowance: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=naive_utc_now,
+        onupdate=naive_utc_now,
     )
 
 
@@ -38,12 +43,10 @@ class ClientRateWindow(Base):
     previous_window_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     previous_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    last_seen_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=naive_utc_now,
+        onupdate=naive_utc_now,
     )

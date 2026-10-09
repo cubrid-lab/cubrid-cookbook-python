@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import importlib
 
 from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint
@@ -8,6 +8,11 @@ try:
     from .database import Base
 except ImportError:
     Base = importlib.import_module("database").Base
+
+
+def naive_utc_now() -> datetime:
+    """Naive UTC timestamp; CUBRID DATETIME columns store no timezone."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class EventStore(Base):
@@ -24,7 +29,7 @@ class EventStore(Base):
     payload_text: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow, index=True
+        DateTime, nullable=False, default=naive_utc_now, index=True
     )
 
 
@@ -37,9 +42,9 @@ class AggregateSnapshot(Base):
     last_sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
     state_text: Mapped[str] = mapped_column(Text, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now
     )
 
 
@@ -53,7 +58,7 @@ class AccountReadModel(Base):
     state: Mapped[str] = mapped_column(String(32), nullable=False, default="open", index=True)
     last_sequence_no: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now
     )

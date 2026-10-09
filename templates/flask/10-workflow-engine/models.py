@@ -1,9 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 try:
     from .database import db
 except ImportError:
     from database import db  # pyright: ignore[reportImplicitRelativeImport]
+
+
+def naive_utc_now() -> datetime:
+    """Naive UTC timestamp; CUBRID DATETIME columns store no timezone."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class WorkflowDefinition(db.Model):
@@ -14,9 +19,9 @@ class WorkflowDefinition(db.Model):
     name = db.Column(db.String(120), nullable=False)
     step_count = db.Column(db.Integer, nullable=False, default=0)
     version = db.Column(db.Integer, nullable=False, default=1)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=naive_utc_now)
     updated_at = db.Column(
-        db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now
     )
 
 
@@ -46,7 +51,7 @@ class WorkflowRun(db.Model):
     )
     state = db.Column(db.String(32), nullable=False, default="running", index=True)
     version = db.Column(db.Integer, nullable=False, default=1)
-    started_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime, nullable=False, default=naive_utc_now)
     completed_at = db.Column(db.DateTime, nullable=True)
     last_error_text = db.Column(db.Text, nullable=True)
 

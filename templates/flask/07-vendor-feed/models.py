@@ -1,7 +1,7 @@
 # pyright: reportCallIssue=false
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
@@ -12,6 +12,11 @@ import importlib
 db = importlib.import_module("database").db
 
 
+def naive_utc_now() -> datetime:
+    """Naive UTC timestamp; CUBRID DATETIME columns store no timezone."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class ImportBatch(db.Model):
     __tablename__ = "cookbook_import_batches"
 
@@ -19,7 +24,7 @@ class ImportBatch(db.Model):
     vendor_name: Mapped[str] = mapped_column(String(120), nullable=False)
     source_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="uploaded")
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     validated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     promoted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     rows: Mapped[list["ImportRow"]] = relationship(
@@ -106,7 +111,7 @@ class Product(db.Model):
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     category: Mapped[str] = mapped_column(String(80), nullable=False)
     in_stock: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
 
     def to_dict(self) -> dict[str, str | int]:
         return {

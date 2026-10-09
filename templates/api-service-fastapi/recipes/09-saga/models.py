@@ -1,11 +1,16 @@
 # pyright: reportImplicitRelativeImport=false, reportUnusedParameter=false
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
-from datetime import datetime
+from datetime import datetime, timezone
 
 try:
     from .database import Base
 except ImportError:
     from database import Base
+
+
+def naive_utc_now() -> datetime:
+    """Naive UTC timestamp; CUBRID DATETIME columns store no timezone."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Order(Base):
@@ -19,8 +24,8 @@ class Order(Base):
     state = Column(String(32), nullable=False, default="pending", index=True)
     failure_reason = Column(Text, nullable=True)
     version = Column(Integer, nullable=False, default=1)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=naive_utc_now)
+    updated_at = Column(DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now)
 
 
 class InventoryItem(Base):
@@ -30,8 +35,8 @@ class InventoryItem(Base):
     available_qty = Column(Integer, nullable=False)
     reserved_qty = Column(Integer, nullable=False, default=0)
     version = Column(Integer, nullable=False, default=1)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=naive_utc_now)
+    updated_at = Column(DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now)
 
 
 class PaymentAccount(Base):
@@ -41,8 +46,8 @@ class PaymentAccount(Base):
     available_cents = Column(Integer, nullable=False)
     held_cents = Column(Integer, nullable=False, default=0)
     version = Column(Integer, nullable=False, default=1)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=naive_utc_now)
+    updated_at = Column(DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now)
 
 
 class SagaStep(Base):
@@ -57,5 +62,5 @@ class SagaStep(Base):
     detail_text = Column(Text, nullable=True)
     executed_at = Column(DateTime, nullable=True)
     compensated_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=naive_utc_now)
+    updated_at = Column(DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now)

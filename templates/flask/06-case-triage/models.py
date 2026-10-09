@@ -1,7 +1,7 @@
 # pyright: reportCallIssue=false
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -9,6 +9,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import importlib
 
 db = importlib.import_module("database").db
+
+
+def naive_utc_now() -> datetime:
+    """Naive UTC timestamp; CUBRID DATETIME columns store no timezone."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class ReviewCase(db.Model):
@@ -24,7 +29,7 @@ class ReviewCase(db.Model):
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     notes: Mapped[list["ReviewNote"]] = relationship(
         back_populates="case", cascade="all, delete-orphan"
     )
@@ -56,7 +61,7 @@ class ReviewNote(db.Model):
     )
     author: Mapped[str] = mapped_column(String(80), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     case: Mapped["ReviewCase"] = relationship(back_populates="notes")
 
     def to_dict(self) -> dict[str, object]:

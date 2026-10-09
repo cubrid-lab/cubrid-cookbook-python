@@ -1,7 +1,7 @@
 # pyright: reportCallIssue=false
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -9,6 +9,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import importlib
 
 db = importlib.import_module("database").db
+
+
+def naive_utc_now() -> datetime:
+    """Naive UTC timestamp; CUBRID DATETIME columns store no timezone."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Category(db.Model):
@@ -20,7 +25,7 @@ class Category(db.Model):
         Integer, ForeignKey("cookbook_categories.id"), nullable=True
     )
     is_deleted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
 
     parent: Mapped["Category | None"] = relationship(
         "Category", remote_side=[id], back_populates="children"
@@ -48,7 +53,7 @@ class Article(db.Model):
         Integer, ForeignKey("cookbook_categories.id"), nullable=False
     )
     is_deleted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
 
     category: Mapped[Category] = relationship(back_populates="articles")
 

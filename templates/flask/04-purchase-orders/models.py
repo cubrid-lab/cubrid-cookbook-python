@@ -1,7 +1,7 @@
 # pyright: reportCallIssue=false
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -11,13 +11,18 @@ import importlib
 db = importlib.import_module("database").db
 
 
+def naive_utc_now() -> datetime:
+    """Naive UTC timestamp; CUBRID DATETIME columns store no timezone."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class Supplier(db.Model):
     __tablename__ = "cookbook_suppliers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     orders: Mapped[list["PurchaseOrder"]] = relationship(back_populates="supplier")
 
     def to_dict(self) -> dict[str, object]:
@@ -41,7 +46,7 @@ class PurchaseOrder(db.Model):
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     supplier: Mapped["Supplier"] = relationship(back_populates="orders")
     lines: Mapped[list["PurchaseOrderLine"]] = relationship(

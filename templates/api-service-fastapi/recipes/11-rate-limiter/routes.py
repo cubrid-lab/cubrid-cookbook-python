@@ -25,7 +25,7 @@ router = APIRouter()
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _rotate_window_if_needed(window: ClientRateWindow, now: datetime, window_seconds: int) -> None:

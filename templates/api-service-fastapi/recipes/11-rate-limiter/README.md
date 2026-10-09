@@ -68,4 +68,4 @@ them against a live CUBRID instance:
 CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" pytest tests/test_main.py -q
 ```
 
-The tests avoid `sleep()` and patch `datetime.utcnow` through a recipe-local `utcnow` helper.
+The tests avoid `sleep()` and patch the recipe-local `utcnow` helper (naive UTC, matching the `DateTime` columns).

@@ -166,3 +166,10 @@ def test_burst_allowance(client: TestClient, frozen_time: FrozenTime) -> None:
 
     blocked = client.post("/clients/alpha/consume", json={"cost": 1})
     assert blocked.status_code == 429
+
+
+def test_real_clock_is_naive_and_comparable_with_stored_values() -> None:
+    now = routes.utcnow()
+    stored = datetime(2026, 1, 1, 0, 0, 0)  # naive, as read back from a DATETIME column
+    assert now.tzinfo is None
+    assert (now - stored).total_seconds() > 0

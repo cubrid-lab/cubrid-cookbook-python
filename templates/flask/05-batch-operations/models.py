@@ -1,7 +1,7 @@
 # pyright: reportCallIssue=false
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -9,6 +9,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import importlib
 
 db = importlib.import_module("database").db
+
+
+def naive_utc_now() -> datetime:
+    """Naive UTC timestamp; CUBRID DATETIME columns store no timezone."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class BatchProduct(db.Model):
@@ -19,7 +24,7 @@ class BatchProduct(db.Model):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     price: Mapped[int] = mapped_column(Integer, nullable=False)
     is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -41,7 +46,7 @@ class BatchJob(db.Model):
     total_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     success_cnt: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failed_cnt: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     rows: Mapped[list["BatchJobRow"]] = relationship(back_populates="job")
 

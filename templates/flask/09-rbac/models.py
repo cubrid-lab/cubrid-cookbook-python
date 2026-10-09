@@ -1,9 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import importlib
 
 db = importlib.import_module("database").db
+
+
+def naive_utc_now() -> datetime:
+    """Naive UTC timestamp; CUBRID DATETIME columns store no timezone."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Role(db.Model):
@@ -15,9 +20,9 @@ class Role(db.Model):
     parent_role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=True, index=True)
     permissions_text = db.Column(db.Text, nullable=False, default="")
     version = db.Column(db.Integer, nullable=False, default=1)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=naive_utc_now)
     updated_at = db.Column(
-        db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now
     )
 
 
@@ -28,9 +33,9 @@ class User(db.Model):
     user_key = db.Column(db.String(64), nullable=False, unique=True, index=True)
     display_name = db.Column(db.String(120), nullable=False)
     version = db.Column(db.Integer, nullable=False, default=1)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=naive_utc_now)
     updated_at = db.Column(
-        db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now
     )
 
 
@@ -41,7 +46,7 @@ class UserRole(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=False, index=True)
-    assigned_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    assigned_at = db.Column(db.DateTime, nullable=False, default=naive_utc_now)
 
 
 class Document(db.Model):
@@ -53,7 +58,7 @@ class Document(db.Model):
     title = db.Column(db.String(200), nullable=False)
     body_text = db.Column(db.Text, nullable=False)
     version = db.Column(db.Integer, nullable=False, default=1)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=naive_utc_now)
     updated_at = db.Column(
-        db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now
     )
