@@ -12,12 +12,14 @@ def naive_utc_now() -> datetime:
 
 
 class Role(db.Model):
-    __tablename__ = "roles"
+    __tablename__ = "cookbook_roles"
 
     id = db.Column(db.Integer, primary_key=True)
     role_key = db.Column(db.String(64), nullable=False, unique=True, index=True)
     name = db.Column(db.String(120), nullable=False)
-    parent_role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=True, index=True)
+    parent_role_id = db.Column(
+        db.Integer, db.ForeignKey("cookbook_roles.id"), nullable=True, index=True
+    )
     permissions_text = db.Column(db.Text, nullable=False, default="")
     version = db.Column(db.Integer, nullable=False, default=1)
     created_at = db.Column(db.DateTime, nullable=False, default=naive_utc_now)
@@ -27,7 +29,7 @@ class Role(db.Model):
 
 
 class User(db.Model):
-    __tablename__ = "users"
+    __tablename__ = "cookbook_users"
 
     id = db.Column(db.Integer, primary_key=True)
     user_key = db.Column(db.String(64), nullable=False, unique=True, index=True)
@@ -40,21 +42,23 @@ class User(db.Model):
 
 
 class UserRole(db.Model):
-    __tablename__ = "user_roles"
+    __tablename__ = "cookbook_user_roles"
     __table_args__ = (db.UniqueConstraint("user_id", "role_id", name="uq_user_roles_user_role"),)
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
-    role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("cookbook_users.id"), nullable=False, index=True)
+    role_id = db.Column(db.Integer, db.ForeignKey("cookbook_roles.id"), nullable=False, index=True)
     assigned_at = db.Column(db.DateTime, nullable=False, default=naive_utc_now)
 
 
 class Document(db.Model):
-    __tablename__ = "documents"
+    __tablename__ = "cookbook_documents"
 
     id = db.Column(db.Integer, primary_key=True)
     document_key = db.Column(db.String(64), nullable=False, unique=True, index=True)
-    owner_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    owner_user_id = db.Column(
+        db.Integer, db.ForeignKey("cookbook_users.id"), nullable=False, index=True
+    )
     title = db.Column(db.String(200), nullable=False)
     body_text = db.Column(db.Text, nullable=False)
     version = db.Column(db.Integer, nullable=False, default=1)

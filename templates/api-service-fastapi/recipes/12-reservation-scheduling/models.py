@@ -16,7 +16,7 @@ def utcnow_naive() -> datetime:
 
 
 class Resource(Base):
-    __tablename__: ClassVar[str] = "resources"
+    __tablename__: ClassVar[str] = "cookbook_resources"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     resource_key: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
@@ -33,14 +33,14 @@ class Resource(Base):
 
 
 class Reservation(Base):
-    __tablename__: ClassVar[str] = "reservations"
+    __tablename__: ClassVar[str] = "cookbook_reservations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     reservation_key: Mapped[str] = mapped_column(
         String(64), nullable=False, unique=True, index=True
     )
     resource_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("resources.id"), nullable=False, index=True
+        Integer, ForeignKey("cookbook_resources.id"), nullable=False, index=True
     )
     requester_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     start_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
@@ -58,11 +58,11 @@ class Reservation(Base):
 
 
 class WaitlistEntry(Base):
-    __tablename__: ClassVar[str] = "waitlist_entries"
+    __tablename__: ClassVar[str] = "cookbook_waitlist_entries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     resource_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("resources.id"), nullable=False, index=True
+        Integer, ForeignKey("cookbook_resources.id"), nullable=False, index=True
     )
     requester_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     desired_start_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)

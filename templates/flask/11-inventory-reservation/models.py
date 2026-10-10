@@ -9,7 +9,7 @@ def naive_utc_now() -> datetime:
 
 
 class InventoryItem(db.Model):
-    __tablename__ = "inventory_items"
+    __tablename__ = "cookbook_inventory_items"
 
     id = db.Column(db.Integer, primary_key=True)
     sku = db.Column(db.String(64), nullable=False, unique=True, index=True)
@@ -25,11 +25,13 @@ class InventoryItem(db.Model):
 
 
 class StockReservation(db.Model):
-    __tablename__ = "stock_reservations"
+    __tablename__ = "cookbook_stock_reservations"
 
     id = db.Column(db.Integer, primary_key=True)
     reservation_key = db.Column(db.String(64), nullable=False, unique=True, index=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("inventory_items.id"), nullable=False, index=True)
+    item_id = db.Column(
+        db.Integer, db.ForeignKey("cookbook_inventory_items.id"), nullable=False, index=True
+    )
     client_id = db.Column(db.String(64), nullable=False, index=True)
     quantity = db.Column(db.Integer, nullable=False)
     state = db.Column(db.String(32), nullable=False, default="active", index=True)
@@ -44,7 +46,7 @@ class StockReservation(db.Model):
 
 
 class ExpirySweep(db.Model):
-    __tablename__ = "expiry_sweeps"
+    __tablename__ = "cookbook_expiry_sweeps"
 
     id = db.Column(db.Integer, primary_key=True)
     started_at = db.Column(db.DateTime, nullable=False, default=naive_utc_now)
