@@ -14,7 +14,7 @@ def naive_utc_now() -> datetime:
 
 
 class ApiClient(Base):
-    __tablename__ = "api_clients"
+    __tablename__ = "cookbook_api_clients"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     client_key: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
@@ -33,11 +33,13 @@ class ApiClient(Base):
 
 
 class ClientRateWindow(Base):
-    __tablename__ = "client_rate_windows"
+    __tablename__ = "cookbook_client_rate_windows"
     __table_args__ = (UniqueConstraint("client_id", name="uq_client_rate_windows_client"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    client_id: Mapped[int] = mapped_column(Integer, ForeignKey("api_clients.id"), nullable=False)
+    client_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("cookbook_api_clients.id"), nullable=False
+    )
     current_window_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     current_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     previous_window_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

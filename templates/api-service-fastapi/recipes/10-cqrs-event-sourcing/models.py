@@ -16,7 +16,7 @@ def naive_utc_now() -> datetime:
 
 
 class EventStore(Base):
-    __tablename__ = "event_store"
+    __tablename__ = "cookbook_event_store"
     __table_args__ = (
         UniqueConstraint("aggregate_id", "sequence_no", name="uq_event_store_aggregate_seq"),
     )
@@ -34,7 +34,7 @@ class EventStore(Base):
 
 
 class AggregateSnapshot(Base):
-    __tablename__ = "aggregate_snapshots"
+    __tablename__ = "cookbook_aggregate_snapshots"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     aggregate_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
@@ -49,7 +49,7 @@ class AggregateSnapshot(Base):
 
 
 class AccountReadModel(Base):
-    __tablename__ = "account_read_models"
+    __tablename__ = "cookbook_account_read_models"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     account_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
