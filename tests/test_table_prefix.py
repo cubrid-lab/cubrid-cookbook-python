@@ -13,6 +13,14 @@ from pathlib import Path
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "templates"
 PREFIX = "cookbook_"
+# Names still shared by more than one recipe; their suites must run one at a time.
+# Do not add to this set: give a new recipe's table a distinct name instead.
+KNOWN_SHARED = {
+    "cookbook_categories",
+    "cookbook_documents",
+    "cookbook_orders",
+    "cookbook_products",
+}
 
 
 def declared_tables(path: Path) -> list[tuple[int, str]]:
@@ -50,6 +58,19 @@ class TableNamePrefixTests(unittest.TestCase):
                     offenders.append(f"{path.relative_to(TEMPLATES.parent)}:{line}: {name}")
         self.assertGreater(total, 40)
         self.assertEqual(offenders, [], "tables must start with 'cookbook_'")
+
+    def test_no_table_name_is_shared_between_recipes(self) -> None:
+        owners: dict[str, set[str]] = {}
+        for path in sorted(TEMPLATES.glob("**/models.py")):
+            recipe = str(path.parent.relative_to(TEMPLATES.parent))
+            for _, name in declared_tables(path):
+                owners.setdefault(name, set()).add(recipe)
+        shared = {
+            name: sorted(dirs)
+            for name, dirs in owners.items()
+            if len(dirs) > 1 and name not in KNOWN_SHARED
+        }
+        self.assertEqual(shared, {}, "recipes sharing a table cannot run on one database")
 
 
 if __name__ == "__main__":

@@ -29,7 +29,7 @@ class Order(Base):
 
 
 class InventoryItem(Base):
-    __tablename__ = "cookbook_inventory_items"
+    __tablename__ = "cookbook_saga_inventory_items"
     id = Column(Integer, primary_key=True)
     sku = Column(String(64), nullable=False, unique=True, index=True)
     available_qty = Column(Integer, nullable=False)
