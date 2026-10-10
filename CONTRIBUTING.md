@@ -482,7 +482,8 @@ never shares the caller's group.
 
 `status` is `success` or `failure`; `installed_version` is `null` unless every job
 installed the same version, and a failure lists its `reasons` (invalid request,
-missing or failed jobs, `installed X differs from requested Y`). The report job
+missing or failed jobs, a smoke result download that did not succeed,
+`installed X differs from requested Y`). The report job
 itself fails whenever `status` is `failure`. An upstream verifier should require the
 run conclusion `success` **and** the artifact's `status == "success"` with
 `installed_version == requested_version`. Publication delay is absorbed inside the

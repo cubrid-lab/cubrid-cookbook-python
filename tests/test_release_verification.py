@@ -128,7 +128,9 @@ class ReleaseVerificationTests(unittest.TestCase):
                     python,
                 )
 
-    def report(self, event_name: str, verify_result: str = "success") -> tuple[bool, str]:
+    def report(
+        self, event_name: str, verify_result: str = "success", download_result: str = "success"
+    ) -> tuple[bool, str]:
         text = io.StringIO()
         with contextlib.redirect_stdout(text):
             passed = smoke.report_releases(
@@ -136,6 +138,7 @@ class ReleaseVerificationTests(unittest.TestCase):
                 self.event,
                 self.parts,
                 verify_result,
+                download_result,
                 self.output,
                 RUN,
                 self.github_output,
@@ -315,6 +318,75 @@ class ReleaseVerificationTests(unittest.TestCase):
                 passed, _ = self.report("repository_dispatch", verify_result)
                 self.assertFalse(passed)
 
+    def test_failed_download_fails_a_report_with_valid_looking_parts(self) -> None:
+        self.payload(request_id="test-232-a1b2c3")
+        self.run_matrix("repository_dispatch")
+        passed, _ = self.report("repository_dispatch")
+        self.assertTrue(passed)
+        for outcome in ("failure", "cancelled", "skipped", ""):
+            with self.subTest(download_result=outcome):
+                passed, _ = self.report("repository_dispatch", download_result=outcome)
+                self.assertFalse(passed)
+                report = json.loads(self.output.read_text())
+                self.assertEqual(report["status"], "failure")
+                self.assertEqual(
+                    report["reasons"],
+                    [f"smoke result download did not succeed: {outcome or 'unknown'}"],
+                )
+                self.assertEqual(self.outputs()["status"], "failure")  # artifact still written
+
+    def test_non_release_run_ignores_the_download_outcome(self) -> None:
+        self.event.write_text(json.dumps({"inputs": {"package": "latest", "version": ""}}))
+        passed, _ = self.report("workflow_dispatch", download_result="failure")
+        self.assertTrue(passed)
+        self.assertFalse(self.output.exists())
+
+    def test_download_result_argument_is_wired_through_main(self) -> None:
+        self.payload(request_id="test-232-a1b2c3")
+        self.run_matrix("repository_dispatch")
+        for outcome, code in (("success", None), ("failure", 1)):
+            with self.subTest(download_result=outcome):
+                argv = [
+                    "release_smoke.py",
+                    "report",
+                    "--event-name",
+                    "repository_dispatch",
+                    "--event-path",
+                    str(self.event),
+                    "--parts",
+                    str(self.parts),
+                    "--verify-result",
+                    "success",
+                    "--download-result",
+                    outcome,
+                    "--output",
+                    str(self.output),
+                    "--github-output",
+                    str(self.github_output),
+                ]
+                with (
+                    patch.object(smoke.sys, "argv", argv),
+                    contextlib.redirect_stdout(io.StringIO()),
+                    contextlib.redirect_stderr(io.StringIO()),
+                ):
+                    if code is None:
+                        smoke.main()
+                    else:
+                        with self.assertRaises(SystemExit) as exit_:
+                            smoke.main()
+                        self.assertEqual(exit_.exception.code, code)
+                reasons = json.loads(self.output.read_text())["reasons"]
+                self.assertEqual(bool(reasons), code is not None)
+
+    def test_workflow_passes_the_download_outcome_to_the_report(self) -> None:
+        report = WORKFLOW[WORKFLOW.index("\n  report:") :]
+        step = report[report.index("- name: Download smoke job results") :]
+        step = step[: step.index("- name: Report release verification")]
+        self.assertRegex(step, r"(?m)^        id: download$")
+        self.assertIn("continue-on-error: true", step)
+        self.assertIn("DOWNLOAD_RESULT: ${{ steps.download.outcome }}", report)
+        self.assertIn('--download-result "$DOWNLOAD_RESULT"', report)
+
     def test_invalid_request_reports_failure_under_run_id(self) -> None:
         self.payload(request_id="bad id")
         self.run_matrix("repository_dispatch")
@@ -356,6 +428,8 @@ class ReleaseVerificationTests(unittest.TestCase):
             str(self.parts),
             "--verify-result",
             "failure",
+            "--download-result",
+            "success",
             "--output",
             str(self.output),
             "--github-output",

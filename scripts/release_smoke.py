@@ -445,6 +445,7 @@ def build_report(
     error: str | None,
     parts: list[dict[str, object]],
     verify_result: str,
+    download_result: str,
     run: dict[str, str],
 ) -> dict[str, object]:
     """Combine the matrix results into one release verification report."""
@@ -457,6 +458,9 @@ def build_report(
         reasons.append("no smoke job reported a result")
     if verify_result != "success":
         reasons.append(f"smoke jobs finished with {verify_result or 'unknown'}")
+    if download_result != "success":
+        # download-artifact v8 can fail its digest check after extracting the files.
+        reasons.append(f"smoke result download did not succeed: {download_result or 'unknown'}")
     if request is not None:
         seen = [(p.get("cubrid"), p.get("python")) for p in parts]
         for key in sorted(RELEASE_CELLS):
@@ -505,6 +509,7 @@ def report_releases(
     event_path: Path | None,
     parts_dir: Path,
     verify_result: str,
+    download_result: str,
     output: Path,
     run: dict[str, str],
     github_output: Path | None,
@@ -524,7 +529,7 @@ def report_releases(
             json.loads(path.read_text(encoding="utf-8"))
             for path in sorted(parts_dir.glob(f"**/{REPORT_PART}"))
         ]
-        report = build_report(request, error, parts, verify_result, run)
+        report = build_report(request, error, parts, verify_result, download_result, run)
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         print(report_markdown(report))
@@ -588,6 +593,7 @@ def main() -> None:
     event_arguments(combine)
     combine.add_argument("--parts", type=Path, required=True)
     combine.add_argument("--verify-result", required=True)
+    combine.add_argument("--download-result", required=True)
     combine.add_argument("--output", type=Path, required=True)
     combine.add_argument("--github-output", type=Path, default=os.environ.get("GITHUB_OUTPUT"))
     args = parser.parse_args()
@@ -620,6 +626,7 @@ def main() -> None:
                 args.event_path,
                 args.parts,
                 args.verify_result,
+                args.download_result,
                 args.output,
                 run,
                 args.github_output,

@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / ".github" / "dependabot.yml"
 WORKFLOWS = ROOT / ".github" / "workflows"
+ACTIONS = ROOT / ".github" / "actions"
 USES_RE = re.compile(r"^\s*(?:-\s*)?uses:\s*([^@\s]+)@(\S+)(?:\s+#\s*(\S+))?", re.M)
 
 
@@ -113,15 +114,16 @@ class DocsToolPinTests(unittest.TestCase):
 class WorkflowPinTests(unittest.TestCase):
     def test_actions_are_sha_pinned_and_aligned(self) -> None:
         pins: dict[str, set[tuple[str, str]]] = {}
-        for workflow in sorted(WORKFLOWS.glob("*.yml")):
+        scanned = [*WORKFLOWS.glob("*.yml"), *ACTIONS.glob("*/action.y*ml")]
+        for workflow in sorted(scanned):
             for action, ref, tag in USES_RE.findall(workflow.read_text(encoding="utf-8")):
                 if action.startswith("./"):
                     continue
-                with self.subTest(workflow=workflow.name, action=action):
+                with self.subTest(workflow=workflow.relative_to(ROOT).as_posix(), action=action):
                     self.assertRegex(ref, r"^[0-9a-f]{40}$", "pin actions by full commit SHA")
                 if "/.github/workflows/" in action:
                     continue  # reusable workflows carry no version comment
-                with self.subTest(workflow=workflow.name, action=action):
+                with self.subTest(workflow=workflow.relative_to(ROOT).as_posix(), action=action):
                     self.assertRegex(tag, r"^v\d", "keep the `# vX.Y.Z` comment Dependabot updates")
                 pins.setdefault(action, set()).add((ref, tag))
         for action, refs in pins.items():

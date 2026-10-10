@@ -643,7 +643,9 @@ jobs:
           persist-credentials: false
 
       - name: Download smoke job results
-        # A missing result makes the report fail below, never pass.
+        id: download
+        # Kept so the report always runs; a non-success outcome fails the report
+        # below (v8 can fail its digest check after extracting files).
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -654,6 +656,7 @@ jobs:
         id: report
         env:
           VERIFY_RESULT: ${{ needs.verify.result }}
+          DOWNLOAD_RESULT: ${{ steps.download.outcome }}
         run: |
           set -o pipefail
           # Reads and validates the request like the smoke jobs (event JSON, or
@@ -661,6 +664,7 @@ jobs:
           python3 scripts/release_smoke.py report \
             --parts "$RUNNER_TEMP/release-verification-parts" \
             --verify-result "$VERIFY_RESULT" \
+            --download-result "$DOWNLOAD_RESULT" \
             --output "$RUNNER_TEMP/release-verification/release-verification.json" \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
