@@ -52,7 +52,7 @@ class UserRole(db.Model):
 
 
 class Document(db.Model):
-    __tablename__ = "cookbook_documents"
+    __tablename__ = "cookbook_rbac_documents"
 
     id = db.Column(db.Integer, primary_key=True)
     document_key = db.Column(db.String(64), nullable=False, unique=True, index=True)

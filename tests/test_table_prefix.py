@@ -13,12 +13,11 @@ from pathlib import Path
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "templates"
 PREFIX = "cookbook_"
-# Names still shared by more than one recipe; their suites must run one at a time.
-# Do not add to this set: give a new recipe's table a distinct name instead.
+# Names shared by more than one recipe before the prefix change; their suites must
+# run one at a time. Tracked separately. Do not add to this set: give a new
+# recipe's table a distinct name instead.
 KNOWN_SHARED = {
     "cookbook_categories",
-    "cookbook_documents",
-    "cookbook_orders",
     "cookbook_products",
 }
 

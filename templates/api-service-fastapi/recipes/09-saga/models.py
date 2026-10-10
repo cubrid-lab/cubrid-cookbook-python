@@ -14,7 +14,7 @@ def naive_utc_now() -> datetime:
 
 
 class Order(Base):
-    __tablename__ = "cookbook_orders"
+    __tablename__ = "cookbook_saga_orders"
     id = Column(Integer, primary_key=True)
     order_key = Column(String(64), nullable=False, unique=True, index=True)
     client_id = Column(String(64), nullable=False, index=True)
@@ -54,7 +54,7 @@ class SagaStep(Base):
     __tablename__ = "cookbook_saga_steps"
     __table_args__ = (UniqueConstraint("order_id", "step_name", name="uq_saga_steps_order_step"),)
     id = Column(Integer, primary_key=True)
-    order_id = Column(Integer, ForeignKey("cookbook_orders.id"), nullable=False, index=True)
+    order_id = Column(Integer, ForeignKey("cookbook_saga_orders.id"), nullable=False, index=True)
     step_name = Column(String(32), nullable=False)
     status = Column(String(32), nullable=False, default="pending", index=True)
     attempt_count = Column(Integer, nullable=False, default=0)
