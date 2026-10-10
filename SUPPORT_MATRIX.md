@@ -272,9 +272,10 @@ for f in fundamentals/pandas/*.py; do python3 "$f"; done
 ```
 
 The pytest suites create and drop their tables in whichever database
-`CUBRID_TEST_URL` points at. Some suites share table names (`inventory_items`
-in FastAPI recipe 09 and Flask recipe 11; `cookbook_products` in Flask recipes
-01 and 07 and the dashboard). Run the Flask/FastAPI suites sequentially, and
+`CUBRID_TEST_URL` points at. Some suites still share table names
+(`cookbook_products` in Flask recipes 01 and 07 and the dashboard;
+`cookbook_categories` in the FastAPI root app and Flask recipe 02; removal is
+tracked in #277). Run the Flask/FastAPI suites sequentially, and
 give the dashboard suite a **different database/container**: its
 `cookbook_sales` foreign key references `cookbook_products`, so leftover
 dashboard tables in a shared database can block Flask teardown even if the
