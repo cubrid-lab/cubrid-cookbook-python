@@ -19,27 +19,30 @@ is welcome, and no specific tool is required.
 
 ## Development Workflow
 
-Every change to an example ships its implementation, tests, and docs
-**together**; code without affected doc updates is incomplete.
+Every change to an example ships its implementation, tests, and affected docs
+**together**; code without affected doc updates is incomplete. Unaffected docs
+retain the existing docs-not-needed process.
 
 Maintainer/agent-authored PRs follow the tool-specific route in
 [AGENTS.md](AGENTS.md#development-workflow-cubrid-lab-org-standard):
 - **OpenCode:** Oracle design review before non-trivial implementation and
   Oracle post-implementation review, with documented findings and validation.
-- **Standalone Claude Code or Codex:** wait for a substantive submitted GitHub
-  Copilot review or another person's review after opening the PR; request
-  pending/green CI/automated approval wording alone is not review completion.
-- **Other contributors:** normal project review, with no internal agent-tool
-  installation requirement.
+  Trivial OpenCode changes may skip those Oracle phases with a recorded reason.
+- **Standalone agents (Claude Code, Codex, ChatGPT, or other agent tools):**
+  wait for a substantive submitted GitHub Copilot review or another person's
+  review after opening the PR. A pending request, green CI or automated
+  approval wording alone does not complete the review route.
+- **Human contributions:** normal project review, with no internal agent-tool
+  installation requirement. This is not a fallback for unnamed standalone agents.
 
 The applicable review evidence, updated head, dispositions and open threads
-must be recorded before merge. Trivial OpenCode changes may skip its Oracle
-design/post phases with an explicit reason. Live CUBRID, docs and CI rules
-remain unchanged. Maintainers coordinate internal reviews and integration,
-while contributors retain authorship and provide ordinary PR evidence.
+must be recorded before merge. Live CUBRID, docs and CI rules remain unchanged.
+Maintainers coordinate internal reviews and integration, while contributors
+retain authorship and provide ordinary PR evidence.
 
-This rule is enforced in CI by `scripts/check_docs_sync.py` (the **Docs sync
-gate** job). The gate fails when an example directory is missing from README.md,
+The existing documentation/coverage rule, not the review-route requirement, is
+checked in CI by `scripts/check_docs_sync.py` (the **Docs sync gate** job).
+The gate fails when an example directory is missing from README.md,
 and warns when an example ships no `expected/` golden file or `tests/` suite.
 Run it locally before opening a PR:
 
@@ -84,8 +87,7 @@ column 0 with three backticks are recognised, not tilde or indented/nested fence
 
 A duplicate `###` heading within one version section is an error only in `[Unreleased]`
 and in releases after 0.2.0 (`SECTION_POLICY_CUTOFF`); released history up to 0.2.0 is
-never rewritten, and different releases may reuse the same heading names. A duplicate
-heading before the first release header is always an error.
+never rewritten, and different releases may reuse the same heading names.
 `scripts/lint_changelog.py` is identical in pycubrid, sqlalchemy-cubrid,
 cubrid-mcp-server and this cookbook except for `SECTION_POLICY_CUTOFF`.
 
@@ -699,10 +701,13 @@ pinning the caller alone does not freeze those resources.
 
 ### Review Process
 
-- All PRs must complete the applicable AGENTS.md development-tool review
-  route before merge. OpenCode Oracle pre/post evidence and standalone Claude
-  Code/Codex GitHub review evidence are distinct; a pending request is not a
-  completed review. Outstanding review threads need a disposition.
+- All PRs must complete the applicable AGENTS.md development-tool review route
+  before merge. Non-trivial OpenCode work records Oracle pre/post evidence;
+  trivial OpenCode edits may omit those reviews with a recorded reason.
+  Standalone Claude Code, Codex, ChatGPT and other agent tools require a
+  substantive submitted GitHub Copilot review or another person's review.
+  A pending request does not complete the route. Human contributions follow
+  ordinary review, and outstanding review threads need a disposition.
 - CI must pass (lint checks).
 - Examples must be tested against a live CUBRID instance.
 
