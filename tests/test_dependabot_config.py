@@ -81,7 +81,7 @@ class DocsToolPinTests(unittest.TestCase):
     """The strict docs build must install the pinned tools (#247)."""
 
     REQUIREMENTS = CONFIG.parent / "requirements-docs.txt"
-    INSTALL = "pip install -r .github/requirements-docs.txt"
+    INSTALL = r"pip install (--system )?-r \.github/requirements-docs\.txt"
     TOOLS = ("mkdocs", "mkdocs-material", "pymdown-extensions")
 
     def test_docs_tools_are_exactly_pinned(self) -> None:
@@ -99,7 +99,7 @@ class DocsToolPinTests(unittest.TestCase):
         for name in ("docs.yml", "ci.yml"):
             with self.subTest(workflow=name):
                 text = (WORKFLOWS / name).read_text(encoding="utf-8")
-                self.assertIn(self.INSTALL, text)
+                self.assertRegex(text, self.INSTALL)
                 self.assertNotRegex(text, r"pip install\s+(?!-r)[^\n]*mkdocs")
                 self.assertNotRegex(text, r"pip install\s+(?!-r)[^\n]*pymdown")
 
