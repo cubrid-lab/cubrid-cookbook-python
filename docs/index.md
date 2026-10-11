@@ -47,7 +47,7 @@ docker compose up -d   # CUBRID 11.4 + Streamlit at http://localhost:8501
 ## Ecosystem
 
 - [pycubrid](https://github.com/cubrid-lab/pycubrid) — pure-Python DB-API 2.0 driver (sync + asyncio)
-- [sqlalchemy-cubrid](https://github.com/cubrid-lab/sqlalchemy-cubrid) — SQLAlchemy 2.0–2.2 dialect
+- [sqlalchemy-cubrid](https://github.com/cubrid-lab/sqlalchemy-cubrid) — SQLAlchemy 2.0/2.1 dialect
 - [cubrid-mcp-server](https://github.com/cubrid-lab/cubrid-mcp-server) — MCP server for LLM clients
 
 MIT — see [LICENSE](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/LICENSE).

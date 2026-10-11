@@ -18,6 +18,10 @@ The **Total** row must equal the sum of the rows, and its "N golden-backed"
 note, when present, must equal the number of goldens. Prose elsewhere should
 point at the table instead of repeating these numbers.
 
+The "Driver & Framework Versions" table must also state the SQLAlchemy range the
+dialect supports (``SQLALCHEMY_SUPPORTED``); promoting 2.2 there, or in the one-line
+dialect descriptions of ``llms.txt`` and ``docs/index.md``, fails the check.
+
 Usage:
     python scripts/check_support_matrix_counts.py
 
@@ -34,6 +38,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MATRIX_PATH = REPO_ROOT / "SUPPORT_MATRIX.md"
 TABLE_HEADER = "| Category | Recipes | Verified by |"
+
+# Reviewed SQLAlchemy range of the dialect, kept here with its pinned upstream reference:
+# sqlalchemy-cubrid docs/SUPPORT_MATRIX.md at da9c3977d21e94f739667ae5e9467c04d53fdd0b
+# lists 2.0.x and 2.1.x as supported and >= 2.2 as not supported. Change it only after
+# the dialect documents a new range; this check does not read the network.
+SQLALCHEMY_SUPPORTED = "2.0, 2.1"
+# Files whose one-line dialect description must not claim SQLAlchemy 2.2.
+SQLALCHEMY_CLAIM_FILES = ("llms.txt", "docs/index.md")
+SQLALCHEMY_SPAN = re.compile(r"SQLAlchemy 2\.0\s*[–-]\s*2\.2")
 
 # Table label -> directories whose expected/*.expected goldens the row counts.
 GOLDEN_ROWS: dict[str, tuple[str, ...]] = {
@@ -187,8 +200,35 @@ def check(root: Path, matrix: str) -> list[str]:
     return errors
 
 
+def check_sqlalchemy_range(root: Path, matrix: str) -> list[str]:
+    """Reject a current SQLAlchemy support claim that differs from the reviewed range."""
+    errors: list[str] = []
+    cells = [
+        [c.strip() for c in line.strip().strip("|").split("|")]
+        for line in matrix.splitlines()
+        if line.startswith("| SQLAlchemy |")
+    ]
+    if len(cells) != 1:
+        errors.append(
+            f"expected one 'SQLAlchemy' row in Driver & Framework Versions, found {len(cells)}"
+        )
+    elif cells[0][1] != SQLALCHEMY_SUPPORTED:
+        errors.append(
+            f"SQLAlchemy row says {cells[0][1]!r}, the reviewed supported range is"
+            f" {SQLALCHEMY_SUPPORTED!r}"
+        )
+    for name in SQLALCHEMY_CLAIM_FILES:
+        path = root / name
+        if path.is_file() and SQLALCHEMY_SPAN.search(path.read_text(encoding="utf-8")):
+            errors.append(
+                f"{name} claims SQLAlchemy 2.0-2.2; the reviewed range is {SQLALCHEMY_SUPPORTED}"
+            )
+    return errors
+
+
 def main() -> int:
-    errors = check(REPO_ROOT, MATRIX_PATH.read_text(encoding="utf-8"))
+    matrix = MATRIX_PATH.read_text(encoding="utf-8")
+    errors = check(REPO_ROOT, matrix) + check_sqlalchemy_range(REPO_ROOT, matrix)
     if errors:
         print("SUPPORT_MATRIX.md Recipe Coverage table is out of date:")
         for err in errors:

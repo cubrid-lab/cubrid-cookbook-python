@@ -84,6 +84,20 @@ class SupportMatrixCountTests(unittest.TestCase):
             "**Total** row is missing", counts.check(ROOT, MATRIX.replace(total + "\n", ""))
         )
 
+    def test_sqlalchemy_range_matches_reviewed_dialect_range(self) -> None:
+        self.assertEqual(counts.check_sqlalchemy_range(ROOT, MATRIX), [])
+
+    def test_promoting_sqlalchemy_2_2_to_supported_is_rejected(self) -> None:
+        promoted = MATRIX.replace("| SQLAlchemy | 2.0, 2.1 |", "| SQLAlchemy | 2.0–2.2 |")
+        self.assertNotEqual(promoted, MATRIX)
+        errors = counts.check_sqlalchemy_range(ROOT, promoted)
+        self.assertTrue(any(e.startswith("SQLAlchemy row says '2.0–2.2'") for e in errors), errors)
+        (self.tmp / "llms.txt").write_text("SQLAlchemy 2.0–2.2 dialect for CUBRID\n")
+        errors = counts.check_sqlalchemy_range(self.tmp, MATRIX)
+        self.assertEqual(
+            errors, ["llms.txt claims SQLAlchemy 2.0-2.2; the reviewed range is 2.0, 2.1"]
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

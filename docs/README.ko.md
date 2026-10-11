@@ -149,7 +149,7 @@ docker compose up -d
 ## 관련 프로젝트
 
 - [pycubrid](https://github.com/cubrid-lab/pycubrid) — CUBRID용 순수 Python DB-API 2.0 드라이버
-- [sqlalchemy-cubrid](https://github.com/cubrid-lab/sqlalchemy-cubrid) — CUBRID용 SQLAlchemy 2.0 방언
+- [sqlalchemy-cubrid](https://github.com/cubrid-lab/sqlalchemy-cubrid) — CUBRID용 SQLAlchemy 2.0/2.1 방언
 - [cubrid-mcp-server](https://github.com/cubrid-lab/cubrid-mcp-server) — LLM 클라이언트용 MCP 서버
 - [CUBRID](https://www.cubrid.org/) — CUBRID 데이터베이스
 
