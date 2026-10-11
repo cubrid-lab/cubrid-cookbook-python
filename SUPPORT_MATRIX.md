@@ -78,8 +78,8 @@ What can be installed is a separate question from what is supported:
 - **Current `main` of sqlalchemy-cubrid (unreleased)** requires `sqlalchemy>=2.0,<2.2`
   (checked at `a6339df` on 2026-10-11). This cap has not been published.
 - **Published `sqlalchemy-cubrid` 1.10.0 on PyPI** (the latest release when this was written,
-  2026-10-11) still declares `sqlalchemy>=2.0,<2.3`, so pip can install SQLAlchemy 2.2
-  with it. That is an installation range, not a support claim, and no cookbook recipe is
+  2026-10-11) still declares `sqlalchemy>=2.0,<2.3`, so its metadata would let pip install
+  SQLAlchemy 2.2 once that is released (the latest SQLAlchemy on PyPI is 2.1.4). That is an installation range, not a support claim, and no cookbook recipe is
   verified on SQLAlchemy 2.2. Any forward-compatibility run against a newer
   SQLAlchemy is advisory only.
 
