@@ -6,6 +6,9 @@ body:
   - type: markdown
     attributes:
       value: |
+        File problems and implementation requests in the repository that owns
+        the affected code or docs. Other repositories keep separate acceptance,
+        assignees and closure; cross-repository links are references only.
         **House rules**
         - File this issue in English.
         - For DDL or parse errors, include the exact failing SQL and the result of running
