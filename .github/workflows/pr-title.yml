@@ -4,8 +4,8 @@ name: PR title
 # commit titles"). The PR title becomes the squash commit title on main.
 #
 # Security: runs on `pull_request` (never `pull_request_target`), requests no
-# token permissions, checks out nothing and receives the title only through an
-# environment variable, so no PR-controlled code or string is executed.
+# token permissions, checks out nothing and receives the title and body only
+# through environment variables, so no PR-controlled code or string is executed.
 # Also rejects accidental foreign-issue closing keywords in inert PR body data.
 # The job name "PR title" is the required-status-check context; keep it stable.
 
@@ -99,36 +99,49 @@ jobs:
 
           # BEGIN cross-repo-closing-guard
           # No checkout or execution of untrusted PR-body text is needed.
-          def strip_fenced_examples(text: str) -> str:
+          def strip_inert_markdown(text: str) -> str:
+              # One scan over fenced code and HTML comments, so a marker inside one
+              # cannot hide live text in the other. Anything uncertain (indented
+              # lines, inline comments that span lines) stays live: a false positive
+              # only asks for a body edit, a false negative closes a foreign issue.
               output = []
               fence_char = None
               fence_size = 0
+              in_comment = False
               for line in text.splitlines(keepends=True):
                   stripped = line.lstrip(" ")
                   indent = len(line) - len(stripped)
-                  if fence_char is None and indent >= 4:
-                      continue  # Indented Markdown code is inert.
+                  if in_comment:
+                      if "-->" in line:
+                          in_comment = False
+                          output.append(line.split("-->", 1)[1])
+                      continue
                   delimiter = re.match(r"(?:\x60{3,}|~{3,})", stripped) if indent <= 3 else None
-                  if fence_char is None:
-                      if delimiter is not None:
-                          fence_char, fence_size = delimiter.group()[0], len(delimiter.group())
-                          continue
-                      output.append(line)
-                  elif (
-                      delimiter is not None
-                      and delimiter.group()[0] == fence_char
-                      and len(delimiter.group()) >= fence_size
-                      and not stripped[len(delimiter.group()):].strip()
+                  if fence_char is not None:
+                      if (
+                          delimiter is not None
+                          and delimiter.group()[0] == fence_char
+                          and len(delimiter.group()) >= fence_size
+                          and not stripped[len(delimiter.group()):].strip()
+                      ):
+                          fence_char = None
+                      continue
+                  if delimiter is not None and not (
+                      delimiter.group()[0] == "\x60" and "\x60" in stripped[len(delimiter.group()):]
                   ):
-                      fence_char = None
+                      fence_char, fence_size = delimiter.group()[0], len(delimiter.group())
+                      continue
+                  line = re.sub(r"<!--.*?-->", "", line)
+                  if indent <= 3 and stripped.startswith("<!--") and "<!--" in line:
+                      in_comment = True
+                      line = line.split("<!--", 1)[0]
+                  output.append(line)
               return "".join(output)
 
-          body = os.environ.get("PR_BODY", "")
-          body = re.sub(r"(?s)<!--.*?-->", "", body)
-          body = strip_fenced_examples(body)
+          body = strip_inert_markdown(os.environ.get("PR_BODY", ""))
           close_ref = re.compile(
               r"(?i)\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved):?\s+"
-              r"(?:https://(?:www\.)?github\.com/)?"
+              r"(?:https?://(?:www\.)?github\.com/)?"
               r"(?P<owner>[a-z0-9][a-z0-9-]*)/(?P<repo>[a-z0-9_.-]+)"
               r"(?:#|/issues/)(?P<number>[1-9][0-9]*)\b"
           )

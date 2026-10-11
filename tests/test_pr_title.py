@@ -164,6 +164,13 @@ class PrTitleValidatorTest(unittest.TestCase):
             "Fixes https://github.com/cubrid-lab/sqlalchemy-cubrid/issues/810",
             "Resolves another-org/another-repo#42",
             "Fixes: another-org/another-repo#42",
+            "Closes http://github.com/another-org/another-repo/issues/42",
+            "Summary text\n    Closes another-org/another-repo#42",
+            "- Item\n    - Closes another-org/another-repo#42",
+            "    Closes another-org/another-repo#42",
+            f"{chr(96) * 3}\n<!--\n{chr(96) * 3}\nCloses another-org/another-repo#42\n-->",
+            f"{chr(96) * 3} a{chr(96)}b\nCloses another-org/another-repo#42",
+            f"<!--\n{chr(96) * 3}\n-->\nCloses another-org/another-repo#42",
         ):
             with self.subTest(body=body):
                 result = _run("docs: align issue ownership", body)
@@ -177,11 +184,11 @@ class PrTitleValidatorTest(unittest.TestCase):
             "Closes https://github.com/cubrid-lab/cubrid-cookbook-python/issues/240",
             "Refs #223 and cubrid-lab/pycubrid#815.",
             "<!-- Closes another-org/another-repo#42 -->",
+            "<!-- Use Closes #N.\n     Closes another-org/another-repo#42 -->\nCloses #240",
             f"{chr(96) * 3}markdown\nCloses another-org/another-repo#42\n{chr(96) * 3}",
             f"{chr(96) * 4}markdown\nCloses another-org/another-repo#42\n{chr(96) * 5}",
             "~~~~yaml\nCloses another-org/another-repo#42\n~~~~~",
             f"{chr(96) * 4}md\nCloses another-org/another-repo#42\n~~~\nCloses another-org/another-repo#43\n{chr(96) * 4}",
-            "    Closes another-org/another-repo#42",
         ):
             with self.subTest(body=body):
                 result = _run("docs: align issue ownership", body)
