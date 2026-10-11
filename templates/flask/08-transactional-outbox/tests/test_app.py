@@ -1,3 +1,4 @@
+# CI proof for #285 (throwaway draft PR, not for merge).
 # pyright: reportCallIssue=false
 from __future__ import annotations
 

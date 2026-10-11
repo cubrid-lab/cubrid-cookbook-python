@@ -81,7 +81,7 @@ REPRESENTATIVE_WEB_SUITES = (
 # tests/test_ci_scope.py fails when web_suite_roots() outgrows it, so in
 # practice no changed recipe is skipped. web_suites_skipped stays as the
 # fail-safe report if that ever happens.
-MAX_WEB_SUITES = 25
+MAX_WEB_SUITES = 1  # THROWAWAY proof only (#285), never merge
 
 # fnmatch's ``*`` also crosses ``/``, so ``docs/*`` covers the whole tree.
 # Docs/metadata only: never starts CUBRID (checked first, so a recipe README
