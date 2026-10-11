@@ -2,7 +2,7 @@ name: Dependabot auto-merge
 
 # Automatically enable auto-merge for Dependabot patch/minor updates.
 # Major updates are intentionally held for human review.
-# Auto-merge only completes once branch protection's required checks pass.
+# Auto-merge only completes once the main ruleset's required checks pass.
 
 on:
   pull_request_target:

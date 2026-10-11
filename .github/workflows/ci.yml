@@ -463,12 +463,13 @@ jobs:
         # The script waits for the broker (up to 180 s) before the first golden.
         run: python scripts/driver_floors.py run
 
-  # PR smoke lanes (#222). They keep the exact required check names that
-  # smoke-test.yml used to report on pull requests, so branch protection is
-  # unchanged; a lane skipped by the classifier reports "skipped", which branch
-  # protection accepts and ci-gate accepts only when the classifier said false.
-  # Two plain jobs instead of a matrix: a skipped matrix job would report its
-  # unexpanded name and leave the required check missing.
+  # PR smoke lanes (#222). They keep the check names smoke-test.yml used to
+  # report on pull requests. They are not required checks themselves: the main
+  # ruleset requires only "CI Gate (all checks must pass)" and "PR title" (see
+  # "Main branch protection" in CONTRIBUTING.md), and ci-gate enforces these
+  # lanes. A lane skipped by the classifier reports "skipped", which ci-gate
+  # accepts only when the classifier said false. Two plain jobs instead of a
+  # matrix keep each lane's check name stable even when it is skipped.
   smoke-114:
     name: Smoke Tests (CUBRID 11.4)
     needs: [classify]
@@ -524,7 +525,7 @@ jobs:
       issues: write
     uses: ./.github/workflows/driver-main.yml
 
-  # Single aggregate check for branch protection. Fail-closed allow-list:
+  # Single aggregate check required by the main ruleset. Fail-closed allow-list:
   # classify and the always-on cheap checks must succeed; every other lane must
   # succeed unless classify marked it not applicable (output exactly "false").
   # A failed, cancelled or unexpectedly skipped lane, or a missing
