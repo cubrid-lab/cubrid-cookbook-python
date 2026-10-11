@@ -43,7 +43,9 @@ or automated "approval recommended" summary is not a completed review.
 1. Obtain Oracle **design review** of scope and approach before implementation.
 2. Implement the agreed change with focused tests and live example evidence
    where the existing policy requires it.
-3. Update the matching README, SUPPORT_MATRIX, CHANGELOG and example docs.
+3. Update only affected documentation under the existing documentation definition
+   of done, including README, SUPPORT_MATRIX, CHANGELOG and example docs when
+   applicable. Keep the existing docs-not-needed process for unaffected docs.
 4. Obtain Oracle **post-implementation review**, address material findings
    and record both Oracle outcomes and test results.
 
@@ -52,16 +54,18 @@ a recorded reason. Both Oracle reviews satisfy this tool-specific route;
 additional GitHub Copilot review is not automatically required. Existing CI,
 maintainer/repository checks and live-CUBRID rules still apply.
 
-**Standalone Claude Code or Codex:** implement and test, open a PR, then
-**wait for a substantive submitted GitHub Copilot review or another person's
-review** before merging. A submitted COMMENTED review with an actual assessment
-counts as evidence but is not formal APPROVED status. Requested/pending review,
-a boilerplate approval suggestion, self-review or CI success does not qualify.
+**Standalone agents (Claude Code, Codex, ChatGPT, or other agent tools):**
+implement and test, open a PR, then **wait for a substantive submitted GitHub
+Copilot review or another person's review** before merging. A submitted
+COMMENTED review with an actual assessment counts as evidence but is not formal
+APPROVED status. Requested/pending review, a boilerplate approval suggestion,
+self-review or CI success does not qualify.
 Validate accepted fixes at the final relevant head; leave the PR unmerged if
 the required review has not arrived.
 
-**Human/other contributors:** follow the normal PR and review process. No
-OpenCode, Oracle, Copilot, Claude Code or Codex installation is a contribution
+**Human contributions:** follow the normal PR and review process. This route
+is not a fallback for unnamed standalone agent tools, which use the route above.
+No OpenCode, Oracle, Copilot, Claude Code or Codex installation is a contribution
 prerequisite. Maintainers coordinate internal review tools, assignments,
 integration and release decisions. Preserve authorship and credit tools only
 when they actually produced the work.
@@ -104,9 +108,10 @@ when they actually produced the work.
   maintainer direction. If no qualifying review arrives or a serious issue
   remains, keep the PR Draft/unmerged and report the pending work.
 - Before merging check the applicable review route, final source, required CI
-  and live evidence. Never merge unresolved critical/security issues or failed
-  required checks. Nonblocking open findings need explicit maintainer
-  disposition. This does not change bot automerge or GitHub protection settings.
+  and live evidence where required by the existing validation policy. Never
+  merge unresolved critical/security issues or failed required checks.
+  Nonblocking open findings need explicit maintainer disposition. This does
+  not change bot automerge or GitHub protection settings.
 
 ## Issue specification and ownership
 
