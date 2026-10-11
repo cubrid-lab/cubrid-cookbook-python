@@ -22,8 +22,18 @@ Include a description of changes associated with your commit(s)
 - Checks not executed, reason, and remaining gaps:
 - Optional AI/tool review and findings (separate from executed tests):
 
+## Review Route and Final Disposition
+
+<!-- Maintainer/agent-authored PRs; external contributors need no specific tool. -->
+- Development route: OpenCode + Oracle pre/post / standalone Claude Code / standalone Codex / human/other (select one).
+- Review evidence: actual Oracle or submitted GitHub review link, reviewer and reviewed head SHA, or **pending**.
+- Finding disposition: fixed commit + test / rejected with reason / deferred issue.
+- Unresolved review threads and reason, or "none verified".
+- Maintainer merge decision: applicable review, current code, CI and live validation checked.
+<!-- A requested review, green CI or automated "approval recommended" text is insufficient. -->
+
 ## Reviewers
-- Use @Mentions to specify the reviewers for your PR.
+- Request reviewers through GitHub review requests; avoid repeated bot @mentions and review requests.
 
 # CHECKLIST:
 Mark applicable checks and explain anything not run/not applicable. Maintainers
