@@ -295,3 +295,7 @@ def test_invalid_rows_skipped_during_promote(httpx_client: httpx.Client) -> None
     products = cast(list[dict[str, object]], products_response.json())
     assert len(products) == 1
     assert products[0]["external_sku"] == "SKU-OK"
+
+
+def test_throwaway_failure_for_227_gate_proof() -> None:
+    assert False, "deliberate failure: CI Gate must fail (#227 proof)"
