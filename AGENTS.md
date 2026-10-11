@@ -35,20 +35,36 @@ fundamentals/      → Step-by-step reference for core operations
 
 ## Development Workflow (cubrid-lab org standard)
 
-All non-trivial work across cubrid-lab repositories MUST follow this 4-phase cycle:
+Select the review route by the tool that **actually developed** the change.
+Record that route in the PR; a pending review request, green CI, self-review
+or automated "approval recommended" summary is not a completed review.
 
-Maintainers coordinate Oracle/Codex reviews, project-specific agent/tool setup,
-release classification, labels, and integration. Outside contributors provide
-normal motivation, code, tests and docs; no Oracle or agent installation is a
-contribution prerequisite. Preserve actual contributor authorship and add tool
-attribution only when that tool was used for the commit.
+**OpenCode with Oracle**, for non-trivial work:
+1. Obtain Oracle **design review** of scope and approach before implementation.
+2. Implement the agreed change with focused tests and live example evidence
+   where the existing policy requires it.
+3. Update the matching README, SUPPORT_MATRIX, CHANGELOG and example docs.
+4. Obtain Oracle **post-implementation review**, address material findings
+   and record both Oracle outcomes and test results.
 
-1. **Oracle Design Review** — Consult Oracle before implementation to validate architecture, API surface, and approach. Raise concerns early.
-2. **Implementation** — Build the feature/fix with tests. Follow existing codebase patterns.
-3. **Documentation Update** — Update ALL affected docs (README, CHANGELOG, ROADMAP, API docs, SUPPORT_MATRIX, PRD, etc.) in the same PR or as an immediate follow-up. Code without doc updates is incomplete.
-4. **Oracle Post-Implementation Review** — Consult Oracle to review the completed work for correctness, edge cases, and consistency before merging.
+Trivial OpenCode typo/single-line work may omit Oracle phases 1 and 4 only with
+a recorded reason. Both Oracle reviews satisfy this tool-specific route;
+additional GitHub Copilot review is not automatically required. Existing CI,
+maintainer/repository checks and live-CUBRID rules still apply.
 
-Skipping any phase requires explicit justification. Trivial changes (typos, single-line fixes) may skip phases 1 and 4.
+**Standalone Claude Code or Codex:** implement and test, open a PR, then
+**wait for a substantive submitted GitHub Copilot review or another person's
+review** before merging. A submitted COMMENTED review with an actual assessment
+counts as evidence but is not formal APPROVED status. Requested/pending review,
+a boilerplate approval suggestion, self-review or CI success does not qualify.
+Validate accepted fixes at the final relevant head; leave the PR unmerged if
+the required review has not arrived.
+
+**Human/other contributors:** follow the normal PR and review process. No
+OpenCode, Oracle, Copilot, Claude Code or Codex installation is a contribution
+prerequisite. Maintainers coordinate internal review tools, assignments,
+integration and release decisions. Preserve authorship and credit tools only
+when they actually produced the work.
 
 ## Agent PR scope and review guardrails
 
@@ -69,6 +85,28 @@ Skipping any phase requires explicit justification. Trivial changes (typos, sing
 - Maintain one editable, agent-owned English status comment. Avoid bot mentions in
   routine updates, per-finding progress replies and repeated review requests.
   Preserve contributor history; revisit external PRs only after an author-updated head SHA.
+
+## Review disposition and merge evidence
+
+- Record the development route, reviewer/Oracle evidence, relevant reviewed
+  head SHA and pending/complete status in the PR.
+- Triage each actionable review finding as fixed (commit and focused tests),
+  rejected (specific contract/reproduction reason), or deferred (linked issue).
+  Do not expand a recipe's behavior merely because an AI suggested it.
+- Reply once with **final** disposition in each relevant inline review thread.
+  A reviewer or maintainer resolves a thread only after checking the updated
+  source and evidence. An outdated diff or reply is not an automatic resolution;
+  never bulk-resolve old threads without checking.
+- Maintain one editable agent-owned English PR status comment with the overall
+  state, required CI/live checks, checks not run, and outstanding findings.
+  Avoid repeating whole test logs and prompting the same bot on each thread.
+- Keep the existing two published AI-review rounds budget; further rounds need
+  maintainer direction. If no qualifying review arrives or a serious issue
+  remains, keep the PR Draft/unmerged and report the pending work.
+- Before merging check the applicable review route, final source, required CI
+  and live evidence. Never merge unresolved critical/security issues or failed
+  required checks. Nonblocking open findings need explicit maintainer
+  disposition. This does not change bot automerge or GitHub protection settings.
 
 ## Issue specification and ownership
 
