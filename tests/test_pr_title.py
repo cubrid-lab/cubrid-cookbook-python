@@ -90,7 +90,12 @@ def _validator() -> str:
 
 
 def _run(title: str, body: str = "") -> subprocess.CompletedProcess[str]:
-    env = {**os.environ, "PR_TITLE": title, "PR_BODY": body, "GITHUB_REPOSITORY": "cubrid-lab/cubrid-cookbook-python"}
+    env = {
+        **os.environ,
+        "PR_TITLE": title,
+        "PR_BODY": body,
+        "GITHUB_REPOSITORY": "cubrid-lab/cubrid-cookbook-python",
+    }
     return subprocess.run(
         [sys.executable, "-c", _validator()],
         capture_output=True,
