@@ -115,6 +115,17 @@ when they actually produced the work.
 
 ## Issue specification and ownership
 
+Issues and implementation acceptance are repository-local: file work in the
+repository whose code, workflow, or documentation must change. Each repository
+owns its scope, priority, assignee, validation, release decision and closure.
+Every issue must be understandable without opening another repository's issue.
+Cross-repository links are allowed as technical references (Refs owner/repo#N),
+but do not transfer work or require another repository to close its issue.
+For changes to several repositories, create independent local issues and PRs.
+Never use issue auto-closing keywords with another repository's issue; its
+maintainer controls closure. The existing required PR title check rejects
+direct foreign-repository closing references while allowing Refs links.
+
 - An issue body is the current work specification, not a session transcript. Keep
   it current; put dated progress, pause and review outcomes in comments, and
   preserve historical evidence together with its limits.
