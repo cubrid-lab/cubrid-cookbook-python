@@ -61,13 +61,27 @@ Failure, cancellation or a skip the classifier did not select fails the CI gate.
 |-----------|---------|--------|
 | pycubrid | ≥ 1.6.1 | ✅ Required |
 | sqlalchemy-cubrid | ≥ 1.0 | ✅ Required for SQLAlchemy recipes (≥ 1.4.2 for the advanced recipes, ≥ 1.5 for the async `cubrid+aiopycubrid://` recipe [^async]) |
-| SQLAlchemy | 2.0–2.2 | ✅ Async recipes install the `sqlalchemy[asyncio]` extra for the required greenlet runtime |
+| SQLAlchemy | 2.0, 2.1 | ✅ Supported range of the dialect; 2.2 is not supported (see below). Async recipes install the `sqlalchemy[asyncio]` extra for the required greenlet runtime |
 | Flask | ≥ 3.0 | ✅ |
 | Flask-SQLAlchemy | ≥ 3.1 | ✅ |
 | FastAPI | ≥ 0.100 | ✅ |
 | Pandas | ≥ 2.0 | ✅ |
 | Streamlit | ≥ 1.30 | ✅ |
 | Django | ≥ 5.2 | ✅ (minimal recipe; floor checked with `manage.py check` and the `/health`, `/items` views on 4.2, 5.0 and 5.2, CI runs the live bridge suite on the latest release) |
+
+**SQLAlchemy 2.2 is not in the supported range.** The cookbook follows the reviewed
+sqlalchemy-cubrid support contract, which documents SQLAlchemy 2.0 and 2.1 as supported and
+2.2 and later as not supported
+([`docs/SUPPORT_MATRIX.md` at `da9c397`](https://github.com/cubrid-lab/sqlalchemy-cubrid/blob/da9c3977d21e94f739667ae5e9467c04d53fdd0b/docs/SUPPORT_MATRIX.md)).
+What can be installed is a separate question from what is supported:
+
+- **Current `main` of sqlalchemy-cubrid (unreleased)** requires `sqlalchemy>=2.0,<2.2`
+  (checked at `a6339df` on 2026-10-11). This cap has not been published.
+- **Published `sqlalchemy-cubrid` 1.10.0 on PyPI** (the latest release when this was written,
+  2026-10-11) still declares `sqlalchemy>=2.0,<2.3`, so its metadata would let pip install
+  SQLAlchemy 2.2 once that is released (the latest SQLAlchemy on PyPI is 2.1.4). That is an installation range, not a support claim, and no cookbook recipe is
+  verified on SQLAlchemy 2.2. Any forward-compatibility run against a newer
+  SQLAlchemy is advisory only.
 
 [^async]: The sync SQLAlchemy dialect (`cubrid+pycubrid://`) works from `sqlalchemy-cubrid` 1.0. The async dialect (`cubrid+aiopycubrid://`, used by `fundamentals/async/02_async_sqlalchemy.py`) first became installable from PyPI in 1.2.3 (its entry points were missing from the 1.2.0–1.2.1 releases and 1.2.2 was yanked; 1.2.1 only shipped the `get_pool_class()`/`create_async_engine()` fix), but 1.4.x fails with SQLAlchemy 2.1 (which its metadata allows; the async adapter calls the removed `await_` attribute), so `fundamentals/async` pins `≥ 1.5`, the first release the floor lane passes on. The other advanced SQLAlchemy recipes (pandas, Django, dashboard) keep `≥ 1.4.2`; `fundamentals/sqlalchemy` needs `≥ 1.9` (see below).
 
