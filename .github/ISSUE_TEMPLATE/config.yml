@@ -9,3 +9,6 @@ contact_links:
   - name: pycubrid
     url: https://github.com/cubrid-lab/pycubrid
     about: Pure Python DB-API 2.0 driver for CUBRID
+  - name: Report a security vulnerability
+    url: https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/SECURITY.md
+    about: Report vulnerabilities privately as described in SECURITY.md, never in a public issue
