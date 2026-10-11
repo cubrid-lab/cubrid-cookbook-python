@@ -129,7 +129,7 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 | Tier | When | What runs |
 |------|------|-----------|
 | 1 — cheap checks | every pull request | Ruff, `make check`, docs-sync, doc-lint, classification and the gate; the strict docs-site build |
-| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → representative suites; dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples; AI-agent code or other files in example trees → the same lane with a full `make verify` |
+| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples; AI-agent code or other files in example trees → the same lane with a full `make verify` |
 | 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with full `make verify`, Python 3.11 + 3.14 compatibility |
 | 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
 | 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | every golden plus all Flask/FastAPI, async-worker, Django and dashboard suites on CUBRID 11.2 + 11.4 (Python 3.12); a release verification adds one CUBRID 11.4 cell on Python 3.11, the supported minimum |
@@ -151,8 +151,31 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 - Example directories with no live consumer (`performance/`, the FastAPI
   quickstart, `fundamentals/parameterized-queries`) are covered by the offline
   checks only, on every event.
-- The Flask/FastAPI lane runs the representative `01-basic-crud` suites, not the
-  touched recipe's own suite (unchanged; tracked in #227).
+- The Flask/FastAPI lane (#227) runs the `tests/` suite of each changed recipe
+  root (`ci_scope.web_suites`: a `templates/flask/` or
+  `templates/api-service-fastapi/recipes/` recipe, or the root FastAPI app), each
+  in a fresh venv with only its own `requirements.txt` and its own pytest
+  process, against one CUBRID 11.4 container. Shared Flask/FastAPI files (for
+  example `templates/flask/requirements.txt`), fan-out paths and unknown paths
+  add the representative suites (`templates/flask/01-basic-crud`,
+  `templates/api-service-fastapi/recipes/01-basic-crud`, the root FastAPI app).
+  The representatives run on top of the changed recipes and never count toward
+  the cap: at most `MAX_WEB_SUITES` (25) changed recipe roots run per pull
+  request. A suite takes about 11 s, so the cap covers every suite in the
+  repository (23 today; `tests/test_ci_scope.py` fails when a new recipe
+  outgrows it), and a grouped Dependabot bump runs every suite it touches.
+  Should changed roots ever exceed the cap, the first 25 by name and the
+  representatives run, and the rest (`ci_scope.web_suites_skipped`) get a
+  `::warning::` each and a "Not validated before merge" list in the job
+  summary, so a green gate is never presented as their coverage; for live
+  evidence before merging, run
+  `gh workflow run smoke-test.yml -R cubrid-lab/cubrid-cookbook-python --ref <branch>`,
+  otherwise `smoke-test.yml` covers them after merge.
+  `dependabot-auto-merge.yml` does not read this list: with the cap above the
+  suite count it cannot be non-empty on a real pull request. Recipe 10 runs
+  only in its CQRS job. Every selected suite must pass at least one test
+  (checked on pytest's final summary line) within 10 minutes, or the lane and
+  `CI Gate` fail.
 - `smoke-test.yml` does not run on pull requests, so no pull request repeats the
   broad 11.2/11.4 matrix. Its exact release verification inputs, outputs and
   fail-closed reporting are unchanged. To test a change to it before merging, run

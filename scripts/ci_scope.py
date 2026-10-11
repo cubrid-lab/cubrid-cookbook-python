@@ -10,7 +10,13 @@ Tiers:
 
 * ``docs`` - docs/metadata-only pull request: cheap checks only, no live CUBRID.
 * ``pr``   - ordinary pull request: the live suite(s) of the touched recipe
-  families on one representative CUBRID (11.4) and Python (3.12). Shared live
+  families on one representative CUBRID (11.4) and Python (3.12). For
+  Flask/FastAPI the ``web_suites`` output names the changed recipe roots (#227),
+  at most ``MAX_WEB_SUITES`` of them; shared Flask/FastAPI files, wider tiers
+  and unknown paths add ``REPRESENTATIVE_WEB_SUITES`` on top (they never count
+  toward the cap). Changed roots beyond the cap are listed in
+  ``web_suites_skipped`` so the lane can warn that they were not validated
+  before merge. Shared live
   infrastructure fans out to every suite plus the CUBRID 11.2 smoke lane;
   Python compatibility endpoints run only for compatibility-surface changes.
 * ``full`` - a pull request that changes the CI policy itself: every lane, both
@@ -55,6 +61,27 @@ MAIN_EVENTS = {"push", "schedule", "workflow_dispatch"}
 FLOOR_EVENTS = {"schedule", "workflow_dispatch"}
 
 CQRS_ROOT = "templates/api-service-fastapi/recipes/10-cqrs-event-sourcing"
+FASTAPI_ROOT = "templates/api-service-fastapi"
+# Flask/FastAPI suite roots (#227): a directory with its own requirements.txt and
+# tests/, run in a fresh venv each by ci.yml's pytest-suites job. Recipe 10 has
+# its own pinned CQRS job and is never a web suite.
+WEB_SUITE_GLOBS = ("templates/flask/*", f"{FASTAPI_ROOT}/recipes/*")
+# Stand-ins for every web suite, added on top of the changed recipes when a
+# shared Flask/FastAPI file (for example templates/flask/requirements.txt),
+# shared live infrastructure, the CI policy or an unknown path changes, or when
+# changed recipes exceed MAX_WEB_SUITES; smoke-test.yml runs every suite after
+# merge.
+REPRESENTATIVE_WEB_SUITES = (
+    FASTAPI_ROOT,
+    f"{FASTAPI_ROOT}/recipes/01-basic-crud",
+    "templates/flask/01-basic-crud",
+)
+# Cap on changed recipe roots per pull request (representatives not counted).
+# A suite takes about 11 s, so the cap covers every discovered suite (23 today);
+# tests/test_ci_scope.py fails when web_suite_roots() outgrows it, so in
+# practice no changed recipe is skipped. web_suites_skipped stays as the
+# fail-safe report if that ever happens.
+MAX_WEB_SUITES = 25
 
 # fnmatch's ``*`` also crosses ``/``, so ``docs/*`` covers the whole tree.
 # Docs/metadata only: never starts CUBRID (checked first, so a recipe README
@@ -173,9 +200,38 @@ def example_roots(root: Path) -> list[str]:
     return sorted(roots)
 
 
-def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str, object]:
+def web_suite_roots(root: Path) -> list[str]:
+    """Flask/FastAPI directories owning ``requirements.txt`` and ``tests/`` (#227)."""
+    candidates = [root / FASTAPI_ROOT]
+    for pattern in WEB_SUITE_GLOBS:
+        candidates.extend(root.glob(pattern))
+    suites = set()
+    for path in candidates:
+        rel = path.relative_to(root).as_posix()
+        if rel != CQRS_ROOT and (path / "requirements.txt").is_file():
+            if (path / "tests").is_dir():
+                suites.add(rel)
+    return sorted(suites)
+
+
+def _web_suite(path: str, suites: Iterable[str]) -> str | None:
+    """The web suite root owning ``path``, or None for a shared Flask/FastAPI file."""
+    owner = max((s for s in suites if path.startswith(f"{s}/")), key=len, default=None)
+    if owner == FASTAPI_ROOT and path.startswith(f"{FASTAPI_ROOT}/recipes/"):
+        return None  # a file beside the recipes, not in one: shared
+    if owner is not None and SAFE_ROOT.fullmatch(owner):
+        return owner
+    return None
+
+
+def classify(
+    event: str, paths: Iterable[str], roots: Iterable[str], suites: Iterable[str] = ()
+) -> dict[str, object]:
     files = sorted({p.strip() for p in paths if p.strip()})
     roots = sorted(roots)
+    suites = sorted(set(suites) - {CQRS_ROOT})
+    web_suites: set[str] = set()
+    web_shared = False
     lanes = dict.fromkeys(
         ("web", "dashboard", "async_worker", "django", "cqrs", "compat", "smoke_114", "floors"),
         False,
@@ -187,6 +243,8 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
         return {
             "tier": "main",
             "web": False,
+            "web_suites": [],
+            "web_suites_skipped": [],
             "dashboard": False,
             "async_worker": False,
             "django": False,
@@ -228,6 +286,12 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
         family = next((name for name, pats in FAMILIES if _match(path, pats)), None)
         if family is not None:
             lanes[family] = True
+            if family == "web":
+                suite = _web_suite(path, suites)
+                if suite is None:
+                    web_shared = True
+                else:
+                    web_suites.add(suite)
             if path == f"{CQRS_ROOT}/requirements.txt":
                 cqrs_dual = True
         elif _match(path, AI_AGENT):
@@ -241,11 +305,20 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
             # Unknown path: every PR lane on the representative versions.
             for name in ("web", "dashboard", "async_worker", "django", "cqrs", "smoke_114"):
                 lanes[name] = True
-            full_verify = True
+            full_verify = web_shared = True
 
     if broad or full:
         lanes = dict.fromkeys(lanes, True)
-        cqrs_dual = smoke_112 = full_verify = True
+        cqrs_dual = smoke_112 = full_verify = web_shared = True
+    if not lanes["web"]:
+        web_suites = set()
+    changed = sorted(web_suites)
+    web_suites = set(changed[:MAX_WEB_SUITES])
+    # Changed recipes the cap left out: never reported as covered (#227 review).
+    web_suites_skipped = changed[MAX_WEB_SUITES:]
+    if lanes["web"] and (web_shared or not web_suites or web_suites_skipped):
+        web_suites |= set(REPRESENTATIVE_WEB_SUITES)
+    web_suites_skipped = [s for s in web_suites_skipped if s not in web_suites]
     if full:
         tier = "full"
     elif any(lanes.values()):
@@ -270,6 +343,8 @@ def classify(event: str, paths: Iterable[str], roots: Iterable[str]) -> dict[str
     return {
         "tier": tier,
         "web": lanes["web"],
+        "web_suites": sorted(web_suites),
+        "web_suites_skipped": web_suites_skipped,
         "dashboard": lanes["dashboard"],
         "async_worker": lanes["async_worker"],
         "django": lanes["django"],
@@ -301,7 +376,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=Path("."), help="repository root")
     args = parser.parse_args(argv)
     roots = example_roots(args.root)
-    sys.stdout.write(render(classify(args.event, sys.stdin.read().splitlines(), roots)))
+    suites = web_suite_roots(args.root)
+    paths = sys.stdin.read().splitlines()
+    sys.stdout.write(render(classify(args.event, paths, roots, suites)))
     return 0
 
 

@@ -34,6 +34,8 @@ jobs:
     outputs:
       tier: ${{ steps.scope.outputs.tier }}
       web: ${{ steps.scope.outputs.web }}
+      web_suites: ${{ steps.scope.outputs.web_suites }}
+      web_suites_skipped: ${{ steps.scope.outputs.web_suites_skipped }}
       dashboard: ${{ steps.scope.outputs.dashboard }}
       async_worker: ${{ steps.scope.outputs.async_worker }}
       django: ${{ steps.scope.outputs.django }}
@@ -163,36 +165,136 @@ jobs:
 
   # `make verify` is golden-file only and never runs the pytest suites, so
   # recipe-level CUBRID-only breakage ships undetected (#131/#127). This job
-  # runs the representative Flask and FastAPI suites against one live CUBRID
-  # when a Flask/FastAPI recipe or shared live infrastructure changes.
+  # runs the Flask/FastAPI suites ci_scope.py selects (web_suites, #227) against
+  # one live CUBRID 11.4: the changed recipes (up to MAX_WEB_SUITES), plus the
+  # representative suites for shared Flask/FastAPI files and wider tiers.
   pytest-suites:
     name: Recipe pytest suites (live CUBRID)
     needs: [classify]
     if: needs.classify.outputs.web == 'true'
-    uses: cubrid-lab/.github/.github/workflows/live-smoke.yml@f7d8c0f6c28392c10306f367de38b40f13eed4b7
-    with:
-      cubrid-version: "11.4"
-      python-version: "3.12"
-      cubrid-test-url: "cubrid+pycubrid://dba@localhost:33000/testdb"
-      setup-command: >-
-        python -m pip install --upgrade pip &&
-        pip install pytest pytest-asyncio httpx
-        -r templates/flask/01-basic-crud/requirements.txt
-        -r templates/api-service-fastapi/requirements.txt
-        -r templates/api-service-fastapi/recipes/01-basic-crud/requirements.txt
-      # Recipes share top-level module names (database/models/app), so one
-      # pytest process cross-imports them and collection fails; run each suite
-      # in its own process (as smoke-test.yml #141 does). The dashboard suite
-      # uses a separate live-smoke job and CUBRID database because it shares
-      # cookbook_products with Flask and creates an FK from cookbook_sales.
-      test-command: >-
-        for suite in
-        templates/flask/01-basic-crud/tests
-        templates/api-service-fastapi/tests
-        templates/api-service-fastapi/recipes/01-basic-crud/tests;
-        do echo "::group::pytest $suite";
-        python -m pytest "$suite" -v --tb=short || exit 1;
-        echo "::endgroup::"; done
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    services:
+      cubrid:
+        image: cubrid/cubrid:11.4
+        env:
+          CUBRID_DB: testdb
+        ports:
+          - 33000:33000
+        options: >-
+          --shm-size 512m
+          --health-cmd "csql -u dba testdb -c 'SELECT 1'"
+          --health-interval 15s
+          --health-timeout 10s
+          --health-retries 10
+          --health-start-period 30s
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Runs PR recipe code: never persist the token.
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Wait for CUBRID to accept connections
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/probe"
+          "$RUNNER_TEMP/probe/bin/python" -m pip install -q pycubrid
+          deadline=$(( $(date +%s) + 180 ))
+          until "$RUNNER_TEMP/probe/bin/python" -c "import pycubrid; pycubrid.connect(host='localhost', port=33000, database='testdb', user='dba', password='').close()" >/dev/null 2>&1; do
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::CUBRID did not accept connections within 180s"
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "CUBRID is ready."
+      - name: Run each selected suite in its own venv
+        timeout-minutes: 35
+        # Recipes share top-level module names (database/models/app) and pin
+        # their own dependencies, so each suite gets a fresh venv with only its
+        # own requirements.txt and a separate pytest process. The selected roots
+        # arrive as a JSON list in an env var, never interpolated into the
+        # script. Every suite runs even after a failure; the step then fails if
+        # any did, or if a suite passed no test (an all-skipped run proves
+        # nothing). The dashboard suite uses a separate job and database because
+        # it shares cookbook_products with Flask and adds an FK from
+        # cookbook_sales. Changed roots above the MAX_WEB_SUITES cap
+        # (SKIPPED) are not run: each gets a warning and a summary line saying
+        # it was not validated before merge.
+        env:
+          SUITES: ${{ needs.classify.outputs.web_suites }}
+          SKIPPED: ${{ needs.classify.outputs.web_suites_skipped }}
+          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
+        run: |
+          set -euo pipefail
+          # Command substitution, not process substitution, so set -e stops on
+          # malformed JSON.
+          suites_txt=$(python3 -c 'import json, os; print("\n".join(json.loads(os.environ["SUITES"])))')
+          skipped_txt=$(python3 -c 'import json, os; print("\n".join(json.loads(os.environ.get("SKIPPED") or "[]")))')
+          mapfile -t suites <<<"$suites_txt"
+          mapfile -t skipped <<<"$skipped_txt"
+          if [ "${#suites[@]}" -eq 0 ] || [ -z "${suites[0]}" ]; then
+            echo "::error::web lane selected but no suite roots were classified"
+            exit 1
+          fi
+          {
+            echo "### Recipe pytest suites (CUBRID 11.4)"
+            echo
+            echo "| Suite | Result |"
+            echo "| --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          failed=()
+          index=0
+          for root in "${suites[@]}"; do
+            index=$((index + 1))
+            venv="$RUNNER_TEMP/suite-$index"
+            log="$RUNNER_TEMP/suite-$index.log"
+            echo "::group::$root"
+            status=0
+            {
+              python -m venv "$venv" &&
+              "$venv/bin/python" -m pip install -q --upgrade pip &&
+              "$venv/bin/python" -m pip install -q pytest pytest-asyncio httpx -r "$root/requirements.txt" &&
+              timeout 600 "$venv/bin/python" -m pytest "$root/tests" -v --tb=short
+            } > "$log" 2>&1 || status=$?
+            cat "$log"
+            echo "::endgroup::"
+            last=$(tail -n 1 "$log")
+            result=$(sed -E 's/=+//g; s/ in [0-9.]+s.*//; s/^ +| +$//g' <<<"$last")
+            # Only pytest's final summary line counts: a test named "...passed"
+            # elsewhere in the log must not satisfy the guard.
+            if [ "$status" -eq 0 ] && ! grep -qE '[0-9]+ passed' <<<"$last"; then
+              status=1
+              result="no test passed: $result"
+            fi
+            if [ "$status" -ne 0 ]; then
+              failed+=("$root")
+              echo "::error::pytest suite $root failed (exit $status): $result"
+              result="FAILED: $result"
+            fi
+            printf '| %s | %s |\n' "$root" "$result" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "Ran ${#suites[@]} suite(s); ${#failed[@]} failed."
+          if [ -n "${skipped[0]:-}" ]; then
+            {
+              echo
+              echo "**Not validated before merge** (beyond the MAX_WEB_SUITES cap of changed recipes;"
+              echo "run \`gh workflow run smoke-test.yml --ref <branch>\` for their live evidence):"
+              echo
+              printf -- '- %s\n' "${skipped[@]}"
+            } >> "$GITHUB_STEP_SUMMARY"
+            for root in "${skipped[@]}"; do
+              echo "::warning::$root changed but its suite was not run (MAX_WEB_SUITES cap); the representative suites do not cover it"
+            done
+          fi
+          if [ "${#failed[@]}" -ne 0 ]; then
+            exit 1
+          fi
 
   dashboard-pytest:
     name: Dashboard pytest suite (isolated CUBRID 11.4)

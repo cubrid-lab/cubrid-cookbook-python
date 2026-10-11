@@ -169,7 +169,12 @@ when a row no longer matches the repository. Verification is split:
 - The **Flask and FastAPI** recipes are covered by pytest suites that the smoke
   job runs against its live CUBRID container on **11.2 and 11.4** for every push
   to `main`, nightly, and on manual runs. Pull requests that touch a Flask or
-  FastAPI recipe run the representative `01-basic-crud` suites on 11.4.
+  FastAPI recipe run that recipe's own suite on 11.4, in a fresh environment
+  with its own `requirements.txt`. Shared Flask/FastAPI files also run the
+  representative `01-basic-crud` suites and the root FastAPI app in addition to
+  the changed recipes; only beyond the cap of 25 changed recipes (above today's
+  suite count) do they stand in for the recipes left out, which the job lists as
+  not validated. Recipe 10 has its own CQRS job.
   Each suite's `conftest.py` reads `CUBRID_TEST_URL`; without it the suites fall
   back to SQLite for local runs.
 - The **Streamlit** recipes are covered by `templates/dashboard/tests/test_dashboard.py`
@@ -288,12 +293,11 @@ for f in fundamentals/pandas/*.py; do python3 "$f"; done
 ```
 
 The pytest suites create and drop their tables in whichever database
-`CUBRID_TEST_URL` points at. Some suites still share table names
-(`cookbook_products` in Flask recipes 01 and 07 and the dashboard;
-`cookbook_categories` in the FastAPI root app and Flask recipe 02; removal is
-tracked in #277). Run the Flask/FastAPI suites sequentially, and
-give the dashboard suite a **different database/container**: its
-`cookbook_sales` foreign key references `cookbook_products`, so leftover
-dashboard tables in a shared database can block Flask teardown even if the
-suites normally run in order. CI uses separate CUBRID containers; the
+`CUBRID_TEST_URL` points at. Every Flask/FastAPI recipe declares its own
+distinct table names (guarded by `tests/test_table_prefix.py`), so those suites
+can run concurrently against one instance. The dashboard suite still uses
+`cookbook_products`, which Flask recipe 01 also creates, so give it a
+**different database/container**: its `cookbook_sales` foreign key references
+`cookbook_products`, so leftover dashboard tables in a shared database can block
+Flask teardown even if the suites normally run in order. CI uses separate CUBRID containers; the
 dashboard fixture only deletes tables in its own database.

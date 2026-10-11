@@ -24,6 +24,10 @@ from test_workflow_timeouts import parse_jobs  # noqa: E402
 CI = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 SMOKE = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
 ROOTS = ci_scope.example_roots(ROOT)
+SUITES = ci_scope.web_suite_roots(ROOT)
+REPRESENTATIVE = sorted(ci_scope.REPRESENTATIVE_WEB_SUITES)
+FLASK = "templates/flask"
+FASTAPI = "templates/api-service-fastapi"
 LIVE = (
     "web",
     "dashboard",
@@ -42,7 +46,7 @@ ADVISORY_JOBS = {"driver-main-advisory"}
 
 
 def scope(*paths: str, event: str = "pull_request") -> dict[str, object]:
-    return ci_scope.classify(event, paths, ROOTS)
+    return ci_scope.classify(event, paths, ROOTS, SUITES)
 
 
 def selected(result: dict[str, object]) -> set[str]:
@@ -237,6 +241,186 @@ class ClassifierTests(unittest.TestCase):
             ci_scope.main([])
 
 
+class WebSuiteSelectionTests(unittest.TestCase):
+    """Changed Flask/FastAPI recipes run their own suites on pull requests (#227)."""
+
+    def test_suite_roots_own_requirements_and_tests_and_exclude_cqrs(self) -> None:
+        self.assertIn(f"{FLASK}/07-vendor-feed", SUITES)
+        self.assertIn(f"{FASTAPI}/recipes/09-saga", SUITES)
+        self.assertIn(FASTAPI, SUITES)
+        self.assertNotIn(CQRS, SUITES)
+        self.assertNotIn(FLASK, SUITES)
+        self.assertLessEqual(set(REPRESENTATIVE), set(SUITES))
+        for suite in SUITES:
+            with self.subTest(suite=suite):
+                self.assertTrue((ROOT / suite / "requirements.txt").is_file())
+                self.assertTrue((ROOT / suite / "tests").is_dir())
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            for rel in (f"{FLASK}/02-x", f"{FLASK}/03-no-tests", CQRS):
+                (base / rel).mkdir(parents=True)
+                (base / rel / "requirements.txt").write_text("flask\n")
+            (base / f"{FLASK}/02-x/tests").mkdir()
+            (base / f"{CQRS}/tests").mkdir()
+            self.assertEqual(ci_scope.web_suite_roots(base), [f"{FLASK}/02-x"])
+
+    def test_single_changed_recipe_runs_only_its_suite(self) -> None:
+        cases = {
+            f"{FLASK}/07-vendor-feed/tests/test_app.py": f"{FLASK}/07-vendor-feed",
+            f"{FLASK}/09-rbac/requirements.txt": f"{FLASK}/09-rbac",
+            f"{FASTAPI}/recipes/09-saga/routes.py": f"{FASTAPI}/recipes/09-saga",
+            f"{FASTAPI}/app/main.py": FASTAPI,
+            f"{FASTAPI}/requirements.txt": FASTAPI,
+        }
+        for path, suite in cases.items():
+            with self.subTest(path=path):
+                result = scope(path)
+                self.assertEqual(selected(result), {"web"})
+                self.assertEqual(result["web_suites"], [suite])
+
+    def test_several_changed_recipes_run_each_suite(self) -> None:
+        result = scope(
+            f"{FLASK}/07-vendor-feed/app.py",
+            f"{FLASK}/07-vendor-feed/models.py",
+            f"{FASTAPI}/recipes/02-orders/main.py",
+            f"{FASTAPI}/recipes/12-reservation-scheduling/tests/test_api.py",
+        )
+        self.assertEqual(
+            result["web_suites"],
+            [
+                f"{FASTAPI}/recipes/02-orders",
+                f"{FASTAPI}/recipes/12-reservation-scheduling",
+                f"{FLASK}/07-vendor-feed",
+            ],
+        )
+
+    def test_shared_web_file_falls_back_to_representative_suites(self) -> None:
+        for path in (f"{FLASK}/requirements.txt", f"{FASTAPI}/recipes/conftest.py"):
+            with self.subTest(path=path):
+                self.assertEqual(scope(path)["web_suites"], REPRESENTATIVE)
+        # A changed recipe still runs beside the representatives.
+        result = scope(f"{FLASK}/requirements.txt", f"{FLASK}/07-vendor-feed/app.py")
+        self.assertEqual(result["web_suites"], sorted(REPRESENTATIVE + [f"{FLASK}/07-vendor-feed"]))
+
+    def test_wider_tiers_and_unknown_paths_use_representative_suites(self) -> None:
+        for path in ("Makefile", ".github/workflows/ci.yml", "new-top-level/thing.py"):
+            with self.subTest(path=path):
+                result = scope(path)
+                self.assertTrue(result["web"])
+                self.assertEqual(result["web_suites"], REPRESENTATIVE)
+
+    def test_cqrs_recipe_is_never_a_web_suite(self) -> None:
+        result = scope(f"{CQRS}/routes.py", f"{CQRS}/requirements.txt")
+        self.assertEqual(selected(result), {"cqrs"})
+        self.assertEqual(result["web_suites"], [])
+        self.assertIsNone(ci_scope._web_suite(f"{CQRS}/routes.py", SUITES))
+        result = scope(f"{CQRS}/routes.py", f"{FLASK}/05-batch-operations/app.py")
+        self.assertEqual(result["web_suites"], [f"{FLASK}/05-batch-operations"])
+
+    def test_non_recipe_changes_select_no_web_suite(self) -> None:
+        for paths in (
+            ("templates/django/app/views.py",),
+            ("scripts/check_docs_sync.py", "README.md"),
+            (f"{FLASK}/07-vendor-feed/README.md",),
+        ):
+            with self.subTest(paths=paths):
+                result = scope(*paths)
+                self.assertFalse(result["web"])
+                self.assertEqual(result["web_suites"], [])
+        for event in ("push", "schedule", "workflow_dispatch"):
+            with self.subTest(event=event):
+                self.assertEqual(scope(event=event)["web_suites"], [])
+
+    def test_cap_covers_every_discovered_suite(self) -> None:
+        # Fails when a new recipe outgrows the cap: raise MAX_WEB_SUITES then.
+        self.assertGreaterEqual(ci_scope.MAX_WEB_SUITES, len(SUITES))
+        every = scope(*(f"{s}/app.py" for s in SUITES))
+        self.assertEqual(every["web_suites"], SUITES)
+        self.assertEqual(every["web_suites_skipped"], [])
+
+    def test_shared_file_plus_three_recipes_runs_all_of_them(self) -> None:
+        recipes = [f"{FLASK}/07-vendor-feed", f"{FLASK}/09-rbac", f"{FASTAPI}/recipes/09-saga"]
+        result = scope(f"{FLASK}/requirements.txt", *(f"{r}/app.py" for r in recipes))
+        # Representatives are added on top and never count toward the cap.
+        self.assertEqual(result["web_suites"], sorted(REPRESENTATIVE + recipes))
+        self.assertEqual(result["web_suites_skipped"], [])
+
+    def test_grouped_flask_dependabot_bump_runs_every_flask_suite(self) -> None:
+        flask = [s for s in SUITES if s.startswith(f"{FLASK}/")]
+        self.assertEqual(len(flask), 11)
+        result = scope(*(f"{s}/requirements.txt" for s in flask))
+        self.assertEqual(selected(result), {"web"})
+        self.assertEqual(result["web_suites"], flask)
+        self.assertEqual(result["web_suites_skipped"], [])
+
+    def test_changed_recipes_beyond_the_cap_are_reported_as_skipped(self) -> None:
+        recipes = [s for s in SUITES if s not in REPRESENTATIVE]
+        with mock.patch.object(ci_scope, "MAX_WEB_SUITES", 2):
+            at_cap = scope(*(f"{s}/app.py" for s in recipes[:2]))
+            self.assertEqual(at_cap["web_suites"], recipes[:2])
+            self.assertEqual(at_cap["web_suites_skipped"], [])
+            over = scope(*(f"{s}/app.py" for s in recipes[:4]))
+            # The first two by name run, the representatives join them, and the
+            # rest are reported, never implied covered.
+            self.assertEqual(over["web_suites"], sorted(REPRESENTATIVE + recipes[:2]))
+            self.assertEqual(over["web_suites_skipped"], recipes[2:4])
+            # A changed representative beyond the cap still runs: not skipped.
+            rep = f"{FLASK}/01-basic-crud"
+            mixed = scope(rep + "/app.py", *(f"{s}/app.py" for s in recipes[-2:]))
+            self.assertIn(rep, mixed["web_suites"])
+            self.assertNotIn(rep, mixed["web_suites_skipped"])
+            self.assertEqual(len(mixed["web_suites_skipped"]), 1)
+
+    def test_deleted_recipe_falls_back_to_representative_suites(self) -> None:
+        # The deleted root is gone from the checkout, so it is not a suite.
+        gone = f"{FLASK}/12-removed-recipe"
+        self.assertNotIn(gone, SUITES)
+        result = scope(f"{gone}/app.py", f"{gone}/tests/test_app.py")
+        self.assertEqual(selected(result), {"web"})
+        self.assertEqual(result["web_suites"], REPRESENTATIVE)
+
+    def test_rename_selects_both_sides(self) -> None:
+        # --no-renames lists both sides: a file moved between recipes runs both.
+        old, new = f"{FLASK}/07-vendor-feed", f"{FLASK}/08-transactional-outbox"
+        result = scope(f"{old}/helpers.py", f"{new}/helpers.py")
+        self.assertEqual(result["web_suites"], [old, new])
+        # A renamed recipe directory: the old root no longer exists (shared
+        # fallback), the new one runs.
+        renamed = f"{FLASK}/07-vendor-feed-v2"
+        result = ci_scope.classify(
+            "pull_request",
+            [f"{old}/app.py", f"{renamed}/app.py"],
+            ROOTS,
+            [renamed, *REPRESENTATIVE],
+        )
+        self.assertEqual(result["web_suites"], sorted(REPRESENTATIVE + [renamed]))
+
+    def test_space_inside_a_safe_root_still_selects_that_root(self) -> None:
+        root = f"{FLASK}/07-vendor-feed"
+        result = scope(f"{root}/tests/test data.py")
+        self.assertEqual(result["web_suites"], [root])
+
+    def test_git_quoted_path_fails_closed(self) -> None:
+        quoted = f'"{FLASK}/07-vendor-feed/tests/t\\303\\251st.py"'
+        result = scope(quoted)
+        self.assertTrue(
+            {"web", "dashboard", "async_worker", "django", "cqrs", "smoke_114"} <= selected(result)
+        )
+        self.assertEqual(result["web_suites"], REPRESENTATIVE)
+        self.assertEqual(result["verify_paths"], ".")
+
+    def test_unsafe_suite_root_falls_back(self) -> None:
+        result = ci_scope.classify("pull_request", [f"{FLASK}/0 x/app.py"], [], [f"{FLASK}/0 x"])
+        self.assertEqual(result["web_suites"], REPRESENTATIVE)
+
+    def test_main_reads_suite_roots_from_the_repository(self) -> None:
+        stdin = io.StringIO(f"{FLASK}/07-vendor-feed/tests/test_app.py\n")
+        stdout = io.StringIO()
+        with mock.patch.object(sys, "stdin", stdin), contextlib.redirect_stdout(stdout):
+            ci_scope.main(["--event", "pull_request", "--root", str(ROOT)])
+        self.assertIn(f'web_suites=["{FLASK}/07-vendor-feed"]', stdout.getvalue().splitlines())
+
+
 def gate_script() -> str:
     gate = CI.split("  ci-gate:\n", 1)[1]
     return textwrap.dedent(gate.split("        run: |\n", 1)[1])
@@ -323,16 +507,30 @@ class WorkflowWiringTests(unittest.TestCase):
     def test_root_fastapi_app_smoke_test_is_wired_with_its_own_requirements(self) -> None:
         # The root app has its own requirements (pydantic-settings is not in the
         # shared lists), so both live lanes must install them and run its suite.
-        suite = "templates/api-service-fastapi/tests"
-        requirements = "-r templates/api-service-fastapi/requirements.txt"
-        pytest_suites = CI[CI.index("  pytest-suites:") : CI.index("  dashboard-pytest:")]
-        for name, text in (("ci.yml pytest-suites", pytest_suites), ("smoke-test.yml", SMOKE)):
-            with self.subTest(workflow=name):
-                self.assertIn(suite, text)
-                self.assertIn(requirements, text)
+        self.assertIn("templates/api-service-fastapi/tests", SMOKE)
+        self.assertIn("-r templates/api-service-fastapi/requirements.txt", SMOKE)
+        # ci.yml installs each selected suite root's own requirements (#227).
+        self.assertIn("templates/api-service-fastapi", ci_scope.REPRESENTATIVE_WEB_SUITES)
         self.assertTrue(
             (ROOT / "templates/api-service-fastapi/tests/test_root_app.py").is_file(),
         )
+
+    def test_pytest_suites_job_runs_each_selected_root_in_its_own_venv(self) -> None:
+        job = "\n".join(parse_jobs(CI)["pytest-suites"])
+        self.assertIn("SUITES: ${{ needs.classify.outputs.web_suites }}", job)
+        # Selected paths reach the script only through the env var.
+        run = job.split("SUITES: ", 1)[1]
+        self.assertEqual(run.count("${{"), 2)  # SUITES and SKIPPED, both env vars
+        self.assertIn('json.loads(os.environ["SUITES"])', job)
+        self.assertIn("SKIPPED: ${{ needs.classify.outputs.web_suites_skipped }}", job)
+        self.assertIn("::warning::$root changed but its suite was not run", job)
+        self.assertIn("Not validated before merge", job)
+        self.assertIn('python -m venv "$venv"', job)
+        self.assertIn('-r "$root/requirements.txt"', job)
+        self.assertIn('"$venv/bin/python" -m pytest "$root/tests"', job)
+        self.assertIn("image: cubrid/cubrid:11.4", job)
+        self.assertIn("persist-credentials: false", job)
+        self.assertNotIn("live-smoke.yml", job)
 
     def test_docs_site_build_runs_on_every_pr(self) -> None:
         # A PR that only deletes or renames an example linked from a README
