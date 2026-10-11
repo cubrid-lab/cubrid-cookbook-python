@@ -35,6 +35,7 @@ jobs:
       tier: ${{ steps.scope.outputs.tier }}
       web: ${{ steps.scope.outputs.web }}
       web_suites: ${{ steps.scope.outputs.web_suites }}
+      web_suites_skipped: ${{ steps.scope.outputs.web_suites_skipped }}
       dashboard: ${{ steps.scope.outputs.dashboard }}
       async_worker: ${{ steps.scope.outputs.async_worker }}
       django: ${{ steps.scope.outputs.django }}
@@ -221,9 +222,12 @@ jobs:
         # any did, or if a suite passed no test (an all-skipped run proves
         # nothing). The dashboard suite uses a separate job and database because
         # it shares cookbook_products with Flask and adds an FK from
-        # cookbook_sales.
+        # cookbook_sales. Changed roots above the MAX_WEB_SUITES cap
+        # (SKIPPED) are not run: each gets a warning and a summary line saying
+        # it was not validated before merge.
         env:
           SUITES: ${{ needs.classify.outputs.web_suites }}
+          SKIPPED: ${{ needs.classify.outputs.web_suites_skipped }}
           CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
         run: |
           set -euo pipefail
@@ -267,6 +271,19 @@ jobs:
             printf '| %s | %s |\n' "$root" "$result" >> "$GITHUB_STEP_SUMMARY"
           done
           echo "Ran ${#suites[@]} suite(s); ${#failed[@]} failed."
+          mapfile -t skipped < <(python3 -c 'import json, os; print("\n".join(json.loads(os.environ.get("SKIPPED") or "[]")))')
+          if [ -n "${skipped[0]:-}" ]; then
+            {
+              echo
+              echo "**Not validated before merge** (more than MAX_WEB_SUITES changed recipes;"
+              echo "run \`gh workflow run smoke-test.yml --ref <branch>\` for their live evidence):"
+              echo
+              printf -- '- %s\n' "${skipped[@]}"
+            } >> "$GITHUB_STEP_SUMMARY"
+            for root in "${skipped[@]}"; do
+              echo "::warning::$root changed but its suite was not run (MAX_WEB_SUITES cap); the representative suites do not cover it"
+            done
+          fi
           if [ "${#failed[@]}" -ne 0 ]; then
             exit 1
           fi

@@ -13,7 +13,9 @@ Tiers:
   families on one representative CUBRID (11.4) and Python (3.12). For
   Flask/FastAPI the ``web_suites`` output names the changed recipe roots (#227);
   shared Flask/FastAPI files, more than ``MAX_WEB_SUITES`` changed recipes and
-  wider tiers fall back to ``REPRESENTATIVE_WEB_SUITES``. Shared live
+  wider tiers fall back to ``REPRESENTATIVE_WEB_SUITES``; changed roots that
+  the cap leaves out are listed in ``web_suites_skipped`` so the lane can warn
+  that they were not validated before merge. Shared live
   infrastructure fans out to every suite plus the CUBRID 11.2 smoke lane;
   Python compatibility endpoints run only for compatibility-surface changes.
 * ``full`` - a pull request that changes the CI policy itself: every lane, both
@@ -235,6 +237,7 @@ def classify(
             "tier": "main",
             "web": False,
             "web_suites": [],
+            "web_suites_skipped": [],
             "dashboard": False,
             "async_worker": False,
             "django": False,
@@ -302,10 +305,13 @@ def classify(
         cqrs_dual = smoke_112 = full_verify = web_shared = True
     if not lanes["web"]:
         web_suites = set()
-    elif web_shared or not web_suites:
+    changed_suites = set(web_suites)
+    if lanes["web"] and (web_shared or not web_suites):
         web_suites |= set(REPRESENTATIVE_WEB_SUITES)
     if len(web_suites) > MAX_WEB_SUITES:
         web_suites = set(REPRESENTATIVE_WEB_SUITES)
+    # Changed recipes the cap left out: never reported as covered (#227 review).
+    web_suites_skipped = sorted(changed_suites - web_suites)
     if full:
         tier = "full"
     elif any(lanes.values()):
@@ -331,6 +337,7 @@ def classify(
         "tier": tier,
         "web": lanes["web"],
         "web_suites": sorted(web_suites),
+        "web_suites_skipped": web_suites_skipped,
         "dashboard": lanes["dashboard"],
         "async_worker": lanes["async_worker"],
         "django": lanes["django"],

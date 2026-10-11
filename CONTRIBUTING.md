@@ -161,7 +161,12 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   `templates/api-service-fastapi/recipes/01-basic-crud`, the root FastAPI app).
   At most `MAX_WEB_SUITES` (5) suites run per pull request; above the cap, for
   example a grouped Dependabot bump, the lane runs only the representative
-  suites and `smoke-test.yml` covers the rest after merge. Recipe 10 runs only
+  suites. The changed roots it leaves out (`ci_scope.web_suites_skipped`) get a
+  `::warning::` each and a "Not validated before merge" list in the job
+  summary, so a green gate is never presented as their coverage; for live
+  evidence before merging, run
+  `gh workflow run smoke-test.yml -R cubrid-lab/cubrid-cookbook-python --ref <branch>`,
+  otherwise `smoke-test.yml` covers them after merge. Recipe 10 runs only
   in its CQRS job. Every selected suite must pass at least one test, or the
   lane and `CI Gate` fail.
 - `smoke-test.yml` does not run on pull requests, so no pull request repeats the

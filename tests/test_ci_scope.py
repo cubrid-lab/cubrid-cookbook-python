@@ -336,8 +336,15 @@ class WebSuiteSelectionTests(unittest.TestCase):
         cap = ci_scope.MAX_WEB_SUITES
         at_cap = scope(*(f"{s}/app.py" for s in recipes[:cap]))
         self.assertEqual(at_cap["web_suites"], sorted(recipes[:cap]))
+        self.assertEqual(at_cap["web_suites_skipped"], [])
         over = scope(*(f"{s}/app.py" for s in recipes[: cap + 1]))
         self.assertEqual(over["web_suites"], REPRESENTATIVE)
+        # Changed recipes the cap leaves out are reported, never implied covered.
+        self.assertEqual(over["web_suites_skipped"], sorted(recipes[: cap + 1]))
+        # A changed representative that still runs is not reported as skipped.
+        mixed = scope(f"{FLASK}/01-basic-crud/app.py", *(f"{s}/app.py" for s in recipes[:cap]))
+        self.assertEqual(mixed["web_suites"], REPRESENTATIVE)
+        self.assertEqual(mixed["web_suites_skipped"], sorted(recipes[:cap]))
         # The grouped Dependabot bump of every Flask recipe stays bounded too.
         flask = [f"{FLASK}/{n:02d}-x/requirements.txt" for n in range(1, 12)]
         self.assertEqual(scope(*flask)["web_suites"], REPRESENTATIVE)
@@ -454,8 +461,11 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn("SUITES: ${{ needs.classify.outputs.web_suites }}", job)
         # Selected paths reach the script only through the env var.
         run = job.split("SUITES: ", 1)[1]
-        self.assertEqual(run.count("${{"), 1)
+        self.assertEqual(run.count("${{"), 2)  # SUITES and SKIPPED, both env vars
         self.assertIn('json.loads(os.environ["SUITES"])', job)
+        self.assertIn("SKIPPED: ${{ needs.classify.outputs.web_suites_skipped }}", job)
+        self.assertIn("::warning::$root changed but its suite was not run", job)
+        self.assertIn("Not validated before merge", job)
         self.assertIn('python -m venv "$venv"', job)
         self.assertIn('-r "$root/requirements.txt"', job)
         self.assertIn('"$venv/bin/python" -m pytest "$root/tests"', job)
