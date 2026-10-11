@@ -6,6 +6,7 @@ name: PR title
 # Security: runs on `pull_request` (never `pull_request_target`), requests no
 # token permissions, checks out nothing and receives the title only through an
 # environment variable, so no PR-controlled code or string is executed.
+# Also rejects accidental foreign-issue closing keywords in inert PR body data.
 # The job name "PR title" is the required-status-check context; keep it stable.
 
 on:
@@ -27,6 +28,7 @@ jobs:
       - name: Check PR title
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           python3 - <<'PY'
           # BEGIN pr-title-validator
@@ -93,6 +95,31 @@ jobs:
               errors.append("Do not mark work in progress in the title; open a draft PR.")
           if any(ch.isalpha() and not ch.isascii() for ch in title):
               errors.append("Write the title in English (ASCII letters only).")
+
+
+          # BEGIN cross-repo-closing-guard
+          # No checkout or execution of untrusted PR-body text is needed.
+          body = os.environ.get("PR_BODY", "")
+          body = re.sub(r"(?s)<!--.*?-->", "", body)
+          body = re.sub(
+              r"(?ms)^[ \t]*(?:\x60{3}|~{3})[^\n]*\n.*?^[ \t]*(?:\x60{3}|~{3})[ \t]*$",
+              "", body,
+          )
+          close_ref = re.compile(
+              r"(?i)\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+"
+              r"(?:https://(?:www\.)?github\.com/)?"
+              r"(?P<owner>[a-z0-9][a-z0-9-]*)/(?P<repo>[a-z0-9_.-]+)"
+              r"(?:#|/issues/)(?P<number>[1-9][0-9]*)\b"
+          )
+          local_repo = os.environ.get("GITHUB_REPOSITORY", "").lower()
+          for match in close_ref.finditer(body):
+              target = f"{match['owner']}/{match['repo']}".lower()
+              if target != local_repo:
+                  errors.append(
+                      f"Cross-repository issue closure {match.group()!r} is forbidden; "
+                      f"use 'Refs {target}#{match['number']}' and let its own repo close it."
+                  )
+          # END cross-repo-closing-guard
 
           for message in warnings:
               print(f"::warning title=PR title::{message}")
