@@ -716,6 +716,9 @@ pinning the caller alone does not freeze those resources.
 
 Explain unavailable local checks so maintainers can arrange validation. A reason
 or an AI review does not waive the CI or live checks required before merge.
+Outside contributors do not need internal AI tools, label permissions or live
+CUBRID access; when a required integration check is missing, maintainers own
+running it.
 
 ### Code ownership
 

@@ -17,9 +17,9 @@ privately:
    tab shows a **Report a vulnerability** button, you can use it instead of email.
    It is equally private.
 3. **Fallback:** if you receive no acknowledgment within the timeline below, or
-   cannot use either route, open a public issue titled "Security contact
-   request" that contains **no** vulnerability details. A maintainer will reply
-   with a private channel.
+   cannot use either route, open a public issue with the **Security contact
+   request** issue form. It contains **no** vulnerability details; a maintainer
+   replies with a private channel.
 
 **Do not** put vulnerability details in a public GitHub issue, pull request or
 discussion. Responsible disclosure allows us to address the issue before public
