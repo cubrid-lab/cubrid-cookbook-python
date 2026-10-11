@@ -37,10 +37,9 @@ env:
   # pycubrid/SQLAlchemy examples, the advanced SQLAlchemy, async, ORM, alembic
   # and pycubrid fundamentals.
   RECIPES: >-
-    fundamentals/crud fundamentals/error-handling fundamentals/lob-handling
-    fundamentals/transactions fundamentals/json pitfalls/reserved-words
+    fundamentals/error-handling fundamentals/json pitfalls/reserved-words
     migration/java-to-python quickstart/5min-sqlalchemy fundamentals/pandas
-    fundamentals/async fundamentals/connect fundamentals/orm-basics
+    fundamentals/async fundamentals/orm-basics
     fundamentals/pycubrid fundamentals/sqlalchemy fundamentals/alembic
 
 jobs:

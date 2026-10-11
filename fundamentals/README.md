@@ -8,17 +8,20 @@ Start here if you're new to CUBRID + Python.
 
 | Section | Description | Driver |
 |---------|-------------|--------|
-| [connect/](./connect/) | Basic connection, metadata, cursor usage | pycubrid |
-| [crud/](./crud/) | Create, Read, Update, Delete operations | pycubrid |
-| [transactions/](./transactions/) | Commit, rollback, isolation levels | pycubrid |
+| [connect/](./connect/) | Basic connection, metadata, cursor usage (redirect to [`pycubrid/01_connect.py`](./pycubrid/01_connect.py)) | pycubrid |
+| [crud/](./crud/) | Create, Read, Update, Delete operations (redirect to [`pycubrid/02_crud.py`](./pycubrid/02_crud.py)) | pycubrid |
+| [transactions/](./transactions/) | Commit, rollback, isolation levels (redirect to [`pycubrid/03_transactions.py`](./pycubrid/03_transactions.py)) | pycubrid |
 | [parameterized-queries/](./parameterized-queries/) | Parameterized queries for safety and performance | pycubrid |
-| [error-handling/](./error-handling/) | Connection failures, constraint violations, timeouts | pycubrid |
-| [lob-handling/](./lob-handling/) | Large Object (BLOB/CLOB) operations | pycubrid |
+| [error-handling/](./error-handling/) | Connection failures, constraint violations, timeouts (`05_error_handling.py` redirects to [`pycubrid/05_error_handling.py`](./pycubrid/05_error_handling.py)) | pycubrid |
+| [lob-handling/](./lob-handling/) | Large Object (BLOB/CLOB) operations (redirect to [`pycubrid/06_lob.py`](./pycubrid/06_lob.py)) | pycubrid |
 | [orm-basics/](./orm-basics/) | SQLAlchemy engine, Core, ORM, relationships, reflection | SQLAlchemy |
 | [async/](./async/) | Async I/O with pycubrid.aio and SQLAlchemy async engine | asyncio |
 | [alembic/](./alembic/) | Programmatic Alembic migrations with CubridImpl | Alembic |
 | [json/](./json/) | Native JSON column CRUD | pycubrid |
 | [isolation-levels/](./isolation-levels/) | The 3 MVCC isolation levels CUBRID accepts (READ COMMITTED, REPEATABLE READ, SERIALIZABLE), no-dirty-read demo | pycubrid |
+
+Where a topic entry is marked "redirect", its script only points at the canonical,
+golden-verified recipe in `pycubrid/` and carries no `expected/` golden of its own.
 
 ## Prerequisites
 

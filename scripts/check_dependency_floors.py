@@ -48,7 +48,6 @@ FLOOR_RE = re.compile(r"^>=([0-9][\w.]*?)(,<[0-9][\w.]*)?$")
 # the bare global floor -- see the "full example apps under templates/"
 # paragraph in SUPPORT_MATRIX.md.
 TEMPLATE_PYCUBRID_GLOBS = (
-    "fundamentals/connect",
     "fundamentals/orm-basics",
     "templates/flask",
     "templates/flask/*",
