@@ -774,12 +774,6 @@ Open:
 
 ## 13. Implemented cookbook contract (C1, C2)
 
-`CONTRIBUTING.md` ("Release verification contract") still says candidate mode
-is not implemented; that pointer is updated in a follow-up because the file is
-being edited in a concurrent change. Until then this section is the
-authoritative contract for candidate mode, and the published-mode contract in
-`CONTRIBUTING.md` is unchanged.
-
 This section is the runbook for the cookbook side of #240 as implemented in
 `.github/workflows/smoke-test.yml` and `scripts/release_smoke.py`. No caller
 uses it yet: pycubrid, sqlalchemy-cubrid and cubrid-mcp-server still call only
