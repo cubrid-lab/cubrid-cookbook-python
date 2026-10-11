@@ -87,7 +87,8 @@ column 0 with three backticks are recognised, not tilde or indented/nested fence
 
 A duplicate `###` heading within one version section is an error only in `[Unreleased]`
 and in releases after 0.2.0 (`SECTION_POLICY_CUTOFF`); released history up to 0.2.0 is
-never rewritten, and different releases may reuse the same heading names.
+never rewritten, and different releases may reuse the same heading names. A duplicate
+heading before the first release header is always an error.
 `scripts/lint_changelog.py` is identical in pycubrid, sqlalchemy-cubrid,
 cubrid-mcp-server and this cookbook except for `SECTION_POLICY_CUTOFF`.
 
