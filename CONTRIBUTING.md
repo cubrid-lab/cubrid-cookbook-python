@@ -583,11 +583,20 @@ following job with `if: always()` can report them.
   `… / Release verification report`, and upload the artifacts
   `release-verification-part-cubrid-11.2`, `release-verification-part-cubrid-11.4`,
   `release-verification-part-cubrid-11.4-py3.11` and `release-verification-<request_id>`. Call the workflow at most once per
-  caller run.
+  caller run in this mode.
 
-A pre-publish **candidate mode** (verifying the caller's built wheel before
-`publish`) is proposed in [docs/internal/rc-verification-design.md](docs/internal/rc-verification-design.md)
-(#240); it is not implemented yet, and the contract above is unchanged.
+A pre-publish **candidate mode** verifies the caller's own built wheel before
+`publish` (#240). It is selected only with `mode: candidate` plus `candidate_artifact`,
+`candidate_hashes` and `candidate_source_sha`, and requires a `request_id` that stays
+the same across run attempts (use `github.run_id`, never `github.run_attempt`, and no
+`--`), so `gh run rerun --failed` replaces only the failed cells' parts. The defaults keep the published
+mode described above unchanged. In candidate mode the workflow verifies the
+artifact's file set, SHA-256 digests and wheel metadata before installing, and
+keeps that wheel installed through every later install. It adds the outputs
+`evidence` and `candidate_sha256` and uses its own `release-candidate-*` artifact
+names, so a caller may call it once per mode in one run. The full inputs, outputs,
+report fields, failure modes and caller shape are in
+[docs/internal/rc-verification-design.md, section 13](docs/internal/rc-verification-design.md#13-implemented-cookbook-contract-c1-c2).
 
 Run the smoke dependency guards without a database or network:
 

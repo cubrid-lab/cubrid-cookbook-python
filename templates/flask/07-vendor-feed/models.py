@@ -103,7 +103,7 @@ class CatalogProduct(db.Model):
 
 
 class Product(db.Model):
-    __tablename__ = "cookbook_products"
+    __tablename__ = "cookbook_feed_products"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)

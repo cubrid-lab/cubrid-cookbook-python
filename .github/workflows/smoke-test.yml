@@ -69,6 +69,29 @@ on:
         description: "Optional correlation id for the report artifact name, [A-Za-z0-9._-]{8,80}"
         type: string
         default: ""
+      # Candidate artifact mode (#240). The defaults keep the published-package
+      # behavior above for every existing caller. Candidate mode verifies the
+      # wheel the caller's own build job uploaded earlier in the SAME run, before
+      # publication; it requires every candidate_* input and a request_id that stays
+      # the same across run attempts (no run_attempt, no "--"), so a re-run of
+      # failed cells replaces their own parts. Published mode rejects candidate_*.
+      # Neither mode falls back to the other source.
+      mode:
+        description: "published (exact PyPI release, default) or candidate (the caller's built wheel from this run)"
+        type: string
+        default: published
+      candidate_artifact:
+        description: "Candidate mode: name of the artifact the caller uploaded earlier in this run, [A-Za-z0-9._-]{1,100}"
+        type: string
+        default: ""
+      candidate_hashes:
+        description: "Candidate mode: the build job's JSON {\"<file>\": \"<sha256>\"} for exactly the artifact's files (one wheel)"
+        type: string
+        default: ""
+      candidate_source_sha:
+        description: "Candidate mode: the 40-hex commit the caller built the candidate from"
+        type: string
+        default: ""
     outputs:
       status:
         description: "success only when every smoke job passed with the requested version installed"
@@ -82,6 +105,12 @@ on:
       artifact:
         description: "Name of the release-verification report artifact in the caller's run"
         value: ${{ jobs.report.outputs.artifact }}
+      evidence:
+        description: "Evidence type the report proves: published package or candidate artifact"
+        value: ${{ jobs.report.outputs.evidence }}
+      candidate_sha256:
+        description: "Candidate mode: SHA-256 of the wheel every smoke job verified and tested, empty otherwise"
+        value: ${{ jobs.report.outputs.candidate_sha256 }}
 
 # Release verifications (repository_dispatch, workflow_dispatch pinned to a
 # package, or a workflow_call) get their own group per event/package/version/
@@ -115,6 +144,10 @@ env:
   RELEASE_INPUT_PACKAGE: ${{ inputs.package }}
   RELEASE_INPUT_VERSION: ${{ inputs.version }}
   RELEASE_INPUT_REQUEST_ID: ${{ inputs.request_id }}
+  RELEASE_INPUT_MODE: ${{ inputs.mode }}
+  RELEASE_INPUT_CANDIDATE_ARTIFACT: ${{ inputs.candidate_artifact }}
+  RELEASE_INPUT_CANDIDATE_HASHES: ${{ inputs.candidate_hashes }}
+  RELEASE_INPUT_CANDIDATE_SOURCE_SHA: ${{ inputs.candidate_source_sha }}
 
 jobs:
   verify:
@@ -222,6 +255,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_wait_for_cubrid.py' -v
 
       - name: Cache pip downloads
+        if: inputs.mode != 'candidate'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pip
@@ -231,6 +265,32 @@ jobs:
           key: pip-smoke-${{ runner.os }}-${{ hashFiles('.github/workflows/smoke-test.yml') }}
           restore-keys: |
             pip-smoke-${{ runner.os }}-
+
+      - name: Restore pip downloads (candidate mode, never saved)
+        # A candidate run must not seed the caller repository's cache.
+        if: inputs.mode == 'candidate'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pip
+          key: pip-smoke-${{ runner.os }}-${{ hashFiles('.github/workflows/smoke-test.yml') }}
+          restore-keys: |
+            pip-smoke-${{ runner.os }}-
+
+      - name: Validate candidate request
+        # Rejects incompatible mode inputs, a missing request_id or a malformed
+        # digest map before anything is downloaded.
+        if: inputs.mode == 'candidate'
+        run: python scripts/release_smoke.py validate
+
+      - name: Download candidate artifact
+        # Only the caller's artifact from this same run, by name; a missing or
+        # corrupt artifact fails here. release_smoke.py then checks the exact file
+        # set, every SHA-256 and the wheel metadata before installing anything.
+        if: inputs.mode == 'candidate' && inputs.candidate_artifact != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.candidate_artifact }}
+          path: ${{ runner.temp }}/candidate
 
       - name: Select released drivers
         # Worst case for a requested release: the 600 s PyPI publication wait
@@ -243,6 +303,8 @@ jobs:
           # until the PyPI JSON API serves exactly that version with a wheel or sdist
           # (stale CDN nodes, 2026-10-09), then gets six bounded --no-cache-dir
           # installs, with no artifact or latest-release fallback. Other runs never poll.
+          # Candidate mode installs only the verified wheel from $RUNNER_TEMP/candidate
+          # (no PyPI wait, no index copy of the requested package).
           python scripts/release_smoke.py select \
             --constraints "$RUNNER_TEMP/release-constraints.txt"
 
@@ -575,7 +637,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-verification-part-cubrid-${{ matrix.cubrid }}${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}
+          # Candidate parts are namespaced by request_id plus "--", so they never
+          # match the published release-verification-part-* download or another
+          # candidate request. request_id is stable across attempts, so a re-run of
+          # a failed cell replaces its own part (the overwrite setting below).
+          name: ${{ inputs.mode == 'candidate' && format('release-candidate-part-{0}--', inputs.request_id) || 'release-verification-part-' }}cubrid-${{ matrix.cubrid }}${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}
           path: ${{ runner.temp }}/release-verification-part.json
           if-no-files-found: ignore
           retention-days: 7
@@ -599,6 +665,8 @@ jobs:
       requested_version: ${{ steps.report.outputs.requested_version }}
       installed_version: ${{ steps.report.outputs.installed_version }}
       artifact: ${{ steps.report.outputs.artifact }}
+      evidence: ${{ steps.report.outputs.evidence }}
+      candidate_sha256: ${{ steps.report.outputs.candidate_sha256 }}
     steps:
       - name: Detect release workflow call
         # A called job's github context is the caller's; job.workflow_ref/_sha/
@@ -649,7 +717,7 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: release-verification-part-*
+          pattern: ${{ inputs.mode == 'candidate' && format('release-candidate-part-{0}--*', inputs.request_id) || 'release-verification-part-*' }}
           path: ${{ runner.temp }}/release-verification-parts
 
       - name: Report release verification

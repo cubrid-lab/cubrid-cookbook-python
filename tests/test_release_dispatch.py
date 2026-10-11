@@ -448,8 +448,18 @@ class ReleaseDispatchTests(unittest.TestCase):
         # other use; it is a boolean condition, never part of a step.
         strategy = jobs[jobs.index("    strategy:") : jobs.index("    steps:")]
         self.assertEqual(strategy.count("inputs."), 2)
-        self.assertEqual(jobs.count("inputs.") - strategy.count("inputs."), 1)
         self.assertEqual(jobs.count(report_condition), 1)
+        # Candidate mode (#240) only selects steps (`if:`) and names artifacts in
+        # action `with:` values (`name:`/`pattern:`); never in a run: step.
+        others = [
+            line.strip()
+            for line in jobs.replace(strategy, "").splitlines()
+            if "inputs." in line and report_condition not in line
+        ]
+        self.assertEqual(len(others), 7, others)
+        for line in others:
+            self.assertRegex(line, r"^(if|name|pattern): ", line)
+            self.assertNotRegex(line, r"inputs\.(package|version|candidate_hashes)\b", line)
         self.assertNotIn("client_payload", jobs)
         header = workflow[: workflow.index("\njobs:")]
         concurrency = header[header.index("\nconcurrency:") : header.index("\npermissions:")]

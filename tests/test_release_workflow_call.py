@@ -11,6 +11,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import re
 import tempfile
 import unittest
@@ -32,6 +33,17 @@ CALL = HEADER[HEADER.index("\n  workflow_call:") : HEADER.index("\nconcurrency:"
 VERIFY = JOBS[: JOBS.index("\n  report:")]
 REPORT = JOBS[JOBS.index("\n  report:") :]
 RUN = {"id": "42", "attempt": "1", "url": "https://example.test/runs/42", "commit": "abc"}
+
+
+def setUpModule() -> None:
+    """Hermetic: a release job's own RELEASE_* environment (the workflow-level
+    RELEASE_INPUT_* call inputs, RELEASE_WORKFLOW_CALL) must not leak into these
+    tests, which run inside that job as an offline guard."""
+    patcher = patch.dict(os.environ)
+    patcher.start()
+    unittest.addModuleCleanup(patcher.stop)
+    for name in [name for name in os.environ if name.startswith("RELEASE_")]:
+        del os.environ[name]
 
 
 def call_env(package="pycubrid", version="1.8.0", request_id="test-190-a1b2c3") -> dict:
@@ -327,7 +339,23 @@ class WorkflowCallStaticTests(unittest.TestCase):
     def test_call_inputs_and_outputs_are_declared(self) -> None:
         inputs = CALL[CALL.index("\n    inputs:") : CALL.index("\n    outputs:")]
         declared = dict(re.findall(r"^      (\w+):\n((?:^        .*\n?)+)", inputs, re.M))
-        self.assertEqual(set(declared), {"package", "version", "request_id"})
+        # Candidate mode (#240) adds only optional inputs; published stays the default.
+        self.assertEqual(
+            set(declared),
+            {
+                "package",
+                "version",
+                "request_id",
+                "mode",
+                "candidate_artifact",
+                "candidate_hashes",
+                "candidate_source_sha",
+            },
+        )
+        self.assertIn("default: published", declared["mode"])
+        for name in ("mode", "candidate_artifact", "candidate_hashes", "candidate_source_sha"):
+            self.assertIn("type: string", declared[name])
+            self.assertNotIn("required: true", declared[name])
         for name in ("package", "version"):
             self.assertIn("type: string", declared[name])
             self.assertIn("required: true", declared[name])

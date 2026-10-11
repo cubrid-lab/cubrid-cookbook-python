@@ -34,6 +34,8 @@ REPORT_KEYS = {
     "reasons",
     "run",
     "matrix",
+    # Additive (#240): the evidence type; published mode adds no other key.
+    "evidence",
 }
 PART_KEYS = {
     "cubrid",
@@ -44,6 +46,9 @@ PART_KEYS = {
     "server",
     "verification",
     "result",
+    # Additive (#240): the evidence type and every installed package version.
+    "evidence",
+    "packages",
 }
 
 
@@ -89,6 +94,10 @@ class ReleaseVerificationTests(unittest.TestCase):
         wait = patch.object(smoke, "wait_for_pypi")
         self.wait = wait.start()
         self.addCleanup(wait.stop)
+        # The full environment listing of each part is covered in test_release_candidate.py.
+        environment = patch.object(smoke, "environment_versions", dict)
+        environment.start()
+        self.addCleanup(environment.stop)
 
     def distribution(self, name: str) -> SimpleNamespace:
         if name not in self.versions:
@@ -254,6 +263,7 @@ class ReleaseVerificationTests(unittest.TestCase):
         self.assertEqual(report["status"], "success")
         self.assertEqual(report["reasons"], [])
         self.assertEqual(report["run"], RUN)
+        self.assertEqual(report["evidence"], "published package")
         self.assertEqual([part["cubrid"] for part in report["matrix"]], ["11.2", "11.4", "11.4"])
         for part in report["matrix"]:
             self.assertEqual(set(part), PART_KEYS)
@@ -273,6 +283,8 @@ class ReleaseVerificationTests(unittest.TestCase):
                 "package": "pycubrid",
                 "requested_version": "1.8.0",
                 "installed_version": "1.8.0",
+                "evidence": "published package",
+                "candidate_sha256": "",
             },
         )
 
@@ -451,8 +463,12 @@ class ReleaseVerificationTests(unittest.TestCase):
         self.assertIn('--part "$RUNNER_TEMP/release-verification-part.json"', verify)
         # The default cells keep their documented artifact names; only the extra
         # Python cell gets a -py suffix so it cannot overwrite the 11.4 result.
+        # Published mode renders exactly the earlier names; candidate mode (#240)
+        # namespaces its parts by request_id (tests/test_release_candidate.py).
         self.assertIn(
-            "name: release-verification-part-cubrid-${{ matrix.cubrid }}"
+            "name: ${{ inputs.mode == 'candidate' && "
+            "format('release-candidate-part-{0}--', inputs.request_id) || "
+            "'release-verification-part-' }}cubrid-${{ matrix.cubrid }}"
             "${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}",
             verify,
         )
