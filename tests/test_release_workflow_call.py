@@ -11,6 +11,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import re
 import tempfile
 import unittest
@@ -32,6 +33,17 @@ CALL = HEADER[HEADER.index("\n  workflow_call:") : HEADER.index("\nconcurrency:"
 VERIFY = JOBS[: JOBS.index("\n  report:")]
 REPORT = JOBS[JOBS.index("\n  report:") :]
 RUN = {"id": "42", "attempt": "1", "url": "https://example.test/runs/42", "commit": "abc"}
+
+
+def setUpModule() -> None:
+    """Hermetic: a release job's own RELEASE_* environment (the workflow-level
+    RELEASE_INPUT_* call inputs, RELEASE_WORKFLOW_CALL) must not leak into these
+    tests, which run inside that job as an offline guard."""
+    patcher = patch.dict(os.environ)
+    patcher.start()
+    unittest.addModuleCleanup(patcher.stop)
+    for name in [name for name in os.environ if name.startswith("RELEASE_")]:
+        del os.environ[name]
 
 
 def call_env(package="pycubrid", version="1.8.0", request_id="test-190-a1b2c3") -> dict:

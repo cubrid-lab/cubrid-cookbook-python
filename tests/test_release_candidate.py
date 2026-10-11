@@ -16,6 +16,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import re
 import tempfile
 import unittest
@@ -40,6 +41,17 @@ RUN = {"id": "42", "attempt": "1", "url": "https://example.test/runs/42", "commi
 REQUEST_ID = "pycubrid-rc-v1.8.0-42-1"
 WHEEL = "pycubrid-1.8.0-py3-none-any.whl"
 SDIST = "pycubrid-1.8.0.tar.gz"
+
+
+def setUpModule() -> None:
+    """Hermetic: a release job's own RELEASE_* environment (the workflow-level
+    RELEASE_INPUT_* call inputs, RELEASE_WORKFLOW_CALL) must not leak into these
+    tests, which run inside that job as an offline guard."""
+    patcher = patch.dict(os.environ)
+    patcher.start()
+    unittest.addModuleCleanup(patcher.stop)
+    for name in [name for name in os.environ if name.startswith("RELEASE_")]:
+        del os.environ[name]
 
 
 def build_wheel(path: Path, name: str = "pycubrid", version: str = "1.8.0") -> None:
