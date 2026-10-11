@@ -99,12 +99,33 @@ jobs:
 
           # BEGIN cross-repo-closing-guard
           # No checkout or execution of untrusted PR-body text is needed.
+          def strip_fenced_examples(text: str) -> str:
+              output = []
+              fence_char = None
+              fence_size = 0
+              for line in text.splitlines(keepends=True):
+                  stripped = line.lstrip(" ")
+                  indent = len(line) - len(stripped)
+                  if fence_char is None and indent >= 4:
+                      continue  # Indented Markdown code is inert.
+                  delimiter = re.match(r"(?:\x60{3,}|~{3,})", stripped) if indent <= 3 else None
+                  if fence_char is None:
+                      if delimiter is not None:
+                          fence_char, fence_size = delimiter.group()[0], len(delimiter.group())
+                          continue
+                      output.append(line)
+                  elif (
+                      delimiter is not None
+                      and delimiter.group()[0] == fence_char
+                      and len(delimiter.group()) >= fence_size
+                      and not stripped[len(delimiter.group()):].strip()
+                  ):
+                      fence_char = None
+              return "".join(output)
+
           body = os.environ.get("PR_BODY", "")
           body = re.sub(r"(?s)<!--.*?-->", "", body)
-          body = re.sub(
-              r"(?ms)^[ \t]*(?:\x60{3}|~{3})[^\n]*\n.*?^[ \t]*(?:\x60{3}|~{3})[ \t]*$",
-              "", body,
-          )
+          body = strip_fenced_examples(body)
           close_ref = re.compile(
               r"(?i)\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+"
               r"(?:https://(?:www\.)?github\.com/)?"
