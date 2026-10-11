@@ -177,10 +177,23 @@ class PrTitleValidatorTest(unittest.TestCase):
             "Refs #223 and cubrid-lab/pycubrid#815.",
             "<!-- Closes another-org/another-repo#42 -->",
             f"{chr(96) * 3}markdown\nCloses another-org/another-repo#42\n{chr(96) * 3}",
+            f"{chr(96) * 4}markdown\nCloses another-org/another-repo#42\n{chr(96) * 5}",
+            "~~~~yaml\nCloses another-org/another-repo#42\n~~~~~",
+            f"{chr(96) * 4}md\nCloses another-org/another-repo#42\n~~~\nCloses another-org/another-repo#43\n{chr(96) * 4}",
+            "    Closes another-org/another-repo#42",
         ):
             with self.subTest(body=body):
                 result = _run("docs: align issue ownership", body)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_foreign_closure_after_long_fence_is_rejected(self) -> None:
+        body = (
+            f"{chr(96) * 4}markdown\nCloses another-org/another-repo#42\n{chr(96) * 4}\n"
+            "Closes another-org/another-repo#43"
+        )
+        result = _run("docs: align issue ownership", body)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Cross-repository issue closure", result.stdout)
 
 
 if __name__ == "__main__":
