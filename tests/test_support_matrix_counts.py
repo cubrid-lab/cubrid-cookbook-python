@@ -84,6 +84,39 @@ class SupportMatrixCountTests(unittest.TestCase):
             "**Total** row is missing", counts.check(ROOT, MATRIX.replace(total + "\n", ""))
         )
 
+    def test_sqlalchemy_range_matches_reviewed_dialect_range(self) -> None:
+        self.assertEqual(counts.check_sqlalchemy_range(ROOT, MATRIX), [])
+
+    def test_promoting_sqlalchemy_2_2_in_the_row_is_rejected(self) -> None:
+        promoted = MATRIX.replace("| SQLAlchemy | 2.0, 2.1 |", "| SQLAlchemy | 2.0–2.2 |")
+        self.assertNotEqual(promoted, MATRIX)
+        errors = counts.check_sqlalchemy_range(ROOT, promoted)
+        self.assertTrue(any(e.startswith("SQLAlchemy row says '2.0–2.2'") for e in errors), errors)
+
+    def test_changing_only_the_row_status_is_rejected(self) -> None:
+        promoted = MATRIX.replace("; 2.2 is not supported (see below)", "; 2.2 supported")
+        self.assertNotEqual(promoted, MATRIX)
+        self.assertEqual(
+            counts.check_sqlalchemy_range(ROOT, promoted),
+            ["SQLAlchemy row status differs from the reviewed wording"],
+        )
+
+    def test_promoting_sqlalchemy_2_2_in_a_claim_file_is_rejected(self) -> None:
+        for name in counts.SQLALCHEMY_CLAIMS:
+            for promoted in ("2.0/2.1/2.2", "2.0–2.2", "2.0–2.3", "2.0, 2.1 and 2.2", "2.0~2.2"):
+                with self.subTest(name=name, promoted=promoted):
+                    for src in ("README.md", "docs/README.ko.md", "docs/index.md", "llms.txt"):
+                        (self.tmp / src).parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy(ROOT / src, self.tmp / src)
+                    cfg = self.tmp / ".github/ISSUE_TEMPLATE/config.yml"
+                    cfg.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy(ROOT / ".github/ISSUE_TEMPLATE/config.yml", cfg)
+                    path = self.tmp / name
+                    path.write_text(path.read_text().replace("2.0/2.1", promoted))
+                    errors = counts.check_sqlalchemy_range(self.tmp, MATRIX)
+                    self.assertEqual(len(errors), 1, errors)
+                    self.assertTrue(errors[0].startswith(f"{name} must say"), errors)
+
 
 if __name__ == "__main__":
     unittest.main()

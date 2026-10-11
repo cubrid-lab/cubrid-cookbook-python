@@ -71,5 +71,5 @@ Benchmark-backed optimization patterns based on [cubrid-benchmark](https://githu
 ## Dependencies
 
 - [pycubrid](https://github.com/cubrid-lab/pycubrid): Pure Python DB-API 2.0 driver for CUBRID (required)
-- [sqlalchemy-cubrid](https://github.com/cubrid-lab/sqlalchemy-cubrid): SQLAlchemy 2.0–2.2 dialect for CUBRID (required for ORM examples)
+- [sqlalchemy-cubrid](https://github.com/cubrid-lab/sqlalchemy-cubrid): SQLAlchemy 2.0/2.1 dialect for CUBRID (required for ORM examples)
 - [CUBRID](https://www.cubrid.org/): The CUBRID database

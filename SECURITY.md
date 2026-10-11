@@ -9,14 +9,21 @@ Runtime support (Python, CUBRID and driver versions) is defined in
 
 ## Reporting a Vulnerability
 
-If you discover a security issue in cubrid-cookbook examples, please report it responsibly by emailing:
+If you discover a security issue in cubrid-cookbook examples, please report it
+privately:
 
-**Email:** paikend@gmail.com
+1. **Email (preferred):** paikend@gmail.com
+2. **GitHub private vulnerability reporting:** if the repository's **Security**
+   tab shows a **Report a vulnerability** button, you can use it instead of email.
+   It is equally private.
+3. **Fallback:** if you receive no acknowledgment within the timeline below, or
+   cannot use either route, open a public issue with the **Security contact
+   request** issue form. It contains **no** vulnerability details; a maintainer
+   replies with a private channel.
 
-GitHub private vulnerability reporting is not currently enabled for this
-repository, so email is the supported private route.
-
-**Do not** open a public GitHub issue for security vulnerabilities. Responsible disclosure allows us to address the issue before public disclosure.
+**Do not** put vulnerability details in a public GitHub issue, pull request or
+discussion. Responsible disclosure allows us to address the issue before public
+disclosure.
 
 ### Response Timeline
 

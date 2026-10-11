@@ -18,6 +18,11 @@ The **Total** row must equal the sum of the rows, and its "N golden-backed"
 note, when present, must equal the number of goldens. Prose elsewhere should
 point at the table instead of repeating these numbers.
 
+The "Driver & Framework Versions" table must also state the SQLAlchemy range the
+dialect supports (``SQLALCHEMY_SUPPORTED``) and its reviewed status wording, and the
+one-line dialect descriptions listed in ``SQLALCHEMY_CLAIMS`` must use the reviewed
+wording verbatim; any other range, such as one that promotes 2.2, fails the check.
+
 Usage:
     python scripts/check_support_matrix_counts.py
 
@@ -34,6 +39,24 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MATRIX_PATH = REPO_ROOT / "SUPPORT_MATRIX.md"
 TABLE_HEADER = "| Category | Recipes | Verified by |"
+
+# Reviewed SQLAlchemy range of the dialect, kept here with its pinned upstream reference:
+# sqlalchemy-cubrid docs/SUPPORT_MATRIX.md at da9c3977d21e94f739667ae5e9467c04d53fdd0b
+# lists 2.0.x and 2.1.x as supported and >= 2.2 as not supported. Change it only after
+# the dialect documents a new range; this check does not read the network.
+SQLALCHEMY_SUPPORTED = "2.0, 2.1"
+SQLALCHEMY_STATUS = (
+    "✅ Supported range of the dialect; 2.2 is not supported (see below). Async recipes install"
+    " the `sqlalchemy[asyncio]` extra for the required greenlet runtime"
+)
+# File -> exact wording its current dialect description must contain.
+SQLALCHEMY_CLAIMS: dict[str, str] = {
+    "README.md": "SQLAlchemy 2.0/2.1 dialect for CUBRID",
+    "docs/README.ko.md": "CUBRID용 SQLAlchemy 2.0/2.1 방언",
+    "docs/index.md": "SQLAlchemy 2.0/2.1 dialect",
+    "llms.txt": "SQLAlchemy 2.0/2.1 dialect for CUBRID",
+    ".github/ISSUE_TEMPLATE/config.yml": "SQLAlchemy 2.0/2.1 dialect for CUBRID",
+}
 
 # Table label -> directories whose expected/*.expected goldens the row counts.
 GOLDEN_ROWS: dict[str, tuple[str, ...]] = {
@@ -187,14 +210,49 @@ def check(root: Path, matrix: str) -> list[str]:
     return errors
 
 
+def check_sqlalchemy_range(root: Path, matrix: str) -> list[str]:
+    """Require the reviewed SQLAlchemy range, verbatim, in every current support claim."""
+    errors: list[str] = []
+    rows = [
+        [c.strip() for c in line.strip().strip("|").split("|")]
+        for line in matrix.splitlines()
+        if line.startswith("| SQLAlchemy |")
+    ]
+    if len(rows) != 1 or len(rows[0]) != 3:
+        errors.append("expected one 3-cell 'SQLAlchemy' row in Driver & Framework Versions")
+    else:
+        if rows[0][1] != SQLALCHEMY_SUPPORTED:
+            errors.append(
+                f"SQLAlchemy row says {rows[0][1]!r}, the reviewed supported range is"
+                f" {SQLALCHEMY_SUPPORTED!r}"
+            )
+        if rows[0][2] != SQLALCHEMY_STATUS:
+            errors.append("SQLAlchemy row status differs from the reviewed wording")
+    for name, wording in SQLALCHEMY_CLAIMS.items():
+        path = root / name
+        if not path.is_file() or wording not in path.read_text(encoding="utf-8"):
+            errors.append(f"{name} must say {wording!r} (reviewed range {SQLALCHEMY_SUPPORTED})")
+    return errors
+
+
 def main() -> int:
-    errors = check(REPO_ROOT, MATRIX_PATH.read_text(encoding="utf-8"))
-    if errors:
-        print("SUPPORT_MATRIX.md Recipe Coverage table is out of date:")
-        for err in errors:
-            print(f"  - {err}")
+    matrix = MATRIX_PATH.read_text(encoding="utf-8")
+    failed = False
+    for header, errors in (
+        ("SUPPORT_MATRIX.md Recipe Coverage table is out of date:", check(REPO_ROOT, matrix)),
+        (
+            "SQLAlchemy support claims differ from the reviewed range:",
+            check_sqlalchemy_range(REPO_ROOT, matrix),
+        ),
+    ):
+        if errors:
+            failed = True
+            print(header)
+            for err in errors:
+                print(f"  - {err}")
+    if failed:
         return 1
-    print("SUPPORT_MATRIX.md Recipe Coverage counts match the repository.")
+    print("SUPPORT_MATRIX.md Recipe Coverage counts and SQLAlchemy range match.")
     return 0
 
 

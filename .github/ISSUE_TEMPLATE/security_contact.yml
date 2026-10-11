@@ -1,0 +1,22 @@
+name: Security contact request
+description: Ask for a private channel to report a vulnerability (no details here)
+title: "chore(security): request a private security contact"
+labels: ["security"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not include vulnerability details** in this issue: no affected
+        file, example, SQL, payload, logs or proof of concept. This issue is
+        public. Use it only when the private routes in
+        [SECURITY.md](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/SECURITY.md)
+        got no acknowledgment or cannot be used. A maintainer will reply with a
+        private channel.
+
+  - type: input
+    id: contact-preference
+    attributes:
+      label: Contact preference (optional)
+      description: How you would like a maintainer to reach you privately, for example "email from my GitHub profile". Do not describe the issue.
+    validations:
+      required: false

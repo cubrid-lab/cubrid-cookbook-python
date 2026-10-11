@@ -109,8 +109,8 @@ cubrid-mcp-server and this cookbook except for `SECTION_POLICY_CUTOFF`.
 - Dependabot PR titles use the `chore(deps):` prefix, matching the
   `type(scope): description` title rule.
 - `dependabot-auto-merge.yml` enables squash auto-merge for patch and minor
-  updates; it completes only after the required checks (CI Gate and smoke
-  tests) pass. Major updates wait for a maintainer. The `docs-sync` and
+  updates; it completes only after the required checks (`CI Gate` and
+  `PR title`) pass. Major updates wait for a maintainer. The `docs-sync` and
   `translation-sync` gates skip Dependabot PRs, since dependency-only bumps
   carry no doc changes.
 
@@ -157,10 +157,12 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   broad 11.2/11.4 matrix. Its exact release verification inputs, outputs and
   fail-closed reporting are unchanged. To test a change to it before merging, run
   `gh workflow run smoke-test.yml -R cubrid-lab/cubrid-cookbook-python --ref <branch>`.
-- The required check names `Smoke Tests (CUBRID 11.2)` and
-  `Smoke Tests (CUBRID 11.4)` now come from the two `ci.yml` pull-request smoke
-  lanes (`.github/actions/pr-smoke`). When the classifier skips a lane its check
-  reports *skipped*, which branch protection accepts; the gate still enforces it.
+- The check names `Smoke Tests (CUBRID 11.2)` and `Smoke Tests (CUBRID 11.4)`
+  now come from the two `ci.yml` pull-request smoke lanes
+  (`.github/actions/pr-smoke`). When the classifier skips a lane its check
+  reports *skipped*. `CI Gate` enforces every selected lane, including these
+  two, so the lanes are not separate required checks (see
+  [Main branch protection](#main-branch-protection)).
 - On `main` and schedule events `ci.yml` runs only what `smoke-test.yml` does not
   cover (Python 3.11–3.14 and CQRS pins on 11.2 + 11.4); its other live jobs
   report skipped there.
@@ -714,6 +716,9 @@ pinning the caller alone does not freeze those resources.
 
 Explain unavailable local checks so maintainers can arrange validation. A reason
 or an AI review does not waive the CI or live checks required before merge.
+Outside contributors do not need internal AI tools, label permissions or live
+CUBRID access; when a required integration check is missing, maintainers own
+running it.
 
 ### Code ownership
 
@@ -727,6 +732,48 @@ Individual recipes, and recipe-specific tests such as `tests/test_ai_agent*.py`,
 are intentionally not owned, so ordinary recipe contributions need no special
 reviewer. CODEOWNERS is routing only, not a security boundary, and does not by
 itself make any approval mandatory.
+
+### Main branch protection
+
+Every change reaches `main` through a pull request. The maintainers apply this
+baseline to `main` (the default branch) as a repository ruleset in the
+repository settings. It is not stored in the repository, so a change to it is a
+maintainer decision recorded on an issue, not a pull request:
+
+- **No deletion** of `main`.
+- **No force push** (non-fast-forward updates are rejected).
+- **Pull request required.** Direct pushes to `main` are rejected. Merges are
+  squash merges, so the pull request title becomes the commit title.
+- **Required checks:** `CI Gate (all checks must pass)` (the aggregate gate
+  described in [CI tiers](#ci-tiers)) and `PR title` (from `pr-title.yml`). The
+  branch must be up to date with `main` before merging. The gate already fails
+  when a selected lane fails, is cancelled or is skipped unexpectedly, so the
+  individual lanes, including `Smoke Tests (CUBRID 11.2)` and
+  `Smoke Tests (CUBRID 11.4)`, are not required checks themselves. A lane that
+  the classifier did not select never blocks a merge.
+- **No required human approval and no required code-owner approval.** The
+  project has a small maintainer team. A mandatory approval would block a
+  maintainer's own pull request whenever the other maintainers are away, and
+  Dependabot updates would wait for a human approval instead of merging
+  automatically once the required checks pass. The review route in
+  [Review Process](#review-process) still applies before a maintainer merges,
+  and `.github/CODEOWNERS` only routes review requests.
+- **No bypass actor.** The rules also apply to administrators. No workflow
+  pushes to `main`: `docs.yml` deploys the documentation site from a Pages
+  artifact, `dependabot-auto-merge.yml` merges through the pull request with the
+  same required checks, and this repository has no release automation.
+
+The ruleset does not affect release verification. Sibling release workflows
+call `smoke-test.yml` pinned to a full commit SHA (see
+[Calling the smoke test from a release workflow](#calling-the-smoke-test-from-a-release-workflow-no-token)),
+and the called jobs run in the caller's repository. Rules on this repository's
+`main` govern pushes and merges to it, not reading a workflow at a commit, and
+they do not restrict `repository_dispatch` either.
+
+Changing the display name of the `ci-gate` job (`CI Gate (all checks must
+pass)`) or of the `pr-title` job (`PR title`) changes the check name and blocks
+every merge until the required checks are updated in the ruleset; change both
+together.
 
 ---
 
