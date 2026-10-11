@@ -163,6 +163,7 @@ class PrTitleValidatorTest(unittest.TestCase):
             "Closes cubrid-lab/pycubrid#833.",
             "Fixes https://github.com/cubrid-lab/sqlalchemy-cubrid/issues/810",
             "Resolves another-org/another-repo#42",
+            "Fixes: another-org/another-repo#42",
         ):
             with self.subTest(body=body):
                 result = _run("docs: align issue ownership", body)

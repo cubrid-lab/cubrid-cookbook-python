@@ -9,6 +9,7 @@ body:
         File implementation work in this repository. Other repositories own
         their own scope, acceptance, priority and issue closure; link genuine
         cross-repository technical dependencies as references only.
+
         Keep the `feat:` title prefix and finish the title in English, for example
         `feat: add a Django ORM recipe`. You do not need to apply labels;
         maintainers assign priority and size after triage.
