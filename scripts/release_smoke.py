@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import itertools
 import json
 import os
@@ -11,7 +12,9 @@ import subprocess
 import sys
 import time
 import urllib.request
+import zipfile
 from collections.abc import Callable, Mapping
+from email.parser import HeaderParser
 from importlib import metadata
 from pathlib import Path
 
@@ -48,6 +51,27 @@ CALL_INPUTS = {
     "version": "RELEASE_INPUT_VERSION",
     "request_id": "RELEASE_INPUT_REQUEST_ID",
 }
+# Candidate artifact mode (#240): a release workflow passes the distribution its
+# own build job uploaded earlier in the SAME run, plus the build job's
+# {"<file>": "<sha256>"} output. Only workflow calls can select it; the default
+# `published` mode is the exact-PyPI behavior above, unchanged. Neither mode
+# ever falls back to the other source.
+MODE_INPUTS = {
+    "mode": "RELEASE_INPUT_MODE",
+    "candidate_artifact": "RELEASE_INPUT_CANDIDATE_ARTIFACT",
+    "candidate_hashes": "RELEASE_INPUT_CANDIDATE_HASHES",
+}
+PUBLISHED, CANDIDATE = "published", "candidate"
+# The evidence type a report proves; driver-main.yml labels its own summary
+# "representative main" (advisory, never release evidence).
+EVIDENCE = {PUBLISHED: "published package", CANDIDATE: "candidate artifact"}
+ORIGIN_INDEX, ORIGIN_CANDIDATE = "package index", "candidate artifact"
+ARTIFACT_NAME = re.compile(r"[A-Za-z0-9._-]{1,100}")
+DIST_FILE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,199}")
+SHA256 = re.compile(r"[0-9a-f]{64}")
+MAX_CANDIDATE_FILES = 20
+# Where the workflow downloads the candidate artifact ($RUNNER_TEMP/candidate).
+CANDIDATE_DIR_ENV = "RELEASE_CANDIDATE_DIR"
 
 
 def read_request_id(value: object) -> str | None:
@@ -74,7 +98,9 @@ def read_request(
         inputs = {key: environ.get(name, "") for key, name in CALL_INPUTS.items()}
         if inputs["package"] in ("", MANUAL_LATEST):
             raise ValueError("Release workflow call requires a package: " + ", ".join(PACKAGES))
-        return read_inputs(inputs, "Release workflow call")
+        request = read_inputs(inputs, "Release workflow call")
+        assert request is not None
+        return read_mode(request, {key: environ.get(name, "") for key, name in MODE_INPUTS.items()})
     if event_name not in ("repository_dispatch", "workflow_dispatch"):
         return None
     if event_path is None or not event_path.is_file():
@@ -128,6 +154,186 @@ def read_inputs(inputs: Mapping[str, object], source: str) -> dict[str, str] | N
     }
 
 
+def read_mode(request: dict, inputs: Mapping[str, str]) -> dict:
+    """Validate the call mode and its inputs; incompatible combinations fail.
+
+    ``published`` (the default, also for an empty value) must not carry candidate
+    inputs and returns the request unchanged. ``candidate`` requires a request_id
+    (it namespaces the candidate artifacts), the artifact name and the build job's
+    digest map, which must name exactly one wheel of package==version.
+    """
+    mode = inputs.get("mode") or PUBLISHED
+    artifact = inputs.get("candidate_artifact", "")
+    hashes = inputs.get("candidate_hashes", "")
+    if mode not in EVIDENCE:
+        raise ValueError(f"Release workflow call mode must be {PUBLISHED} or {CANDIDATE}")
+    if mode == PUBLISHED:
+        if artifact or hashes:
+            raise ValueError(
+                "candidate_artifact and candidate_hashes require mode candidate; "
+                "published mode installs only the exact PyPI release"
+            )
+        return request
+    if request["request_id"] is None:
+        raise ValueError("Candidate mode requires a request_id")
+    if ARTIFACT_NAME.fullmatch(artifact) is None:
+        raise ValueError(
+            "Candidate mode requires candidate_artifact matching [A-Za-z0-9._-]{1,100}"
+        )
+    files = read_hashes(hashes)
+    wheel = candidate_wheel(files, request["package"], request["version"])
+    return {
+        **request,
+        "mode": CANDIDATE,
+        "candidate": {"artifact": artifact, "files": files, "wheel": wheel, "sha256": files[wheel]},
+    }
+
+
+def read_hashes(value: str) -> dict[str, str]:
+    """Parse the caller build job's {"<file>": "<sha256 hex>"} JSON object."""
+    try:
+        files = json.loads(value) if value else None
+    except json.JSONDecodeError as error:
+        raise ValueError(f"candidate_hashes is not JSON: {error}") from error
+    if not isinstance(files, dict) or not files or len(files) > MAX_CANDIDATE_FILES:
+        raise ValueError(
+            f"candidate_hashes must be a JSON object of 1-{MAX_CANDIDATE_FILES} file digests"
+        )
+    for name, digest in files.items():
+        if DIST_FILE.fullmatch(name) is None or ".." in name:
+            raise ValueError(f"candidate_hashes has an invalid file name: {name!r}")
+        if not isinstance(digest, str) or SHA256.fullmatch(digest) is None:
+            raise ValueError(f"candidate_hashes digest for {name} is not 64 lowercase hex")
+    return files
+
+
+def wheel_identity(filename: str) -> tuple[str, str]:
+    """Return the (normalized name, version) a wheel filename declares."""
+    parts = filename[: -len(".whl")].split("-")
+    if not filename.endswith(".whl") or len(parts) not in (5, 6):
+        raise ValueError(f"{filename} is not a wheel filename")
+    return normalize_name(parts[0]), parts[1]
+
+
+def candidate_wheel(files: Mapping[str, str], package: str, version: str) -> str:
+    """The one wheel in the digest map; it must be package==version."""
+    wheels = [name for name in files if name.endswith(".whl")]
+    if len(wheels) != 1:
+        raise ValueError(f"candidate_hashes must name exactly one wheel, found {len(wheels)}")
+    name, declared = wheel_identity(wheels[0])
+    if name != normalize_name(package) or declared != version:
+        raise ValueError(f"Candidate wheel {wheels[0]} is not {package} {version}")
+    return wheels[0]
+
+
+def candidate_dir() -> Path:
+    """Directory the workflow downloads the candidate artifact into."""
+    configured = os.environ.get(CANDIDATE_DIR_ENV)
+    if configured:
+        return Path(configured)
+    return Path(os.environ.get("RUNNER_TEMP") or ".") / "candidate"
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def verify_candidate_files(request: dict, directory: Path) -> Path:
+    """Check the downloaded artifact against the digest map; return the wheel path.
+
+    The directory must hold exactly the mapped files (regular files, no
+    subdirectory or symlink), every SHA-256 must match, and the wheel must be an
+    intact archive whose own metadata names package==version. Nothing is
+    installed unless every check passes.
+    """
+    candidate = request["candidate"]
+    if not directory.is_dir():
+        raise ValueError(f"Candidate artifact {candidate['artifact']} was not downloaded")
+    found = {}
+    for path in directory.iterdir():
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"Candidate artifact holds a non-regular file: {path.name}")
+        found[path.name] = path
+    expected = candidate["files"]
+    if set(found) != set(expected):
+        missing = sorted(set(expected) - set(found))
+        extra = sorted(set(found) - set(expected))
+        raise ValueError(f"Candidate artifact files differ: missing {missing}, unexpected {extra}")
+    for name, path in sorted(found.items()):
+        actual = sha256_file(path)
+        if actual != expected[name]:
+            raise ValueError(f"SHA-256 of {name} is {actual}, expected {expected[name]}")
+    wheel = found[candidate["wheel"]]
+    wheel_metadata(wheel, request["package"], request["version"])
+    return wheel
+
+
+def wheel_metadata(wheel: Path, package: str, version: str) -> None:
+    """Read Name/Version from the wheel's own METADATA (not its filename)."""
+    try:
+        with zipfile.ZipFile(wheel) as archive:
+            broken = archive.testzip()
+            if broken is not None:
+                raise ValueError(f"Candidate wheel member {broken} is corrupt")
+            entries = [
+                name
+                for name in archive.namelist()
+                if name.count("/") == 1 and name.endswith(".dist-info/METADATA")
+            ]
+            if len(entries) != 1:
+                raise ValueError(f"Candidate wheel has {len(entries)} METADATA files")
+            text = archive.read(entries[0]).decode("utf-8")
+    except (zipfile.BadZipFile, UnicodeDecodeError) as error:
+        raise ValueError(f"Candidate wheel {wheel.name} is not a valid wheel: {error}") from error
+    headers = HeaderParser().parsestr(text)
+    name, declared = headers.get("Name", ""), headers.get("Version", "")
+    if normalize_name(name) != normalize_name(package) or declared != version:
+        raise ValueError(f"Candidate wheel metadata is {name} {declared}, not {package} {version}")
+
+
+def candidate_package(name: str, request: dict) -> dict[str, str | None]:
+    """The requested package must be the verified candidate wheel, installed directly.
+
+    pip writes direct_url.json only for a direct archive install; a missing file,
+    another URL or another digest means a later install replaced the candidate
+    (for example with a PyPI or VCS copy of the same version).
+    """
+    candidate = request["candidate"]
+    dist = metadata.distribution(name)
+    text = dist.read_text("direct_url.json")
+    if text is None:
+        raise ValueError(f"{name} is not the candidate artifact (installed from a package index)")
+    try:
+        direct_url = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{name} has an unreadable direct_url.json") from error
+    wheel = candidate_dir().resolve() / candidate["wheel"]
+    if not isinstance(direct_url, dict) or direct_url.get("url") != wheel.as_uri():
+        raise ValueError(f"{name} was not installed from the verified candidate {wheel}")
+    archive = direct_url.get("archive_info")
+    recorded = (archive.get("hashes") or {}).get("sha256") if isinstance(archive, dict) else None
+    if recorded not in (None, candidate["sha256"]):
+        raise ValueError(f"{name} was installed from a wheel with SHA-256 {recorded}")
+    if not wheel.is_file() or sha256_file(wheel) != candidate["sha256"]:
+        raise ValueError(f"Candidate wheel {wheel} changed after verification")
+    return {"version": dist.version, "direct_url": wheel.as_uri()}
+
+
+def installed_package(name: str, request: dict | None) -> dict[str, str | None]:
+    """Mode-aware provenance: only the requested candidate may be a direct install."""
+    if request is not None and request.get("mode") == CANDIDATE and request["package"] == name:
+        return candidate_package(name, request)
+    return indexed_package(name)
+
+
+def request_mode(request: dict | None) -> str:
+    return (request or {}).get("mode", PUBLISHED)
+
+
 def request_source(event_name: str) -> str:
     if event_name == WORKFLOW_CALL:
         return "release workflow call"
@@ -142,8 +348,8 @@ def indexed_package(name: str) -> dict[str, str | None]:
     return {"version": dist.version, "direct_url": direct_url}
 
 
-def verify_request(request: dict[str, str]) -> None:
-    installed = indexed_package(request["package"])
+def verify_request(request: dict) -> None:
+    installed = installed_package(request["package"], request)
     if installed["version"] != request["version"]:
         raise ValueError(
             f"Installed {request['package']} {installed['version']} differs from requested "
@@ -228,7 +434,13 @@ def select_releases(
     bootstrap = [sys.executable, "-m", "pip", "install", *DRIVERS, "sqlalchemy"]
     if request is not None:
         requirement = f"{request['package']}=={request['version']}"
-        wait_for_pypi(request["package"], request["version"])
+        target = requirement
+        if request_mode(request) == CANDIDATE:
+            # Verify the downloaded bytes before anything is installed; there is
+            # no publication to wait for and no index copy of the candidate.
+            target = str(verify_candidate_files(request, candidate_dir()).resolve())
+        else:
+            wait_for_pypi(request["package"], request["version"])
         constraints.write_text(requirement + "\n", encoding="utf-8")
         command = [
             sys.executable,
@@ -241,7 +453,7 @@ def select_releases(
             "https://pypi.org/simple",
             "--constraint",
             str(constraints.resolve()),
-            requirement,
+            target,
         ]
         for attempt in range(1, attempts + 1):
             try:
@@ -261,15 +473,15 @@ def select_releases(
     subprocess.check_call(bootstrap)
 
 
-def installed_drivers() -> dict[str, dict[str, str | None]]:
+def installed_drivers(request: dict | None = None) -> dict[str, dict[str, str | None]]:
     result = {}
     for name in DRIVERS:
-        result[name] = indexed_package(name)
+        result[name] = installed_package(name, request)
     return result
 
 
-def freeze(state: Path, constraints: Path, request: dict[str, str] | None = None) -> None:
-    selected = installed_drivers()
+def freeze(state: Path, constraints: Path, request: dict | None = None) -> None:
+    selected = installed_drivers(request)
     if request is not None:
         verify_request(request)
     state.write_text(
@@ -286,7 +498,7 @@ def freeze(state: Path, constraints: Path, request: dict[str, str] | None = None
 
 def verify(state: Path) -> None:
     selected = json.loads(state.read_text(encoding="utf-8"))
-    installed = installed_drivers()
+    installed = installed_drivers(selected.get("requested"))
     drivers = selected.get("drivers", selected)  # Read older ephemeral snapshots as well.
     if installed != drivers:
         raise ValueError(
@@ -319,7 +531,8 @@ def install_mcp(state: Path) -> None:
     selected = json.loads(state.read_text(encoding="utf-8"))
     request = selected.get("requested")
     if request is not None and request["package"] == "cubrid-mcp-server":
-        # Already installed exactly from PyPI; never substitute a git artifact.
+        # Already installed exactly (from PyPI, or the verified candidate wheel);
+        # never substitute a git artifact or an index copy.
         verify_request(request)
         return
     command = [sys.executable, "-m", "pip", "install"]
@@ -380,10 +593,12 @@ def summary(
     invalid_success = result == "success" and verification != "passed"
     if invalid_success:
         result = "failure"
+    mode = request_mode(request)
     print("### Release smoke result\n")
     print("| Field | Actual |\n| --- | --- |")
     for name, value in (
         ("Request", validation),
+        ("Evidence", EVIDENCE[mode] if valid_request else "unavailable"),
         ("Request id", (request or {}).get("request_id") or "none"),
         ("Verification commit", commit),
         ("CUBRID server", server),
@@ -399,9 +614,14 @@ def summary(
             dist = metadata.distribution(name)
             version = dist.version
             origin = (
-                "package index" if dist.read_text("direct_url.json") is None else "direct URL / VCS"
+                ORIGIN_INDEX if dist.read_text("direct_url.json") is None else "direct URL / VCS"
             )
-        except metadata.PackageNotFoundError:
+            if mode == CANDIDATE and request["package"] == name:
+                # Only the verified wheel, still in place, counts as the candidate;
+                # otherwise the ValueError keeps the index/direct-URL origin above.
+                installed_package(name, request)
+                origin = ORIGIN_CANDIDATE
+        except (metadata.PackageNotFoundError, ValueError, OSError):
             pass
         installed[name] = (version, origin)
         expected = (
@@ -412,23 +632,26 @@ def summary(
         print(f"| {name} | {expected} | {version} | {origin} |")
     if part is not None and (request is not None or not valid_request):
         version, origin = installed[request["package"]] if request else (None, None)
-        part.write_text(
-            json.dumps(
-                {
-                    "cubrid": cubrid,
-                    "python": python or None,
-                    "request_valid": valid_request,
-                    "installed_version": None if version == "unavailable" else version,
-                    "origin": origin,
-                    "server": server or None,
-                    "verification": verification,
-                    "result": result,
-                },
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        record = {
+            "cubrid": cubrid,
+            "python": python or None,
+            "request_valid": valid_request,
+            "installed_version": None if version == "unavailable" else version,
+            "origin": origin,
+            "server": server or None,
+            "verification": verification,
+            "result": result,
+            # Additive (#240): the evidence type and every installed package version.
+            "evidence": EVIDENCE[mode] if valid_request else None,
+            "packages": {
+                name: None if found == "unavailable" else found
+                for name, (found, _) in installed.items()
+            },
+        }
+        if mode == CANDIDATE:
+            passed = verification == "passed" and origin == ORIGIN_CANDIDATE
+            record["candidate_sha256"] = request["candidate"]["sha256"] if passed else None
+        part.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     if invalid_success:
         raise ValueError("A successful smoke result requires final version and origin verification")
 
@@ -471,6 +694,8 @@ def build_report(
                 reasons.append(f"{name}: reported {seen.count(key)} times")
         for key in sorted(set(seen) - RELEASE_CELLS, key=str):
             reasons.append(f"unexpected smoke cell: CUBRID {key[0]}, Python {key[1]}")
+    mode = request_mode(request)
+    evidence = EVIDENCE[mode] if error is None else None
     for p in parts:
         if p.get("installed_version") != requested:
             reasons.append(
@@ -481,7 +706,18 @@ def build_report(
             reasons.append(
                 f"{cell(p)}: verification {p.get('verification')}, result {p.get('result')}"
             )
-    return {
+        # A part of the other mode never counts (older published parts lack the key).
+        elif request is not None and p.get("evidence", EVIDENCE[PUBLISHED]) != evidence:
+            reasons.append(f"{cell(p)}: evidence {p.get('evidence')}, expected {evidence}")
+        elif mode == CANDIDATE and (
+            p.get("origin") != ORIGIN_CANDIDATE
+            or p.get("candidate_sha256") != request["candidate"]["sha256"]
+        ):
+            reasons.append(
+                f"{cell(p)}: origin {p.get('origin')}, SHA-256 {p.get('candidate_sha256')} "
+                f"is not the verified candidate {request['candidate']['sha256']}"
+            )
+    report = {
         "schema_version": REPORT_SCHEMA,
         "request_id": request.get("request_id") if request else None,
         "package": request["package"] if request else None,
@@ -492,13 +728,28 @@ def build_report(
         "reasons": reasons,
         "run": run,
         "matrix": sorted(parts, key=lambda p: (str(p.get("cubrid")), str(p.get("python")))),
+        "evidence": evidence,
     }
+    if mode == CANDIDATE:
+        candidate = request["candidate"]
+        report["candidate"] = {
+            "artifact": candidate["artifact"],
+            "wheel": candidate["wheel"],
+            "sha256": candidate["sha256"],
+            "files": candidate["files"],
+        }
+    return report
 
 
 def report_markdown(report: dict[str, object]) -> str:
     lines = ["### Release verification\n", "| Field | Value |", "| --- | --- |"]
-    for key in ("request_id", "package", "requested_version", "installed_version", "status"):
+    keys = ("evidence", "request_id", "package", "requested_version", "installed_version")
+    for key in (*keys, "status"):
         lines.append(f"| {key} | {report[key] if report[key] is not None else 'none'} |")
+    if "candidate" in report:
+        candidate = report["candidate"]
+        lines.append(f"| candidate_wheel | {candidate['wheel']} |")  # type: ignore[index]
+        lines.append(f"| candidate_sha256 | {candidate['sha256']} |")  # type: ignore[index]
     for reason in report["reasons"]:  # type: ignore[union-attr]
         lines.append(f"\n- {reason}")
     return "\n".join(lines) + "\n"
@@ -534,14 +785,23 @@ def report_releases(
         output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         print(report_markdown(report))
         suffix = report["request_id"] or f"run-{run.get('id') or 'unknown'}"
+        prefix = (
+            "release-candidate-verification" if "candidate" in report else "release-verification"
+        )
         outputs = {
             "release": "true",
-            "artifact": f"release-verification-{suffix}",
+            "artifact": f"{prefix}-{suffix}",
             "status": str(report["status"]),
             "request_id": str(report["request_id"] or ""),
             "package": str(report["package"] or ""),
             "requested_version": str(report["requested_version"] or ""),
             "installed_version": str(report["installed_version"] or ""),
+            "evidence": str(report["evidence"] or ""),
+            "candidate_sha256": (
+                str(report["candidate"]["sha256"])  # type: ignore[index]
+                if "candidate" in report and report["status"] == "success"
+                else ""
+            ),
         }
         passed = report["status"] == "success"
     if github_output is not None:
@@ -621,6 +881,12 @@ def main() -> None:
                 "commit": cookbook_commit(),
                 "event": args.event_name,
             }
+            if os.environ.get(MODE_INPUTS["mode"]) == CANDIDATE:
+                # Under a call GITHUB_REPOSITORY/GITHUB_SHA are the caller's: the
+                # repository and immutable source commit the candidate was built from.
+                run["caller_repository"] = repository
+                run["caller_sha"] = os.environ.get("GITHUB_SHA", "")
+                run["caller_workflow_ref"] = os.environ.get("GITHUB_WORKFLOW_REF", "")
             if not report_releases(
                 args.event_name,
                 args.event_path,

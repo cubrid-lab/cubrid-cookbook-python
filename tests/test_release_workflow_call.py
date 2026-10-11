@@ -327,7 +327,15 @@ class WorkflowCallStaticTests(unittest.TestCase):
     def test_call_inputs_and_outputs_are_declared(self) -> None:
         inputs = CALL[CALL.index("\n    inputs:") : CALL.index("\n    outputs:")]
         declared = dict(re.findall(r"^      (\w+):\n((?:^        .*\n?)+)", inputs, re.M))
-        self.assertEqual(set(declared), {"package", "version", "request_id"})
+        # Candidate mode (#240) adds only optional inputs; published stays the default.
+        self.assertEqual(
+            set(declared),
+            {"package", "version", "request_id", "mode", "candidate_artifact", "candidate_hashes"},
+        )
+        self.assertIn("default: published", declared["mode"])
+        for name in ("mode", "candidate_artifact", "candidate_hashes"):
+            self.assertIn("type: string", declared[name])
+            self.assertNotIn("required: true", declared[name])
         for name in ("package", "version"):
             self.assertIn("type: string", declared[name])
             self.assertIn("required: true", declared[name])

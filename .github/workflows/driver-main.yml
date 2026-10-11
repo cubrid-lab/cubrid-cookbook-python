@@ -147,8 +147,10 @@ jobs:
               version = metadata.version(dist)
               ok &= got == want
               rows.append(f"| {dist} | {version} | `{got[:12] or 'not from git'}` |")
+          # Evidence type (#240): advisory source-level canary, never release evidence.
           summary = "\n".join(
-              ["### Drivers under test (main)", "", "| Driver | Version | Commit |", "|---|---|---|", *rows, ""]
+              ["### Drivers under test (main)", "", "Evidence: representative main (advisory)", "",
+               "| Driver | Version | Commit |", "|---|---|---|", *rows, ""]
           )
           print(summary)
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
