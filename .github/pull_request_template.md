@@ -10,9 +10,6 @@ See CONTRIBUTING.md#pull-request-and-commit-titles.
 Include motivations, reasons, and background to add context to your contribution.
 Include a description of changes associated with your commit(s)
 
-## Related Issues
-- `Closes #123` / `Refs #456`, or NA (issue numbers go here, not in the PR title)
-
 ## Example Details
 - **Python/Framework**: (e.g., Python/FastAPI, Flask, SQLAlchemy)
 - **Tested against CUBRID version**: (e.g., 11.2)
@@ -20,17 +17,18 @@ Include a description of changes associated with your commit(s)
 ## Validation
 - Commands actually executed and their results:
 - Checks not executed, reason, and remaining gaps:
-- Optional AI/tool review and findings (separate from executed tests):
+- Optional additional AI/tool review (separate from tests and not a replacement for the required review route):
 
 ## Review Route and Final Disposition
 
-<!-- Maintainer/agent-authored PRs; external contributors need no specific tool. -->
-- Development route: OpenCode + Oracle pre/post / standalone Claude Code / standalone Codex / human/other (select one).
+<!-- Record the route actually used; human contributors do not need a specific AI tool. -->
+- Development route: OpenCode + Oracle pre/post / trivial OpenCode with recorded Oracle skip / standalone Claude Code / standalone Codex / standalone ChatGPT or other agent (name it) / human (select one).
+- Trivial OpenCode exception, if used: skipped Oracle phases and reason, or not applicable.
 - Review evidence: actual Oracle or submitted GitHub review link, reviewer and reviewed head SHA, or **pending**.
 - Finding disposition: fixed commit + test / rejected with reason / deferred issue.
-- Unresolved review threads and reason, or "none verified".
-- Maintainer merge decision: applicable review, current code, CI and live validation checked.
-<!-- A requested review, green CI or automated "approval recommended" text is insufficient. -->
+- Unresolved review threads and reason, or "none" after verification.
+- Maintainer merge decision: **pending**; complete only after checking the applicable review, final code, required CI, applicable live validation and thread dispositions.
+<!-- A requested review, green CI or automated "approval recommended" text alone does not complete the review route. -->
 
 ## Reviewers
 - Request reviewers through GitHub review requests; avoid repeated bot @mentions and review requests.
@@ -52,3 +50,7 @@ line outside this comment. The literal placeholder is not an exemption.
 If translation help is needed, name the language and reason. This request does
 not bypass checks; maintainers must approve the existing translations-deferred
 label and record the follow-up. -->
+
+## Related Issues
+
+- `Closes #123` / `Refs #456`, or NA (issue numbers go here, not in the PR title)
