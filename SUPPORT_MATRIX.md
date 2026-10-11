@@ -33,7 +33,7 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 
 ## Python Versions
 
-| Python | Status | Resolved in the latest successful `main` CI run |
+| Python | Status | Resolved on 2026-10-11 (`ci.yml` run 38125283280) |
 |--------|--------|--------|
 | **3.14** | CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 | pycubrid 1.10.0, sqlalchemy-cubrid 1.10.0, SQLAlchemy 2.1.4 |
 | **3.13** | CI-gated representative pycubrid and SQLAlchemy recipes on CUBRID 11.4 | pycubrid 1.10.0, sqlalchemy-cubrid 1.10.0, SQLAlchemy 2.1.4 |
@@ -42,7 +42,7 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 | 3.10 | ❌ Not supported by the current cookbook (upstream end of life 2026-10-01); use an older cookbook/driver combination or upgrade Python | n/a |
 | 3.9 | ❌ Not supported | n/a |
 
-The resolved versions column records what the four `Python compatibility` jobs installed in `ci.yml` run 38125283280 (`main` at `27f98d6`, 2026-10-11; the `Successfully installed` line of each job's setup step). They are unpinned `>=` resolutions, so a later run can resolve newer releases; refresh the column when a driver release changes them.
+The resolved versions column records a dated observation of what the four `Python compatibility` jobs installed in `ci.yml` run 38125283280 (`main` at `27f98d6`, 2026-10-11; the `Successfully installed` line of each job's setup step). They are unpinned `>=` resolutions, so a later run can resolve newer releases; refresh the column when a driver release changes them.
 
 The `ci.yml` compatibility matrix covers Python 3.11–3.14 with
 `fundamentals/pycubrid/01_connect.py` and
