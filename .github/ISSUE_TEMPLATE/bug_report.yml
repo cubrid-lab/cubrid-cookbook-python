@@ -6,6 +6,16 @@ body:
   - type: markdown
     attributes:
       value: |
+        **House rules**
+        - File this issue in English.
+        - For DDL or parse errors, include the exact failing SQL and the result of running
+          it directly on the server with `csql`.
+        - Verify any claimed reserved word against the CUBRID keyword list before reporting it.
+        - Include a runnable reproduction.
+
+  - type: markdown
+    attributes:
+      value: |
         Keep the `fix:` title prefix and finish the title in English, for example
         `fix: basic CRUD recipe leaks a connection on error`. You do not need to
         apply labels; maintainers assign priority and size after triage.
@@ -82,6 +92,18 @@ body:
         - Operating System: Linux/macOS/Windows
     validations:
       required: true
+
+  - type: textarea
+    id: sql-verification
+    attributes:
+      label: DDL / SQL error verification
+      description: >-
+        Optional, but required when the report involves a DDL or parse error. Paste the exact
+        failing SQL and the output of running it directly with `csql` on the server.
+        Reserved-word claims must be checked against the CUBRID keyword list.
+      render: shell
+    validations:
+      required: false
 
   - type: textarea
     id: context
