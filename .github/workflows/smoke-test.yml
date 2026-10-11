@@ -72,8 +72,10 @@ on:
       # Candidate artifact mode (#240). The defaults keep the published-package
       # behavior above for every existing caller. Candidate mode verifies the
       # wheel the caller's own build job uploaded earlier in the SAME run, before
-      # publication; it requires request_id and both candidate_* inputs, and
-      # published mode rejects them. Neither mode falls back to the other source.
+      # publication; it requires every candidate_* input and a request_id that stays
+      # the same across run attempts (no run_attempt, no "--"), so a re-run of
+      # failed cells replaces their own parts. Published mode rejects candidate_*.
+      # Neither mode falls back to the other source.
       mode:
         description: "published (exact PyPI release, default) or candidate (the caller's built wheel from this run)"
         type: string
@@ -84,6 +86,10 @@ on:
         default: ""
       candidate_hashes:
         description: "Candidate mode: the build job's JSON {\"<file>\": \"<sha256>\"} for exactly the artifact's files (one wheel)"
+        type: string
+        default: ""
+      candidate_source_sha:
+        description: "Candidate mode: the 40-hex commit the caller built the candidate from"
         type: string
         default: ""
     outputs:
@@ -141,6 +147,7 @@ env:
   RELEASE_INPUT_MODE: ${{ inputs.mode }}
   RELEASE_INPUT_CANDIDATE_ARTIFACT: ${{ inputs.candidate_artifact }}
   RELEASE_INPUT_CANDIDATE_HASHES: ${{ inputs.candidate_hashes }}
+  RELEASE_INPUT_CANDIDATE_SOURCE_SHA: ${{ inputs.candidate_source_sha }}
 
 jobs:
   verify:
@@ -630,9 +637,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          # Candidate parts are namespaced by request_id, so they never match the
-          # published report's release-verification-part-* download.
-          name: ${{ inputs.mode == 'candidate' && format('release-candidate-part-{0}-', inputs.request_id) || 'release-verification-part-' }}cubrid-${{ matrix.cubrid }}${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}
+          # Candidate parts are namespaced by request_id plus "--", so they never
+          # match the published release-verification-part-* download or another
+          # candidate request. request_id is stable across attempts, so a re-run of
+          # a failed cell replaces its own part (the overwrite setting below).
+          name: ${{ inputs.mode == 'candidate' && format('release-candidate-part-{0}--', inputs.request_id) || 'release-verification-part-' }}cubrid-${{ matrix.cubrid }}${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}
           path: ${{ runner.temp }}/release-verification-part.json
           if-no-files-found: ignore
           retention-days: 7
@@ -708,7 +717,7 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: ${{ inputs.mode == 'candidate' && format('release-candidate-part-{0}-*', inputs.request_id) || 'release-verification-part-*' }}
+          pattern: ${{ inputs.mode == 'candidate' && format('release-candidate-part-{0}--*', inputs.request_id) || 'release-verification-part-*' }}
           path: ${{ runner.temp }}/release-verification-parts
 
       - name: Report release verification

@@ -60,6 +60,7 @@ MODE_INPUTS = {
     "mode": "RELEASE_INPUT_MODE",
     "candidate_artifact": "RELEASE_INPUT_CANDIDATE_ARTIFACT",
     "candidate_hashes": "RELEASE_INPUT_CANDIDATE_HASHES",
+    "candidate_source_sha": "RELEASE_INPUT_CANDIDATE_SOURCE_SHA",
 }
 PUBLISHED, CANDIDATE = "published", "candidate"
 # The evidence type a report proves; driver-main.yml labels its own summary
@@ -69,6 +70,11 @@ ORIGIN_INDEX, ORIGIN_CANDIDATE = "package index", "candidate artifact"
 ARTIFACT_NAME = re.compile(r"[A-Za-z0-9._-]{1,100}")
 DIST_FILE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,199}")
 SHA256 = re.compile(r"[0-9a-f]{64}")
+SOURCE_SHA = re.compile(r"[0-9a-f]{40}")
+# Candidate part artifacts are release-candidate-part-<request_id>--<cell>; a
+# candidate request_id may not contain "--", so one id is never a prefix of another
+# in the report's download pattern.
+CANDIDATE_PART_DELIMITER = "--"
 MAX_CANDIDATE_FILES = 20
 # Where the workflow downloads the candidate artifact ($RUNNER_TEMP/candidate).
 CANDIDATE_DIR_ENV = "RELEASE_CANDIDATE_DIR"
@@ -159,23 +165,30 @@ def read_mode(request: dict, inputs: Mapping[str, str]) -> dict:
 
     ``published`` (the default, also for an empty value) must not carry candidate
     inputs and returns the request unchanged. ``candidate`` requires a request_id
-    (it namespaces the candidate artifacts), the artifact name and the build job's
-    digest map, which must name exactly one wheel of package==version.
+    (it namespaces the candidate artifacts, so it must stay the same across run
+    attempts and must not contain "--"), the artifact name, the build job's digest
+    map, which must name exactly one wheel of package==version, and the 40-hex
+    source commit the caller built the candidate from.
     """
     mode = inputs.get("mode") or PUBLISHED
     artifact = inputs.get("candidate_artifact", "")
     hashes = inputs.get("candidate_hashes", "")
+    source_sha = inputs.get("candidate_source_sha", "")
     if mode not in EVIDENCE:
         raise ValueError(f"Release workflow call mode must be {PUBLISHED} or {CANDIDATE}")
     if mode == PUBLISHED:
-        if artifact or hashes:
+        if artifact or hashes or source_sha:
             raise ValueError(
-                "candidate_artifact and candidate_hashes require mode candidate; "
-                "published mode installs only the exact PyPI release"
+                "candidate_artifact, candidate_hashes and candidate_source_sha require mode "
+                "candidate; published mode installs only the exact PyPI release"
             )
         return request
     if request["request_id"] is None:
         raise ValueError("Candidate mode requires a request_id")
+    if CANDIDATE_PART_DELIMITER in request["request_id"]:
+        raise ValueError(f"Candidate request_id must not contain {CANDIDATE_PART_DELIMITER!r}")
+    if SOURCE_SHA.fullmatch(source_sha) is None:
+        raise ValueError("Candidate mode requires candidate_source_sha: 40 lowercase hex")
     if ARTIFACT_NAME.fullmatch(artifact) is None:
         raise ValueError(
             "Candidate mode requires candidate_artifact matching [A-Za-z0-9._-]{1,100}"
@@ -185,7 +198,13 @@ def read_mode(request: dict, inputs: Mapping[str, str]) -> dict:
     return {
         **request,
         "mode": CANDIDATE,
-        "candidate": {"artifact": artifact, "files": files, "wheel": wheel, "sha256": files[wheel]},
+        "candidate": {
+            "artifact": artifact,
+            "files": files,
+            "wheel": wheel,
+            "sha256": files[wheel],
+            "source_sha": source_sha,
+        },
     }
 
 
@@ -334,6 +353,16 @@ def installed_package(name: str, request: dict | None) -> dict[str, str | None]:
     if request is not None and request.get("mode") == CANDIDATE and request["package"] == name:
         return candidate_package(name, request)
     return indexed_package(name)
+
+
+def environment_versions() -> dict[str, str]:
+    """Every installed distribution (normalized name -> version), like pip freeze."""
+    versions = {}
+    for dist in metadata.distributions():
+        name = dist.metadata.get("Name") if dist.metadata is not None else None
+        if name:
+            versions[normalize_name(name)] = dist.version
+    return dict(sorted(versions.items()))
 
 
 def request_mode(request: dict | None) -> str:
@@ -604,7 +633,14 @@ def summary(
     print("| Field | Actual |\n| --- | --- |")
     for name, value in (
         ("Request", validation),
-        ("Evidence", EVIDENCE[mode] if valid_request else "unavailable"),
+        (
+            "Evidence",
+            "unavailable"
+            if not valid_request
+            else EVIDENCE[mode]
+            if request is not None
+            else "none (not release evidence)",
+        ),
         ("Request id", (request or {}).get("request_id") or "none"),
         ("Verification commit", commit),
         ("CUBRID server", server),
@@ -649,13 +685,19 @@ def summary(
             "result": result,
             # Additive (#240): the evidence type and every installed package version.
             "evidence": EVIDENCE[mode] if valid_request else None,
+            # The tracked packages (None when missing) plus every other installed
+            # distribution, such as SQLAlchemy and the framework packages.
             "packages": {
-                name: None if found == "unavailable" else found
-                for name, (found, _) in installed.items()
+                **environment_versions(),
+                **{
+                    name: None if found == "unavailable" else found
+                    for name, (found, _) in installed.items()
+                },
             },
         }
         if mode == CANDIDATE:
             passed = verification == "passed" and origin == ORIGIN_CANDIDATE
+            record["request_id"] = request["request_id"]
             record["candidate_sha256"] = request["candidate"]["sha256"] if passed else None
         part.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     if invalid_success:
@@ -715,6 +757,8 @@ def build_report(
         # A part of the other mode never counts (older published parts lack the key).
         elif request is not None and p.get("evidence", EVIDENCE[PUBLISHED]) != evidence:
             reasons.append(f"{cell(p)}: evidence {p.get('evidence')}, expected {evidence}")
+        elif mode == CANDIDATE and p.get("request_id") != request["request_id"]:
+            reasons.append(f"{cell(p)}: request_id {p.get('request_id')} is another request")
         elif mode == CANDIDATE and (
             p.get("origin") != ORIGIN_CANDIDATE
             or p.get("candidate_sha256") != request["candidate"]["sha256"]
@@ -741,8 +785,11 @@ def build_report(
         report["candidate"] = {
             "artifact": candidate["artifact"],
             "wheel": candidate["wheel"],
-            "sha256": candidate["sha256"],
+            "source_sha": candidate["source_sha"],
             "files": candidate["files"],
+            # What the caller claimed; candidate_sha256 is set only once verified.
+            "expected_sha256": candidate["sha256"],
+            "candidate_sha256": candidate["sha256"] if not reasons else None,
         }
     return report
 
@@ -754,8 +801,9 @@ def report_markdown(report: dict[str, object]) -> str:
         lines.append(f"| {key} | {report[key] if report[key] is not None else 'none'} |")
     if "candidate" in report:
         candidate = report["candidate"]
-        lines.append(f"| candidate_wheel | {candidate['wheel']} |")  # type: ignore[index]
-        lines.append(f"| candidate_sha256 | {candidate['sha256']} |")  # type: ignore[index]
+        for key in ("wheel", "source_sha", "expected_sha256", "candidate_sha256"):
+            value = candidate[key]  # type: ignore[index]
+            lines.append(f"| candidate {key} | {value if value is not None else 'none'} |")
     for reason in report["reasons"]:  # type: ignore[union-attr]
         lines.append(f"\n- {reason}")
     return "\n".join(lines) + "\n"
@@ -804,8 +852,8 @@ def report_releases(
             "installed_version": str(report["installed_version"] or ""),
             "evidence": str(report["evidence"] or ""),
             "candidate_sha256": (
-                str(report["candidate"]["sha256"])  # type: ignore[index]
-                if "candidate" in report and report["status"] == "success"
+                str(report["candidate"]["candidate_sha256"] or "")  # type: ignore[index]
+                if "candidate" in report
                 else ""
             ),
         }
@@ -874,7 +922,11 @@ def main() -> None:
             install_examples(args.root, args.constraints)
         elif args.command == "validate":
             # Request and mode inputs only; runs before any download or install.
-            read_request(args.event_name, args.event_path)
+            request = read_request(args.event_name, args.event_path)
+            if os.environ.get(MODE_INPUTS["mode"]) == CANDIDATE and request_mode(request) != (
+                CANDIDATE
+            ):
+                raise ValueError("mode candidate was requested but this is not a candidate call")
         elif args.command == "install-mcp":
             install_mcp(args.state)
         elif args.command == "verify":
@@ -893,10 +945,11 @@ def main() -> None:
                 "event": args.event_name,
             }
             if os.environ.get(MODE_INPUTS["mode"]) == CANDIDATE:
-                # Under a call GITHUB_REPOSITORY/GITHUB_SHA are the caller's: the
-                # repository and immutable source commit the candidate was built from.
+                # Under a call GITHUB_REPOSITORY/GITHUB_SHA are the caller's run; the
+                # candidate's own build source is candidate.source_sha (an input),
+                # which differs on a resume that builds from another commit.
                 run["caller_repository"] = repository
-                run["caller_sha"] = os.environ.get("GITHUB_SHA", "")
+                run["caller_run_sha"] = os.environ.get("GITHUB_SHA", "")
                 run["caller_workflow_ref"] = os.environ.get("GITHUB_WORKFLOW_REF", "")
             if not report_releases(
                 args.event_name,

@@ -563,8 +563,10 @@ following job with `if: always()` can report them.
   caller run in this mode.
 
 A pre-publish **candidate mode** verifies the caller's own built wheel before
-`publish` (#240). It is selected only with `mode: candidate` plus `candidate_artifact`
-and `candidate_hashes`, and requires a `request_id`. The defaults keep the published
+`publish` (#240). It is selected only with `mode: candidate` plus `candidate_artifact`,
+`candidate_hashes` and `candidate_source_sha`, and requires a `request_id` that stays
+the same across run attempts (use `github.run_id`, never `github.run_attempt`, and no
+`--`), so `gh run rerun --failed` replaces only the failed cells' parts. The defaults keep the published
 mode described above unchanged. In candidate mode the workflow verifies the
 artifact's file set, SHA-256 digests and wheel metadata before installing, and
 keeps that wheel installed through every later install. It adds the outputs

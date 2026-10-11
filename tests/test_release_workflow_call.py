@@ -342,10 +342,18 @@ class WorkflowCallStaticTests(unittest.TestCase):
         # Candidate mode (#240) adds only optional inputs; published stays the default.
         self.assertEqual(
             set(declared),
-            {"package", "version", "request_id", "mode", "candidate_artifact", "candidate_hashes"},
+            {
+                "package",
+                "version",
+                "request_id",
+                "mode",
+                "candidate_artifact",
+                "candidate_hashes",
+                "candidate_source_sha",
+            },
         )
         self.assertIn("default: published", declared["mode"])
-        for name in ("mode", "candidate_artifact", "candidate_hashes"):
+        for name in ("mode", "candidate_artifact", "candidate_hashes", "candidate_source_sha"):
             self.assertIn("type: string", declared[name])
             self.assertNotIn("required: true", declared[name])
         for name in ("package", "version"):

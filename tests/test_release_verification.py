@@ -94,6 +94,10 @@ class ReleaseVerificationTests(unittest.TestCase):
         wait = patch.object(smoke, "wait_for_pypi")
         self.wait = wait.start()
         self.addCleanup(wait.stop)
+        # The full environment listing of each part is covered in test_release_candidate.py.
+        environment = patch.object(smoke, "environment_versions", dict)
+        environment.start()
+        self.addCleanup(environment.stop)
 
     def distribution(self, name: str) -> SimpleNamespace:
         if name not in self.versions:
@@ -463,7 +467,7 @@ class ReleaseVerificationTests(unittest.TestCase):
         # namespaces its parts by request_id (tests/test_release_candidate.py).
         self.assertIn(
             "name: ${{ inputs.mode == 'candidate' && "
-            "format('release-candidate-part-{0}-', inputs.request_id) || "
+            "format('release-candidate-part-{0}--', inputs.request_id) || "
             "'release-verification-part-' }}cubrid-${{ matrix.cubrid }}"
             "${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}",
             verify,

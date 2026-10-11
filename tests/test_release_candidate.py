@@ -38,7 +38,11 @@ VERIFY = JOBS[: JOBS.index("\n  report:")]
 REPORT = JOBS[JOBS.index("\n  report:") :]
 CELLS = (("11.2", "3.12"), ("11.4", "3.12"), ("11.4", "3.11"))
 RUN = {"id": "42", "attempt": "1", "url": "https://example.test/runs/42", "commit": "abc"}
-REQUEST_ID = "pycubrid-rc-v1.8.0-42-1"
+# Stable across run attempts (no run_attempt), as the documented caller shape uses.
+REQUEST_ID = "pycubrid-rc-v1.8.0-42"
+SOURCE_SHA = "d" * 40
+DESIGN = (ROOT / "docs/internal/rc-verification-design.md").read_text()
+CONTRIBUTING = (ROOT / "CONTRIBUTING.md").read_text()
 WHEEL = "pycubrid-1.8.0-py3-none-any.whl"
 SDIST = "pycubrid-1.8.0.tar.gz"
 
@@ -108,6 +112,10 @@ class CandidateTestCase(unittest.TestCase):
         build_wheel(self.candidate / WHEEL)
         (self.candidate / SDIST).write_bytes(b"sdist bytes")
         self.hashes = {name: digest(self.candidate / name) for name in (WHEEL, SDIST)}
+        self.environment = [
+            SimpleNamespace(metadata={"Name": "SQLAlchemy"}, version="2.0.40"),
+            SimpleNamespace(metadata={"Name": "Flask"}, version="3.1.0"),
+        ]
         self.versions = {
             "pycubrid": "1.8.0",
             "sqlalchemy-cubrid": "1.8.0",
@@ -121,6 +129,8 @@ class CandidateTestCase(unittest.TestCase):
         }
         for patcher in (
             patch.object(smoke.metadata, "distribution", self.distribution),
+            # The full environment listing (pip freeze-like) of each part.
+            patch.object(smoke.metadata, "distributions", lambda: self.environment),
             patch.dict(smoke.os.environ, {smoke.CANDIDATE_DIR_ENV: str(self.candidate)}),
         ):
             patcher.start()
@@ -156,6 +166,7 @@ class CandidateTestCase(unittest.TestCase):
             "RELEASE_INPUT_MODE": "candidate",
             "RELEASE_INPUT_CANDIDATE_ARTIFACT": "release-dist",
             "RELEASE_INPUT_CANDIDATE_HASHES": json.dumps(self.hashes),
+            "RELEASE_INPUT_CANDIDATE_SOURCE_SHA": SOURCE_SHA,
         }
         values.update(overrides)
         return values
@@ -263,6 +274,7 @@ class CandidateInputTests(CandidateTestCase):
                 "files": self.hashes,
                 "wheel": WHEEL,
                 "sha256": self.hashes[WHEEL],
+                "source_sha": SOURCE_SHA,
             },
         )
 
@@ -284,22 +296,36 @@ class CandidateInputTests(CandidateTestCase):
             "candidate_artifact matching ": {"RELEASE_INPUT_CANDIDATE_ARTIFACT": "a b"},
             "candidate_artifact matching  ": {"RELEASE_INPUT_CANDIDATE_ARTIFACT": "x" * 101},
             "1-20 file digests": {"RELEASE_INPUT_CANDIDATE_HASHES": ""},
+            "must not contain '--'": {"RELEASE_INPUT_REQUEST_ID": "pycubrid--rc-42"},
+            "candidate_source_sha: 40": {"RELEASE_INPUT_CANDIDATE_SOURCE_SHA": ""},
+            "candidate_source_sha: 40 ": {"RELEASE_INPUT_CANDIDATE_SOURCE_SHA": "D" * 40},
+            "candidate_source_sha: 40  ": {"RELEASE_INPUT_CANDIDATE_SOURCE_SHA": "d" * 39},
         }
         for pattern, overrides in cases.items():
             with self.subTest(overrides=overrides):
-                self.assert_select_fails(pattern.strip(), **overrides)
-        # Published mode with candidate inputs is rejected too, not silently ignored.
-        for name in ("RELEASE_INPUT_CANDIDATE_ARTIFACT", "RELEASE_INPUT_CANDIDATE_HASHES"):
-            env = {**self.env(RELEASE_INPUT_MODE="published"), name: "x"}
-            other = (
-                "RELEASE_INPUT_CANDIDATE_HASHES"
-                if name == "RELEASE_INPUT_CANDIDATE_ARTIFACT"
-                else "RELEASE_INPUT_CANDIDATE_ARTIFACT"
-            )
-            env[other] = ""
+                self.assert_select_fails(re.escape(pattern.strip()), **overrides)
+        # Published mode with any candidate input is rejected too, not silently ignored.
+        names = [name for key, name in smoke.MODE_INPUTS.items() if key != "mode"]
+        for name in names:
+            env = {**self.env(RELEASE_INPUT_MODE="published"), **dict.fromkeys(names, "")}
+            env[name] = "x"
             with self.subTest(published_with=name):
                 with self.assertRaisesRegex(ValueError, "require mode candidate"):
                     smoke.read_request("workflow_call", self.event, env)
+
+    def test_validate_fails_when_candidate_mode_is_not_a_candidate_call(self) -> None:
+        # The call flag is missing (for example a failed call detection): the event
+        # is then read as a push, which must not pass as a validated candidate.
+        environ = {**self.env(), "GITHUB_EVENT_NAME": "push", "GITHUB_EVENT_PATH": str(self.event)}
+        with (
+            patch.dict(smoke.os.environ, environ),
+            patch.object(smoke.sys, "argv", ["release_smoke.py", "validate"]),
+            contextlib.redirect_stderr(io.StringIO()) as stderr,
+            self.assertRaises(SystemExit) as exit_,
+        ):
+            smoke.main()
+        self.assertEqual(exit_.exception.code, 1)
+        self.assertIn("not a candidate call", stderr.getvalue())
 
     def test_validate_command_fails_on_incompatible_inputs(self) -> None:
         for overrides, code in (({}, None), ({"RELEASE_INPUT_REQUEST_ID": ""}, 1)):
@@ -518,22 +544,73 @@ class CandidateReportTests(CandidateTestCase):
             {
                 "artifact": "release-dist",
                 "wheel": WHEEL,
-                "sha256": self.hashes[WHEEL],
+                "source_sha": SOURCE_SHA,
                 "files": self.hashes,
+                "expected_sha256": self.hashes[WHEEL],
+                "candidate_sha256": self.hashes[WHEEL],
             },
         )
         self.assertEqual(len(report["matrix"]), 3)
         for part in report["matrix"]:
             self.assertEqual(part["origin"], "candidate artifact")
+            self.assertEqual(part["request_id"], REQUEST_ID)
             self.assertEqual(part["candidate_sha256"], self.hashes[WHEEL])
             self.assertEqual(
                 part["packages"],
-                {"pycubrid": "1.8.0", "sqlalchemy-cubrid": "1.8.0", "cubrid-mcp-server": "0.4.0"},
+                {
+                    "flask": "3.1.0",
+                    "sqlalchemy": "2.0.40",
+                    "pycubrid": "1.8.0",
+                    "sqlalchemy-cubrid": "1.8.0",
+                    "cubrid-mcp-server": "0.4.0",
+                },
             )
         self.assertEqual(outputs["artifact"], f"release-candidate-verification-{REQUEST_ID}")
         self.assertEqual(outputs["evidence"], "candidate artifact")
         self.assertEqual(outputs["candidate_sha256"], self.hashes[WHEEL])
         self.assertEqual(outputs["installed_version"], "1.8.0")
+
+    def test_failed_report_names_the_claimed_digest_expected_only(self) -> None:
+        self.write_parts(cells=CELLS[:2])
+        passed, report, outputs = self.report()
+        self.assertFalse(passed)
+        self.assertEqual(report["candidate"]["expected_sha256"], self.hashes[WHEEL])
+        self.assertIsNone(report["candidate"]["candidate_sha256"])
+        self.assertEqual(outputs["candidate_sha256"], "")
+        markdown = smoke.report_markdown(report)
+        self.assertIn(f"| candidate expected_sha256 | {self.hashes[WHEEL]} |", markdown)
+        self.assertIn("| candidate candidate_sha256 | none |", markdown)
+
+    def test_parts_of_another_candidate_request_never_count(self) -> None:
+        self.write_parts()
+        for path in self.parts.glob(f"**/{smoke.REPORT_PART}"):
+            part = json.loads(path.read_text())
+            part["request_id"] = REQUEST_ID + "-other"
+            path.write_text(json.dumps(part))
+        passed, report, _ = self.report()
+        self.assertFalse(passed)
+        self.assertIn(
+            f"CUBRID 11.2: request_id {REQUEST_ID}-other is another request", report["reasons"]
+        )
+
+    def test_rerun_failed_cell_replaces_its_own_part(self) -> None:
+        """gh run rerun --failed keeps request_id, so the re-run cell's part has the
+        same artifact name and replaces (overwrite: true) its failed part."""
+        self.write_parts(cells=CELLS[:2])
+        self.write_parts(cells=CELLS[2:], result="failure")  # Attempt 1 of the 3.11 cell.
+        passed, _, _ = self.report(verify_result="failure")
+        self.assertFalse(passed)
+        failed = [
+            path
+            for path in self.parts.glob(f"**/{smoke.REPORT_PART}")
+            if json.loads(path.read_text())["python"] == "3.11"
+        ]
+        self.assertEqual(len(failed), 1)
+        failed[0].unlink()  # The re-run upload replaces the same-named artifact.
+        failed[0].parent.rmdir()
+        self.write_parts(cells=CELLS[2:])  # Attempt 2, same request_id.
+        passed, report, _ = self.report()
+        self.assertTrue(passed, report["reasons"])
 
     def test_failed_cancelled_or_skipped_cells_fail_the_report(self) -> None:
         self.write_parts()
@@ -649,8 +726,23 @@ class CandidateReportTests(CandidateTestCase):
         run = json.loads(self.output.read_text())["run"]
         self.assertEqual(run["commit"], "b" * 40)
         self.assertEqual(run["caller_repository"], "cubrid-lab/pycubrid")
-        self.assertEqual(run["caller_sha"], "a" * 40)
+        self.assertEqual(run["caller_run_sha"], "a" * 40)
+        self.assertNotIn("caller_sha", run)
+        # The candidate's build source is the input, not the caller run's GITHUB_SHA.
+        report = json.loads(self.output.read_text())
+        self.assertEqual(report["candidate"]["source_sha"], SOURCE_SHA)
         self.assertTrue(run["caller_workflow_ref"].endswith("publish-pypi.yml@refs/heads/main"))
+
+
+class EvidenceLabelTests(CandidateTestCase):
+    def test_non_release_runs_are_not_labelled_as_release_evidence(self) -> None:
+        self.direct_urls["pycubrid"] = None
+        smoke.freeze(self.state, self.constraints)
+        text = io.StringIO()
+        with contextlib.redirect_stdout(text):
+            smoke.summary("push", self.event, self.state, "c" * 40, "11.4", "success")
+        self.assertIn("| Evidence | none (not release evidence) |", text.getvalue())
+        self.assertNotIn("published package", text.getvalue())
 
 
 class CandidateWorkflowTests(unittest.TestCase):
@@ -718,15 +810,40 @@ class CandidateWorkflowTests(unittest.TestCase):
         download = step(REPORT, "Download smoke job results")
         self.assertIn(
             "pattern: ${{ inputs.mode == 'candidate' && "
-            "format('release-candidate-part-{0}-*', inputs.request_id) || "
+            "format('release-candidate-part-{0}--*', inputs.request_id) || "
             "'release-verification-part-*' }}",
             download,
         )
+        self.assertEqual(candidate[0], f"release-candidate-part-{REQUEST_ID}--cubrid-11.2")
+        pattern = f"release-candidate-part-{REQUEST_ID}--*"
         for name in candidate:
             self.assertFalse(fnmatch.fnmatch(name, "release-verification-part-*"), name)
-            self.assertTrue(fnmatch.fnmatch(name, f"release-candidate-part-{REQUEST_ID}-*"))
+            self.assertTrue(fnmatch.fnmatch(name, pattern))
         for name in published:
-            self.assertFalse(fnmatch.fnmatch(name, f"release-candidate-part-{REQUEST_ID}-*"))
+            self.assertFalse(fnmatch.fnmatch(name, pattern))
+        # One request_id that is a prefix of another never matches its parts.
+        longer = [render(expression, "candidate", REQUEST_ID + "-2", *cell) for cell in CELLS]
+        for name in longer:
+            self.assertFalse(fnmatch.fnmatch(name, pattern), name)
+        # A re-run cell (same request_id) uploads the same name and replaces its part.
+        self.assertIn("overwrite: true", upload)
+
+    def test_documented_caller_shapes_keep_request_id_stable(self) -> None:
+        """A run_attempt in a candidate request_id breaks gh run rerun --failed."""
+        section = DESIGN[DESIGN.index("### 13.5") :]
+        shape = section[
+            section.index("```yaml") : section.index("```", section.index("```yaml") + 3)
+        ]
+        self.assertIn("mode: candidate", shape)
+        self.assertIn(
+            "request_id: pycubrid-rc-v${{ needs.detect.outputs.version }}-${{ github.run_id }}",
+            shape,
+        )
+        self.assertIn("candidate_source_sha: ${{ needs.detect.outputs.sha }}", shape)
+        self.assertNotIn("run_attempt", shape)
+        for document in (DESIGN[DESIGN.index("## 13.") :], CONTRIBUTING):
+            self.assertIn("run_attempt", document)  # The rule is stated...
+            self.assertNotIn("request_id: ${{ github.run_attempt", document)
 
     def test_no_new_trigger_schedule_or_permission(self) -> None:
         triggers = WORKFLOW[WORKFLOW.index("\non:") : WORKFLOW.index("\nconcurrency:")]

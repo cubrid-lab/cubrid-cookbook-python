@@ -791,14 +791,17 @@ the schedule ignore the new inputs.
 | --- | --- | --- |
 | `package` | required, as before | required, as before |
 | `version` | required, as before | required, as before |
-| `request_id` | optional, `^[A-Za-z0-9._-]{8,80}$` | **required**; it namespaces the candidate artifacts |
+| `request_id` | optional, `^[A-Za-z0-9._-]{8,80}$` | **required**, same pattern, no `--`; it names the candidate artifacts and must be **the same across run attempts** (no `github.run_attempt`) |
 | `mode` | `published` (or empty) | `candidate` |
 | `candidate_artifact` | must be empty | name of the artifact the caller uploaded earlier **in the same run**, `^[A-Za-z0-9._-]{1,100}$` |
 | `candidate_hashes` | must be empty | the build job's JSON object `{"<file>": "<sha256>"}` for exactly the artifact's files: plain file names, 64 lowercase hex digests, 1–20 entries, exactly one wheel |
+| `candidate_source_sha` | must be empty | the 40 lowercase hex commit the caller built the candidate from (`needs.detect.outputs.sha` in the callers; on a resume it differs from the run's `GITHUB_SHA`) |
 
 Any other combination fails before anything is downloaded or installed: an
 unknown `mode`, candidate inputs in published mode, or candidate mode without
-`request_id`, `candidate_artifact` or a valid `candidate_hashes` map. In
+`request_id` (or with `--` in it), `candidate_artifact`, a valid
+`candidate_hashes` map or a valid `candidate_source_sha`. `validate` also fails
+when `mode: candidate` is set but the run is not read as a candidate call. In
 candidate mode the `Validate candidate request` step (`release_smoke.py
 validate`) runs these checks before the `Download candidate artifact` step;
 published mode keeps its earlier step order and validates in `select`. The
@@ -808,9 +811,27 @@ variables; `candidate_hashes` never appears in an expression of a job.
 Differences from the section 4 proposal: the mode is an explicit input instead
 of being implied by a non-empty `candidate_artifact`; the artifact is
 downloaded by name only (no `candidate_artifact_id`); the new output is
-`evidence` instead of `source`; and no `PIP_FIND_LINKS` directory is exported
+`evidence` instead of `source`; no `PIP_FIND_LINKS` directory is exported
 (later installs keep the candidate through the `package==version` constraint,
-and the provenance check below catches any replacement).
+and the provenance check below catches any replacement); and the candidate
+build source is an explicit `candidate_source_sha` input.
+
+Artifact names and the call rule, replacing the section 4 names:
+
+- Candidate parts are `release-candidate-part-<request_id>--cubrid-<v>[-py<p>]`
+  (section 4 proposed `release-candidate-part-cubrid-<v>[-py<p>]`), and the
+  report downloads exactly `release-candidate-part-<request_id>--*`. The `--`
+  delimiter, which a candidate `request_id` may not contain, keeps one id from
+  matching another id's parts. The candidate report is
+  `release-candidate-verification-<request_id>`. Published names are unchanged.
+- `request_id` must stay the same across attempts of the caller run. Part
+  uploads use `overwrite: true`, so `gh run rerun <id> --failed` (the only
+  allowed recovery) re-runs the failed cells under the same names, each
+  replacing its own part, while the passed cells' parts stay valid. A
+  `run_attempt` in the id would leave the passed cells under the old names and
+  the report would find too few parts.
+- Call the workflow **at most once per mode per caller run**: one candidate call
+  before `publish` and one published call after it.
 
 ### 13.2 What candidate mode verifies
 
@@ -828,7 +849,8 @@ Each of the three release cells (CUBRID 11.2 and 11.4 on Python 3.12, CUBRID
 3. **Wheel identity.** The single wheel's filename must declare
    `package`/`version`, the archive must be intact (`zipfile` CRC check), and
    its own `*.dist-info/METADATA` `Name` and `Version` must match too. Only the
-   wheel is installed; other files are hash-checked and never built.
+   wheel is installed and install-tested; the sdist (and any other file) is
+   hash-checked but never built, installed or tested.
 4. **Install.** `pip install --no-cache-dir --constraint <package==version>
    <verified wheel>`. Dependencies come from PyPI. There is no PyPI wait and no
    index copy of the requested package. Later installs (examples, framework
@@ -843,6 +865,12 @@ Each of the three release cells (CUBRID 11.2 and 11.4 on Python 3.12, CUBRID
    still come from the package index, as in published mode.
 6. **Cache.** Candidate cells restore the pip cache but never save it
    (`actions/cache/restore`), so a candidate run cannot seed the caller's cache.
+
+Threat model: the candidate's code (and every unpinned dependency) runs in the
+same job as the `summary` that writes the cell's part, so a malicious candidate
+could forge its own part. This is acceptable because the candidate is
+first-party code built by the caller from reviewed `main`; the gate catches
+regressions, not a hostile driver (see section 8.1 for the run-level risks).
 
 Published mode is unchanged: the exact `package==version` from
 `https://pypi.org/simple` after the bounded PyPI publication wait, with no
@@ -859,23 +887,33 @@ fallback to the latest release, to `main` or to a candidate.
 
 Part artifacts keep their published names
 (`release-verification-part-cubrid-<v>[-py<p>]`). Candidate parts are
-`release-candidate-part-<request_id>-cubrid-<v>[-py<p>]`, so the two modes can
-run in one caller run without overwriting or downloading each other's parts.
+`release-candidate-part-<request_id>--cubrid-<v>[-py<p>]` (13.1), so the two
+modes can run in one caller run without overwriting or downloading each
+other's parts.
 
 The report JSON keeps `schema_version: 1` and gains additive keys only:
 
 - every report: `evidence` (`published package`, `candidate artifact`, or
   `null` for an invalid request);
-- every matrix part: `evidence` and `packages` (the installed `pycubrid`,
-  `sqlalchemy-cubrid` and `cubrid-mcp-server` versions);
-- candidate parts: `candidate_sha256` (`null` unless that cell verified the
-  candidate's version and provenance);
-- candidate reports: `candidate` (`artifact`, `wheel`, `sha256`, `files`) and,
-  in `run`, `caller_repository`, `caller_sha` (the immutable source commit the
-  candidate was built from) and `caller_workflow_ref`. `run.commit` stays the
-  cookbook commit tested, and `run.id`/`run.attempt` identify the caller run.
+- every matrix part: `evidence` and `packages` (every installed distribution
+  and its version, like `pip freeze`, including SQLAlchemy and the framework
+  packages; `pycubrid`, `sqlalchemy-cubrid` and `cubrid-mcp-server` are always
+  listed, `null` when missing);
+- candidate parts: `request_id` (a part of another request fails the report)
+  and `candidate_sha256` (`null` unless that cell verified the candidate's
+  version and provenance);
+- candidate reports: `candidate` with `artifact`, `wheel`, `source_sha` (the
+  `candidate_source_sha` input: the commit the candidate was built from),
+  `files`, `expected_sha256` (the digest the caller claimed) and
+  `candidate_sha256` (the same digest once every check passed, otherwise
+  `null`); and, in `run`, `caller_repository`, `caller_run_sha` (the caller
+  run's `GITHUB_SHA`, which can differ from `source_sha` on a resume) and
+  `caller_workflow_ref`. `run.commit` stays the cookbook commit tested, and
+  `run.id`/`run.attempt` identify the caller run.
 
-The job summaries show the evidence type in both modes. The advisory
+The job summaries show the evidence type: `published package` or `candidate
+artifact` for release requests, and `none (not release evidence)` for pushes,
+the schedule and manual `latest` runs. The advisory
 `driver-main.yml` lane labels its summary `representative main (advisory)`; it
 is never release evidence.
 
@@ -889,7 +927,7 @@ is never release evidence.
 | Corrupt wheel, or wheel metadata naming another package or version | `select`, before any install |
 | Requested package replaced after install (PyPI copy, VCS, other file or bytes); another driver from a direct URL | `freeze`, final `verify` and the cell's `summary` (part `verification: failed`) |
 | A selected cell failed, was cancelled or was skipped; a cell missing, duplicated or unexpected; part download failed; no part at all | the `Release verification report` job (`status: failure`) |
-| A part from the other mode, or a candidate part with another digest or origin | the report job |
+| A part from the other mode, a candidate part of another `request_id`, or with another digest or origin | the report job |
 
 The report job fails whenever `status` is `failure`, and the called workflow's
 result is then `failure`.
@@ -905,17 +943,19 @@ result is then `failure`.
     with:
       package: pycubrid
       version: ${{ needs.detect.outputs.version }}
-      request_id: pycubrid-rc-v${{ needs.detect.outputs.version }}-${{ github.run_id }}-${{ github.run_attempt }}
+      # Same across attempts: never add the attempt number (13.1).
+      request_id: pycubrid-rc-v${{ needs.detect.outputs.version }}-${{ github.run_id }}
       mode: candidate
       candidate_artifact: release-dist
       candidate_hashes: ${{ needs.build.outputs.sha256 }}
+      candidate_source_sha: ${{ needs.detect.outputs.sha }}
 ```
 
 A `require-candidate` job then requires `result == success`,
 `status == success`, `evidence == candidate artifact`, a non-empty
 `installed_version` equal to `requested_version` and to the release version,
 and `candidate_sha256` equal to the wheel's entry in
-`needs.build.outputs.sha256`; `publish` needs it (section 4 and 7.3 still
+`needs.build.outputs.sha256` (a failed run leaves `candidate_sha256` empty); `publish` needs it (section 4 and 7.3 still
 apply to the caller side). The existing post-publication call keeps
 `mode` unset.
 
