@@ -107,6 +107,7 @@ jobs:
               output = []
               fence_char = None
               fence_size = 0
+              fence_indent = 0
               in_comment = False
               for line in text.splitlines(keepends=True):
                   stripped = line.lstrip(" ")
@@ -125,14 +126,19 @@ jobs:
                           and not stripped[len(delimiter.group()):].strip()
                       ):
                           fence_char = None
-                      continue
+                          continue
+                      if not (fence_indent and stripped.strip() and indent < fence_indent):
+                          continue
+                      fence_char = None  # A less indented line ends the list item and fence.
                   if delimiter is not None and not (
                       delimiter.group()[0] == "\x60" and "\x60" in stripped[len(delimiter.group()):]
                   ):
                       fence_char, fence_size = delimiter.group()[0], len(delimiter.group())
+                      fence_indent = indent
                       continue
+                  starts_comment = indent <= 3 and stripped.startswith("<!--") and "-->" not in line
                   line = re.sub(r"<!--.*?-->", "", line)
-                  if indent <= 3 and stripped.startswith("<!--") and "<!--" in line:
+                  if starts_comment:
                       in_comment = True
                       line = line.split("<!--", 1)[0]
                   output.append(line)
