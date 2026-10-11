@@ -774,6 +774,12 @@ Open:
 
 ## 13. Implemented cookbook contract (C1, C2)
 
+`CONTRIBUTING.md` ("Release verification contract") still says candidate mode
+is not implemented; that pointer is updated in a follow-up because the file is
+being edited in a concurrent change. Until then this section is the
+authoritative contract for candidate mode, and the published-mode contract in
+`CONTRIBUTING.md` is unchanged.
+
 This section is the runbook for the cookbook side of #240 as implemented in
 `.github/workflows/smoke-test.yml` and `scripts/release_smoke.py`. No caller
 uses it yet: pycubrid, sqlalchemy-cubrid and cubrid-mcp-server still call only
@@ -798,7 +804,10 @@ the schedule ignore the new inputs.
 
 Any other combination fails before anything is downloaded or installed: an
 unknown `mode`, candidate inputs in published mode, or candidate mode without
-`request_id`, `candidate_artifact` or a valid `candidate_hashes` map. The
+`request_id`, `candidate_artifact` or a valid `candidate_hashes` map. In
+candidate mode the `Validate candidate request` step (`release_smoke.py
+validate`) runs these checks before the `Download candidate artifact` step;
+published mode keeps its earlier step order and validates in `select`. The
 inputs reach `release_smoke.py` only as `RELEASE_INPUT_*` environment
 variables; `candidate_hashes` never appears in an expression of a job.
 
@@ -832,9 +841,10 @@ Each of the three release cells (CUBRID 11.2 and 11.4 on Python 3.12, CUBRID
    suites, MCP) run under the same `PIP_CONSTRAINT`.
 5. **Provenance after every install.** `freeze`, the final `verify` (after all
    dependency installs) and `summary` require the requested package's
-   `direct_url.json` to name exactly the verified wheel file, with the same
-   SHA-256 if pip recorded one, and the wheel on disk to still have that
-   digest. A missing `direct_url.json` (a PyPI copy of the same version), a
+   `direct_url.json` to name exactly the verified wheel file with the same
+   recorded SHA-256 (`archive_info.hashes.sha256`, or the older
+   `archive_info.hash` form; a missing digest fails), and the wheel on disk to
+   still have that digest. A missing `direct_url.json` (a PyPI copy of the same version), a
    VCS URL, another local file or other bytes all fail. Every other driver must
    still come from the package index, as in published mode.
 6. **Cache.** Candidate cells restore the pip cache but never save it
@@ -879,7 +889,7 @@ is never release evidence.
 
 | Case | Where it fails |
 | --- | --- |
-| Unknown `mode`, candidate inputs in published mode, missing `request_id`/`candidate_artifact`/`candidate_hashes`, malformed map, zero or two wheels, wheel of another package or version | input validation, before any download or install |
+| Unknown `mode`, candidate inputs in published mode, missing `request_id`/`candidate_artifact`/`candidate_hashes`, malformed map, zero or two wheels, wheel of another package or version | `Validate candidate request` step, before any download or install |
 | Artifact missing, expired or not uploaded in this run | `Download candidate artifact` step, then `select` |
 | Extra, missing, substituted or non-regular file; wrong SHA-256 of wheel or sdist | `select`, before any install |
 | Corrupt wheel, or wheel metadata naming another package or version | `select`, before any install |

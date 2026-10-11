@@ -269,6 +269,12 @@ jobs:
           restore-keys: |
             pip-smoke-${{ runner.os }}-
 
+      - name: Validate candidate request
+        # Rejects incompatible mode inputs, a missing request_id or a malformed
+        # digest map before anything is downloaded.
+        if: inputs.mode == 'candidate'
+        run: python scripts/release_smoke.py validate
+
       - name: Download candidate artifact
         # Only the caller's artifact from this same run, by name; a missing or
         # corrupt artifact fails here. release_smoke.py then checks the exact file

@@ -315,8 +315,14 @@ def candidate_package(name: str, request: dict) -> dict[str, str | None]:
     if not isinstance(direct_url, dict) or direct_url.get("url") != wheel.as_uri():
         raise ValueError(f"{name} was not installed from the verified candidate {wheel}")
     archive = direct_url.get("archive_info")
-    recorded = (archive.get("hashes") or {}).get("sha256") if isinstance(archive, dict) else None
-    if recorded not in (None, candidate["sha256"]):
+    archive = archive if isinstance(archive, dict) else {}
+    hashes = archive.get("hashes") if isinstance(archive.get("hashes"), dict) else {}
+    recorded = hashes.get("sha256")
+    legacy = archive.get("hash")
+    if recorded is None and isinstance(legacy, str) and legacy.startswith("sha256="):
+        recorded = legacy[len("sha256=") :]  # The older single-hash form.
+    # The recorded digest binds the installed copy to the verified bytes.
+    if recorded != candidate["sha256"]:
         raise ValueError(f"{name} was installed from a wheel with SHA-256 {recorded}")
     if not wheel.is_file() or sha256_file(wheel) != candidate["sha256"]:
         raise ValueError(f"Candidate wheel {wheel} changed after verification")
@@ -835,6 +841,8 @@ def main() -> None:
     install = commands.add_parser("install-examples")
     install.add_argument("--root", type=Path, default=Path("."))
     install.add_argument("--constraints", type=Path, required=True)
+    validate = commands.add_parser("validate")
+    event_arguments(validate)
     mcp = commands.add_parser("install-mcp")
     mcp.add_argument("--state", type=Path, required=True)
     check = commands.add_parser("verify")
@@ -864,6 +872,9 @@ def main() -> None:
             freeze(args.state, args.constraints, read_request(args.event_name, args.event_path))
         elif args.command == "install-examples":
             install_examples(args.root, args.constraints)
+        elif args.command == "validate":
+            # Request and mode inputs only; runs before any download or install.
+            read_request(args.event_name, args.event_path)
         elif args.command == "install-mcp":
             install_mcp(args.state)
         elif args.command == "verify":

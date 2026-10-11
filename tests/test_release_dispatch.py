@@ -456,7 +456,7 @@ class ReleaseDispatchTests(unittest.TestCase):
             for line in jobs.replace(strategy, "").splitlines()
             if "inputs." in line and report_condition not in line
         ]
-        self.assertEqual(len(others), 6, others)
+        self.assertEqual(len(others), 7, others)
         for line in others:
             self.assertRegex(line, r"^(if|name|pattern): ", line)
             self.assertNotRegex(line, r"inputs\.(package|version|candidate_hashes)\b", line)

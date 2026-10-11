@@ -301,6 +301,22 @@ class CandidateInputTests(CandidateTestCase):
                 with self.assertRaisesRegex(ValueError, "require mode candidate"):
                     smoke.read_request("workflow_call", self.event, env)
 
+    def test_validate_command_fails_on_incompatible_inputs(self) -> None:
+        for overrides, code in (({}, None), ({"RELEASE_INPUT_REQUEST_ID": ""}, 1)):
+            with self.subTest(overrides=overrides):
+                environ = {**self.env(**overrides), "RELEASE_WORKFLOW_CALL": "true"}
+                with (
+                    patch.dict(smoke.os.environ, environ),
+                    patch.object(smoke.sys, "argv", ["release_smoke.py", "validate"]),
+                    contextlib.redirect_stderr(io.StringIO()),
+                ):
+                    if code is None:
+                        smoke.main()
+                    else:
+                        with self.assertRaises(SystemExit) as exit_:
+                            smoke.main()
+                        self.assertEqual(exit_.exception.code, code)
+
     def test_invalid_digest_maps_fail_before_any_install(self) -> None:
         good = self.hashes[WHEEL]
         cases = {
@@ -417,6 +433,10 @@ class CandidateProvenanceTests(CandidateTestCase):
             # ... with another local wheel, or one with other bytes.
             "not installed from the verified candidate ": self.direct_url(self.root / WHEEL),
             "installed from a wheel with SHA-256": self.direct_url(sha256="0" * 64),
+            # ... or the right URL without any recorded digest.
+            "installed from a wheel with SHA-256 None": json.dumps(
+                {"url": (self.candidate / WHEEL).resolve().as_uri(), "archive_info": {}}
+            ),
             "unreadable": "{",
         }
         for pattern, direct_url in replacements.items():
@@ -428,6 +448,15 @@ class CandidateProvenanceTests(CandidateTestCase):
         self.versions["pycubrid"] = "1.8.1"
         with self.assertRaisesRegex(ValueError, "changed|differs"):
             smoke.verify(self.state)
+
+    def test_legacy_single_hash_form_is_accepted(self) -> None:
+        sha256 = digest(self.candidate / WHEEL)
+        url = (self.candidate / WHEEL).resolve().as_uri()
+        self.direct_urls["pycubrid"] = json.dumps(
+            {"url": url, "archive_info": {"hash": f"sha256={sha256}"}}
+        )
+        smoke.freeze(self.state, self.constraints, self.request())
+        smoke.verify(self.state)
 
     def test_wheel_replaced_on_disk_after_verification_fails(self) -> None:
         request = self.request()
@@ -654,6 +683,15 @@ class CandidateWorkflowTests(unittest.TestCase):
         self.assertLess(
             VERIFY.index("- name: Download candidate artifact"),
             VERIFY.index("- name: Select released drivers"),
+        )
+
+    def test_request_is_validated_before_the_download(self) -> None:
+        validate = step(VERIFY, "Validate candidate request")
+        self.assertIn("if: inputs.mode == 'candidate'\n", validate)
+        self.assertIn("run: python scripts/release_smoke.py validate", validate)
+        self.assertLess(
+            VERIFY.index("- name: Validate candidate request"),
+            VERIFY.index("- name: Download candidate artifact"),
         )
 
     def test_candidate_runs_never_save_the_pip_cache(self) -> None:
