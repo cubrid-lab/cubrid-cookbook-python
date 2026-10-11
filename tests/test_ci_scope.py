@@ -331,24 +331,83 @@ class WebSuiteSelectionTests(unittest.TestCase):
             with self.subTest(event=event):
                 self.assertEqual(scope(event=event)["web_suites"], [])
 
-    def test_more_recipes_than_the_cap_fall_back_to_representative_suites(self) -> None:
+    def test_cap_covers_every_discovered_suite(self) -> None:
+        # Fails when a new recipe outgrows the cap: raise MAX_WEB_SUITES then.
+        self.assertGreaterEqual(ci_scope.MAX_WEB_SUITES, len(SUITES))
+        every = scope(*(f"{s}/app.py" for s in SUITES))
+        self.assertEqual(every["web_suites"], SUITES)
+        self.assertEqual(every["web_suites_skipped"], [])
+
+    def test_shared_file_plus_three_recipes_runs_all_of_them(self) -> None:
+        recipes = [f"{FLASK}/07-vendor-feed", f"{FLASK}/09-rbac", f"{FASTAPI}/recipes/09-saga"]
+        result = scope(f"{FLASK}/requirements.txt", *(f"{r}/app.py" for r in recipes))
+        # Representatives are added on top and never count toward the cap.
+        self.assertEqual(result["web_suites"], sorted(REPRESENTATIVE + recipes))
+        self.assertEqual(result["web_suites_skipped"], [])
+
+    def test_grouped_flask_dependabot_bump_runs_every_flask_suite(self) -> None:
+        flask = [s for s in SUITES if s.startswith(f"{FLASK}/")]
+        self.assertEqual(len(flask), 11)
+        result = scope(*(f"{s}/requirements.txt" for s in flask))
+        self.assertEqual(selected(result), {"web"})
+        self.assertEqual(result["web_suites"], flask)
+        self.assertEqual(result["web_suites_skipped"], [])
+
+    def test_changed_recipes_beyond_the_cap_are_reported_as_skipped(self) -> None:
         recipes = [s for s in SUITES if s not in REPRESENTATIVE]
-        cap = ci_scope.MAX_WEB_SUITES
-        at_cap = scope(*(f"{s}/app.py" for s in recipes[:cap]))
-        self.assertEqual(at_cap["web_suites"], sorted(recipes[:cap]))
-        self.assertEqual(at_cap["web_suites_skipped"], [])
-        over = scope(*(f"{s}/app.py" for s in recipes[: cap + 1]))
-        self.assertEqual(over["web_suites"], REPRESENTATIVE)
-        # Changed recipes the cap leaves out are reported, never implied covered.
-        self.assertEqual(over["web_suites_skipped"], sorted(recipes[: cap + 1]))
-        # A changed representative that still runs is not reported as skipped.
-        mixed = scope(f"{FLASK}/01-basic-crud/app.py", *(f"{s}/app.py" for s in recipes[:cap]))
-        self.assertEqual(mixed["web_suites"], REPRESENTATIVE)
-        self.assertEqual(mixed["web_suites_skipped"], sorted(recipes[:cap]))
-        # The grouped Dependabot bump of every Flask recipe stays bounded too.
-        flask = [f"{FLASK}/{n:02d}-x/requirements.txt" for n in range(1, 12)]
-        self.assertEqual(scope(*flask)["web_suites"], REPRESENTATIVE)
-        self.assertLessEqual(len(REPRESENTATIVE), cap)
+        with mock.patch.object(ci_scope, "MAX_WEB_SUITES", 2):
+            at_cap = scope(*(f"{s}/app.py" for s in recipes[:2]))
+            self.assertEqual(at_cap["web_suites"], recipes[:2])
+            self.assertEqual(at_cap["web_suites_skipped"], [])
+            over = scope(*(f"{s}/app.py" for s in recipes[:4]))
+            # The first two by name run, the representatives join them, and the
+            # rest are reported, never implied covered.
+            self.assertEqual(over["web_suites"], sorted(REPRESENTATIVE + recipes[:2]))
+            self.assertEqual(over["web_suites_skipped"], recipes[2:4])
+            # A changed representative beyond the cap still runs: not skipped.
+            rep = f"{FLASK}/01-basic-crud"
+            mixed = scope(rep + "/app.py", *(f"{s}/app.py" for s in recipes[-2:]))
+            self.assertIn(rep, mixed["web_suites"])
+            self.assertNotIn(rep, mixed["web_suites_skipped"])
+            self.assertEqual(len(mixed["web_suites_skipped"]), 1)
+
+    def test_deleted_recipe_falls_back_to_representative_suites(self) -> None:
+        # The deleted root is gone from the checkout, so it is not a suite.
+        gone = f"{FLASK}/12-removed-recipe"
+        self.assertNotIn(gone, SUITES)
+        result = scope(f"{gone}/app.py", f"{gone}/tests/test_app.py")
+        self.assertEqual(selected(result), {"web"})
+        self.assertEqual(result["web_suites"], REPRESENTATIVE)
+
+    def test_rename_selects_both_sides(self) -> None:
+        # --no-renames lists both sides: a file moved between recipes runs both.
+        old, new = f"{FLASK}/07-vendor-feed", f"{FLASK}/08-transactional-outbox"
+        result = scope(f"{old}/helpers.py", f"{new}/helpers.py")
+        self.assertEqual(result["web_suites"], [old, new])
+        # A renamed recipe directory: the old root no longer exists (shared
+        # fallback), the new one runs.
+        renamed = f"{FLASK}/07-vendor-feed-v2"
+        result = ci_scope.classify(
+            "pull_request",
+            [f"{old}/app.py", f"{renamed}/app.py"],
+            ROOTS,
+            [renamed, *REPRESENTATIVE],
+        )
+        self.assertEqual(result["web_suites"], sorted(REPRESENTATIVE + [renamed]))
+
+    def test_space_inside_a_safe_root_still_selects_that_root(self) -> None:
+        root = f"{FLASK}/07-vendor-feed"
+        result = scope(f"{root}/tests/test data.py")
+        self.assertEqual(result["web_suites"], [root])
+
+    def test_git_quoted_path_fails_closed(self) -> None:
+        quoted = f'"{FLASK}/07-vendor-feed/tests/t\\303\\251st.py"'
+        result = scope(quoted)
+        self.assertTrue(
+            {"web", "dashboard", "async_worker", "django", "cqrs", "smoke_114"} <= selected(result)
+        )
+        self.assertEqual(result["web_suites"], REPRESENTATIVE)
+        self.assertEqual(result["verify_paths"], ".")
 
     def test_unsafe_suite_root_falls_back(self) -> None:
         result = ci_scope.classify("pull_request", [f"{FLASK}/0 x/app.py"], [], [f"{FLASK}/0 x"])

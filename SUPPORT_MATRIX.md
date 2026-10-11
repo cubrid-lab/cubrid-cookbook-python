@@ -170,9 +170,11 @@ when a row no longer matches the repository. Verification is split:
   job runs against its live CUBRID container on **11.2 and 11.4** for every push
   to `main`, nightly, and on manual runs. Pull requests that touch a Flask or
   FastAPI recipe run that recipe's own suite on 11.4, in a fresh environment
-  with its own `requirements.txt` (up to 5 suites; shared Flask/FastAPI files or
-  more recipes run the representative `01-basic-crud` suites and the root
-  FastAPI app instead; recipe 10 has its own CQRS job).
+  with its own `requirements.txt`. Shared Flask/FastAPI files also run the
+  representative `01-basic-crud` suites and the root FastAPI app in addition to
+  the changed recipes; only beyond the cap of 25 changed recipes (above today's
+  suite count) do they stand in for the recipes left out, which the job lists as
+  not validated. Recipe 10 has its own CQRS job.
   Each suite's `conftest.py` reads `CUBRID_TEST_URL`; without it the suites fall
   back to SQLite for local runs.
 - The **Streamlit** recipes are covered by `templates/dashboard/tests/test_dashboard.py`

@@ -159,16 +159,23 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   example `templates/flask/requirements.txt`), fan-out paths and unknown paths
   add the representative suites (`templates/flask/01-basic-crud`,
   `templates/api-service-fastapi/recipes/01-basic-crud`, the root FastAPI app).
-  At most `MAX_WEB_SUITES` (5) suites run per pull request; above the cap, for
-  example a grouped Dependabot bump, the lane runs only the representative
-  suites. The changed roots it leaves out (`ci_scope.web_suites_skipped`) get a
+  The representatives run on top of the changed recipes and never count toward
+  the cap: at most `MAX_WEB_SUITES` (25) changed recipe roots run per pull
+  request. A suite takes about 11 s, so the cap covers every suite in the
+  repository (23 today; `tests/test_ci_scope.py` fails when a new recipe
+  outgrows it), and a grouped Dependabot bump runs every suite it touches.
+  Should changed roots ever exceed the cap, the first 25 by name and the
+  representatives run, and the rest (`ci_scope.web_suites_skipped`) get a
   `::warning::` each and a "Not validated before merge" list in the job
   summary, so a green gate is never presented as their coverage; for live
   evidence before merging, run
   `gh workflow run smoke-test.yml -R cubrid-lab/cubrid-cookbook-python --ref <branch>`,
-  otherwise `smoke-test.yml` covers them after merge. Recipe 10 runs only
-  in its CQRS job. Every selected suite must pass at least one test, or the
-  lane and `CI Gate` fail.
+  otherwise `smoke-test.yml` covers them after merge.
+  `dependabot-auto-merge.yml` does not read this list: with the cap above the
+  suite count it cannot be non-empty on a real pull request. Recipe 10 runs
+  only in its CQRS job. Every selected suite must pass at least one test
+  (checked on pytest's final summary line) within 10 minutes, or the lane and
+  `CI Gate` fail.
 - `smoke-test.yml` does not run on pull requests, so no pull request repeats the
   broad 11.2/11.4 matrix. Its exact release verification inputs, outputs and
   fail-closed reporting are unchanged. To test a change to it before merging, run

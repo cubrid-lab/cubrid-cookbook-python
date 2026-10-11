@@ -166,8 +166,8 @@ jobs:
   # `make verify` is golden-file only and never runs the pytest suites, so
   # recipe-level CUBRID-only breakage ships undetected (#131/#127). This job
   # runs the Flask/FastAPI suites ci_scope.py selects (web_suites, #227) against
-  # one live CUBRID 11.4: the changed recipes, or the representative suites for
-  # shared Flask/FastAPI files, wider tiers and more than MAX_WEB_SUITES recipes.
+  # one live CUBRID 11.4: the changed recipes (up to MAX_WEB_SUITES), plus the
+  # representative suites for shared Flask/FastAPI files and wider tiers.
   pytest-suites:
     name: Recipe pytest suites (live CUBRID)
     needs: [classify]
@@ -214,6 +214,7 @@ jobs:
           done
           echo "CUBRID is ready."
       - name: Run each selected suite in its own venv
+        timeout-minutes: 35
         # Recipes share top-level module names (database/models/app) and pin
         # their own dependencies, so each suite gets a fresh venv with only its
         # own requirements.txt and a separate pytest process. The selected roots
@@ -231,7 +232,12 @@ jobs:
           CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
         run: |
           set -euo pipefail
-          mapfile -t suites < <(python3 -c 'import json, os; print("\n".join(json.loads(os.environ["SUITES"])))')
+          # Command substitution, not process substitution, so set -e stops on
+          # malformed JSON.
+          suites_txt=$(python3 -c 'import json, os; print("\n".join(json.loads(os.environ["SUITES"])))')
+          skipped_txt=$(python3 -c 'import json, os; print("\n".join(json.loads(os.environ.get("SKIPPED") or "[]")))')
+          mapfile -t suites <<<"$suites_txt"
+          mapfile -t skipped <<<"$skipped_txt"
           if [ "${#suites[@]}" -eq 0 ] || [ -z "${suites[0]}" ]; then
             echo "::error::web lane selected but no suite roots were classified"
             exit 1
@@ -254,12 +260,15 @@ jobs:
               python -m venv "$venv" &&
               "$venv/bin/python" -m pip install -q --upgrade pip &&
               "$venv/bin/python" -m pip install -q pytest pytest-asyncio httpx -r "$root/requirements.txt" &&
-              "$venv/bin/python" -m pytest "$root/tests" -v --tb=short
+              timeout 600 "$venv/bin/python" -m pytest "$root/tests" -v --tb=short
             } > "$log" 2>&1 || status=$?
             cat "$log"
             echo "::endgroup::"
-            result=$(tail -n 1 "$log" | sed -E 's/=+//g; s/ in [0-9.]+s.*//; s/^ +| +$//g')
-            if [ "$status" -eq 0 ] && ! grep -qE '[0-9]+ passed' "$log"; then
+            last=$(tail -n 1 "$log")
+            result=$(sed -E 's/=+//g; s/ in [0-9.]+s.*//; s/^ +| +$//g' <<<"$last")
+            # Only pytest's final summary line counts: a test named "...passed"
+            # elsewhere in the log must not satisfy the guard.
+            if [ "$status" -eq 0 ] && ! grep -qE '[0-9]+ passed' <<<"$last"; then
               status=1
               result="no test passed: $result"
             fi
@@ -271,11 +280,10 @@ jobs:
             printf '| %s | %s |\n' "$root" "$result" >> "$GITHUB_STEP_SUMMARY"
           done
           echo "Ran ${#suites[@]} suite(s); ${#failed[@]} failed."
-          mapfile -t skipped < <(python3 -c 'import json, os; print("\n".join(json.loads(os.environ.get("SKIPPED") or "[]")))')
           if [ -n "${skipped[0]:-}" ]; then
             {
               echo
-              echo "**Not validated before merge** (more than MAX_WEB_SUITES changed recipes;"
+              echo "**Not validated before merge** (beyond the MAX_WEB_SUITES cap of changed recipes;"
               echo "run \`gh workflow run smoke-test.yml --ref <branch>\` for their live evidence):"
               echo
               printf -- '- %s\n' "${skipped[@]}"

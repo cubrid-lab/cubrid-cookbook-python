@@ -11,11 +11,12 @@ Tiers:
 * ``docs`` - docs/metadata-only pull request: cheap checks only, no live CUBRID.
 * ``pr``   - ordinary pull request: the live suite(s) of the touched recipe
   families on one representative CUBRID (11.4) and Python (3.12). For
-  Flask/FastAPI the ``web_suites`` output names the changed recipe roots (#227);
-  shared Flask/FastAPI files, more than ``MAX_WEB_SUITES`` changed recipes and
-  wider tiers fall back to ``REPRESENTATIVE_WEB_SUITES``; changed roots that
-  the cap leaves out are listed in ``web_suites_skipped`` so the lane can warn
-  that they were not validated before merge. Shared live
+  Flask/FastAPI the ``web_suites`` output names the changed recipe roots (#227),
+  at most ``MAX_WEB_SUITES`` of them; shared Flask/FastAPI files, wider tiers
+  and unknown paths add ``REPRESENTATIVE_WEB_SUITES`` on top (they never count
+  toward the cap). Changed roots beyond the cap are listed in
+  ``web_suites_skipped`` so the lane can warn that they were not validated
+  before merge. Shared live
   infrastructure fans out to every suite plus the CUBRID 11.2 smoke lane;
   Python compatibility endpoints run only for compatibility-surface changes.
 * ``full`` - a pull request that changes the CI policy itself: every lane, both
@@ -65,16 +66,22 @@ FASTAPI_ROOT = "templates/api-service-fastapi"
 # tests/, run in a fresh venv each by ci.yml's pytest-suites job. Recipe 10 has
 # its own pinned CQRS job and is never a web suite.
 WEB_SUITE_GLOBS = ("templates/flask/*", f"{FASTAPI_ROOT}/recipes/*")
-# Stand-ins for every web suite when a shared Flask/FastAPI file (for example
-# templates/flask/requirements.txt), shared live infrastructure, the CI policy
-# or an unknown path changes, or when more than MAX_WEB_SUITES recipes change;
-# smoke-test.yml runs every suite after merge.
+# Stand-ins for every web suite, added on top of the changed recipes when a
+# shared Flask/FastAPI file (for example templates/flask/requirements.txt),
+# shared live infrastructure, the CI policy or an unknown path changes, or when
+# changed recipes exceed MAX_WEB_SUITES; smoke-test.yml runs every suite after
+# merge.
 REPRESENTATIVE_WEB_SUITES = (
     FASTAPI_ROOT,
     f"{FASTAPI_ROOT}/recipes/01-basic-crud",
     "templates/flask/01-basic-crud",
 )
-MAX_WEB_SUITES = 5
+# Cap on changed recipe roots per pull request (representatives not counted).
+# A suite takes about 11 s, so the cap covers every discovered suite (23 today);
+# tests/test_ci_scope.py fails when web_suite_roots() outgrows it, so in
+# practice no changed recipe is skipped. web_suites_skipped stays as the
+# fail-safe report if that ever happens.
+MAX_WEB_SUITES = 25
 
 # fnmatch's ``*`` also crosses ``/``, so ``docs/*`` covers the whole tree.
 # Docs/metadata only: never starts CUBRID (checked first, so a recipe README
@@ -305,13 +312,13 @@ def classify(
         cqrs_dual = smoke_112 = full_verify = web_shared = True
     if not lanes["web"]:
         web_suites = set()
-    changed_suites = set(web_suites)
-    if lanes["web"] and (web_shared or not web_suites):
-        web_suites |= set(REPRESENTATIVE_WEB_SUITES)
-    if len(web_suites) > MAX_WEB_SUITES:
-        web_suites = set(REPRESENTATIVE_WEB_SUITES)
+    changed = sorted(web_suites)
+    web_suites = set(changed[:MAX_WEB_SUITES])
     # Changed recipes the cap left out: never reported as covered (#227 review).
-    web_suites_skipped = sorted(changed_suites - web_suites)
+    web_suites_skipped = changed[MAX_WEB_SUITES:]
+    if lanes["web"] and (web_shared or not web_suites or web_suites_skipped):
+        web_suites |= set(REPRESENTATIVE_WEB_SUITES)
+    web_suites_skipped = [s for s in web_suites_skipped if s not in web_suites]
     if full:
         tier = "full"
     elif any(lanes.values()):
