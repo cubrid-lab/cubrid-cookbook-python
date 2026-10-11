@@ -19,25 +19,24 @@ is welcome, and no specific tool is required.
 
 ## Development Workflow
 
-All non-trivial work follows the cubrid-lab 4-phase cycle. Every change to an
-example ships its implementation, its tests, and its docs **together** — code
-without doc updates is considered incomplete.
+Every change to an example ships its implementation, tests, and docs
+**together**; code without affected doc updates is incomplete.
 
-Contributors provide the motivation, implementation, tests, and matching docs.
-Maintainers coordinate project-specific Oracle/Codex reviews, agent tooling,
-labels, release classification, and integration. You do not need to install an
-agent or Oracle tool to contribute; ordinary design discussion and PR review
-provide the handoff to those maintainer responsibilities.
+Maintainer/agent-authored PRs follow the tool-specific route in
+[AGENTS.md](AGENTS.md#development-workflow-cubrid-lab-org-standard):
+- **OpenCode:** Oracle design review before non-trivial implementation and
+  Oracle post-implementation review, with documented findings and validation.
+- **Standalone Claude Code or Codex:** wait for a substantive submitted GitHub
+  Copilot review or another person's review after opening the PR; request
+  pending/green CI/automated approval wording alone is not review completion.
+- **Other contributors:** normal project review, with no internal agent-tool
+  installation requirement.
 
-1. **Design review** — Validate the approach and API surface before building.
-2. **Implementation** — Build the feature/fix with tests, following existing patterns.
-3. **Documentation update** — Update ALL affected docs (README, SUPPORT_MATRIX,
-   CHANGELOG, ROADMAP) in the same PR. A new, renamed, or removed example must be
-   reflected in README.md.
-4. **Post-implementation review** — Review the completed work for correctness and
-   consistency before merge.
-
-Trivial changes (typos, single-line fixes) may skip phases 1 and 4.
+The applicable review evidence, updated head, dispositions and open threads
+must be recorded before merge. Trivial OpenCode changes may skip its Oracle
+design/post phases with an explicit reason. Live CUBRID, docs and CI rules
+remain unchanged. Maintainers coordinate internal reviews and integration,
+while contributors retain authorship and provide ordinary PR evidence.
 
 This rule is enforced in CI by `scripts/check_docs_sync.py` (the **Docs sync
 gate** job). The gate fails when an example directory is missing from README.md,
@@ -700,7 +699,10 @@ pinning the caller alone does not freeze those resources.
 
 ### Review Process
 
-- All PRs require at least one review before merge.
+- All PRs must complete the applicable AGENTS.md development-tool review
+  route before merge. OpenCode Oracle pre/post evidence and standalone Claude
+  Code/Codex GitHub review evidence are distinct; a pending request is not a
+  completed review. Outstanding review threads need a disposition.
 - CI must pass (lint checks).
 - Examples must be tested against a live CUBRID instance.
 
