@@ -64,13 +64,7 @@ GOLDEN_ROWS: dict[str, tuple[str, ...]] = {
     "SQLAlchemy fundamentals": ("fundamentals/sqlalchemy",),
     "SQLAlchemy ORM basics": ("fundamentals/orm-basics",),
     "Pandas fundamentals": ("fundamentals/pandas",),
-    "Connect, CRUD, errors, transactions, LOB": (
-        "fundamentals/connect",
-        "fundamentals/crud",
-        "fundamentals/error-handling",
-        "fundamentals/transactions",
-        "fundamentals/lob-handling",
-    ),
+    "Error-handling topic": ("fundamentals/error-handling",),
     "Async + Alembic + JSON + Isolation": (
         "fundamentals/async",
         "fundamentals/alembic",

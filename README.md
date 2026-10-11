@@ -82,12 +82,12 @@ Step-by-step reference for every core operation:
 
 | Topic | File |
 |-------|------|
-| [Connecting](fundamentals/connect/) | Basic connection, metadata, context managers |
-| [CRUD](fundamentals/crud/) | INSERT, SELECT, UPDATE, DELETE with parameters |
-| [Transactions](fundamentals/transactions/) | Commit, rollback, savepoints, auto-commit |
+| [Connecting](fundamentals/connect/) | Basic connection, metadata, context managers (redirect to `fundamentals/pycubrid/01_connect.py`) |
+| [CRUD](fundamentals/crud/) | INSERT, SELECT, UPDATE, DELETE with parameters (redirect to `fundamentals/pycubrid/02_crud.py`) |
+| [Transactions](fundamentals/transactions/) | Commit, rollback, savepoints, auto-commit (redirect to `fundamentals/pycubrid/03_transactions.py`) |
 | [Parameterized queries](fundamentals/parameterized-queries/) | Safe parameter binding (client-side, not server-side prepare) |
-| [Error handling](fundamentals/error-handling/) | Exception types, retry patterns |
-| [LOB handling](fundamentals/lob-handling/) | BLOB/CLOB operations |
+| [Error handling](fundamentals/error-handling/) | Exception types, retry patterns (`05_error_handling.py` redirects to `fundamentals/pycubrid/05_error_handling.py`) |
+| [LOB handling](fundamentals/lob-handling/) | BLOB/CLOB operations (redirect to `fundamentals/pycubrid/06_lob.py`) |
 | [ORM basics](fundamentals/orm-basics/) | SQLAlchemy engine, core, ORM, relationships |
 | [pycubrid driver](fundamentals/pycubrid/) | 22 DB-API recipes: cursors, window functions, recursive CTEs, pagination, timezone/ENUM types |
 | [SQLAlchemy recipes](fundamentals/sqlalchemy/) | 7 recipes including SET/MULTISET/SEQUENCE collection types |
@@ -103,7 +103,7 @@ Step-by-step reference for every core operation:
 
 ```
 pycubrid (DB-API 2.0 driver)
-├── Direct usage ─── fundamentals/connect, crud, transactions, pycubrid
+├── Direct usage ─── fundamentals/pycubrid (connect, crud, transactions are redirects to it)
 ├── SQLAlchemy ───── fundamentals/orm-basics, sqlalchemy, quickstart/5min-sqlalchemy
 ├── FastAPI ──────── quickstart/5min-fastapi, templates/api-service-fastapi
 ├── Flask ─────────── templates/flask

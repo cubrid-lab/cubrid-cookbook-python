@@ -157,29 +157,28 @@ added or removed, or when its declared packages change.
 |---|---|---|
 | S01 | `fundamentals/alembic/requirements.txt` | alembic, pycubrid, sqlalchemy, sqlalchemy-cubrid |
 | S02 | `fundamentals/async/requirements.txt` | pycubrid, sqlalchemy, sqlalchemy-cubrid |
-| S03 | `fundamentals/connect/requirements.txt` | pycubrid |
-| S04 | `fundamentals/isolation-levels/requirements.txt`<br>`fundamentals/json/requirements.txt`<br>`pitfalls/reserved-words/requirements.txt` | pycubrid |
-| S05 | `fundamentals/orm-basics/requirements.txt` | pycubrid, sqlalchemy, sqlalchemy-cubrid |
-| S06 | `fundamentals/pandas/requirements.txt` | pandas, pycubrid, sqlalchemy, sqlalchemy-cubrid |
-| S07 | `fundamentals/pycubrid/requirements.txt` | pycubrid |
-| S08 | `fundamentals/sqlalchemy/requirements.txt` | pycubrid, sqlalchemy, sqlalchemy-cubrid |
-| S09 | `migration/java-to-python/requirements.txt` | pycubrid, sqlalchemy-cubrid |
-| S10 | `quickstart/5min-fastapi/requirements.txt` | fastapi, pycubrid, uvicorn |
-| S11 | `quickstart/5min-sqlalchemy/requirements.txt` | pycubrid, sqlalchemy, sqlalchemy-cubrid |
-| S12 | `templates/ai-agent/requirements.txt` | cubrid-mcp-server, pycubrid, sqlalchemy-cubrid |
-| S13 | `templates/api-service-fastapi/recipes/01-basic-crud/requirements.txt`<br>`templates/api-service-fastapi/recipes/03-catalog-sync/requirements.txt`<br>`templates/api-service-fastapi/recipes/06-price-books/requirements.txt`<br>`templates/api-service-fastapi/recipes/07-document-publishing/requirements.txt`<br>`templates/api-service-fastapi/recipes/08-webhook-inbox/requirements.txt` | fastapi, pycubrid, sqlalchemy, sqlalchemy-cubrid, uvicorn |
-| S14 | `templates/api-service-fastapi/recipes/02-orders/requirements.txt`<br>`templates/api-service-fastapi/recipes/04-audit-trail/requirements.txt`<br>`templates/api-service-fastapi/recipes/05-multi-tenant-search/requirements.txt` | email-validator, fastapi, pycubrid, sqlalchemy, sqlalchemy-cubrid, uvicorn |
-| S15 | `templates/api-service-fastapi/recipes/09-saga/requirements.txt` | fastapi, httpx, pycubrid, pytest, sqlalchemy, sqlalchemy-cubrid, uvicorn |
-| S16 | `templates/api-service-fastapi/recipes/10-cqrs-event-sourcing/requirements.txt` | fastapi, httpx, pycubrid, pydantic, pytest, sqlalchemy, sqlalchemy-cubrid, uvicorn |
-| S17 | `templates/api-service-fastapi/recipes/11-rate-limiter/requirements.txt`<br>`templates/api-service-fastapi/recipes/12-reservation-scheduling/requirements.txt` | fastapi, httpx, pycubrid, pydantic, pytest, sqlalchemy, sqlalchemy-cubrid, uvicorn |
-| S18 | `templates/api-service-fastapi/requirements.txt` | fastapi, pycubrid, pydantic-settings, sqlalchemy, sqlalchemy-cubrid, uvicorn |
-| S19 | `templates/async-worker/requirements.txt` | celery, pycubrid, sqlalchemy, sqlalchemy-cubrid |
-| S20 | `templates/batch-etl/requirements.txt` | matplotlib, pandas, pycubrid, sqlalchemy, sqlalchemy-cubrid |
-| S21 | `templates/dashboard/requirements.txt` | pandas, pycubrid, sqlalchemy, sqlalchemy-cubrid, streamlit |
-| S22 | `templates/django/requirements.txt` | django, pycubrid, sqlalchemy, sqlalchemy-cubrid |
-| S23 | `templates/flask/01-basic-crud/requirements.txt`<br>`templates/flask/02-categories/requirements.txt`<br>`templates/flask/03-inventory-ledger/requirements.txt`<br>`templates/flask/04-purchase-orders/requirements.txt`<br>`templates/flask/05-batch-operations/requirements.txt`<br>`templates/flask/06-case-triage/requirements.txt`<br>`templates/flask/07-vendor-feed/requirements.txt`<br>`templates/flask/08-transactional-outbox/requirements.txt`<br>`templates/flask/10-workflow-engine/requirements.txt`<br>`templates/flask/11-inventory-reservation/requirements.txt` | flask, flask-sqlalchemy, pycubrid, sqlalchemy-cubrid |
-| S24 | `templates/flask/09-rbac/requirements.txt` | flask, flask-sqlalchemy, pycubrid, pytest, sqlalchemy, sqlalchemy-cubrid |
-| S25 | `templates/flask/requirements.txt` | flask, flask-sqlalchemy, httpx, pycubrid, pytest, sqlalchemy, sqlalchemy-cubrid |
+| S03 | `fundamentals/isolation-levels/requirements.txt`<br>`fundamentals/json/requirements.txt`<br>`pitfalls/reserved-words/requirements.txt` | pycubrid |
+| S04 | `fundamentals/orm-basics/requirements.txt` | pycubrid, sqlalchemy, sqlalchemy-cubrid |
+| S05 | `fundamentals/pandas/requirements.txt` | pandas, pycubrid, sqlalchemy, sqlalchemy-cubrid |
+| S06 | `fundamentals/pycubrid/requirements.txt` | pycubrid |
+| S07 | `fundamentals/sqlalchemy/requirements.txt` | pycubrid, sqlalchemy, sqlalchemy-cubrid |
+| S08 | `migration/java-to-python/requirements.txt` | pycubrid, sqlalchemy-cubrid |
+| S09 | `quickstart/5min-fastapi/requirements.txt` | fastapi, pycubrid, uvicorn |
+| S10 | `quickstart/5min-sqlalchemy/requirements.txt` | pycubrid, sqlalchemy, sqlalchemy-cubrid |
+| S11 | `templates/ai-agent/requirements.txt` | cubrid-mcp-server, pycubrid, sqlalchemy-cubrid |
+| S12 | `templates/api-service-fastapi/recipes/01-basic-crud/requirements.txt`<br>`templates/api-service-fastapi/recipes/03-catalog-sync/requirements.txt`<br>`templates/api-service-fastapi/recipes/06-price-books/requirements.txt`<br>`templates/api-service-fastapi/recipes/07-document-publishing/requirements.txt`<br>`templates/api-service-fastapi/recipes/08-webhook-inbox/requirements.txt` | fastapi, pycubrid, sqlalchemy, sqlalchemy-cubrid, uvicorn |
+| S13 | `templates/api-service-fastapi/recipes/02-orders/requirements.txt`<br>`templates/api-service-fastapi/recipes/04-audit-trail/requirements.txt`<br>`templates/api-service-fastapi/recipes/05-multi-tenant-search/requirements.txt` | email-validator, fastapi, pycubrid, sqlalchemy, sqlalchemy-cubrid, uvicorn |
+| S14 | `templates/api-service-fastapi/recipes/09-saga/requirements.txt` | fastapi, httpx, pycubrid, pytest, sqlalchemy, sqlalchemy-cubrid, uvicorn |
+| S15 | `templates/api-service-fastapi/recipes/10-cqrs-event-sourcing/requirements.txt` | fastapi, httpx, pycubrid, pydantic, pytest, sqlalchemy, sqlalchemy-cubrid, uvicorn |
+| S16 | `templates/api-service-fastapi/recipes/11-rate-limiter/requirements.txt`<br>`templates/api-service-fastapi/recipes/12-reservation-scheduling/requirements.txt` | fastapi, httpx, pycubrid, pydantic, pytest, sqlalchemy, sqlalchemy-cubrid, uvicorn |
+| S17 | `templates/api-service-fastapi/requirements.txt` | fastapi, pycubrid, pydantic-settings, sqlalchemy, sqlalchemy-cubrid, uvicorn |
+| S18 | `templates/async-worker/requirements.txt` | celery, pycubrid, sqlalchemy, sqlalchemy-cubrid |
+| S19 | `templates/batch-etl/requirements.txt` | matplotlib, pandas, pycubrid, sqlalchemy, sqlalchemy-cubrid |
+| S20 | `templates/dashboard/requirements.txt` | pandas, pycubrid, sqlalchemy, sqlalchemy-cubrid, streamlit |
+| S21 | `templates/django/requirements.txt` | django, pycubrid, sqlalchemy, sqlalchemy-cubrid |
+| S22 | `templates/flask/01-basic-crud/requirements.txt`<br>`templates/flask/02-categories/requirements.txt`<br>`templates/flask/03-inventory-ledger/requirements.txt`<br>`templates/flask/04-purchase-orders/requirements.txt`<br>`templates/flask/05-batch-operations/requirements.txt`<br>`templates/flask/06-case-triage/requirements.txt`<br>`templates/flask/07-vendor-feed/requirements.txt`<br>`templates/flask/08-transactional-outbox/requirements.txt`<br>`templates/flask/10-workflow-engine/requirements.txt`<br>`templates/flask/11-inventory-reservation/requirements.txt` | flask, flask-sqlalchemy, pycubrid, sqlalchemy-cubrid |
+| S23 | `templates/flask/09-rbac/requirements.txt` | flask, flask-sqlalchemy, pycubrid, pytest, sqlalchemy, sqlalchemy-cubrid |
+| S24 | `templates/flask/requirements.txt` | flask, flask-sqlalchemy, httpx, pycubrid, pytest, sqlalchemy, sqlalchemy-cubrid |
 | TOOLING | CI and docs workflows and the PR-smoke action (the TOOLING constant in this script) | pytest, pytest-asyncio, ruff |
 | DOCS | `.github/requirements-docs.txt` | mkdocs, mkdocs-material, pymdown-extensions |
 | DEMO | demos/render_gif.py imports (the DEMO constant in this script) | imageio, pillow |
@@ -188,149 +187,149 @@ added or removed, or when its declared packages change.
 
 | Name | Observed versions | License | Category | URL | Sets |
 |---|---|---|---|---|---|
-| aiofile | 3.12.3 | Apache-2.0 | Permissive | https://github.com/mosquito/aiofile | S12 |
+| aiofile | 3.12.3 | Apache-2.0 | Permissive | https://github.com/mosquito/aiofile | S11 |
 | alembic | 1.20.0 | MIT | Permissive | https://alembic.sqlalchemy.org | S01 |
-| altair | 6.3.0 | BSD License | Permissive | https://github.com/vega/altair | S21 |
-| amqp | 5.4.1 | BSD License | Permissive | http://github.com/celery/py-amqp | S19 |
-| annotated-doc | 0.0.5 | MIT | Permissive | https://github.com/fastapi/annotated-doc | S10, S13, S14, S15, S16, S17, S18 |
-| annotated-types | 0.8.0 | MIT | Permissive | https://github.com/annotated-types/annotated-types | S10, S12, S13, S14, S15, S16, S17, S18 |
-| anyio | 4.15.1 | MIT | Permissive | https://github.com/agronholm/anyio | S10, S12, S13, S14, S15, S16, S17, S18, S21, S25 |
-| asgiref | 3.12.1 | BSD License | Permissive | https://github.com/django/asgiref/ | S22 |
-| attrs | 26.1.0 | MIT | Permissive | - | S12, S21 |
-| Authlib | 1.8.0 | BSD License | Permissive | https://github.com/authlib/authlib | S12 |
+| altair | 6.3.0 | BSD License | Permissive | https://github.com/vega/altair | S20 |
+| amqp | 5.4.1 | BSD License | Permissive | http://github.com/celery/py-amqp | S18 |
+| annotated-doc | 0.0.5 | MIT | Permissive | https://github.com/fastapi/annotated-doc | S09, S12, S13, S14, S15, S16, S17 |
+| annotated-types | 0.8.0 | MIT | Permissive | https://github.com/annotated-types/annotated-types | S09, S11, S12, S13, S14, S15, S16, S17 |
+| anyio | 4.15.1 | MIT | Permissive | https://github.com/agronholm/anyio | S09, S11, S12, S13, S14, S15, S16, S17, S20, S24 |
+| asgiref | 3.12.1 | BSD License | Permissive | https://github.com/django/asgiref/ | S21 |
+| attrs | 26.1.0 | MIT | Permissive | - | S11, S20 |
+| Authlib | 1.8.0 | BSD License | Permissive | https://github.com/authlib/authlib | S11 |
 | babel | 2.18.0 | BSD License | Permissive | https://github.com/python-babel/babel | DOCS |
 | backrefs | 8.0 | MIT | Permissive | https://github.com/facelessuser/backrefs | DOCS |
-| beartype | 0.22.9 | MIT License | Permissive | - | S12 |
-| billiard | 4.3.1 | BSD License | Permissive | https://github.com/celery/billiard | S19 |
-| blinker | 1.9.0 | MIT License | Permissive | https://github.com/pallets-eco/blinker/ | S23, S24, S25 |
-| cachetools | 7.2.1 | MIT | Permissive | https://github.com/tkem/cachetools/ | S12 |
-| caio | 0.12.9 | Apache-2.0 | Permissive | https://github.com/mosquito/caio/ | S12 |
-| celery | 5.6.3 | BSD-3-Clause | Permissive | https://docs.celeryq.dev/ | S19 |
-| cffi | 2.1.1 | MIT-0 | Permissive | https://github.com/python-cffi/cffi | S12 |
-| charset-normalizer | 3.5.2 | MIT | Permissive | - | DOCS, S21 |
-| click | 8.5.0 | BSD-3-Clause | Permissive | https://github.com/pallets/click/ | DOCS, S10, S12, S13, S14, S15, S16, S17, S18, S19, S21, S23, S24, S25 |
-| click-didyoumean | 0.3.1 | MIT License | Permissive | https://github.com/click-contrib/click-didyoumean | S19 |
-| click-plugins | 1.1.1.2 | BSD License | Permissive | https://github.com/click-contrib/click-plugins | S19 |
-| click-repl | 0.4.1 | MIT | Permissive | https://github.com/click-contrib/click-repl | S19 |
+| beartype | 0.22.9 | MIT License | Permissive | - | S11 |
+| billiard | 4.3.1 | BSD License | Permissive | https://github.com/celery/billiard | S18 |
+| blinker | 1.9.0 | MIT License | Permissive | https://github.com/pallets-eco/blinker/ | S22, S23, S24 |
+| cachetools | 7.2.1 | MIT | Permissive | https://github.com/tkem/cachetools/ | S11 |
+| caio | 0.12.9 | Apache-2.0 | Permissive | https://github.com/mosquito/caio/ | S11 |
+| celery | 5.6.3 | BSD-3-Clause | Permissive | https://docs.celeryq.dev/ | S18 |
+| cffi | 2.1.1 | MIT-0 | Permissive | https://github.com/python-cffi/cffi | S11 |
+| charset-normalizer | 3.5.2 | MIT | Permissive | - | DOCS, S20 |
+| click | 8.5.0 | BSD-3-Clause | Permissive | https://github.com/pallets/click/ | DOCS, S09, S11, S12, S13, S14, S15, S16, S17, S18, S20, S22, S23, S24 |
+| click-didyoumean | 0.3.1 | MIT License | Permissive | https://github.com/click-contrib/click-didyoumean | S18 |
+| click-plugins | 1.1.1.2 | BSD License | Permissive | https://github.com/click-contrib/click-plugins | S18 |
+| click-repl | 0.4.1 | MIT | Permissive | https://github.com/click-contrib/click-repl | S18 |
 | colorama | 0.4.6 | BSD License | Permissive | https://github.com/tartley/colorama | DOCS |
-| contourpy | 1.4.0 | BSD-3-Clause | Permissive | https://github.com/contourpy/contourpy | S20 |
-| cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause | Permissive | https://github.com/pyca/cryptography | S12 |
-| cubrid-mcp-server | 0.4.0 | MIT | Permissive | https://github.com/cubrid-lab/cubrid-mcp-server | S12 |
-| cycler | 0.12.1 | BSD License | Permissive | https://matplotlib.org/cycler/ | S20 |
-| cyclopts | 5.2.0 | Apache-2.0 | Permissive | https://github.com/BrianPugh/cyclopts | S12 |
-| Django | 6.1.2 | BSD-3-Clause | Permissive | https://www.djangoproject.com/ | S22 |
-| dnspython | 2.8.0 | ISC License (ISCL) | Permissive | https://www.dnspython.org | S12, S14 |
-| docstring_parser | 0.18.0 | MIT License | Permissive | https://github.com/rr-/docstring_parser | S12 |
-| email-validator | 2.3.0 | The Unlicense (Unlicense) | Permissive | https://github.com/JoshData/python-email-validator | S12, S14 |
-| exceptiongroup | 1.3.1 | MIT License | Permissive | https://github.com/agronholm/exceptiongroup | S12 |
-| fastapi | 0.141.1, 0.143.0 | MIT | Permissive | https://github.com/fastapi/fastapi | S10, S13, S14, S15, S16, S17, S18 |
-| fastmcp | 3.4.8 | Apache-2.0 | Permissive | https://gofastmcp.com | S12 |
-| fastmcp-slim | 3.4.8 | Apache-2.0 | Permissive | https://gofastmcp.com | S12 |
-| Flask | 3.1.3 | BSD-3-Clause | Permissive | https://github.com/pallets/flask/ | S23, S24, S25 |
-| Flask-SQLAlchemy | 3.1.1 | BSD License | Permissive | https://github.com/pallets-eco/flask-sqlalchemy/ | S23, S24, S25 |
-| fonttools | 4.66.1 | MIT | Permissive | http://github.com/fonttools/fonttools | S20 |
+| contourpy | 1.4.0 | BSD-3-Clause | Permissive | https://github.com/contourpy/contourpy | S19 |
+| cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause | Permissive | https://github.com/pyca/cryptography | S11 |
+| cubrid-mcp-server | 0.4.0 | MIT | Permissive | https://github.com/cubrid-lab/cubrid-mcp-server | S11 |
+| cycler | 0.12.1 | BSD License | Permissive | https://matplotlib.org/cycler/ | S19 |
+| cyclopts | 5.2.0 | Apache-2.0 | Permissive | https://github.com/BrianPugh/cyclopts | S11 |
+| Django | 6.1.2 | BSD-3-Clause | Permissive | https://www.djangoproject.com/ | S21 |
+| dnspython | 2.8.0 | ISC License (ISCL) | Permissive | https://www.dnspython.org | S11, S13 |
+| docstring_parser | 0.18.0 | MIT License | Permissive | https://github.com/rr-/docstring_parser | S11 |
+| email-validator | 2.3.0 | The Unlicense (Unlicense) | Permissive | https://github.com/JoshData/python-email-validator | S11, S13 |
+| exceptiongroup | 1.3.1 | MIT License | Permissive | https://github.com/agronholm/exceptiongroup | S11 |
+| fastapi | 0.142.2, 0.143.0 | MIT | Permissive | https://github.com/fastapi/fastapi | S09, S12, S13, S14, S15, S16, S17 |
+| fastmcp | 3.4.8 | Apache-2.0 | Permissive | https://gofastmcp.com | S11 |
+| fastmcp-slim | 3.4.8 | Apache-2.0 | Permissive | https://gofastmcp.com | S11 |
+| Flask | 3.1.3 | BSD-3-Clause | Permissive | https://github.com/pallets/flask/ | S22, S23, S24 |
+| Flask-SQLAlchemy | 3.1.1 | BSD License | Permissive | https://github.com/pallets-eco/flask-sqlalchemy/ | S22, S23, S24 |
+| fonttools | 4.66.1 | MIT | Permissive | http://github.com/fonttools/fonttools | S19 |
 | ghp-import | 2.1.0 | Apache Software License | Permissive | https://github.com/c-w/ghp-import | DOCS |
 | greenlet | 3.5.6 | MIT AND PSF-2.0 | Permissive | https://greenlet.readthedocs.io | S02 |
-| griffelib | 2.3.2 | ISC | Permissive | - | S12 |
-| h11 | 0.16.0 | MIT License | Permissive | https://github.com/python-hyper/h11 | S10, S12, S13, S14, S15, S16, S17, S18, S21, S25 |
-| httpcore | 1.0.9 | BSD-3-Clause | Permissive | https://www.encode.io/httpcore/ | S12, S15, S16, S17, S25 |
-| httptools | 0.8.0 | MIT | Permissive | https://github.com/MagicStack/httptools | S15, S21 |
-| httpx | 0.28.1 | BSD License | Permissive | https://github.com/encode/httpx | S12, S15, S16, S17, S25 |
-| httpx-sse | 0.4.3 | MIT | Permissive | https://github.com/florimondmanca/httpx-sse | S12 |
-| idna | 3.20 | BSD-3-Clause | Permissive | https://github.com/kjd/idna | DOCS, S10, S12, S13, S14, S15, S16, S17, S18, S21, S25 |
+| griffelib | 2.3.2 | ISC | Permissive | - | S11 |
+| h11 | 0.16.0 | MIT License | Permissive | https://github.com/python-hyper/h11 | S09, S11, S12, S13, S14, S15, S16, S17, S20, S24 |
+| httpcore | 1.0.9 | BSD-3-Clause | Permissive | https://www.encode.io/httpcore/ | S11, S14, S15, S16, S24 |
+| httptools | 0.8.0 | MIT | Permissive | https://github.com/MagicStack/httptools | S14, S20 |
+| httpx | 0.28.1 | BSD License | Permissive | https://github.com/encode/httpx | S11, S14, S15, S16, S24 |
+| httpx-sse | 0.4.3 | MIT | Permissive | https://github.com/florimondmanca/httpx-sse | S11 |
+| idna | 3.20 | BSD-3-Clause | Permissive | https://github.com/kjd/idna | DOCS, S09, S11, S12, S13, S14, S15, S16, S17, S20, S24 |
 | ImageIO | 2.38.1 | BSD-2-Clause | Permissive | https://github.com/imageio/imageio | DEMO |
-| iniconfig | 2.3.1 | MIT | Permissive | https://github.com/pytest-dev/iniconfig | S15, S16, S17, S24, S25, TOOLING |
-| itsdangerous | 2.2.0 | BSD License | Permissive | https://github.com/pallets/itsdangerous/ | S21, S23, S24, S25 |
-| jaraco.classes | 3.4.0 | MIT License | Permissive | https://github.com/jaraco/jaraco.classes | S12 |
-| jaraco.context | 6.1.2 | MIT | Permissive | https://github.com/jaraco/jaraco.context | S12 |
-| jaraco.functools | 4.6.0 | MIT | Permissive | https://github.com/jaraco/jaraco.functools | S12 |
-| jeepney | 0.9.0 | MIT | Permissive | https://gitlab.com/takluyver/jeepney | S12 |
-| Jinja2 | 3.1.6 | BSD License | Permissive | https://github.com/pallets/jinja/ | DOCS, S21, S23, S24, S25 |
-| joserfc | 1.7.5 | BSD License | Permissive | https://github.com/authlib/joserfc | S12 |
-| jsonref | 1.1.0 | MIT | Permissive | https://github.com/gazpachoking/jsonref | S12 |
-| jsonschema | 4.26.0 | MIT | Permissive | https://github.com/python-jsonschema/jsonschema | S12, S21 |
-| jsonschema-path | 0.5.0 | Apache Software License | Permissive | https://github.com/p1c2u/jsonschema-path | S12 |
-| jsonschema-specifications | 2025.9.1 | MIT | Permissive | https://github.com/python-jsonschema/jsonschema-specifications | S12, S21 |
-| keyring | 25.7.0 | MIT | Permissive | https://github.com/jaraco/keyring | S12 |
-| kiwisolver | 1.5.1 | BSD License | Permissive | https://github.com/nucleic/kiwi | S20 |
-| kombu | 5.6.2 | BSD-3-Clause | Permissive | https://github.com/celery/kombu | S19 |
+| iniconfig | 2.3.1 | MIT | Permissive | https://github.com/pytest-dev/iniconfig | S14, S15, S16, S23, S24, TOOLING |
+| itsdangerous | 2.2.0 | BSD License | Permissive | https://github.com/pallets/itsdangerous/ | S20, S22, S23, S24 |
+| jaraco.classes | 3.4.0 | MIT License | Permissive | https://github.com/jaraco/jaraco.classes | S11 |
+| jaraco.context | 6.1.2 | MIT | Permissive | https://github.com/jaraco/jaraco.context | S11 |
+| jaraco.functools | 4.6.0 | MIT | Permissive | https://github.com/jaraco/jaraco.functools | S11 |
+| jeepney | 0.9.0 | MIT | Permissive | https://gitlab.com/takluyver/jeepney | S11 |
+| Jinja2 | 3.1.6 | BSD License | Permissive | https://github.com/pallets/jinja/ | DOCS, S20, S22, S23, S24 |
+| joserfc | 1.7.5 | BSD License | Permissive | https://github.com/authlib/joserfc | S11 |
+| jsonref | 1.1.0 | MIT | Permissive | https://github.com/gazpachoking/jsonref | S11 |
+| jsonschema | 4.26.0 | MIT | Permissive | https://github.com/python-jsonschema/jsonschema | S11, S20 |
+| jsonschema-path | 0.5.0 | Apache Software License | Permissive | https://github.com/p1c2u/jsonschema-path | S11 |
+| jsonschema-specifications | 2025.9.1 | MIT | Permissive | https://github.com/python-jsonschema/jsonschema-specifications | S11, S20 |
+| keyring | 25.7.0 | MIT | Permissive | https://github.com/jaraco/keyring | S11 |
+| kiwisolver | 1.5.1 | BSD License | Permissive | https://github.com/nucleic/kiwi | S19 |
+| kombu | 5.6.2 | BSD-3-Clause | Permissive | https://github.com/celery/kombu | S18 |
 | Mako | 1.4.3 | MIT | Permissive | https://www.makotemplates.org/ | S01 |
 | Markdown | 3.11 | BSD-3-Clause | Permissive | https://Python-Markdown.github.io/ | DOCS |
-| markdown-it-py | 4.2.0 | MIT License | Permissive | https://github.com/executablebooks/markdown-it-py | S12 |
-| MarkupSafe | 3.0.4 | BSD-3-Clause | Permissive | https://github.com/pallets/markupsafe/ | DOCS, S01, S21, S23, S24, S25 |
-| matplotlib | 3.11.2 | Python Software Foundation License | Permissive | https://matplotlib.org | S20 |
-| mcp | 1.30.0 | MIT License | Permissive | https://modelcontextprotocol.io | S12 |
-| mdurl | 0.1.2 | MIT License | Permissive | https://github.com/executablebooks/mdurl | S12 |
+| markdown-it-py | 4.2.0 | MIT License | Permissive | https://github.com/executablebooks/markdown-it-py | S11 |
+| MarkupSafe | 3.0.4 | BSD-3-Clause | Permissive | https://github.com/pallets/markupsafe/ | DOCS, S01, S20, S22, S23, S24 |
+| matplotlib | 3.11.2 | Python Software Foundation License | Permissive | https://matplotlib.org | S19 |
+| mcp | 1.30.0 | MIT License | Permissive | https://modelcontextprotocol.io | S11 |
+| mdurl | 0.1.2 | MIT License | Permissive | https://github.com/executablebooks/mdurl | S11 |
 | mergedeep | 1.3.4 | MIT License | Permissive | https://github.com/clarketm/mergedeep | DOCS |
 | mkdocs | 1.6.1 | BSD-2-Clause | Permissive | https://github.com/mkdocs/mkdocs | DOCS |
 | mkdocs-get-deps | 0.2.2 | MIT | Permissive | https://github.com/mkdocs/get-deps | DOCS |
 | mkdocs-material | 9.7.7 | MIT | Permissive | https://github.com/squidfunk/mkdocs-material | DOCS |
 | mkdocs-material-extensions | 1.3.1 | MIT | Permissive | https://github.com/facelessuser/mkdocs-material-extensions | DOCS |
-| more-itertools | 11.1.0 | MIT | Permissive | https://github.com/more-itertools/more-itertools | S12 |
-| narwhals | 2.26.0 | MIT | Permissive | https://github.com/narwhals-dev/narwhals | S21 |
-| openapi-pydantic | 0.6.0 | MIT License | Permissive | https://github.com/mike-oakley/openapi-pydantic | S12 |
-| opentelemetry-api | 1.45.1 | Apache-2.0 | Permissive | https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-api | S10, S12, S13, S14, S15, S17, S18 |
-| packaging | 26.3 | Apache-2.0 OR BSD-2-Clause | Permissive | https://github.com/pypa/packaging | DOCS, S12, S15, S16, S17, S19, S20, S21, S24, S25, TOOLING |
+| more-itertools | 11.1.0 | MIT | Permissive | https://github.com/more-itertools/more-itertools | S11 |
+| narwhals | 2.26.0 | MIT | Permissive | https://github.com/narwhals-dev/narwhals | S20 |
+| openapi-pydantic | 0.6.0 | MIT License | Permissive | https://github.com/mike-oakley/openapi-pydantic | S11 |
+| opentelemetry-api | 1.45.1 | Apache-2.0 | Permissive | https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-api | S09, S11, S12, S13, S14, S15, S16, S17 |
+| packaging | 26.3 | Apache-2.0 OR BSD-2-Clause | Permissive | https://github.com/pypa/packaging | DOCS, S11, S14, S15, S16, S18, S19, S20, S23, S24, TOOLING |
 | paginate | 0.5.7 | MIT License | Permissive | https://github.com/Signum/paginate | DOCS |
-| pandas | 3.0.6 | BSD License | Permissive | https://pandas.pydata.org | S06, S20, S21 |
-| pathable | 0.6.0 | Apache Software License | Permissive | https://github.com/p1c2u/pathable | S12 |
-| platformdirs | 4.12.4 | MIT | Permissive | https://github.com/tox-dev/platformdirs | DOCS, S12 |
-| pluggy | 1.6.0 | MIT License | Permissive | - | S15, S16, S17, S24, S25, TOOLING |
-| prompt_toolkit | 3.0.53 | BSD License | Permissive | https://github.com/prompt-toolkit/python-prompt-toolkit | S19 |
-| py-key-value-aio | 0.4.6 | Apache-2.0 | Permissive | - | S12 |
-| pyarrow | 25.0.1 | Apache-2.0 | Permissive | https://arrow.apache.org/ | S21 |
-| pycparser | 3.1 | BSD-3-Clause | Permissive | https://github.com/eliben/pycparser | S12 |
-| pycubrid | 1.9.0 | MIT | Permissive | https://github.com/cubrid-lab/pycubrid | S01, S02, S03, S04, S05, S06, S07, S08, S09, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24, S25 |
-| pydantic | 2.13.5, 2.14.0 | MIT | Permissive | https://github.com/pydantic/pydantic | S10, S12, S13, S14, S15, S16, S17, S18 |
-| pydantic_core | 2.46.5, 2.50.0 | MIT | Permissive | https://github.com/pydantic | S10, S12, S13, S14, S15, S16, S17, S18 |
-| pydantic-settings | 2.15.0 | MIT | Permissive | https://github.com/pydantic/pydantic-settings | S12, S18 |
-| pydeck | 0.9.3 | Apache License 2.0 | Permissive | https://github.com/visgl/deck.gl/tree/master/bindings/pydeck | S21 |
-| Pygments | 2.21.0 | BSD-2-Clause | Permissive | https://pygments.org | DOCS, S12, S15, S16, S17, S24, S25, TOOLING |
-| PyJWT | 2.15.1 | MIT | Permissive | https://github.com/jpadilla/pyjwt | S12 |
+| pandas | 3.0.6 | BSD License | Permissive | https://pandas.pydata.org | S05, S19, S20 |
+| pathable | 0.6.0 | Apache Software License | Permissive | https://github.com/p1c2u/pathable | S11 |
+| platformdirs | 4.12.4 | MIT | Permissive | https://github.com/tox-dev/platformdirs | DOCS, S11 |
+| pluggy | 1.6.0 | MIT License | Permissive | - | S14, S15, S16, S23, S24, TOOLING |
+| prompt_toolkit | 3.0.53 | BSD License | Permissive | https://github.com/prompt-toolkit/python-prompt-toolkit | S18 |
+| py-key-value-aio | 0.4.6 | Apache-2.0 | Permissive | - | S11 |
+| pyarrow | 25.0.1 | Apache-2.0 | Permissive | https://arrow.apache.org/ | S20 |
+| pycparser | 3.1 | BSD-3-Clause | Permissive | https://github.com/eliben/pycparser | S11 |
+| pycubrid | 1.9.0 | MIT | Permissive | https://github.com/cubrid-lab/pycubrid | S01, S02, S03, S04, S05, S06, S07, S08, S09, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24 |
+| pydantic | 2.13.5, 2.14.0 | MIT | Permissive | https://github.com/pydantic/pydantic | S09, S11, S12, S13, S14, S15, S16, S17 |
+| pydantic_core | 2.46.5, 2.50.0 | MIT | Permissive | https://github.com/pydantic | S09, S11, S12, S13, S14, S15, S16, S17 |
+| pydantic-settings | 2.15.0 | MIT | Permissive | https://github.com/pydantic/pydantic-settings | S11, S17 |
+| pydeck | 0.9.3 | Apache License 2.0 | Permissive | https://github.com/visgl/deck.gl/tree/master/bindings/pydeck | S20 |
+| Pygments | 2.21.0 | BSD-2-Clause | Permissive | https://pygments.org | DOCS, S11, S14, S15, S16, S23, S24, TOOLING |
+| PyJWT | 2.15.1 | MIT | Permissive | https://github.com/jpadilla/pyjwt | S11 |
 | pymdown-extensions | 12.1 | MIT | Permissive | https://github.com/facelessuser/pymdown-extensions | DOCS |
-| pyparsing | 3.3.3 | MIT | Permissive | https://github.com/pyparsing/pyparsing/ | S20 |
-| pyperclip | 1.11.0 | BSD License | Permissive | https://github.com/asweigart/pyperclip | S12 |
-| pytest | 9.1.1 | MIT | Permissive | https://docs.pytest.org/en/latest/ | S15, S16, S17, S24, S25, TOOLING |
+| pyparsing | 3.3.3 | MIT | Permissive | https://github.com/pyparsing/pyparsing/ | S19 |
+| pyperclip | 1.11.0 | BSD License | Permissive | https://github.com/asweigart/pyperclip | S11 |
+| pytest | 9.1.1 | MIT | Permissive | https://docs.pytest.org/en/latest/ | S14, S15, S16, S23, S24, TOOLING |
 | pytest-asyncio | 1.4.0 | Apache-2.0 | Permissive | https://github.com/pytest-dev/pytest-asyncio | TOOLING |
-| python-dateutil | 2.9.0.post0 | Apache Software License / BSD License | Permissive | https://github.com/dateutil/dateutil | DOCS, S06, S19, S20, S21 |
-| python-dotenv | 1.2.4 | BSD-3-Clause | Permissive | https://github.com/theskumar/python-dotenv | S12, S15, S18 |
-| python-multipart | 0.0.32 | Apache-2.0 | Permissive | https://github.com/Kludex/python-multipart | S12, S21 |
-| PyYAML | 6.0.3 | MIT License | Permissive | https://github.com/yaml/pyyaml | DOCS, S12, S15 |
+| python-dateutil | 2.9.0.post0 | Apache Software License / BSD License | Permissive | https://github.com/dateutil/dateutil | DOCS, S05, S18, S19, S20 |
+| python-dotenv | 1.2.4 | BSD-3-Clause | Permissive | https://github.com/theskumar/python-dotenv | S11, S14, S17 |
+| python-multipart | 0.0.32 | Apache-2.0 | Permissive | https://github.com/Kludex/python-multipart | S11, S20 |
+| PyYAML | 6.0.3 | MIT License | Permissive | https://github.com/yaml/pyyaml | DOCS, S11, S14 |
 | pyyaml_env_tag | 1.1 | MIT | Permissive | https://github.com/waylan/pyyaml-env-tag | DOCS |
-| redis | 6.4.0 | MIT | Permissive | https://github.com/redis/redis-py | S19 |
-| referencing | 0.37.0 | MIT | Permissive | https://github.com/python-jsonschema/referencing | S12, S21 |
-| requests | 2.34.2 | Apache Software License | Permissive | https://github.com/psf/requests | DOCS, S21 |
-| rich | 15.0.0 | MIT License | Permissive | https://github.com/Textualize/rich | S12 |
-| rich-rst | 2.2.0 | MIT | Permissive | https://github.com/wasi-master/rich-rst | S12 |
-| rpds-py | 2026.9.1 | MIT | Permissive | https://github.com/crate-py/rpds | S12, S21 |
+| redis | 6.4.0 | MIT | Permissive | https://github.com/redis/redis-py | S18 |
+| referencing | 0.37.0 | MIT | Permissive | https://github.com/python-jsonschema/referencing | S11, S20 |
+| requests | 2.34.2 | Apache Software License | Permissive | https://github.com/psf/requests | DOCS, S20 |
+| rich | 15.0.0 | MIT License | Permissive | https://github.com/Textualize/rich | S11 |
+| rich-rst | 2.2.0 | MIT | Permissive | https://github.com/wasi-master/rich-rst | S11 |
+| rpds-py | 2026.9.1 | MIT | Permissive | https://github.com/crate-py/rpds | S11, S20 |
 | ruff | 0.16.4 | MIT | Permissive | https://github.com/astral-sh/ruff | TOOLING |
-| SecretStorage | 3.5.0 | BSD-3-Clause | Permissive | https://github.com/mitya57/secretstorage | S12 |
-| six | 1.17.0 | MIT License | Permissive | https://github.com/benjaminp/six | DOCS, S06, S19, S20, S21 |
-| SQLAlchemy | 2.1.1, 2.1.4 | MIT | Permissive | https://www.sqlalchemy.org | S01, S02, S05, S06, S08, S09, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24, S25 |
-| sqlalchemy-cubrid | 1.9.0 | MIT | Permissive | https://github.com/cubrid-lab/sqlalchemy-cubrid | S01, S02, S05, S06, S08, S09, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24, S25 |
-| sqlparse | 0.6.0 | BSD License | Permissive | https://github.com/andialbrecht/sqlparse | S12, S22 |
-| sse-starlette | 3.5.0 | BSD-3-Clause | Permissive | https://github.com/sysid/sse-starlette | S12 |
-| starlette | 1.7.0 | BSD-3-Clause | Permissive | https://github.com/Kludex/starlette | S10, S12, S13, S14, S15, S16, S17, S18, S21 |
-| streamlit | 1.65.0 | Apache-2.0 | Permissive | https://streamlit.io | S21 |
-| toml | 0.10.2 | MIT License | Permissive | https://github.com/uiri/toml | S21 |
-| typing_extensions | 4.16.0 | PSF-2.0 | Permissive | https://github.com/python/typing_extensions | S01, S02, S05, S06, S08, S09, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24, S25, TOOLING |
-| typing-inspection | 0.4.4 | MIT | Permissive | https://github.com/pydantic/typing-inspection | S10, S12, S13, S14, S15, S16, S17, S18 |
-| tzdata | 2026.5 | Apache-2.0 | Permissive | https://github.com/python/tzdata | S19 |
-| tzlocal | 5.4.4 | MIT | Permissive | https://github.com/regebro/tzlocal | S19 |
-| uncalled-for | 0.4.0 | MIT License | Permissive | https://github.com/chrisguidry/uncalled-for | S12 |
-| urllib3 | 2.8.0 | MIT | Permissive | - | DOCS, S21 |
-| uvicorn | 0.54.0 | BSD-3-Clause | Permissive | https://uvicorn.dev/ | S10, S12, S13, S14, S15, S16, S17, S18, S21 |
-| uvloop | 0.23.0 | Apache Software License / MIT License | Permissive | - | S15 |
-| vine | 5.1.0 | BSD License | Permissive | https://github.com/celery/vine | S19 |
-| watchdog | 6.0.0 | Apache Software License | Permissive | https://github.com/gorakhargosh/watchdog/ | DOCS, S21 |
-| watchfiles | 1.3.0 | MIT License | Permissive | https://github.com/samuelcolvin/watchfiles | S12, S15 |
-| wcwidth | 0.9.2 | MIT License | Permissive | https://github.com/jquast/wcwidth | S19 |
-| websockets | 17.2 | BSD-3-Clause | Permissive | https://github.com/python-websockets/websockets | S12, S15, S21 |
-| Werkzeug | 3.1.9 | BSD-3-Clause | Permissive | https://github.com/pallets/werkzeug/ | S23, S24, S25 |
-| certifi | 2026.7.22 | Mozilla Public License 2.0 (MPL 2.0) | Weak copyleft (MPL) | https://github.com/certifi/python-certifi | DOCS, S12, S15, S16, S17, S21, S25 |
+| SecretStorage | 3.5.0 | BSD-3-Clause | Permissive | https://github.com/mitya57/secretstorage | S11 |
+| six | 1.17.0 | MIT License | Permissive | https://github.com/benjaminp/six | DOCS, S05, S18, S19, S20 |
+| SQLAlchemy | 2.1.3, 2.1.4 | MIT | Permissive | https://www.sqlalchemy.org | S01, S02, S04, S05, S07, S08, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24 |
+| sqlalchemy-cubrid | 1.9.0 | MIT | Permissive | https://github.com/cubrid-lab/sqlalchemy-cubrid | S01, S02, S04, S05, S07, S08, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24 |
+| sqlparse | 0.6.0 | BSD License | Permissive | https://github.com/andialbrecht/sqlparse | S11, S21 |
+| sse-starlette | 3.5.0 | BSD-3-Clause | Permissive | https://github.com/sysid/sse-starlette | S11 |
+| starlette | 1.7.0 | BSD-3-Clause | Permissive | https://github.com/Kludex/starlette | S09, S11, S12, S13, S14, S15, S16, S17, S20 |
+| streamlit | 1.65.0 | Apache-2.0 | Permissive | https://streamlit.io | S20 |
+| toml | 0.10.2 | MIT License | Permissive | https://github.com/uiri/toml | S20 |
+| typing_extensions | 4.16.0 | PSF-2.0 | Permissive | https://github.com/python/typing_extensions | S01, S02, S04, S05, S07, S08, S09, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24, TOOLING |
+| typing-inspection | 0.4.4 | MIT | Permissive | https://github.com/pydantic/typing-inspection | S09, S11, S12, S13, S14, S15, S16, S17 |
+| tzdata | 2026.5 | Apache-2.0 | Permissive | https://github.com/python/tzdata | S18 |
+| tzlocal | 5.4.4 | MIT | Permissive | https://github.com/regebro/tzlocal | S18 |
+| uncalled-for | 0.4.0 | MIT License | Permissive | https://github.com/chrisguidry/uncalled-for | S11 |
+| urllib3 | 2.8.0 | MIT | Permissive | - | DOCS, S20 |
+| uvicorn | 0.54.0 | BSD-3-Clause | Permissive | https://uvicorn.dev/ | S09, S11, S12, S13, S14, S15, S16, S17, S20 |
+| uvloop | 0.23.0 | Apache Software License / MIT License | Permissive | - | S14 |
+| vine | 5.1.0 | BSD License | Permissive | https://github.com/celery/vine | S18 |
+| watchdog | 6.0.0 | Apache Software License | Permissive | https://github.com/gorakhargosh/watchdog/ | DOCS, S20 |
+| watchfiles | 1.3.0 | MIT License | Permissive | https://github.com/samuelcolvin/watchfiles | S11, S14 |
+| wcwidth | 0.9.2 | MIT License | Permissive | https://github.com/jquast/wcwidth | S18 |
+| websockets | 17.2 | BSD-3-Clause | Permissive | https://github.com/python-websockets/websockets | S11, S14, S20 |
+| Werkzeug | 3.1.9 | BSD-3-Clause | Permissive | https://github.com/pallets/werkzeug/ | S22, S23, S24 |
+| certifi | 2026.7.22 | Mozilla Public License 2.0 (MPL 2.0) | Weak copyleft (MPL) | https://github.com/certifi/python-certifi | DOCS, S11, S14, S15, S16, S20, S24 |
 | pathspec | 1.1.1 | Mozilla Public License 2.0 (MPL 2.0) | Weak copyleft (MPL) | https://github.com/cpburnz/python-pathspec | DOCS |
-| numpy | 2.5.3 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | Needs review | https://numpy.org | DEMO, S06, S20, S21 |
-| pillow | 12.3.0 | MIT-CMU | Needs review | https://python-pillow.github.io | DEMO, S20, S21 |
-| protobuf | 7.36.2 | 3-Clause BSD License | Needs review | https://developers.google.com/protocol-buffers/ | S21 |
+| numpy | 2.5.3 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | Needs review | https://numpy.org | DEMO, S05, S19, S20 |
+| pillow | 12.3.0 | MIT-CMU | Needs review | https://python-pillow.github.io | DEMO, S19, S20 |
+| protobuf | 7.36.2 | 3-Clause BSD License | Needs review | https://developers.google.com/protocol-buffers/ | S20 |
 
 <!-- END GENERATED INVENTORY -->

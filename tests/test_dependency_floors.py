@@ -243,8 +243,8 @@ class FloorLaneTests(unittest.TestCase):
 
     def test_a_failing_set_does_not_stop_the_remaining_sets(self) -> None:
         plan = [
-            ("one", {"pycubrid": "1.7"}, ("fundamentals/crud",)),
-            ("two", {"pycubrid": "1.7"}, ("fundamentals/crud",)),
+            ("one", {"pycubrid": "1.7"}, ("fundamentals/error-handling",)),
+            ("two", {"pycubrid": "1.7"}, ("fundamentals/error-handling",)),
         ]
         calls = []
 
@@ -299,9 +299,7 @@ class FloorLaneTests(unittest.TestCase):
         self.assertEqual(bare, set(lane.NO_REQUIREMENTS_FLOORS))
         for directory in bare:
             self.assertIn(directory, self.dirs)
-        flat = " ".join(MATRIX.split())
-        self.assertIn("`fundamentals/lob-handling`, which needs `pycubrid>=1.7`", flat)
-        self.assertEqual(lane.NO_REQUIREMENTS_FLOORS["fundamentals/lob-handling"], "1.7")
+        self.assertEqual(lane.NO_REQUIREMENTS_FLOORS, {"fundamentals/error-handling": None})
 
     def test_lane_pins_follow_the_recipe_requirements(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -316,9 +314,9 @@ class FloorLaneTests(unittest.TestCase):
             pins = {name: p for name, p, _ in lane.plan(base, MATRIX)}
             self.assertEqual(pins["advanced-sqlalchemy"]["sqlalchemy-cubrid"], "1.4.3")
             # Two directories in one set may not disagree.
-            req = base / "fundamentals/connect/requirements.txt"
+            req = base / "fundamentals/pycubrid/requirements.txt"
             req.write_text("pycubrid>=1.8,<2\n")
-            with self.assertRaisesRegex(ValueError, "1.7-line"):
+            with self.assertRaisesRegex(ValueError, "1.9-line"):
                 lane.plan(base, MATRIX)
 
     def test_floor_changes_select_the_lane(self) -> None:

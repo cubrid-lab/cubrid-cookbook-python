@@ -121,7 +121,6 @@ FLOORS = (
     "scripts/driver_floors.py",
     "fundamentals/alembic/requirements.txt",
     "fundamentals/async/requirements.txt",
-    "fundamentals/connect/requirements.txt",
     "fundamentals/json/requirements.txt",
     "fundamentals/orm-basics/requirements.txt",
     "fundamentals/pandas/requirements.txt",
