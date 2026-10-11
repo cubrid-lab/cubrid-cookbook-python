@@ -85,12 +85,12 @@ Java JDBC → Python 마이그레이션을 실제 코드 나란히 비교로 제
 
 | 주제 | 위치 |
 |------|------|
-| [연결](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/connect) | 기본 연결, 메타데이터, 컨텍스트 매니저 |
-| [CRUD](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/crud) | 파라미터를 사용한 INSERT/SELECT/UPDATE/DELETE |
-| [트랜잭션](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/transactions) | 커밋, 롤백, 세이브포인트, 오토커밋 |
+| [연결](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/connect) | 기본 연결, 메타데이터, 컨텍스트 매니저 (`fundamentals/pycubrid/01_connect.py`로 리다이렉트) |
+| [CRUD](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/crud) | 파라미터를 사용한 INSERT/SELECT/UPDATE/DELETE (`fundamentals/pycubrid/02_crud.py`로 리다이렉트) |
+| [트랜잭션](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/transactions) | 커밋, 롤백, 세이브포인트, 오토커밋 (`fundamentals/pycubrid/03_transactions.py`로 리다이렉트) |
 | [파라미터화 쿼리](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/parameterized-queries) | 안전한 파라미터 바인딩 (클라이언트 측 — 서버 측 prepare 아님) |
-| [에러 처리](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/error-handling) | 예외 타입, 재시도 패턴 |
-| [LOB 처리](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/lob-handling) | BLOB/CLOB 연산 |
+| [에러 처리](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/error-handling) | 예외 타입, 재시도 패턴 (`05_error_handling.py`는 `fundamentals/pycubrid/05_error_handling.py`로 리다이렉트) |
+| [LOB 처리](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/lob-handling) | BLOB/CLOB 연산 (`fundamentals/pycubrid/06_lob.py`로 리다이렉트) |
 | [ORM 기초](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/orm-basics) | SQLAlchemy 엔진, Core, ORM, 릴레이션십 |
 | [pycubrid 드라이버](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/pycubrid) | 22개 DB-API 레시피: 커서, 윈도우 함수, 재귀 CTE, 페이지네이션, 타임존/ENUM |
 | [SQLAlchemy 레시피](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/sqlalchemy) | SET/MULTISET/SEQUENCE 컬렉션 타입 포함 7개 |
@@ -106,7 +106,7 @@ Java JDBC → Python 마이그레이션을 실제 코드 나란히 비교로 제
 
 ```
 pycubrid (DB-API 2.0 드라이버)
-├── 직접 사용 ─────── fundamentals/connect, crud, transactions, pycubrid
+├── 직접 사용 ─────── fundamentals/pycubrid (connect, crud, transactions는 이쪽으로 리다이렉트)
 ├── SQLAlchemy ────── fundamentals/orm-basics, sqlalchemy, quickstart/5min-sqlalchemy
 ├── FastAPI ───────── quickstart/5min-fastapi, templates/api-service-fastapi
 ├── Flask ─────────── templates/flask

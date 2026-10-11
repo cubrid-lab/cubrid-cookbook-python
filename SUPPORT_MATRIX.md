@@ -111,7 +111,7 @@ only `pycubrid` and follow the global floor. The `connect`, `crud`, `transaction
 `error-handling/05_error_handling.py` and `lob-handling` topic entries are redirects to
 the canonical `fundamentals/pycubrid` recipes (which require `pycubrid>=1.9,<2`, so the
 LOB recipe also avoids 1.6.x's escaped-newline CLOB values) and carry no goldens or
-requirements of their own.
+requirements of their own. As a result the 1.6.1 floor lane now verifies only `error-handling`, `json`, `reserved-words` and the migration recipes, and the 1.7 lane only `orm-basics`; plain CRUD, transactions, LOB and connect are no longer exercised at those floors, because the canonical recipes require `pycubrid>=1.9`.
 
 These floors are installed and run, not only checked as text (#241). The
 `Driver floors (CUBRID 11.4)` job in `ci.yml` runs `scripts/driver_floors.py`,

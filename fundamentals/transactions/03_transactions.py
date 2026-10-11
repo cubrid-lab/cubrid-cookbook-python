@@ -5,9 +5,9 @@ golden-verified recipe lives at ``fundamentals/pycubrid/03_transactions.py``. It
 intentionally a thin redirect (no ``expected/`` golden) so the same recipe is not
 double-counted as distinct ``make verify`` coverage.
 
-Run the canonical recipe instead::
+Run the canonical recipe instead, from the repository root::
 
-    python ../pycubrid/03_transactions.py
+    python fundamentals/pycubrid/03_transactions.py
 
 The canonical recipe demonstrates manual commit/rollback, autocommit mode, savepoints and transaction isolation.
 """
@@ -19,5 +19,5 @@ CANONICAL_RECIPE = "fundamentals/pycubrid/03_transactions.py"
 if __name__ == "__main__":
     print(
         "This is a topic redirect. The canonical, verified recipe lives at "
-        f"{CANONICAL_RECIPE}. Run: python ../pycubrid/03_transactions.py"
+        f"{CANONICAL_RECIPE}. Run: python {CANONICAL_RECIPE} from the repository root."
     )

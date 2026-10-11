@@ -5,9 +5,9 @@ golden-verified recipe lives at ``fundamentals/pycubrid/05_error_handling.py``. 
 intentionally a thin redirect (no ``expected/`` golden) so the same recipe is not
 double-counted as distinct ``make verify`` coverage.
 
-Run the canonical recipe instead::
+Run the canonical recipe instead, from the repository root::
 
-    python ../pycubrid/05_error_handling.py
+    python fundamentals/pycubrid/05_error_handling.py
 
 The canonical recipe demonstrates the PEP 249 exception hierarchy, catching specific database errors, handling connection failures and graceful recovery.
 """
@@ -19,5 +19,5 @@ CANONICAL_RECIPE = "fundamentals/pycubrid/05_error_handling.py"
 if __name__ == "__main__":
     print(
         "This is a topic redirect. The canonical, verified recipe lives at "
-        f"{CANONICAL_RECIPE}. Run: python ../pycubrid/05_error_handling.py"
+        f"{CANONICAL_RECIPE}. Run: python {CANONICAL_RECIPE} from the repository root."
     )
