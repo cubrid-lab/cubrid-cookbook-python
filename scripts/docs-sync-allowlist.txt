@@ -11,4 +11,8 @@ performance/bulk-insert         # benchmark: non-deterministic timing output
 performance/connection-pooling  # benchmark: non-deterministic timing output
 performance/fetch-optimization  # benchmark: non-deterministic timing output
 fundamentals/parameterized-queries  # redirect-only topic entry; canonical verified recipe lives in fundamentals/pycubrid/04_prepared.py
+fundamentals/connect  # redirect-only topic entry; canonical verified recipe lives in fundamentals/pycubrid/01_connect.py
+fundamentals/crud  # redirect-only topic entry; canonical verified recipe lives in fundamentals/pycubrid/02_crud.py
+fundamentals/transactions  # redirect-only topic entry; canonical verified recipe lives in fundamentals/pycubrid/03_transactions.py
+fundamentals/lob-handling  # redirect-only topic entry; canonical verified recipe lives in fundamentals/pycubrid/06_lob.py
 templates/ai-agent          # tested via external pytest suite in tests/test_ai_agent.py

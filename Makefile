@@ -140,6 +140,7 @@ test-offline: ## Run mocked/offline suites in separate processes (no database re
 	$(PYTHON) -m unittest discover -s tests -p 'test_pr_title.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_ci_scope.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_workflow_timeouts.py' -v
+	$(PYTHON) -m unittest discover -s tests -p 'test_workflow_installs.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_workflow_permissions.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_template_timestamps.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_table_prefix.py' -v

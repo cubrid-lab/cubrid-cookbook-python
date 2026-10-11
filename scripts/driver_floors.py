@@ -47,13 +47,9 @@ floors = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(floors)
 
 # Golden directories that ship no requirements.txt; each imports only pycubrid
-# and needs the global floor (None) or the documented higher floor
-# (SUPPORT_MATRIX.md: 1.6.x returns CLOB values with escaped newlines).
+# and needs the global floor (None) or a documented higher floor.
 NO_REQUIREMENTS_FLOORS: dict[str, str | None] = {
-    "fundamentals/crud": None,
     "fundamentals/error-handling": None,
-    "fundamentals/lob-handling": "1.7",
-    "fundamentals/transactions": None,
 }
 
 # (name, example directories). Every directory in a set must declare the same
@@ -62,9 +58,7 @@ FLOOR_SETS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "global",
         (
-            "fundamentals/crud",
             "fundamentals/error-handling",
-            "fundamentals/transactions",
             "fundamentals/json",
             "pitfalls/reserved-words",
             "migration/java-to-python",
@@ -73,7 +67,7 @@ FLOOR_SETS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
     ("advanced-sqlalchemy", ("fundamentals/pandas",)),
     ("async", ("fundamentals/async",)),
-    ("1.7-line", ("fundamentals/lob-handling", "fundamentals/connect", "fundamentals/orm-basics")),
+    ("1.7-line", ("fundamentals/orm-basics",)),
     ("1.9-line", ("fundamentals/pycubrid", "fundamentals/sqlalchemy")),
     ("alembic", ("fundamentals/alembic",)),
 )

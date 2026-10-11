@@ -525,7 +525,7 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn("SKIPPED: ${{ needs.classify.outputs.web_suites_skipped }}", job)
         self.assertIn("::warning::$root changed but its suite was not run", job)
         self.assertIn("Not validated before merge", job)
-        self.assertIn('python -m venv "$venv"', job)
+        self.assertIn('uv venv "$venv"', job)  # fresh venv per suite (#285), created by uv (#229)
         self.assertIn('-r "$root/requirements.txt"', job)
         self.assertIn('"$venv/bin/python" -m pytest "$root/tests"', job)
         self.assertIn("image: cubrid/cubrid:11.4", job)

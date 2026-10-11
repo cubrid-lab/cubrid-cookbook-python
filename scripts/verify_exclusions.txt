@@ -11,3 +11,4 @@
 #
 # Keep this list minimal. Prefer making an example deterministic + adding a
 # golden over excluding it.
+fundamentals/error-handling/05_error_handling.py  # redirect to the canonical fundamentals/pycubrid/05_error_handling.py (verified there)

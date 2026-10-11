@@ -351,7 +351,7 @@ release far below anything this cookbook runs against. `SUPPORT_MATRIX.md`'s
 "Driver & Framework Versions" table is the single documented floor
 (`pycubrid>=1.6.1`, `sqlalchemy-cubrid>=1.0`); recipes that need more pin a
 higher floor only when SUPPORT_MATRIX.md explains why (the `[^async]`
-footnote's "advanced" SQLAlchemy recipes at `>=1.4.2` and `fundamentals/async` at `>=1.5`; `fundamentals/connect`,
+footnote's "advanced" SQLAlchemy recipes at `>=1.4.2` and `fundamentals/async` at `>=1.5`;
 `fundamentals/orm-basics` and the full example apps under `templates/` at the
 `>=1.7,<2` line the drivers are actually published as; `fundamentals/pycubrid`
 at `>=1.9,<2` for errno-carrying batch errors, the CAS-session fix and typed collection binding;
