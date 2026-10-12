@@ -86,7 +86,7 @@ INVALID = (
 
 TICK = chr(96)
 FENCE = TICK * 3
-GUARD_SHA256 = "d39a874035ae3baf0bfd7190c66350eb9305d8533c87373f72c6b4f7f33f1977"
+GUARD_SHA256 = "a44a7759b0897b3bc790605175e29ffb86421f7a245b882a52b70c399817178d"
 
 
 def _validator() -> str:
@@ -569,6 +569,9 @@ class PrTitleValidatorTest(unittest.TestCase):
             "Closes ![a]\n\n[a]: /i\nanother-org/another-repo#43",
             "Closes\n[a]:\n  /target\nanother-org/another-repo#43",
             'Closes\n[a]:\n  /target\n  "title"\nanother-org/another-repo#43',
+            'Closes\n[a]: /t "1\n2\n3\n4"\nanother-org/another-repo#43',
+            'Closes ![a]\n\n[a]:\n /t\n "one\ntwo"\nanother-org/another-repo#43',
+            'Closes ![a]\n\n[a]: /t\n "one\ntwo\nthree"\nanother-org/another-repo#43',
         )
         self.assert_allowed(
             "[Closes](https://example.com) the bug. Refs another-org/another-repo#43",

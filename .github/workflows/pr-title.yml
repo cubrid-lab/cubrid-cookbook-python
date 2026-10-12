@@ -324,13 +324,11 @@ jobs:
                           todo.extend(closer_ends(text, pos + 2, closer, scanned))
                   line = definition.match(text, pos)
                   if line is not None:
-                      # The destination and title may be on the next two lines.
-                      end = line.end()
-                      for _ in range(3):
-                          todo.append(end)
-                          end = text.find("\n", end + 1)
-                          if end < 0:
-                              break
+                      # The destination and a title may run on to any later line of
+                      # the paragraph: walk on from each line end up to a blank line.
+                      todo.append(line.end())
+                      line_ends = closer_ends(text, line.end() + 1, "\n", scanned, "[]:")
+                      todo.extend(end - 1 for end in line_ends)
                   if text.startswith("![", pos):
                       # An image shows no text: skip its alt text to any "]" and walk
                       # on from there, through the "](destination)".
