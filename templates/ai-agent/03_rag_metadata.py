@@ -99,6 +99,21 @@ def setup(conn: pycubrid.connection.Connection) -> None:
     cur.close()
 
 
+def remove_documents(conn: pycubrid.connection.Connection, sources: list[str]) -> None:
+    """Delete documents by source, with their chunks (children first).
+
+    Re-ingesting a source replaces its previous copy, so the demo can run
+    again on the same database without retrieving duplicates.
+    """
+    markers = ", ".join("?" for _ in sources)
+    doc_ids = "SELECT id FROM rag_documents WHERE source IN (" + markers + ")"
+    cur = conn.cursor()
+    cur.execute("DELETE FROM rag_chunks WHERE document_id IN (" + doc_ids + ")", sources)
+    cur.execute("DELETE FROM rag_documents WHERE source IN (" + markers + ")", sources)
+    conn.commit()
+    cur.close()
+
+
 def ingest_document(
     conn: pycubrid.connection.Connection,
     doc: dict,
@@ -204,7 +219,8 @@ def main() -> None:
     with closing(pycubrid.connect(**DB_CONFIG)) as conn:
         setup(conn)
 
-        # Ingest sample documents
+        # Ingest sample documents, replacing any copies from a previous run
+        remove_documents(conn, [doc["source"] for doc in SAMPLE_DOCS])
         print("Ingesting documents...")
         for doc in SAMPLE_DOCS:
             doc_id = ingest_document(conn, doc)

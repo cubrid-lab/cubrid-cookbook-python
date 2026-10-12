@@ -134,6 +134,8 @@ def main() -> None:
             )
         conn.commit()
 
+        # Rerunnable: drop the previous run's demo session before creating it again.
+        _agent_state.delete_session(conn, "agent-loop-demo")
         agent = SimpleDataAgent(conn, "agent-loop-demo")
 
         # Agent loop: multiple queries

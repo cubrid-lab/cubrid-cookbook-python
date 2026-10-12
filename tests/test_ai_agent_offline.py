@@ -81,6 +81,48 @@ def test_missing_insert_id_is_not_committed(recipe, operation, arguments):
     cursor.close.assert_called_once()
 
 
+def test_delete_session_removes_children_before_session():
+    module = load_recipe("01_agent_state.py")
+    conn = MagicMock()
+    cursor = conn.cursor.return_value
+
+    module.delete_session(conn, "demo-001")
+
+    statements = [call.args[0] for call in cursor.execute.call_args_list]
+    assert [sql.split()[2] for sql in statements] == [
+        "agent_tool_calls",
+        "agent_messages",
+        "agent_sessions",
+    ]
+    assert all(call.args[1] == ["demo-001"] for call in cursor.execute.call_args_list)
+    conn.commit.assert_called_once()
+    cursor.close.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "recipe,session_key",
+    [("01_agent_state.py", "demo-001"), ("04_agent_loop.py", "agent-loop-demo")],
+)
+def test_recipe_deletes_previous_demo_session_before_creating(recipe, session_key, monkeypatch):
+    module = load_recipe(recipe)
+    state = module._agent_state if recipe == "04_agent_loop.py" else module
+    events = []
+    monkeypatch.setattr(module.pycubrid, "connect", lambda **kwargs: MagicMock())
+    monkeypatch.setattr(state, "setup_schema", lambda conn: None)
+    monkeypatch.setattr(state, "delete_session", lambda conn, key: events.append(("delete", key)))
+
+    def create_session(conn, key, **kwargs):
+        events.append(("create", key))
+        raise RuntimeError("stop after create")
+
+    monkeypatch.setattr(state, "create_session", create_session)
+
+    with pytest.raises(RuntimeError, match="stop after create"):
+        module.main()
+
+    assert events == [("delete", session_key), ("create", session_key)]
+
+
 @pytest.mark.parametrize("recipe", ["01_agent_state.py", "03_rag_metadata.py", "04_agent_loop.py"])
 def test_recipe_closes_connection_on_setup_error(recipe, monkeypatch):
     module = load_recipe(recipe)

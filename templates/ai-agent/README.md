@@ -38,8 +38,11 @@ Recipes 01–04 read `CUBRID_HOST`, `CUBRID_PORT`, `CUBRID_DATABASE`,
 empty password). Recipe 05 reads `DATABASE_URL`, defaulting to
 `cubrid+pycubrid://dba@localhost:33000/testdb`.
 
-The examples retain their demonstration data, including fixed session keys
-and the `alice` username. Use a fresh database for a first manual run.
+The examples use fixed demonstration data (session keys `demo-001` and
+`agent-loop-demo`, the `alice` username, three sample documents). Each run first
+deletes only its own previous copy of that data, so every recipe can be run again
+on the same database; other rows are left alone and `rag_retrieval_log` keeps
+accumulating.
 Recipe 04 creates and seeds `cookbook_agent_products` so its product query
 does not depend on another example. Database connections and the ORM engine
 are closed even if a demonstration raises.
@@ -70,7 +73,9 @@ script it drops only that script's `agent_*`, `rag_*`, or `chat_*` tables
 (foreign-key children first), plus `cookbook_agent_products` for recipe 04.
 It restores environment variables and always uses the pycubrid SQLAlchemy
 backend, even if the supplied URL uses the legacy `cubrid://` scheme.
-Without `CUBRID_TEST_URL`, the five live cases skip; offline tests still run.
+A second live case runs each script twice without resetting its tables, so a
+rerun on the same database is covered too.
+Without `CUBRID_TEST_URL`, the ten live cases skip; offline tests still run.
 Each script runs in its own process with a 60-second limit; cleanup connections
 have a 10-second connect timeout and a 15-second read timeout. The smoke-test
 matrix runs the suite twice on both CUBRID 11.2 and 11.4 for every `main` push,

@@ -79,6 +79,25 @@ def setup_schema(conn: pycubrid.connection.Connection) -> None:
     cur.close()
 
 
+def delete_session(conn: pycubrid.connection.Connection, session_key: str) -> None:
+    """Remove a session by key, with its messages and tool calls (children first).
+
+    The demos use fixed keys; deleting the previous run's session first lets
+    each recipe run again on the same database.
+    """
+    session_ids = "SELECT id FROM agent_sessions WHERE session_key = ?"
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM agent_tool_calls WHERE session_id IN (" + session_ids + ")", [session_key]
+    )
+    cur.execute(
+        "DELETE FROM agent_messages WHERE session_id IN (" + session_ids + ")", [session_key]
+    )
+    cur.execute("DELETE FROM agent_sessions WHERE session_key = ?", [session_key])
+    conn.commit()
+    cur.close()
+
+
 def create_session(
     conn: pycubrid.connection.Connection,
     session_key: str,
@@ -189,6 +208,7 @@ def main() -> None:
     with closing(pycubrid.connect(**DB_CONFIG)) as conn:
         setup_schema(conn)
 
+        delete_session(conn, "demo-001")  # rerunnable: drop the previous run's demo session
         session_id = create_session(conn, "demo-001", tags=["demo", "analytics"])
         print(f"Session created: {session_id}")
 

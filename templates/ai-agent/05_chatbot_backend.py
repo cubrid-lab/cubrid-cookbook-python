@@ -78,6 +78,21 @@ def main() -> None:
         Base.metadata.create_all(engine)
 
         with Session(engine) as session:
+            # Rerunnable: remove the previous run's demo user and its
+            # conversations and messages (children first).
+            demo_user = sa.select(ChatUser.id).where(ChatUser.username == "alice")
+            demo_convs = sa.select(ChatConversation.id).where(
+                ChatConversation.user_id.in_(demo_user)
+            )
+            session.execute(
+                sa.delete(ChatMessage).where(ChatMessage.conversation_id.in_(demo_convs))
+            )
+            session.execute(
+                sa.delete(ChatConversation).where(ChatConversation.user_id.in_(demo_user))
+            )
+            session.execute(sa.delete(ChatUser).where(ChatUser.username == "alice"))
+            session.commit()
+
             # Create a user with AI preferences stored as JSON
             user = ChatUser(
                 username="alice",
