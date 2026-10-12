@@ -86,7 +86,7 @@ INVALID = (
 
 TICK = chr(96)
 FENCE = TICK * 3
-GUARD_SHA256 = "449fd724ae94cb2a2772ca45aa9c0c180fd9166e59867f87d8162545e51a0933"
+GUARD_SHA256 = "a34a6dc8d17455b9f200b5a8b1a8e8561685429cc56b02a504a15a5758686913"
 
 
 def _validator() -> str:
@@ -547,11 +547,42 @@ class PrTitleValidatorTest(unittest.TestCase):
             "Refs another-org/another-repo#43.",
         )
 
+    def test_a_closing_keyword_as_link_text_fails(self) -> None:
+        # "[Closes](url) owner/repo#N" renders as "Closes owner/repo#N".
+        self.assert_blocked(
+            "[Closes](https://example.com) another-org/another-repo#43",
+            "[Closes](a(b)c) another-org/another-repo#43",
+            "[Closes][1] another-org/another-repo#43\n\n[1]: /x",
+            "[Closes] another-org/another-repo#43",
+            '[Fixes](x "t") [another-org/another-repo#43](y)',
+            "![Closes](i.png) another-org/another-repo#43",
+            "[**Closes**](x) another-org/another-repo#43",
+            # Quoted continuation lines and images show nothing between the words.
+            "> [Closes](u)\n> another-org/another-repo#43",
+            "> Closes\n> another-org/another-repo#43",
+            "- > [Closes](u)\n  > another-org/another-repo#43",
+            "Closes ![](i) another-org/another-repo#43",
+            "Closes ![x](i) another-org/another-repo#43",
+            "[Closes ![i](p)](u) another-org/another-repo#43",
+            # A link reference definition line renders as nothing.
+            "Closes\n[a]: /i\nanother-org/another-repo#43",
+            "Closes ![a]\n\n[a]: /i\nanother-org/another-repo#43",
+        )
+        self.assert_allowed(
+            "[Closes](https://example.com) the bug. Refs another-org/another-repo#43",
+            "See [the fix](x) for another-org/another-repo#43",
+            "Ports the upstream [fix](https://github.com/o/r/pull/12).\n\n"
+            "Refs https://github.com/another-org/another-repo/issues/43",
+            "\n".join(
+                f"- [Fix](https://github.com/o/r/pull/{i}) type {i} (notes)" for i in range(300)
+            ),
+        )
+
     def test_a_leading_byte_order_mark_is_dropped(self) -> None:
         self.assert_blocked(
-            f"﻿{FENCE}\nx\n{FENCE}\nCloses another-org/another-repo#43\n{FENCE}",
-            "﻿<div>\n# h\n    Closes another-org/another-repo#43",
-            f"﻿<pre>\n\n{FENCE}\n</pre>\nCloses another-org/another-repo#43\n{FENCE}",
+            f"\ufeff{FENCE}\nx\n{FENCE}\nCloses another-org/another-repo#43\n{FENCE}",
+            "\ufeff<div>\n# h\n    Closes another-org/another-repo#43",
+            f"\ufeff<pre>\n\n{FENCE}\n</pre>\nCloses another-org/another-repo#43\n{FENCE}",
         )
 
     def test_only_cr_and_lf_split_lines(self) -> None:
@@ -582,6 +613,9 @@ class PrTitleValidatorTest(unittest.TestCase):
             "Closes <?" * 7000,
             "fix<?" * 5000 + ">" + " " * 35000,
             "fix<!--" * 4000 + "-->" + " " * 35000,
+            "fix](" * 5000 + ")" * 40536,
+            "Closes][" * 4000 + "]" * 33536,
+            "Closes ![" * 7000 + "]" * 10000,
             "Closes #1" + ", #2" * 15000 + ", a",
             f"- a\n  {FENCE}\n" * 6000,
         ):

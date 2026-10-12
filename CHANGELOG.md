@@ -133,6 +133,16 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 - **SUPPORT_MATRIX corrected to match CI (#72)** — the matrix claimed CUBRID 11.4 was "fully supported" and "all 62 recipes pass", but CI only runs `make verify` (46 stdout goldens) on CUBRID 11.2 / Python 3.12; the Flask/FastAPI/Streamlit/Django pytest suites and CUBRID 11.4 are never exercised in CI. Reworded the server/Python/recipe tables to state exactly what CI enforces vs. what is run manually or merely expected to work, removing the unenforced green checkmarks.
 
 ### CI
+- **The closing guard catches a closing keyword used as link text** —
+  `[Closes](url) owner/repo#N` renders as "Closes owner/repo#N", but the gap after
+  the keyword stopped at `]`. The `PR title` check now crosses a link's `]`,
+  `](destination)` or `][label]`, and also a quoted continuation line, an image's
+  alt text and a link reference definition line, each of which renders nothing
+  between the keyword and the reference. Each `)` or `]` is scanned once per check,
+  so adversarial link syntax stays under a second at GitHub's 65,536-character
+  limit. The fix came from Copilot's review of cubrid-lab/pycubrid#849, and
+  `pr-title.yml` is again byte-identical across pycubrid, sqlalchemy-cubrid,
+  cubrid-mcp-server and cubrid-cookbook-python.
 - **The closing guard also checks the PR title and commit messages, and owners with
   an underscore** — the PR title and the PR's commit messages make up the squash
   commit, so the `PR title` check now reads them too, as plain text: Markdown code
