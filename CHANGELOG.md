@@ -144,7 +144,8 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
   have (`alice_acme/repo#N`), are now matched in references and links. The job setup
   and these checks come from pycubrid's guard (cubrid-lab/pycubrid#845); the PR-body
   handling is unchanged. cubrid-mcp-server has the same change
-  (cubrid-lab/cubrid-mcp-server#276).
+  (cubrid-lab/cubrid-mcp-server#276); sqlalchemy-cubrid is to get it in a separate
+  pull request.
 - **The PR-body closing guard catches emphasized, linked, escaped and split
   closures, and fails closed where Markdown structure is uncertain** — the
   `PR title` check now rejects:

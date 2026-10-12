@@ -125,8 +125,9 @@ For changes to several repositories, create independent local issues and PRs.
 Never use issue auto-closing keywords with another repository's issue; its
 maintainer controls closure. The existing required PR title check rejects
 direct foreign-repository closing references in the PR body, the PR title and
-commit messages (main is squash-merged with the PR title and the commit
-messages) while allowing Refs links.
+commit messages while allowing Refs links. `main` is squash-merged with the PR
+title and the commit messages; an edit to the squash message at merge time is
+not checked, so do not add foreign closing keywords there.
 
 - An issue body is the current work specification, not a session transcript. Keep
   it current; put dated progress, pause and review outcomes in comments, and
