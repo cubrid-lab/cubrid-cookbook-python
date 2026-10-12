@@ -146,6 +146,47 @@ engine = create_engine("cubrid+pycubrid://dba@localhost:33000/testdb")
 docker compose up -d
 ```
 
+## 프로젝트 구조
+
+```
+cubrid-cookbook-python/
+├── quickstart/
+│   ├── 5min-fastapi/          # 5분 만에 Docker + FastAPI
+│   └── 5min-sqlalchemy/       # 5분 만에 Docker + SQLAlchemy
+├── migration/
+│   └── java-to-python/        # JDBC → pycubrid/SQLAlchemy 마이그레이션
+├── templates/
+│   ├── api-service-fastapi/   # 프로덕션 REST API (레시피 12개)
+│   ├── flask/                 # Flask + Flask-SQLAlchemy (레시피 11개)
+│   ├── django/                # 최소 구성 Django 앱
+│   ├── async-worker/          # Celery 백그라운드 작업
+│   ├── batch-etl/             # Pandas 데이터 파이프라인
+│   ├── ai-agent/              # AI 에이전트 상태 + MCP + RAG (레시피 5개)
+│   └── dashboard/             # Streamlit 대시보드 (레시피 5개)
+├── performance/
+│   ├── fetch-optimization/    # SELECT 튜닝 (벤치마크 포함)
+│   ├── bulk-insert/           # 쓰기 배치 처리 (벤치마크 포함)
+│   └── connection-pooling/    # 커넥션 풀 설정
+├── pitfalls/                  # 흔한 안티패턴 7가지
+│   └── reserved-words/        # 실제 DB로 검증한 예약어 레시피
+├── fundamentals/
+│   ├── connect/               # 연결 기초
+│   ├── crud/                  # CRUD 작업
+│   ├── transactions/          # 트랜잭션 관리
+│   ├── parameterized-queries/   # 파라미터 바인딩 쿼리
+│   ├── error-handling/        # 예외 처리 패턴
+│   ├── lob-handling/          # BLOB/CLOB
+│   ├── orm-basics/            # SQLAlchemy ORM
+│   ├── pycubrid/              # pycubrid DB-API 레시피 22개
+│   ├── sqlalchemy/            # SQLAlchemy 레시피 7개
+│   ├── pandas/                # Pandas 레시피 6개
+│   ├── async/                 # pycubrid.aio + 비동기 SQLAlchemy
+│   ├── alembic/               # 프로그래밍 방식 Alembic 마이그레이션
+│   ├── json/                  # 네이티브 JSON 컬럼 CRUD
+│   └── isolation-levels/      # MVCC 격리 수준 3가지
+└── docker-compose.yml         # CUBRID 11.2
+```
+
 ## 관련 프로젝트
 
 - [pycubrid](https://github.com/cubrid-lab/pycubrid) — CUBRID용 순수 Python DB-API 2.0 드라이버
