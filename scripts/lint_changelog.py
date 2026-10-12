@@ -44,8 +44,9 @@ ALLOWED_SECTIONS = (
 # older one keep their historical headings; their notes are never rewritten.
 SECTION_POLICY_CUTOFF = (0, 2, 0)
 # Tags cut before CHANGELOG.md existed (it was added after v0.2.0). They have no
-# sections on purpose: writing notes for them now would rewrite release history,
-# which needs a dry-run diff and maintainer approval (AGENTS.md "Release notes").
+# sections on purpose: writing them now would invent release notes that never
+# existed (AGENTS.md "Release notes"). Like SECTION_POLICY_CUTOFF, this is
+# repository-specific data; the other copies of this script have no such tags.
 PRE_CHANGELOG_TAGS = ("v0.1.0", "v0.2.0")
 
 

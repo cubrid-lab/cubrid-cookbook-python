@@ -183,8 +183,8 @@ class PrTitleValidatorTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_guard_block_matches_the_shared_copy(self) -> None:
-        # sqlalchemy-cubrid, cubrid-mcp-server and cubrid-cookbook-python are meant
-        # to carry the same guard; change every copy and this hash together.
+        # sqlalchemy-cubrid, cubrid-mcp-server and cubrid-cookbook-python carry
+        # the same guard; change every copy and this hash together.
         text = WORKFLOW.read_text(encoding="utf-8")
         start = text.index("# BEGIN cross-repo-closing-guard")
         stop = text.index("# END cross-repo-closing-guard")

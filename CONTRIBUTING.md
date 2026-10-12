@@ -90,7 +90,9 @@ and in releases after 0.2.0 (`SECTION_POLICY_CUTOFF`); released history up to 0.
 never rewritten, and different releases may reuse the same heading names. A duplicate
 heading before the first release header is always an error.
 `scripts/lint_changelog.py` is identical in pycubrid, sqlalchemy-cubrid,
-cubrid-mcp-server and this cookbook except for `SECTION_POLICY_CUTOFF`.
+cubrid-mcp-server and this cookbook except for repository-specific data:
+`SECTION_POLICY_CUTOFF`, and here also `PRE_CHANGELOG_TAGS` with the message for an
+`[Unreleased]`-only changelog (only this cookbook has tags older than its changelog).
 
 ### Dependency updates
 
@@ -819,10 +821,11 @@ inherited. Close only this repository's issues (Closes #N). PRs with no local
 issue may state N/A and a reason. The existing PR title check rejects direct
 cross-repository issue-closing keywords in the PR body, including emphasized or
 linked ones. It ignores only fenced and indented code blocks and HTML comment
-blocks. After a fence inside a list item, a block quote or raw HTML, later
-fences and comments are checked too, and comments after any HTML tag are always
-checked. Inline code and inline comments are always checked. Commit messages
-are not checked, so keep foreign closing keywords out of them too. External
+blocks, and only where their extent is certain: after a fence it cannot follow
+(in a list item, footnote, block quote or raw HTML), later fences and comments
+are checked too; comments after any HTML tag are checked; and after a raw-text
+element such as `<textarea>` or `<select>` nothing is ignored. Inline code and
+inline comments are always checked. Commit messages are not checked, so keep foreign closing keywords out of them too. External
 contributors do not need to install internal agent tools or create duplicate
 work.
 
