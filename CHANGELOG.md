@@ -142,10 +142,10 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
   empty), and fails when a PR has 250 or more commits, because GitHub lists only
   250. A test pins that step. Owners with an underscore, as Enterprise Managed Users
   have (`alice_acme/repo#N`), are now matched in references and links. The job setup
-  and these checks come from pycubrid's guard (cubrid-lab/pycubrid#845); the PR-body
-  handling is unchanged. cubrid-mcp-server has the same change
-  (cubrid-lab/cubrid-mcp-server#276); sqlalchemy-cubrid is to get it in a separate
-  pull request.
+  and these checks come from pycubrid's guard (cubrid-lab/pycubrid#845); Markdown
+  handling of the PR body is unchanged, and underscore owners are matched there too.
+  cubrid-mcp-server has the same change (cubrid-lab/cubrid-mcp-server#276);
+  sqlalchemy-cubrid (cubrid-lab/sqlalchemy-cubrid#818) has it too.
 - **The PR-body closing guard catches emphasized, linked, escaped and split
   closures, and fails closed where Markdown structure is uncertain** — the
   `PR title` check now rejects:
@@ -165,7 +165,7 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
   code and inline comments are scanned, because hiding them needs inline parsing
   that link destinations, HTML attributes and autolinks can defeat. Once a fence
   appears where its extent is unknown (in a list item, a block quote, after a list
-  marker, inside raw HTML, on an indented line, or a line that only looks like a
+  marker, inside raw HTML, on an indented line, or as a line that only looks like a
   fence), no later fence or comment is hidden, so a closing fence can never be
   misread as an opener. Raw HTML blocks end where CommonMark ends them, and any
   other line starting with a tag is treated as raw HTML until a blank line. Comments
