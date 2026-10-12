@@ -191,6 +191,14 @@ class LintChangelogTests(unittest.TestCase):
     def test_changelog_without_release_sections_is_rejected(self) -> None:
         self.assert_rejected("# Changelog\n### Added\n- x\n", "No version sections found")
 
+    def test_unreleased_only_changelog_names_the_pre_changelog_tags(self) -> None:
+        # v0.1.0 and v0.2.0 were tagged before CHANGELOG.md existed, so having no
+        # release section is expected, not a warning.
+        result = self.lint("## [Unreleased]\n### Added\n- x\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("WARNING", result.stdout + result.stderr)
+        self.assertIn("v0.1.0, v0.2.0 predate CHANGELOG.md", result.stdout)
+
     def test_first_section_must_be_unreleased(self) -> None:
         self.assert_rejected(
             "## [0.3.0]\n### Fixed\n- x\n## [Unreleased]\n### Fixed\n- y\n",

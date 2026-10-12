@@ -43,6 +43,10 @@ ALLOWED_SECTIONS = (
 # Latest release when the section policy was adopted. This release and every
 # older one keep their historical headings; their notes are never rewritten.
 SECTION_POLICY_CUTOFF = (0, 2, 0)
+# Tags cut before CHANGELOG.md existed (it was added after v0.2.0). They have no
+# sections on purpose: writing notes for them now would rewrite release history,
+# which needs a dry-run diff and maintainer approval (AGENTS.md "Release notes").
+PRE_CHANGELOG_TAGS = ("v0.1.0", "v0.2.0")
 
 
 def section_policy_applies(name: str) -> bool:
@@ -159,7 +163,10 @@ def main() -> int:
     versions = [h for h in headers if h != "Unreleased"]
 
     if not versions:
-        print("WARNING: No released versions in CHANGELOG (only [Unreleased])")
+        print(
+            "OK: no release sections yet; tags "
+            f"{', '.join(PRE_CHANGELOG_TAGS)} predate CHANGELOG.md and have none"
+        )
         return 0
 
     # Rule 3: No duplicate version sections
