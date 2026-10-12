@@ -7,10 +7,9 @@
     "demos/agent-state-video.tape": "00b29a8d6ee0290c303bffe2695b667be0ff33dc283a4f5e27f222857ee84241",
     "demos/mcp-toolchain.tape": "41c6bb0d6a2116d39b5378c00df96eeece1aa43583409e5c9129f2e7f6214770",
     "demos/dashboard.tape": "ef745985e6e4d17b93c575a7d3200c6142071414d1129fc429f1fffd547cdefa",
-    "demos/record_browser.py": "8252a57b0c2e88b6331356e2c28733596b923cdccdaf1c5b65fc9dc4eb984fa4",
-    "demos/build_media.sh": "44c3a27677966edce1f3ba0a20412515c6f4c1b63bc3ff724df03a645bc35824"
+    "demos/record_browser.py": "253c78d1509b623d40bf91472dde74cbe68e841dd73dddcb582a9470a898ea3d",
+    "demos/build_media.sh": "4af9f6c541d9cd28a38e194020f042eeed894bb9ad726f929dc734feb4ac62fc"
   },
-  "source_notes": "demos/record_browser.py was reformatted by ruff format (one expression re-wrapped) after the browser recordings; its behavior is unchanged.",
   "python_environment": {
     "python": "3.12.13",
     "origin": "Published PyPI releases installed with uv into a fresh virtual environment",
@@ -51,7 +50,7 @@
         "sqlalchemy-cubrid": "1.11.0"
       },
       "compose": "templates/dashboard/docker-compose.yml unchanged, with COMPOSE_PROJECT_NAME=clcb-113-dash and an override file that only sets container_name (clcb-113-dash-cubrid, clcb-113-dash-app); default ports 33000 and 8501",
-      "state": "Fresh cubrid_data volume; the pip cache volume was reused"
+      "state": "Fresh cubrid_data and pip_cache volumes (docker compose down -v before the run)"
     }
   },
   "tools": {
@@ -74,8 +73,8 @@
       "codec": "gif"
     },
     "docs/demo-fastapi.gif": {
-      "sha256": "ae3a5defd74b693037e144ba89de36e5b908f30a3d86663d800b4a83f2003fd1",
-      "bytes": 1124009,
+      "sha256": "49eef114cddd692873143d1028cfa4ed35fb89d6caf8539bc04d3ac61a13c5d5",
+      "bytes": 1340164,
       "width": 960,
       "height": 540,
       "duration_seconds": 12.0,
@@ -83,21 +82,21 @@
       "codec": "gif"
     },
     "docs/demo-dashboard.gif": {
-      "sha256": "bba5753da6e08512f7787831eecf24323aa342555b989b77e155875b91d0ebd8",
-      "bytes": 1339922,
+      "sha256": "b28b79798491b54e0f33dbb9b55cffea96460ca927ac4e72e921e459529839ab",
+      "bytes": 1745758,
       "width": 960,
       "height": 540,
-      "duration_seconds": 11.0,
-      "frames": 110,
+      "duration_seconds": 12.0,
+      "frames": 120,
       "codec": "gif"
     },
     "docs/assets/videos/dashboard.mp4": {
-      "sha256": "a81a703c4d39b57da3696759069a03cf4127b43227eac0cca823484a51a3cb89",
-      "bytes": 305540,
+      "sha256": "3256d65b30aa165e0525eea1de6e0488a261d532254da4628ebbcaf0291d3513",
+      "bytes": 340726,
       "width": 1280,
       "height": 720,
-      "duration_seconds": 35.68,
-      "frames": 892,
+      "duration_seconds": 41.92,
+      "frames": 1048,
       "codec": "h264",
       "pixel_format": "yuv420p"
     },

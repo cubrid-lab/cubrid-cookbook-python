@@ -20,7 +20,7 @@ gif() {
         "fps=10,scale=960:-2:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
         "$dst"
 }
-gif "$A/raw/dashboard.webm" 3.5 11 "$OUT/demo-dashboard.gif"
+gif "$A/raw/dashboard.webm" 9.5 12 "$OUT/demo-dashboard.gif"
 gif "$A/raw/fastapi.webm" 0.5 12 "$OUT/demo-fastapi.gif"
 
 # Terminal half + browser half -> docs-site dashboard MP4 (H.264, 25 fps, yuv420p).

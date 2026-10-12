@@ -50,10 +50,15 @@ def record_dashboard(page: Page) -> None:
         page.wait_for_timeout(300)
     page.wait_for_timeout(1_000)
     page.get_by_role("button", name="Reset Demo Data").click()
-    expect(page.get_by_text("Rows shown: 15")).to_be_visible(timeout=30_000)
+    # Only the rerun triggered by the click renders this message.
+    reset_done = page.get_by_text("Demo tables recreated and reseeded.")
+    expect(reset_done).to_be_visible(timeout=30_000)
+    expect(page.get_by_text("Rows shown: 15")).to_be_visible()
     page.wait_for_timeout(2_000)
     page.get_by_role("button", name="Refresh").click()
-    expect(page.get_by_text("Rows shown: 15")).to_be_visible(timeout=30_000)
+    # st.rerun() starts a run without the Reset click, which drops the message.
+    expect(reset_done).to_have_count(0, timeout=30_000)
+    expect(page.get_by_text("Rows shown: 15")).to_be_visible()
     page.wait_for_timeout(3_000)
 
 
@@ -102,6 +107,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("name", choices=sorted(SCENARIOS))
     args = parser.parse_args(argv)
     RAW_DIR.mkdir(parents=True, exist_ok=True)
+    target = RAW_DIR / f"{args.name}.webm"
+    # A failed run must not leave an older recording for build_media.sh to reuse.
+    target.unlink(missing_ok=True)
     with tempfile.TemporaryDirectory() as tmp, sync_playwright() as playwright:
         launch = (
             {"executable_path": os.environ["DEMO_CHROME"]} if "DEMO_CHROME" in os.environ else {}
@@ -119,7 +127,6 @@ def main(argv: list[str] | None = None) -> int:
             browser.close()
         if video is None:
             raise RuntimeError("Playwright recorded no video")
-        target = RAW_DIR / f"{args.name}.webm"
         shutil.move(video.path(), target)
     print(f"Recorded {target.relative_to(ROOT)}")
     return 0

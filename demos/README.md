@@ -48,6 +48,7 @@ From the repository root, with the virtual environment active:
 ```bash
 # 1. Terminal demos against a fresh CUBRID 11.4 (CUBRID_PORT if not 33000)
 docker run -d --name demo-cubrid -p 127.0.0.1:33000:33000 -e CUBRID_DB=testdb cubrid/cubrid:11.4
+timeout 180 bash -c 'until docker exec demo-cubrid csql -u dba testdb -c "SELECT 1" > /dev/null 2>&1; do sleep 2; done'
 vhs validate demos/*.tape
 vhs demos/agent-state.tape
 # empty the database again (drop the agent_* and cookbook_agent_products tables)
