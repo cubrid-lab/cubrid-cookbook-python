@@ -86,7 +86,7 @@ INVALID = (
 
 TICK = chr(96)
 FENCE = TICK * 3
-GUARD_SHA256 = "a34a6dc8d17455b9f200b5a8b1a8e8561685429cc56b02a504a15a5758686913"
+GUARD_SHA256 = "d39a874035ae3baf0bfd7190c66350eb9305d8533c87373f72c6b4f7f33f1977"
 
 
 def _validator() -> str:
@@ -567,6 +567,8 @@ class PrTitleValidatorTest(unittest.TestCase):
             # A link reference definition line renders as nothing.
             "Closes\n[a]: /i\nanother-org/another-repo#43",
             "Closes ![a]\n\n[a]: /i\nanother-org/another-repo#43",
+            "Closes\n[a]:\n  /target\nanother-org/another-repo#43",
+            'Closes\n[a]:\n  /target\n  "title"\nanother-org/another-repo#43',
         )
         self.assert_allowed(
             "[Closes](https://example.com) the bug. Refs another-org/another-repo#43",

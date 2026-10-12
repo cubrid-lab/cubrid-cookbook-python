@@ -133,6 +133,14 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 - **SUPPORT_MATRIX corrected to match CI (#72)** — the matrix claimed CUBRID 11.4 was "fully supported" and "all 62 recipes pass", but CI only runs `make verify` (46 stdout goldens) on CUBRID 11.2 / Python 3.12; the Flask/FastAPI/Streamlit/Django pytest suites and CUBRID 11.4 are never exercised in CI. Reworded the server/Python/recipe tables to state exactly what CI enforces vs. what is run manually or merely expected to work, removing the unenforced green checkmarks.
 
 ### CI
+- **The closing guard skips a multi-line link reference definition** — CommonMark
+  lets a definition's destination and title sit on the next two lines, so `Closes`,
+  a `[a]:` line, an indented `/target` line and then `owner/repo#N` still renders
+  nothing between the keyword and the reference. The gap walk now reaches the ends
+  of the next two lines after a definition line, which can only add blocking.
+  Copilot found this in cubrid-lab/sqlalchemy-cubrid#822; `pr-title.yml` stays
+  byte-identical across pycubrid, sqlalchemy-cubrid, cubrid-mcp-server and
+  cubrid-cookbook-python.
 - **The closing guard catches a closing keyword used as link text** —
   `[Closes](url) owner/repo#N` renders as "Closes owner/repo#N", but the gap after
   the keyword stopped at `]`. The `PR title` check now crosses a link's `]`,

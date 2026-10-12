@@ -324,7 +324,13 @@ jobs:
                           todo.extend(closer_ends(text, pos + 2, closer, scanned))
                   line = definition.match(text, pos)
                   if line is not None:
-                      todo.append(line.end())
+                      # The destination and title may be on the next two lines.
+                      end = line.end()
+                      for _ in range(3):
+                          todo.append(end)
+                          end = text.find("\n", end + 1)
+                          if end < 0:
+                              break
                   if text.startswith("![", pos):
                       # An image shows no text: skip its alt text to any "]" and walk
                       # on from there, through the "](destination)".
