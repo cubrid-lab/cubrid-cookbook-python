@@ -73,7 +73,7 @@ jobs:
 
           base = f"origin/{os.environ['BASE_REF']}"
           changed = subprocess.check_output(
-              ["git", "diff", "--name-only", f"{base}...HEAD"], text=True
+              ["git", "diff", "--name-only", "--no-renames", f"{base}...HEAD"], text=True
           ).splitlines()
 
           def globs(name):

@@ -23,6 +23,10 @@ def workflow_python() -> str:
 
 
 class DocsReasonWorkflowTests(unittest.TestCase):
+    def test_changed_files_list_keeps_both_sides_of_a_rename(self) -> None:
+        # Plain --name-only prints only the new path of a rename, hiding the old one.
+        self.assertIn('"--name-only", "--no-renames"', WORKFLOW.read_text())
+
     def test_workflow_token_is_read_only(self) -> None:
         text = WORKFLOW.read_text()
         permissions = text.split("\npermissions:\n", 1)[1].split("\njobs:", 1)[0]

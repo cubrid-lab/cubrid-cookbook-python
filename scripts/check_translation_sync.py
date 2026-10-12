@@ -25,19 +25,15 @@ def changed_files() -> set[str]:
     base = os.environ.get("BASE_REF", "main")
     ref = base if base.startswith("origin/") else f"origin/{base}"
     out = subprocess.run(
-        ["git", "diff", "--name-only", "--find-renames", f"{ref}...HEAD"],
+        ["git", "diff", "--name-only", "--no-renames", f"{ref}...HEAD"],
         capture_output=True,
         text=True,
         check=True,
     ).stdout
-    # --find-renames keeps a rename as old	new; both sides matter
-    files = set()
-    for line in out.splitlines():
-        parts = line.split("\t")
-        for p in parts:
-            if p.strip():
-                files.add(p.strip())
-    return files
+    # --no-renames reports a rename as a deletion of the old path plus an addition
+    # of the new one, so both sides are listed, one path per line. Plain
+    # --name-only would print only the new path of a rename.
+    return {line.strip() for line in out.splitlines() if line.strip()}
 
 
 def main() -> int:

@@ -43,7 +43,7 @@ class ChangedFilesTests(unittest.TestCase):
                 check_translation_sync.changed_files()
         self.assertEqual(
             run.call_args.args[0],
-            ["git", "diff", "--name-only", "--find-renames", "origin/main...HEAD"],
+            ["git", "diff", "--name-only", "--no-renames", "origin/main...HEAD"],
         )
 
     def test_base_ref_gets_origin_prefix(self) -> None:
@@ -61,12 +61,69 @@ class ChangedFilesTests(unittest.TestCase):
                 check_translation_sync.changed_files()
         self.assertTrue(run.call_args.kwargs["check"])
 
-    def test_tab_separated_paths_are_both_collected_and_blank_lines_dropped(self) -> None:
-        # Pins the parser's tolerance for ``old<TAB>new`` lines only. Plain
-        # ``git diff --name-only`` prints just the new path of a rename.
-        stdout = "README.md\ndocs/old.md\tdocs/new.md\n\n  \nCHANGELOG.md\n"
-        files, _ = self._run(stdout, {"BASE_REF": "main"})
-        self.assertEqual(files, {"README.md", "docs/old.md", "docs/new.md", "CHANGELOG.md"})
+    def test_blank_lines_are_dropped(self) -> None:
+        files, _ = self._run("README.md\n\n  \nCHANGELOG.md\n", {"BASE_REF": "main"})
+        self.assertEqual(files, {"README.md", "CHANGELOG.md"})
+
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+
+class ChangedFilesRealGitTests(unittest.TestCase):
+    """Run the real ``git diff`` so the tests use git's actual output format."""
+
+    def _changed(self, mutate) -> set[str]:  # type: ignore[no-untyped-def]
+        previous = Path.cwd()
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            _git(repo, "init", "-q", "-b", "main")
+            body = "".join(f"line {i}\n" for i in range(40))
+            (repo / "README.md").write_text(body, encoding="utf-8")
+            (repo / "other.md").write_text("unrelated\n", encoding="utf-8")
+            _git(repo, "add", ".")
+            _git(repo, "commit", "-q", "-m", "base")
+            _git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+            mutate(repo, body)
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "change")
+            os.chdir(repo)
+            try:
+                with mock.patch.dict(os.environ, {"BASE_REF": "main"}):
+                    return check_translation_sync.changed_files()
+            finally:
+                os.chdir(previous)
+
+    def test_modification_lists_the_path(self) -> None:
+        files = self._changed(lambda repo, body: (repo / "README.md").write_text(body + "x\n"))
+        self.assertEqual(files, {"README.md"})
+
+    def test_rename_lists_old_and_new_paths(self) -> None:
+        files = self._changed(lambda repo, body: (repo / "README.md").rename(repo / "GUIDE.md"))
+        self.assertEqual(files, {"README.md", "GUIDE.md"})
+
+    def test_rename_with_edits_lists_old_and_new_paths(self) -> None:
+        def mutate(repo: Path, body: str) -> None:
+            (repo / "README.md").rename(repo / "GUIDE.md")
+            (repo / "GUIDE.md").write_text(body + "edited\n", encoding="utf-8")
+
+        self.assertEqual(self._changed(mutate), {"README.md", "GUIDE.md"})
+
+    def test_copy_lists_only_the_new_path(self) -> None:
+        # The source of a copy is unchanged, so only the new file is a change.
+        files = self._changed(
+            lambda repo, body: (repo / "COPY.md").write_text(body, encoding="utf-8")
+        )
+        self.assertEqual(files, {"COPY.md"})
+
+    def test_rename_of_source_triggers_the_korean_requirement(self) -> None:
+        files = self._changed(lambda repo, body: (repo / "README.md").rename(repo / "GUIDE.md"))
+        self.assertIn(check_translation_sync.SOURCE.as_posix(), files)
 
 
 class MainTests(unittest.TestCase):
