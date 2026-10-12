@@ -138,11 +138,11 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
   the keyword stopped at `]`. The `PR title` check now crosses a link's `]`,
   `](destination)` or `][label]`, and also a quoted continuation line, an image's
   alt text and a link reference definition line, each of which renders nothing
-  between the keyword and the reference. Each `)` or `]` is scanned once per check,
-  so adversarial link syntax stays under a second at GitHub's 65,536-character
-  limit. The fix came from Copilot's review of cubrid-lab/pycubrid#849, and
-  `pr-title.yml` is again byte-identical across pycubrid, sqlalchemy-cubrid,
-  cubrid-mcp-server and cubrid-cookbook-python.
+  between the keyword and the reference. Scanning stays linear in the body length,
+  so adversarial link syntax at GitHub's 65,536-character limit stays well under the
+  tests' 5-second timeout. The fix came from Copilot's review of
+  cubrid-lab/pycubrid#849, and `pr-title.yml` is again byte-identical across
+  pycubrid, sqlalchemy-cubrid, cubrid-mcp-server and cubrid-cookbook-python.
 - **The closing guard also checks the PR title and commit messages, and owners with
   an underscore** — the PR title and the PR's commit messages make up the squash
   commit, so the `PR title` check now reads them too, as plain text: Markdown code
