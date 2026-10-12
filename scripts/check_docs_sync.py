@@ -17,7 +17,8 @@ of one of the category roots):
    (``make verify`` golden files) or a ``tests/`` directory (pytest). Examples
    without either are reported as warnings and do not fail the gate, so the
    existing coverage backlog can be paid down incrementally. Intentional
-   exceptions are listed in ``scripts/docs-sync-allowlist.txt``.
+   exceptions are listed in ``scripts/docs-sync-allowlist.txt``, each with an
+   inline ``# reason``; an entry without one fails the gate (issue #174).
 
 Run ``python3 scripts/check_docs_sync.py`` from the repository root.
 """
@@ -100,8 +101,9 @@ def discover_examples(repo_root: Path) -> list[str]:
 def load_allowlist(allowlist_path: Path) -> set[str]:
     """Parse an allowlist file into a set of exempt example paths.
 
-    Blank lines and ``#`` comments are ignored; an inline ``#`` comment on an
-    entry line is stripped so a reason can be recorded next to each path.
+    Blank lines and full-line ``#`` comments are ignored. Every entry must record
+    its reason as an inline ``# reason`` comment; the reason may itself contain
+    ``#``. Raises ValueError, naming the file and line, for an entry without one.
 
     >>> import tempfile, os
     >>> f = tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False)
@@ -109,6 +111,11 @@ def load_allowlist(allowlist_path: Path) -> set[str]:
     >>> f.close()
     >>> sorted(load_allowlist(Path(f.name)))
     ['performance/bulk-insert']
+    >>> _ = Path(f.name).write_text("performance/foo\\n")
+    >>> load_allowlist(Path(f.name))  # doctest: +ELLIPSIS
+    Traceback (most recent call last):
+    ...
+    ValueError: ...:1: allowlist entry 'performance/foo' needs a trailing '# reason' comment
     >>> os.unlink(f.name)
     >>> load_allowlist(Path("/does/not/exist.txt"))
     set()
@@ -116,10 +123,19 @@ def load_allowlist(allowlist_path: Path) -> set[str]:
     if not allowlist_path.is_file():
         return set()
     entries: set[str] = set()
-    for raw in allowlist_path.read_text(encoding="utf-8").splitlines():
-        line = raw.split("#", 1)[0].strip()
-        if line:
-            entries.add(line)
+    lines = allowlist_path.read_text(encoding="utf-8").splitlines()
+    for lineno, raw in enumerate(lines, 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        path_part, sep, reason = line.partition("#")
+        path_part = path_part.strip()
+        if not sep or not reason.strip():
+            raise ValueError(
+                f"{allowlist_path.name}:{lineno}: allowlist entry '{path_part}' needs a "
+                "trailing '# reason' comment"
+            )
+        entries.add(path_part)
     return entries
 
 
@@ -155,7 +171,11 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parent.parent
     readme_text = (repo_root / "README.md").read_text(encoding="utf-8")
     llms_text = (repo_root / "llms.txt").read_text(encoding="utf-8")
-    allowlist = load_allowlist(repo_root / "scripts" / "docs-sync-allowlist.txt")
+    try:
+        allowlist = load_allowlist(repo_root / "scripts" / "docs-sync-allowlist.txt")
+    except ValueError as exc:
+        print(f"ERROR: invalid docs-sync allowlist: {exc}")
+        return 1
 
     examples = discover_examples(repo_root)
     undocumented = find_undocumented(examples, readme_text)

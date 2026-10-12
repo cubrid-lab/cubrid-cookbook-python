@@ -50,8 +50,9 @@ Run it locally before opening a PR:
 python3 scripts/check_docs_sync.py
 ```
 
-Intentional coverage exceptions live in `scripts/docs-sync-allowlist.txt` with a
-recorded reason.
+Intentional coverage exceptions live in `scripts/docs-sync-allowlist.txt`, one
+`path  # reason` per line. The reason is required: an entry without one fails the
+gate with an error naming the line.
 
 ### Offline contributor checks
 
