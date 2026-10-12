@@ -35,8 +35,9 @@ Example counts and tested versions change often; `README.md` and
 - Use English for GitHub issues, pull requests, and comments; localized documentation is welcome, and no specific tool is required.
 - Use `cookbook_` table prefix in all SQL examples.
 - Avoid CUBRID reserved words in column names: `value` → `val`, `count` → `cnt`, `data` → `file_data`.
-- Use `from __future__ import annotations` in new Python modules. The existing FastAPI,
-  Flask and Django template recipes omit it; keep each recipe internally consistent.
+- Use `from __future__ import annotations` in new Python modules. Some existing FastAPI,
+  Flask and Django template modules omit it; treat those as legacy module-level
+  exceptions, not a pattern to copy.
 - Use parameterized queries (`?` markers) — never string interpolation.
 - If an example's setup or dependencies change, update the surrounding docs in the same change.
 - Avoid adding hidden prerequisites that are not documented.
@@ -305,7 +306,9 @@ Do not mark work complete until code, tests, and documentation are consistent.
 
 cubrid-cookbook-python provides copy-and-run examples for Python developers adopting CUBRID.
 All examples must be independently runnable against CUBRID via Docker (`make up` starts
-11.2 by default); CI verifies them on CUBRID 11.2 and 11.4, see [`SUPPORT_MATRIX.md`](SUPPORT_MATRIX.md).
+11.2 by default). The golden-backed examples and most template suites are CI-verified on
+CUBRID 11.2 and 11.4; [`SUPPORT_MATRIX.md`](SUPPORT_MATRIX.md) lists each recipe's coverage and
+the exceptions (offline-only or not live-covered).
 
 ### Key Sections
 
