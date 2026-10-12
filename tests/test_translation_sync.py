@@ -56,11 +56,14 @@ class ChangedFilesTests(unittest.TestCase):
 
     def test_git_failure_is_raised(self) -> None:
         error = subprocess.CalledProcessError(128, ["git", "diff"])
-        with mock.patch("subprocess.run", side_effect=error):
+        with mock.patch("subprocess.run", side_effect=error) as run:
             with self.assertRaises(subprocess.CalledProcessError):
                 check_translation_sync.changed_files()
+        self.assertTrue(run.call_args.kwargs["check"])
 
-    def test_rename_contributes_both_sides_and_blank_lines_are_dropped(self) -> None:
+    def test_tab_separated_paths_are_both_collected_and_blank_lines_dropped(self) -> None:
+        # Pins the parser's tolerance for ``old<TAB>new`` lines only. Plain
+        # ``git diff --name-only`` prints just the new path of a rename.
         stdout = "README.md\ndocs/old.md\tdocs/new.md\n\n  \nCHANGELOG.md\n"
         files, _ = self._run(stdout, {"BASE_REF": "main"})
         self.assertEqual(files, {"README.md", "docs/old.md", "docs/new.md", "CHANGELOG.md"})
