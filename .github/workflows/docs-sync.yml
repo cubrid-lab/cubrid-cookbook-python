@@ -25,6 +25,7 @@ jobs:
         run: |
           python -m doctest scripts/check_docs_reason.py -v
           python -m unittest discover -s tests -p 'test_docs_reason.py' -v
+          python -m unittest discover -s tests -p 'test_translation_sync.py' -v
 
       - name: Check behavior changes have docs updates
         # Dependency-only Dependabot PRs never carry doc changes; exempt them so

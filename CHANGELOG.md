@@ -144,6 +144,7 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 - **SUPPORT_MATRIX corrected to match CI (#72)** — the matrix claimed CUBRID 11.4 was "fully supported" and "all 62 recipes pass", but CI only runs `make verify` (46 stdout goldens) on CUBRID 11.2 / Python 3.12; the Flask/FastAPI/Streamlit/Django pytest suites and CUBRID 11.4 are never exercised in CI. Reworded the server/Python/recipe tables to state exactly what CI enforces vs. what is run manually or merely expected to work, removing the unenforced green checkmarks.
 
 ### CI
+- **`scripts/check_translation_sync.py` has offline tests** — `tests/test_translation_sync.py` covers the `BASE_REF` handling of `changed_files()` (default `main`, `origin/` prefix added once, rename lines contributing both paths, a failing `git` raised) and `main()` (no translations present, unchanged `README.md`, a missing Korean translation failing, a missing community translation only warning, an unknown language labelled by its code). The tests run in `make check-docs` and in the `docs-sync` workflow. The script is unchanged.
 - **The closing guard skips a multi-line link reference definition** — CommonMark
   lets a definition's destination and title run on to later lines, so `Closes`, a
   `[a]:` line, an indented `/target` line and then `owner/repo#N` still renders
