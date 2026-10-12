@@ -60,6 +60,10 @@ DDL = [
     """,
 ]
 
+# Ownership marker stored in each sample document's metadata. A rerun deletes
+# only documents carrying it, never a reader's documents with the same source.
+DEMO_MARKER = "cookbook-ai-agent-rag-demo"
+
 SAMPLE_DOCS = [
     {
         "title": "CUBRID Python Driver Guide",
@@ -68,7 +72,12 @@ SAMPLE_DOCS = [
         "It supports sync and async connections, LOB handling, "
         "parameterized queries, and works on Python 3.11+.",
         "tags": ["driver", "python", "getting-started"],
-        "metadata": {"author": "cubrid-lab", "type": "documentation", "version": "1.7"},
+        "metadata": {
+            "author": "cubrid-lab",
+            "type": "documentation",
+            "version": "1.7",
+            "recipe": DEMO_MARKER,
+        },
     },
     {
         "title": "SQLAlchemy CUBRID Dialect",
@@ -77,7 +86,12 @@ SAMPLE_DOCS = [
         "supporting ORM, Core, Alembic migrations, JSON types, "
         "and three driver backends.",
         "tags": ["orm", "sqlalchemy", "python"],
-        "metadata": {"author": "cubrid-lab", "type": "documentation", "version": "1.7"},
+        "metadata": {
+            "author": "cubrid-lab",
+            "type": "documentation",
+            "version": "1.7",
+            "recipe": DEMO_MARKER,
+        },
     },
     {
         "title": "MCP Server for CUBRID",
@@ -86,7 +100,12 @@ SAMPLE_DOCS = [
         "lets LLM clients safely query CUBRID with read-only "
         "whitelisting and opt-in write mode.",
         "tags": ["mcp", "ai", "llm", "safety"],
-        "metadata": {"author": "cubrid-lab", "type": "tool", "version": "0.4"},
+        "metadata": {
+            "author": "cubrid-lab",
+            "type": "tool",
+            "version": "0.4",
+            "recipe": DEMO_MARKER,
+        },
     },
 ]
 
@@ -99,17 +118,20 @@ def setup(conn: pycubrid.connection.Connection) -> None:
     cur.close()
 
 
-def remove_documents(conn: pycubrid.connection.Connection, sources: list[str]) -> None:
-    """Delete documents by source, with their chunks (children first).
+def remove_demo_documents(conn: pycubrid.connection.Connection) -> None:
+    """Delete the sample documents of a previous run, with their chunks (children first).
 
-    Re-ingesting a source replaces its previous copy, so the demo can run
-    again on the same database without retrieving duplicates.
+    Only documents whose metadata carries DEMO_MARKER are removed, so the demo
+    can run again on the same database without retrieving duplicates.
     """
-    markers = ", ".join("?" for _ in sources)
-    doc_ids = "SELECT id FROM rag_documents WHERE source IN (" + markers + ")"
+    owned = "JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.recipe')) = ?"
     cur = conn.cursor()
-    cur.execute("DELETE FROM rag_chunks WHERE document_id IN (" + doc_ids + ")", sources)
-    cur.execute("DELETE FROM rag_documents WHERE source IN (" + markers + ")", sources)
+    cur.execute(
+        "DELETE FROM rag_chunks WHERE document_id IN "
+        "(SELECT id FROM rag_documents WHERE " + owned + ")",
+        [DEMO_MARKER],
+    )
+    cur.execute("DELETE FROM rag_documents WHERE " + owned, [DEMO_MARKER])
     conn.commit()
     cur.close()
 
@@ -220,7 +242,7 @@ def main() -> None:
         setup(conn)
 
         # Ingest sample documents, replacing any copies from a previous run
-        remove_documents(conn, [doc["source"] for doc in SAMPLE_DOCS])
+        remove_demo_documents(conn)
         print("Ingesting documents...")
         for doc in SAMPLE_DOCS:
             doc_id = ingest_document(conn, doc)

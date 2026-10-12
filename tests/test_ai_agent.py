@@ -78,6 +78,43 @@ RECIPE_TABLES = {
     ),
     "05_chatbot_backend.py": ("chat_messages", "chat_conversations", "chat_users"),
 }
+# A reader's rows that look like demonstration data (a generic session key, the
+# username "alice", a document with a sample source URL but no recipe marker).
+UNRELATED_ROWS = {
+    "01_agent_state.py": (
+        "INSERT INTO agent_sessions (session_key, agent_name) VALUES ('demo-001', 'reader')",
+        "SELECT COUNT(*) FROM agent_sessions WHERE session_key = 'demo-001'",
+    ),
+    "03_rag_metadata.py": (
+        "INSERT INTO rag_documents (title, source, content, metadata) VALUES ('Reader notes', "
+        "'https://github.com/cubrid-lab/pycubrid', 'Reader notes', '{\"author\": \"reader\"}')",
+        "SELECT COUNT(*) FROM rag_documents WHERE title = 'Reader notes'",
+    ),
+    "04_agent_loop.py": (
+        "INSERT INTO agent_sessions (session_key, agent_name) VALUES ('agent-loop-demo', 'reader')",
+        "SELECT COUNT(*) FROM agent_sessions WHERE session_key = 'agent-loop-demo'",
+    ),
+    "05_chatbot_backend.py": (
+        "INSERT INTO chat_users (username, display_name, preferences) "
+        "VALUES ('alice', 'Reader Alice', '{}')",
+        "SELECT COUNT(*) FROM chat_users WHERE username = 'alice'",
+    ),
+}
+
+
+def live_connection():
+    parsed = urlparse(CUBRID_TEST_URL)
+    return pycubrid.connect(
+        host=parsed.hostname or "localhost",
+        port=parsed.port or 33000,
+        user=unquote(parsed.username or "dba"),
+        password=unquote(parsed.password or ""),
+        database=unquote(parsed.path.lstrip("/")) or "testdb",
+        connect_timeout=10,
+        read_timeout=15,
+    )
+
+
 AI_AGENT_RECIPES = [REPO_ROOT / "templates/ai-agent" / name for name in RECIPE_TABLES]
 
 
@@ -127,5 +164,16 @@ def test_ai_agent_recipes_rerun_on_same_database(app_path):
     the first run must not raise a unique-constraint violation on the second.
     """
     first = run_recipe(app_path)
+    unrelated = UNRELATED_ROWS.get(app_path.name)
+    if unrelated:
+        insert_sql, check_sql = unrelated
+        with live_connection() as conn, conn.cursor() as cursor:
+            cursor.execute(insert_sql)
+            conn.commit()
     second = run_recipe(app_path)
     assert first.count("\n") == second.count("\n")
+    if unrelated:
+        # The rerun cleanup removes only recipe-owned rows, not a reader's own data.
+        with live_connection() as conn, conn.cursor() as cursor:
+            cursor.execute(check_sql)
+            assert cursor.fetchone()[0] == 1

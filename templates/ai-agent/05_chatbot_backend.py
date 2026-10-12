@@ -19,6 +19,9 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session, rela
 # Same DATABASE_URL convention as the dashboard recipes (templates/dashboard/*.py).
 DATABASE_URL = os.environ.get("DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb")
 
+# Recipe-owned username: a rerun deletes only this demo user, never a reader's "alice".
+DEMO_USERNAME = "cookbook_demo_alice"
+
 
 class Base(DeclarativeBase):
     pass
@@ -80,7 +83,7 @@ def main() -> None:
         with Session(engine) as session:
             # Rerunnable: remove the previous run's demo user and its
             # conversations and messages (children first).
-            demo_user = sa.select(ChatUser.id).where(ChatUser.username == "alice")
+            demo_user = sa.select(ChatUser.id).where(ChatUser.username == DEMO_USERNAME)
             demo_convs = sa.select(ChatConversation.id).where(
                 ChatConversation.user_id.in_(demo_user)
             )
@@ -90,12 +93,12 @@ def main() -> None:
             session.execute(
                 sa.delete(ChatConversation).where(ChatConversation.user_id.in_(demo_user))
             )
-            session.execute(sa.delete(ChatUser).where(ChatUser.username == "alice"))
+            session.execute(sa.delete(ChatUser).where(ChatUser.username == DEMO_USERNAME))
             session.commit()
 
             # Create a user with AI preferences stored as JSON
             user = ChatUser(
-                username="alice",
+                username=DEMO_USERNAME,
                 display_name="Alice Kim",
                 preferences={"model": "gpt-4", "temperature": 0.7, "max_tokens": 2000},
             )

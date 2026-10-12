@@ -38,11 +38,13 @@ Recipes 01–04 read `CUBRID_HOST`, `CUBRID_PORT`, `CUBRID_DATABASE`,
 empty password). Recipe 05 reads `DATABASE_URL`, defaulting to
 `cubrid+pycubrid://dba@localhost:33000/testdb`.
 
-The examples use fixed demonstration data (session keys `demo-001` and
-`agent-loop-demo`, the `alice` username, three sample documents). Each run first
-deletes only its own previous copy of that data, so every recipe can be run again
-on the same database; other rows are left alone and `rag_retrieval_log` keeps
-accumulating.
+The examples use fixed, recipe-owned demonstration data: the session keys
+`cookbook-agent-state-demo` and `cookbook-agent-loop-demo`, the username
+`cookbook_demo_alice`, and three sample documents whose metadata carries
+`"recipe": "cookbook-ai-agent-rag-demo"`. Each run first deletes only its own
+previous copy of that data, so every recipe can be run again on the same
+database; other rows, including ones with the same source URL, are left alone,
+and `rag_retrieval_log` keeps accumulating.
 Recipe 04 creates and seeds `cookbook_agent_products` so its product query
 does not depend on another example. Database connections and the ORM engine
 are closed even if a demonstration raises.
@@ -74,7 +76,9 @@ script it drops only that script's `agent_*`, `rag_*`, or `chat_*` tables
 It restores environment variables and always uses the pycubrid SQLAlchemy
 backend, even if the supplied URL uses the legacy `cubrid://` scheme.
 A second live case runs each script twice without resetting its tables, so a
-rerun on the same database is covered too.
+rerun on the same database is covered too; between the runs it inserts a
+reader's look-alike row (session key `demo-001`, username `alice`, a document
+with a sample source URL) and checks that the rerun keeps it.
 Without `CUBRID_TEST_URL`, the ten live cases skip; offline tests still run.
 Each script runs in its own process with a 60-second limit; cleanup connections
 have a 10-second connect timeout and a 15-second read timeout. The smoke-test

@@ -25,6 +25,10 @@ _agent_state = module_from_spec(_spec)
 _spec.loader.exec_module(_agent_state)
 
 
+# Recipe-owned session key: a rerun deletes only this session.
+DEMO_SESSION_KEY = "cookbook-agent-loop-demo"
+
+
 class SimpleDataAgent:
     """A minimal agentic data assistant backed by CUBRID.
 
@@ -135,8 +139,8 @@ def main() -> None:
         conn.commit()
 
         # Rerunnable: drop the previous run's demo session before creating it again.
-        _agent_state.delete_session(conn, "agent-loop-demo")
-        agent = SimpleDataAgent(conn, "agent-loop-demo")
+        _agent_state.delete_session(conn, DEMO_SESSION_KEY)
+        agent = SimpleDataAgent(conn, DEMO_SESSION_KEY)
 
         # Agent loop: multiple queries
         print("Agent loop demo")

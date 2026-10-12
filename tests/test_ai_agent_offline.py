@@ -86,7 +86,7 @@ def test_delete_session_removes_children_before_session():
     conn = MagicMock()
     cursor = conn.cursor.return_value
 
-    module.delete_session(conn, "demo-001")
+    module.delete_session(conn, "cookbook-agent-state-demo")
 
     statements = [call.args[0] for call in cursor.execute.call_args_list]
     assert [sql.split()[2] for sql in statements] == [
@@ -94,14 +94,19 @@ def test_delete_session_removes_children_before_session():
         "agent_messages",
         "agent_sessions",
     ]
-    assert all(call.args[1] == ["demo-001"] for call in cursor.execute.call_args_list)
+    assert all(
+        call.args[1] == ["cookbook-agent-state-demo"] for call in cursor.execute.call_args_list
+    )
     conn.commit.assert_called_once()
     cursor.close.assert_called_once()
 
 
 @pytest.mark.parametrize(
     "recipe,session_key",
-    [("01_agent_state.py", "demo-001"), ("04_agent_loop.py", "agent-loop-demo")],
+    [
+        ("01_agent_state.py", "cookbook-agent-state-demo"),
+        ("04_agent_loop.py", "cookbook-agent-loop-demo"),
+    ],
 )
 def test_recipe_deletes_previous_demo_session_before_creating(recipe, session_key, monkeypatch):
     module = load_recipe(recipe)

@@ -28,6 +28,10 @@ DB_CONFIG = {
     "database": os.environ.get("CUBRID_DATABASE", "testdb"),
 }
 
+# Recipe-owned session key: a rerun deletes only this session, never a
+# reader's own sessions such as "demo-001".
+DEMO_SESSION_KEY = "cookbook-agent-state-demo"
+
 # ----------------------------------------------------------------
 # Schema setup
 # ----------------------------------------------------------------
@@ -208,8 +212,8 @@ def main() -> None:
     with closing(pycubrid.connect(**DB_CONFIG)) as conn:
         setup_schema(conn)
 
-        delete_session(conn, "demo-001")  # rerunnable: drop the previous run's demo session
-        session_id = create_session(conn, "demo-001", tags=["demo", "analytics"])
+        delete_session(conn, DEMO_SESSION_KEY)  # rerunnable: drop the previous run's session
+        session_id = create_session(conn, DEMO_SESSION_KEY, tags=["demo", "analytics"])
         print(f"Session created: {session_id}")
 
         add_message(conn, session_id, "user", "What are the top 5 products?")
