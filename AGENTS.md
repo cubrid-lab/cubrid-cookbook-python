@@ -18,7 +18,14 @@ templates/         → Copy-and-customize production starters
 performance/       → Benchmark-backed optimization patterns
 pitfalls/          → Common anti-patterns and fixes
 fundamentals/      → Step-by-step reference for core operations
+demos/             → Recording scripts and provenance for the README demo media
+docs/              → MkDocs site sources, translations and internal design notes
+scripts/           → CI, docs, golden-output and release-verification helpers
+tests/             → Offline repository checks (`make test-offline`)
 ```
+
+Example counts and tested versions change often; `README.md` and
+[`SUPPORT_MATRIX.md`](SUPPORT_MATRIX.md) are authoritative.
 
 ## Working Rules
 
@@ -28,7 +35,8 @@ fundamentals/      → Step-by-step reference for core operations
 - Use English for GitHub issues, pull requests, and comments; localized documentation is welcome, and no specific tool is required.
 - Use `cookbook_` table prefix in all SQL examples.
 - Avoid CUBRID reserved words in column names: `value` → `val`, `count` → `cnt`, `data` → `file_data`.
-- Use `from __future__ import annotations` in all Python files.
+- Use `from __future__ import annotations` in new Python modules. The existing FastAPI,
+  Flask and Django template recipes omit it; keep each recipe internally consistent.
 - Use parameterized queries (`?` markers) — never string interpolation.
 - If an example's setup or dependencies change, update the surrounding docs in the same change.
 - Avoid adding hidden prerequisites that are not documented.
@@ -146,7 +154,8 @@ not checked, so do not add foreign closing keywords there.
 ## Validation
 
 - `make check` from the repository root (offline contributor checks)
-- `make up` (starts CUBRID 11.2 with bounded readiness checking)
+- `make up` (starts CUBRID 11.2 by default, `CUBRID_VERSION=11.4` to override, with bounded readiness checking)
+- `make deps` (installs the drivers, pytest and the golden-backed examples' requirements)
 - Run the relevant example: `python <file>.py`
 - `make verify VERIFY_PATHS=<example-directory>` for matching live goldens
 - `make docs` for staged docs and strict MkDocs validation
@@ -295,7 +304,8 @@ Do not mark work complete until code, tests, and documentation are consistent.
 ### Role
 
 cubrid-cookbook-python provides copy-and-run examples for Python developers adopting CUBRID.
-All examples must be independently runnable against CUBRID 11.2 via Docker.
+All examples must be independently runnable against CUBRID via Docker (`make up` starts
+11.2 by default); CI verifies them on CUBRID 11.2 and 11.4, see [`SUPPORT_MATRIX.md`](SUPPORT_MATRIX.md).
 
 ### Key Sections
 
