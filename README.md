@@ -11,9 +11,9 @@
 
 ---
 
-<img src="docs/demo-agent-state.gif" alt="AI agent state management demo" width="100%"/>
+<a href="docs/demo-agent-state.gif"><img src="docs/demo-agent-state.png" alt="AI agent state management demo, last frame of the recording" width="100%"/></a>
 
-<sub>Real recordings of the examples against CUBRID; how they were made: [`demos/`](demos/README.md).</sub>
+<sub>▶ [Play the recording](docs/demo-agent-state.gif) (animated GIF, 9 seconds). The images on this page are still frames of real recordings of the examples against CUBRID; select one to play it. How they were made: [`demos/`](demos/README.md).</sub>
 
 ## Get Started
 
@@ -44,7 +44,9 @@ The host-run API connects to `localhost` by default (`CUBRID_HOST` overrides it)
 To run both the API and database in Docker instead, use `docker compose up -d --build`
 in that directory; Compose sets `CUBRID_HOST=cubrid` for the API.
 
-<img src="docs/demo-fastapi.gif" alt="FastAPI quickstart: POST /items and GET /items in Swagger UI against CUBRID" width="100%"/>
+<a href="docs/demo-fastapi.gif"><img src="docs/demo-fastapi.png" alt="FastAPI quickstart: GET /items in Swagger UI returning the item created with POST /items against CUBRID, last frame of the recording" width="100%"/></a>
+
+<sub>▶ [Play the recording](docs/demo-fastapi.gif) (animated GIF, 12 seconds)</sub>
 
 ### Migration Guide
 
@@ -66,7 +68,9 @@ Copy-and-customize starting points for real applications:
 | [`ai-agent/`](templates/ai-agent/) | AI agent state store + MCP toolchain + RAG metadata (5 live-tested scripts) |
 | [`dashboard/`](templates/dashboard/) | Interactive dashboard with Streamlit |
 
-<img src="docs/demo-dashboard.gif" alt="Streamlit dashboard template showing CUBRID rows after docker compose up" width="100%"/>
+<a href="docs/demo-dashboard.gif"><img src="docs/demo-dashboard.png" alt="Streamlit dashboard template showing CUBRID rows after docker compose up, last frame of the recording" width="100%"/></a>
+
+<sub>▶ [Play the recording](docs/demo-dashboard.gif) (animated GIF, 12 seconds)</sub>
 
 ### Performance
 

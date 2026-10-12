@@ -14,9 +14,9 @@
 
 ---
 
-<img src="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-agent-state.gif" alt="AI 에이전트 데모" width="100%"/>
+<a href="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-agent-state.gif"><img src="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-agent-state.png" alt="AI 에이전트 데모, 녹화의 마지막 장면" width="100%"/></a>
 
-<sub>예제를 실제 CUBRID에서 실행해 녹화한 화면입니다. 녹화 방법은 [`demos/`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/demos/README.md)를 참고하세요.</sub>
+<sub>▶ [녹화 재생](https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-agent-state.gif) (애니메이션 GIF, 9초). 이 페이지의 이미지는 예제를 실제 CUBRID에서 실행해 녹화한 화면의 정지 장면이며, 이미지를 선택하면 녹화가 재생됩니다. 녹화 방법은 [`demos/`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/demos/README.md)를 참고하세요.</sub>
 
 ## 시작하기
 
@@ -47,7 +47,9 @@ uvicorn app:app --reload
 API와 데이터베이스를 모두 Docker에서 실행하려면 같은 디렉터리에서
 `docker compose up -d --build`를 사용하세요. Compose는 API에 `CUBRID_HOST=cubrid`를 설정합니다.
 
-![FastAPI 퀵스타트: Swagger UI에서 POST /items와 GET /items 실행](demo-fastapi.gif)
+<a href="demo-fastapi.gif"><img src="demo-fastapi.png" alt="FastAPI 퀵스타트: Swagger UI에서 POST /items로 만든 항목을 GET /items가 CUBRID에서 반환, 녹화의 마지막 장면" width="100%"/></a>
+
+<sub>▶ [녹화 재생](demo-fastapi.gif) (애니메이션 GIF, 12초)</sub>
 
 ### 마이그레이션 가이드
 
@@ -69,7 +71,9 @@ Java JDBC → Python 마이그레이션을 실제 코드 나란히 비교로 제
 | [`ai-agent/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/ai-agent) | AI 에이전트 상태 저장소 + MCP 도구 체인 + RAG 메타데이터 (실제 DB로 검증하는 스크립트 5개) |
 | [`dashboard/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/dashboard) | Streamlit 인터랙티브 대시보드 (`docker compose up` 원커맨드 데모) |
 
-![docker compose up 후 CUBRID 데이터를 보여 주는 Streamlit 대시보드 템플릿](demo-dashboard.gif)
+<a href="demo-dashboard.gif"><img src="demo-dashboard.png" alt="docker compose up 후 CUBRID 데이터를 보여 주는 Streamlit 대시보드 템플릿, 녹화의 마지막 장면" width="100%"/></a>
+
+<sub>▶ [녹화 재생](demo-dashboard.gif) (애니메이션 GIF, 12초)</sub>
 
 ### 성능
 

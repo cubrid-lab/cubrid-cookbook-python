@@ -50,7 +50,8 @@ any dependency.
 Third-party material actually stored in the repository:
 
 - **Demo recordings** (`docs/demo-agent-state.gif`, `docs/demo-dashboard.gif`,
-  `docs/demo-fastapi.gif` and `docs/assets/videos/*.mp4`) are screen recordings
+  `docs/demo-fastapi.gif`, their still posters `docs/demo-*.png` and
+  `docs/assets/videos/*.mp4`) are screen recordings
   made by this project of its own examples running against CUBRID
   (`demos/README.md`, `demos/recording-provenance.json`). The terminal
   recordings are rendered by VHS (MIT), which draws the terminal in Chrome with

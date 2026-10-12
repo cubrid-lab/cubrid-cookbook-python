@@ -35,4 +35,11 @@ for name in agent-state mcp-toolchain; do
 done
 cp "$A/demo-agent-state.gif" "$OUT/demo-agent-state.gif"
 
+# README still posters: the last frame of each GIF, linked to the GIF, so no
+# motion starts without the reader selecting it (WCAG 2.2 SC 2.2.2).
+for name in agent-state fastapi dashboard; do
+    ffmpeg -loglevel error -y -sseof -0.3 -i "$OUT/demo-$name.gif" -frames:v 1 -update 1 \
+        "$OUT/demo-$name.png"
+done
+
 ls -l "$OUT"

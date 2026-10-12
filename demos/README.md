@@ -11,6 +11,7 @@ versions, image digests, tool versions and media hashes of the committed files.
 | `docs/demo-agent-state.gif` (README) | `agent-state.tape` | `templates/ai-agent/01_agent_state.py` |
 | `docs/demo-fastapi.gif` (README) | `record_browser.py fastapi` | `quickstart/5min-fastapi` Swagger UI: `POST /items`, then `GET /items` |
 | `docs/demo-dashboard.gif` (README) | `record_browser.py dashboard` | `templates/dashboard` table viewer, Reset Demo Data, Refresh |
+| `docs/demo-agent-state.png`, `docs/demo-fastapi.png`, `docs/demo-dashboard.png` (README) | `build_media.sh`, last frame of each GIF | Still poster shown in the README; it links to its GIF |
 | `docs/assets/videos/dashboard.mp4` | `dashboard.tape` + `record_browser.py dashboard` | `docker compose up -d` in `templates/dashboard`, then the browser |
 | `docs/assets/videos/agent-state.mp4` | `agent-state-video.tape` | `01_agent_state.py`, then `04_agent_loop.py` |
 | `docs/assets/videos/mcp-toolchain.mp4` | `mcp-toolchain.tape` | `02_mcp_toolchain.py` driving `cubrid-mcp-server` over stdio |
@@ -23,6 +24,9 @@ versions, image digests, tool versions and media hashes of the committed files.
 - The dashboard MP4 joins the terminal recording and the browser recording,
   which are captured one after the other against the same running stack.
 - The GIFs are excerpts of the browser recordings (`build_media.sh`).
+- The README shows a still poster of each GIF (its last frame), linked to the
+  GIF, so the animation plays only when the reader selects it; a GIF has no
+  pause control of its own (WCAG 2.2 success criterion 2.2.2, Pause, Stop, Hide).
 
 The AI agent recipes use a heuristic planner and no LLM (see the template
 README); no recording here shows an LLM client such as Claude Desktop.
