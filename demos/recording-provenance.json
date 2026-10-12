@@ -8,7 +8,7 @@
     "demos/mcp-toolchain.tape": "41c6bb0d6a2116d39b5378c00df96eeece1aa43583409e5c9129f2e7f6214770",
     "demos/dashboard.tape": "ef745985e6e4d17b93c575a7d3200c6142071414d1129fc429f1fffd547cdefa",
     "demos/record_browser.py": "253c78d1509b623d40bf91472dde74cbe68e841dd73dddcb582a9470a898ea3d",
-    "demos/build_media.sh": "7396f4604b2f8281a5fba1c55a31ec7bf57a2dcbc73040af8520158263188480"
+    "demos/build_media.sh": "d93cb3cbf4e0aee1164d4b08b6f6beb7aa20fbc4b32e5788811a333c1ab166f7"
   },
   "python_environment": {
     "python": "3.12.13",
@@ -90,8 +90,8 @@
       "codec": "gif"
     },
     "docs/demo-fastapi.png": {
-      "sha256": "d576b137d4ed9dd72df04846c2388365960348f9416e7ff8dfd31df55604cb6a",
-      "bytes": 49406,
+      "sha256": "178dd580faaacf97cc652973e0a2d991b3aad94bce9b1100da88eda2d8a7378b",
+      "bytes": 49403,
       "width": 960,
       "height": 540,
       "codec": "png",
@@ -107,8 +107,8 @@
       "codec": "gif"
     },
     "docs/demo-dashboard.png": {
-      "sha256": "f7ff17ad356e59dcae4a8324776ea185d689f3b17eba021f88ff076c40c2b8ea",
-      "bytes": 99407,
+      "sha256": "3d017ddfd7450dce91c60786dab2047f27b25db054ae688b8cf5135ebc94287e",
+      "bytes": 99367,
       "width": 960,
       "height": 540,
       "codec": "png",
