@@ -70,7 +70,7 @@ Each section directory has a `benchmark.py` that connects to `localhost:33000`, 
 with an empty password (the repository's `docker-compose.yml` provides this). From the repository root:
 
 ```bash
-docker compose up -d --wait cubrid     # CUBRID on localhost:33000, database testdb
+CUBRID_VERSION=11.4 docker compose up -d --wait cubrid   # CUBRID 11.4 on localhost:33000, database testdb
 pip install 'sqlalchemy-cubrid[pycubrid]'
 python performance/fetch-optimization/benchmark.py
 python performance/bulk-insert/benchmark.py

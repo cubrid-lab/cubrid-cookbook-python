@@ -107,13 +107,13 @@ engine = create_engine(
 which is what the repository's `docker-compose.yml` provides. From the repository root:
 
 ```bash
-docker compose up -d --wait cubrid     # CUBRID on localhost:33000, database testdb
+CUBRID_VERSION=11.4 docker compose up -d --wait cubrid   # CUBRID 11.4 on localhost:33000, database testdb
 pip install 'sqlalchemy-cubrid[pycubrid]'
 python performance/connection-pooling/benchmark.py
 docker compose down                    # stop the database when finished
 ```
 
-The script runs 50 `SELECT 1` queries with `NullPool` and 50 with a pool of 5 connections, then prints both timings and the speedup. It uses SQLAlchemy, so install `sqlalchemy-cubrid[pycubrid]` rather than `pycubrid` alone, and takes a few seconds.
+The script runs 50 `SELECT 1` queries with `NullPool` and 50 with a pooled engine (`pool_size=5`, which only caps the pool; sequential queries reuse one connection), then prints both timings and the speedup. It uses SQLAlchemy, so install `sqlalchemy-cubrid[pycubrid]` rather than `pycubrid` alone, and takes a few seconds.
 
 ## Benchmark Reference
 

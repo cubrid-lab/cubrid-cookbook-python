@@ -114,7 +114,7 @@ Reducing COMMIT frequency is the single most effective optimization for write-he
 which is what the repository's `docker-compose.yml` provides. From the repository root:
 
 ```bash
-docker compose up -d --wait cubrid     # CUBRID on localhost:33000, database testdb
+CUBRID_VERSION=11.4 docker compose up -d --wait cubrid   # CUBRID 11.4 on localhost:33000, database testdb
 pip install pycubrid
 python performance/bulk-insert/benchmark.py
 docker compose down                    # stop the database when finished
