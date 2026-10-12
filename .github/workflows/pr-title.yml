@@ -3,11 +3,12 @@ name: PR title
 # Enforces the cubrid-lab title rule (CONTRIBUTING.md, "Pull request and
 # commit titles"). The PR title becomes the squash commit title on main.
 #
-# Security: runs on `pull_request` (never `pull_request_target`), requests no
-# token permissions, checks out nothing and receives the title and body only
-# through environment variables, so no PR-controlled code or string is executed.
-# Also rejects closing keywords for another repository's issue in the PR body,
-# ignoring only code blocks and comment blocks.
+# Security: runs on `pull_request` (never `pull_request_target`), checks out
+# nothing and receives the title and body only through environment variables, so
+# no PR-controlled code or string is executed. The job's token can only read pull
+# requests: `gh api` lists the PR's commit messages into a file that is read as
+# data only. Also rejects foreign-issue closing keywords in the PR body, and in
+# the title and commit messages, which make up the squash commit.
 # The job name "PR title" is the required-status-check context; keep it stable.
 
 on:
@@ -25,12 +26,20 @@ jobs:
     name: PR title
     runs-on: ubuntu-latest
     timeout-minutes: 2
+    permissions:
+      pull-requests: read
     steps:
       - name: Check PR title
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_COMMIT_COUNT: ${{ github.event.pull_request.commits }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          export PR_COMMITS_FILE="$RUNNER_TEMP/pr-commit-messages.txt"
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/commits" --paginate \
+            --jq '.[].commit.message + "\u0000"' > "$PR_COMMITS_FILE"
           python3 - <<'PY'
           # BEGIN pr-title-validator
           import html
@@ -248,26 +257,28 @@ jobs:
           )
           reference = re.compile(
               r"(?:(?:https?://)?(?:www\.)?github\.com/)?"
-              r"(?:(?P<owner>[a-z0-9][a-z0-9-]*)/(?P<repo>[a-z0-9_.-]+)(?:#|/issues/)|#|gh-)"
+              r"(?:(?P<owner>[a-z0-9][a-z0-9_-]*)/(?P<repo>[a-z0-9_.-]+)(?:#|/issues/)|#|gh-)"
               r"(?P<number>[0-9]+)(?![0-9])",
               re.I | re.A,
           )
           next_ref = re.compile(r"[\s*_~)\]>]*(?:,|&|\band\b)[\s*_~\[(<\\]*", re.I)
           # An absolute or relative ("/o/r/issues/N", "../../r/issues/N") issue link.
           issue_link = re.compile(
-              r"(?<![a-z0-9_.-])(?P<owner>\.\.|[a-z0-9][a-z0-9-]*)/(?P<repo>[a-z0-9_.-]+)"
+              r"(?<![a-z0-9_.-])(?P<owner>\.\.|[a-z0-9][a-z0-9_-]*)/(?P<repo>[a-z0-9_.-]+)"
               r"/issues/(?P<number>[0-9]+)",
               re.I | re.A,
           )
           local_repo = os.environ.get("GITHUB_REPOSITORY", "").lower()
-          found = {}  # Foreign issue -> "direct" or "link", in the order found.
+          # (Foreign issue, where) -> "direct" or "link", in the order found.
+          found = {}
+          where = "PR body"
 
           def note(owner: str, repo: str, number: str, how: str) -> None:
               target = f"{owner}/{repo}".lower()
               if target != local_repo:
-                  issue = f"{target}#{number.lstrip('0') or '0'}"
-                  if found.get(issue) != "direct":
-                      found[issue] = how
+                  key = (f"{target}#{number.lstrip('0') or '0'}", where)
+                  if found.get(key) != "direct":
+                      found[key] = how
 
           def gap_ends(text: str, start: int, seen: set) -> tuple[list, bool]:
               # New positions reachable from start over spaces, a colon, emphasis,
@@ -333,24 +344,41 @@ jobs:
                   rf"|<!\[CDATA\[(?:(?!<!\[CDATA\[).)*?{cdata_end}"
               )
               text = re.sub(hidden, "", text, flags=re.I | re.S)
-              return re.sub(r"[*_~]", "", tag.sub("", text))
+              # "_" inside a word is not emphasis and may belong to an owner name.
+              return re.sub(r"[*~]|(?<![a-z0-9])_|_(?![a-z0-9])", "", tag.sub("", text), flags=re.I)
 
-          check(body)
-          # Without markup and emphasis, "Close**s**" and "Clo<b>ses</b>" read
-          # "Closes". Strip once with cmark-gfm's closers, once with a browser's ">".
-          check(without_markup(body, r"\?>", r"\]\]>"))
-          check(without_markup(body, ">", ">"))
-          for issue, how in found.items():
+          # The PR title and the commit messages form the squash commit, which GitHub
+          # reads as plain text: no code or comment block is exempt there and no
+          # entity is decoded. Each commit message is checked on its own.
+          sources = [("PR body", body), ("PR title", title)]
+          commits_file = os.environ.get("PR_COMMITS_FILE")
+          if commits_file:
+              if int(os.environ.get("PR_COMMIT_COUNT") or 0) >= 250:
+                  errors.append(
+                      "The PR has 250 or more commits; GitHub lists only 250, so their "
+                      "messages cannot all be checked for foreign issue closures."
+                  )
+              with open(commits_file, encoding="utf-8") as handle:
+                  messages = handle.read().split("\0")
+              sources += [("commit message", message) for message in messages]
+          for where, text in sources:
+              check(text)
+              # Without markup and emphasis, "Close**s**" and "Clo<b>ses</b>" read
+              # "Closes". Strip with cmark-gfm's closers, then with a browser's ">".
+              check(without_markup(text, r"\?>", r"\]\]>"))
+              check(without_markup(text, ">", ">"))
+          for (issue, where), how in found.items():
               if how == "direct":
                   errors.append(
-                      f"Cross-repository issue closure of {issue} is forbidden; use "
-                      f"'Refs {issue}' and let its own repo close it."
+                      f"Cross-repository issue closure of {issue} in a {where} is "
+                      f"forbidden; use 'Refs {issue}' and let its own repo close it."
                   )
               else:
                   errors.append(
-                      "Cross-repository issue closure through a link: a closing keyword "
-                      f"is followed by a link and the body links {issue}. Write local "
-                      f"closures as 'Closes #N' and cite {issue} as 'Refs {issue}'."
+                      f"Cross-repository issue closure through a link in a {where}: a "
+                      f"closing keyword is followed by a link and the text links {issue}. "
+                      f"Write local closures as 'Closes #N' and cite {issue} as "
+                      f"'Refs {issue}'."
                   )
           # END cross-repo-closing-guard
 

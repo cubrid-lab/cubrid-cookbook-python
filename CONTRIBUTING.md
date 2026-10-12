@@ -814,20 +814,25 @@ together.
 ## Repository-local issue ownership
 
 Issues own implementation and acceptance in the repository whose files change.
-Provide a self-contained local problem, scope, owner, tests, and closure decision.
-Sibling repositories may be cited with Refs owner/repo#N when they supply a real
-dependency or compatibility contract; their priorities and completion are not
-inherited. Close only this repository's issues (Closes #N). PRs with no local
-issue may state N/A and a reason. The existing PR title check rejects direct
-cross-repository issue-closing keywords in the PR body, including emphasized or
-linked ones. It ignores only fenced and indented code blocks and HTML comment
-blocks, and only where their extent is certain: after a fence it cannot follow
-(in a list item, footnote, block quote or raw HTML), later fences and comments
-are checked too; comments after any HTML tag are checked; and after a raw-text
-element such as `<textarea>` or `<select>` nothing is ignored. Inline code and
-inline comments are always checked. Commit messages are not checked, so keep foreign closing keywords out of them too. External
-contributors do not need to install internal agent tools or create duplicate
-work.
+Provide a self-contained local problem, scope, owner, tests, and closure
+decision. Sibling repositories may be cited with Refs owner/repo#N when they
+supply a real dependency or compatibility contract; their priorities and
+completion are not inherited. Close only this repository's issues (Closes #N).
+PRs with no local issue may state N/A and a reason. The existing PR title check
+rejects direct cross-repository issue-closing keywords in the PR body, the PR
+title and commit messages (the title and commit messages make up the squash
+commit and are read as plain text; an edit to the squash message at merge time
+is not checked), including emphasized or linked ones. It ignores fenced and
+indented code blocks and HTML comment blocks only where it can follow the
+Markdown exactly, so anything uncertain is checked: code and comment blocks
+inside list items, footnotes and block quotes are always checked; after a fence
+it cannot track (in a list item, block quote or raw HTML, on an indented line,
+or a line that only looks like a fence), later fences and comments are checked;
+after anything that may start an HTML tag, even in prose or inline code, later
+comments are checked; and after a raw-text element name such as `<textarea>` or
+`<select>`, nothing is ignored. Inline code and inline comments are always
+checked. External contributors do not need to install internal agent tools or
+create duplicate work.
 
 ## Pull request and commit titles
 

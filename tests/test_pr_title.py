@@ -12,8 +12,10 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import textwrap
 import unittest
+import unittest.mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -84,7 +86,7 @@ INVALID = (
 
 TICK = chr(96)
 FENCE = TICK * 3
-GUARD_SHA256 = "cc334ccb5a0b24b3632857534f8c8ace84871cb0bd2f4257a6a343e650485bf9"
+GUARD_SHA256 = "449fd724ae94cb2a2772ca45aa9c0c180fd9166e59867f87d8162545e51a0933"
 
 
 def _validator() -> str:
@@ -96,7 +98,7 @@ def _validator() -> str:
 
 
 def _run(
-    title: str, body: str = "", timeout: float | None = None
+    title: str, body: str = "", commits: str | None = None, timeout: float | None = None
 ) -> subprocess.CompletedProcess[str]:
     env = {
         **os.environ,
@@ -104,14 +106,23 @@ def _run(
         "PR_BODY": body,
         "GITHUB_REPOSITORY": "cubrid-lab/cubrid-cookbook-python",
     }
-    return subprocess.run(
-        [sys.executable, "-c", _validator()],
-        capture_output=True,
-        text=True,
-        env=env,
-        check=False,
-        timeout=timeout,
-    )
+    env.pop("PR_COMMITS_FILE", None)
+    if commits is not None:
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as handle:
+            handle.write(commits)
+        env["PR_COMMITS_FILE"] = handle.name
+    try:
+        return subprocess.run(
+            [sys.executable, "-c", _validator()],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+            timeout=timeout,
+        )
+    finally:
+        if commits is not None:
+            os.unlink(env["PR_COMMITS_FILE"])
 
 
 class PrTitleValidatorTest(unittest.TestCase):
@@ -154,6 +165,11 @@ class PrTitleValidatorTest(unittest.TestCase):
         self.assertIn("  pull_request:\n    types: [opened, edited, reopened, synchronize]", text)
         self.assertNotRegex(text, r"(?m)^\s*pull_request_target:")
         self.assertIn("\npermissions: {}\n", text)
+        job = text.split("\njobs:\n", 1)[1]
+        self.assertEqual(
+            re.findall(r"(?m)^ +permissions:.*(?:\n {6,}\S.*)*", job),
+            ["    permissions:\n      pull-requests: read"],
+        )
         self.assertNotIn("actions/checkout", text)
         self.assertIn("PR_TITLE: ${{ github.event.pull_request.title }}", text)
         self.assertIn("PR_BODY: ${{ github.event.pull_request.body }}", text)
@@ -183,8 +199,8 @@ class PrTitleValidatorTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_guard_block_matches_the_shared_copy(self) -> None:
-        # sqlalchemy-cubrid, cubrid-mcp-server and cubrid-cookbook-python carry
-        # the same guard; change every copy and this hash together.
+        # This block is meant to be identical in sqlalchemy-cubrid, cubrid-mcp-server
+        # and cubrid-cookbook-python; change every copy and this hash together.
         text = WORKFLOW.read_text(encoding="utf-8")
         start = text.index("# BEGIN cross-repo-closing-guard")
         stop = text.index("# END cross-repo-closing-guard")
@@ -211,6 +227,64 @@ class PrTitleValidatorTest(unittest.TestCase):
             "Fixes https://github.com/cubrid-lab/pycubrid/issues/833",
             issue="cubrid-lab/pycubrid#833",
         )
+
+    def test_enterprise_managed_owner_fails(self) -> None:
+        # Enterprise managed user accounts carry an "_shortcode" suffix.
+        self.assert_blocked(
+            "Closes alice_acme/another-repo#42",
+            "Closes [bug](https://github.com/alice_acme/another-repo/issues/42)",
+            issue="alice_acme/another-repo#42",
+        )
+        result = _run("docs: x", "Closes alice_acme/another-repo#42")
+        self.assertNotIn("aliceacme", result.stdout)
+
+    def test_foreign_closure_in_a_commit_message_fails(self) -> None:
+        commits = "fix: keep cursor state\n\nCloses another-org/another-repo#43\n"
+        result = _run("docs: align issue ownership", "Closes #240", commits)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("in a commit message", result.stdout)
+        # Commit messages are plain text: Markdown code does not hide a keyword.
+        result = _run("docs: x", "", f"docs: x\n\n{TICK}Closes another-org/another-repo#43{TICK}")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        result = _run("docs: x", "", "fix: a\n\nCloses #240\nRefs another-org/another-repo#43\n")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_foreign_closure_in_the_title_fails(self) -> None:
+        result = _run("fix: closes https://github.com/another-org/another-repo/issues/43")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("in a PR title", result.stdout)
+
+    def test_commit_messages_are_listed_before_the_validator(self) -> None:
+        # Without this step the commit-message and 250-commit checks never run.
+        text = WORKFLOW.read_text(encoding="utf-8")
+        listing = (
+            'export PR_COMMITS_FILE="$RUNNER_TEMP/pr-commit-messages.txt"\n'
+            '          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/commits" --paginate \\\n'
+            '            --jq \'.[].commit.message + "\\u0000"\' > "$PR_COMMITS_FILE"\n'
+            "          python3 - <<'PY'\n"
+        )
+        self.assertIn(listing, text)
+        for line in (
+            "PR_NUMBER: ${{ github.event.pull_request.number }}",
+            "PR_COMMIT_COUNT: ${{ github.event.pull_request.commits }}",
+            "GH_TOKEN: ${{ github.token }}",
+        ):
+            self.assertIn(line, text)
+
+    def test_each_commit_message_is_checked_on_its_own(self) -> None:
+        # A bracket in one message must not turn on link checks for another.
+        commits = "fix: a\n\nCloses [x]\n\0docs: b\n\nRefs https://github.com/o/r/issues/5\n\0"
+        result = _run("docs: align issue ownership", "", commits)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_too_many_commits_to_list_fails(self) -> None:
+        with unittest.mock.patch.dict(os.environ, {"PR_COMMIT_COUNT": "250"}):
+            result = _run("docs: align issue ownership", "", "fix: a\n")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("250 or more commits", result.stdout)
+        with unittest.mock.patch.dict(os.environ, {"PR_COMMIT_COUNT": "249"}):
+            result = _run("docs: align issue ownership", "", "fix: a\n")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_local_closures_and_foreign_refs_pass(self) -> None:
         self.assert_allowed(
