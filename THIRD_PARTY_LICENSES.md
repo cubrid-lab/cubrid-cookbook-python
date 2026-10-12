@@ -13,8 +13,8 @@ inventory, not legal advice.
   `matplotlib` and `pytest` are covered by other sets); the documentation build
   tools pinned in `.github/requirements-docs.txt` (`DOCS`: `mkdocs`,
   `mkdocs-material`, `pymdown-extensions`, recorded at exactly the pinned
-  versions; their transitive dependencies are resolved, not pinned); and the imports of `demos/render_gif.py`, which
-  renders the demo GIF (`DEMO`: `imageio`, `pillow`). The repository's
+  versions; their transitive dependencies are resolved, not pinned); and the imports of `demos/record_browser.py`,
+  which records the browser demos (`DEMO`: `playwright`). The repository's
   `pyproject.toml` holds only Ruff configuration and declares no dependencies.
 - **Covered by the sets above, not listed separately:** `scripts/release_smoke.py`
   installs the published drivers (`pycubrid`, `sqlalchemy`,
@@ -49,18 +49,18 @@ any dependency.
 
 Third-party material actually stored in the repository:
 
-- **`docs/demo-agent-state.gif`** is produced by this project: `demos/render_gif.py`
-  draws the frames from `demos/agent-state.json` (this project's own recorded
-  example output) with Pillow and writes them with imageio, using GitHub-dark
-  colors. Its text is rasterised from a system font: DejaVu Sans Mono
-  (Bitstream Vera / DejaVu license) when installed, otherwise Liberation Mono
-  (the 1.x series that Debian and Ubuntu install at that path is GPL-2.0 with a
-  font exception; Liberation 2.x is SIL OFL 1.1), otherwise Pillow's built-in
-  default font; which one rendered
-  the committed file is not recorded. The GIF contains rendered glyph images,
-  not a font file, and no third-party image or code. The `demos/*.tape` VHS
-  scripts are an alternative recording setup and did not produce the
-  committed GIF.
+- **Demo recordings** (`docs/demo-agent-state.gif`, `docs/demo-dashboard.gif`,
+  `docs/demo-fastapi.gif` and `docs/assets/videos/*.mp4`) are screen recordings
+  made by this project of its own examples running against CUBRID
+  (`demos/README.md`, `demos/recording-provenance.json`). The terminal
+  recordings are rendered by VHS (MIT), which draws the terminal in Chrome with
+  the system DejaVu Sans Mono font (Bitstream Vera / DejaVu license). The browser
+  recordings show the Streamlit UI (Apache-2.0, Source Sans font under SIL OFL
+  1.1) and FastAPI's Swagger UI (Apache-2.0) as rendered on screen, captured by
+  Playwright. The files contain rendered pixels only: no font file, no
+  third-party code and no third-party image asset. VHS, ffmpeg and Chrome are
+  recording tools run locally and are not stored in or distributed from this
+  repository.
 - No other image, font, video, stylesheet or script asset is stored in the
   repository, and no third-party source code is vendored.
 
@@ -87,7 +87,7 @@ Third-party material actually stored in the repository:
 
 ### Reviewed entries
 
-- **numpy** (2.5.3, pulled in by `pandas`, `matplotlib` and `imageio`; see the
+- **numpy** (2.5.3, pulled in by `pandas` and `matplotlib`; see the
   **Sets** column). Its PEP 639 expression, `BSD-3-Clause AND 0BSD AND MIT AND Zlib AND
   CC0-1.0`, covers numpy's own sources; Zlib and CC0-1.0 are permissive too,
   but the generator does not auto-accept them. The Linux wheel also bundles
@@ -101,8 +101,7 @@ Third-party material actually stored in the repository:
   redistribute the wheel. As installed, numpy is permissive plus
   `libgfortran` (GPL-3.0-or-later with the exception) and `libquadmath`
   (LGPL-2.1-or-later) as separate shared libraries.
-- **pillow** (12.3.0, pulled in by `matplotlib` and `streamlit`, and imported
-  by `demos/render_gif.py`). Pillow itself is `MIT-CMU`, a permissive historical license.
+- **pillow** (12.3.0, pulled in by `matplotlib` and `streamlit`). Pillow itself is `MIT-CMU`, a permissive historical license.
   The Linux wheel bundles image, compression and font libraries whose notices
   its `LICENSE` reproduces, including AOM, Brotli, bzip2, dav1d, HarfBuzz, Little CMS,
   libavif, libjpeg, liblzma, libpng, libtiff, libwebp, libyuv, OpenJPEG, raqm,
@@ -120,7 +119,9 @@ Third-party material actually stored in the repository:
 
 - Requirement files: commit `277584cc477919edf6e863481199680ab171adee`
 - Environment: CPython 3.12.13 on Linux x86_64 (glibc 2.35), uv 0.11.7,
-  generated 2026-10-09
+  generated 2026-10-09; the `DEMO` set was switched to `demos/record_browser.py`
+  and the section regenerated on 2026-10-13 with the same command and
+  `--exclude-newer` timestamp, which left every other set unchanged
 - Command (creates one fresh `uv` environment per requirement set and rewrites
   the generated section below):
 
@@ -181,9 +182,9 @@ added or removed, or when its declared packages change.
 | S24 | `templates/flask/requirements.txt` | flask, flask-sqlalchemy, httpx, pycubrid, pytest, sqlalchemy, sqlalchemy-cubrid |
 | TOOLING | CI and docs workflows and the PR-smoke action (the TOOLING constant in this script) | pytest, pytest-asyncio, ruff |
 | DOCS | `.github/requirements-docs.txt` | mkdocs, mkdocs-material, pymdown-extensions |
-| DEMO | demos/render_gif.py imports (the DEMO constant in this script) | imageio, pillow |
+| DEMO | demos/record_browser.py imports (the DEMO constant in this script) | playwright |
 
-### Packages (144 rows)
+### Packages (145 rows)
 
 | Name | Observed versions | License | Category | URL | Sets |
 |---|---|---|---|---|---|
@@ -229,7 +230,7 @@ added or removed, or when its declared packages change.
 | Flask-SQLAlchemy | 3.1.1 | BSD License | Permissive | https://github.com/pallets-eco/flask-sqlalchemy/ | S22, S23, S24 |
 | fonttools | 4.66.1 | MIT | Permissive | http://github.com/fonttools/fonttools | S19 |
 | ghp-import | 2.1.0 | Apache Software License | Permissive | https://github.com/c-w/ghp-import | DOCS |
-| greenlet | 3.5.6 | MIT AND PSF-2.0 | Permissive | https://greenlet.readthedocs.io | S02 |
+| greenlet | 3.5.6 | MIT AND PSF-2.0 | Permissive | https://greenlet.readthedocs.io | DEMO, S02 |
 | griffelib | 2.3.2 | ISC | Permissive | - | S11 |
 | h11 | 0.16.0 | MIT License | Permissive | https://github.com/python-hyper/h11 | S09, S11, S12, S13, S14, S15, S16, S17, S20, S24 |
 | httpcore | 1.0.9 | BSD-3-Clause | Permissive | https://www.encode.io/httpcore/ | S11, S14, S15, S16, S24 |
@@ -237,7 +238,6 @@ added or removed, or when its declared packages change.
 | httpx | 0.28.1 | BSD License | Permissive | https://github.com/encode/httpx | S11, S14, S15, S16, S24 |
 | httpx-sse | 0.4.3 | MIT | Permissive | https://github.com/florimondmanca/httpx-sse | S11 |
 | idna | 3.20 | BSD-3-Clause | Permissive | https://github.com/kjd/idna | DOCS, S09, S11, S12, S13, S14, S15, S16, S17, S20, S24 |
-| ImageIO | 2.38.1 | BSD-2-Clause | Permissive | https://github.com/imageio/imageio | DEMO |
 | iniconfig | 2.3.1 | MIT | Permissive | https://github.com/pytest-dev/iniconfig | S14, S15, S16, S23, S24, TOOLING |
 | itsdangerous | 2.2.0 | BSD License | Permissive | https://github.com/pallets/itsdangerous/ | S20, S22, S23, S24 |
 | jaraco.classes | 3.4.0 | MIT License | Permissive | https://github.com/jaraco/jaraco.classes | S11 |
@@ -274,6 +274,7 @@ added or removed, or when its declared packages change.
 | pandas | 3.0.6 | BSD License | Permissive | https://pandas.pydata.org | S05, S19, S20 |
 | pathable | 0.6.0 | Apache Software License | Permissive | https://github.com/p1c2u/pathable | S11 |
 | platformdirs | 4.12.4 | MIT | Permissive | https://github.com/tox-dev/platformdirs | DOCS, S11 |
+| playwright | 1.63.0 | Apache-2.0 | Permissive | https://github.com/Microsoft/playwright-python | DEMO |
 | pluggy | 1.6.0 | MIT License | Permissive | - | S14, S15, S16, S23, S24, TOOLING |
 | prompt_toolkit | 3.0.53 | BSD License | Permissive | https://github.com/prompt-toolkit/python-prompt-toolkit | S18 |
 | py-key-value-aio | 0.4.6 | Apache-2.0 | Permissive | - | S11 |
@@ -284,6 +285,7 @@ added or removed, or when its declared packages change.
 | pydantic_core | 2.46.5, 2.50.0 | MIT | Permissive | https://github.com/pydantic | S09, S11, S12, S13, S14, S15, S16, S17 |
 | pydantic-settings | 2.15.0 | MIT | Permissive | https://github.com/pydantic/pydantic-settings | S11, S17 |
 | pydeck | 0.9.3 | Apache License 2.0 | Permissive | https://github.com/visgl/deck.gl/tree/master/bindings/pydeck | S20 |
+| pyee | 13.0.1 | MIT License | Permissive | https://github.com/jfhbrook/pyee | DEMO |
 | Pygments | 2.21.0 | BSD-2-Clause | Permissive | https://pygments.org | DOCS, S11, S14, S15, S16, S23, S24, TOOLING |
 | PyJWT | 2.15.1 | MIT | Permissive | https://github.com/jpadilla/pyjwt | S11 |
 | pymdown-extensions | 12.1 | MIT | Permissive | https://github.com/facelessuser/pymdown-extensions | DOCS |
@@ -312,7 +314,7 @@ added or removed, or when its declared packages change.
 | starlette | 1.7.0 | BSD-3-Clause | Permissive | https://github.com/Kludex/starlette | S09, S11, S12, S13, S14, S15, S16, S17, S20 |
 | streamlit | 1.65.0 | Apache-2.0 | Permissive | https://streamlit.io | S20 |
 | toml | 0.10.2 | MIT License | Permissive | https://github.com/uiri/toml | S20 |
-| typing_extensions | 4.16.0 | PSF-2.0 | Permissive | https://github.com/python/typing_extensions | S01, S02, S04, S05, S07, S08, S09, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24, TOOLING |
+| typing_extensions | 4.16.0 | PSF-2.0 | Permissive | https://github.com/python/typing_extensions | DEMO, S01, S02, S04, S05, S07, S08, S09, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24, TOOLING |
 | typing-inspection | 0.4.4 | MIT | Permissive | https://github.com/pydantic/typing-inspection | S09, S11, S12, S13, S14, S15, S16, S17 |
 | tzdata | 2026.5 | Apache-2.0 | Permissive | https://github.com/python/tzdata | S18 |
 | tzlocal | 5.4.4 | MIT | Permissive | https://github.com/regebro/tzlocal | S18 |
@@ -328,8 +330,8 @@ added or removed, or when its declared packages change.
 | Werkzeug | 3.1.9 | BSD-3-Clause | Permissive | https://github.com/pallets/werkzeug/ | S22, S23, S24 |
 | certifi | 2026.7.22 | Mozilla Public License 2.0 (MPL 2.0) | Weak copyleft (MPL) | https://github.com/certifi/python-certifi | DOCS, S11, S14, S15, S16, S20, S24 |
 | pathspec | 1.1.1 | Mozilla Public License 2.0 (MPL 2.0) | Weak copyleft (MPL) | https://github.com/cpburnz/python-pathspec | DOCS |
-| numpy | 2.5.3 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | Needs review | https://numpy.org | DEMO, S05, S19, S20 |
-| pillow | 12.3.0 | MIT-CMU | Needs review | https://python-pillow.github.io | DEMO, S19, S20 |
+| numpy | 2.5.3 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | Needs review | https://numpy.org | S05, S19, S20 |
+| pillow | 12.3.0 | MIT-CMU | Needs review | https://python-pillow.github.io | S19, S20 |
 | protobuf | 7.36.2 | 3-Clause BSD License | Needs review | https://developers.google.com/protocol-buffers/ | S20 |
 
 <!-- END GENERATED INVENTORY -->

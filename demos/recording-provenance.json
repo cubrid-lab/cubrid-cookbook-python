@@ -1,0 +1,125 @@
+{
+  "recorded_at_utc": "2026-10-12",
+  "scope": "Real runs of the AI agent recipes 01, 02 and 04, the FastAPI quickstart Swagger UI and the Streamlit dashboard's one-command demo; not a compatibility guarantee",
+  "source_commit": "c2dad293707a443ac69164815c225634904bd1f2",
+  "sources": {
+    "demos/agent-state.tape": "be101ea4b23ffd5e51ce28e3d042af9ce51780906a1a712feb298cc649d96496",
+    "demos/agent-state-video.tape": "00b29a8d6ee0290c303bffe2695b667be0ff33dc283a4f5e27f222857ee84241",
+    "demos/mcp-toolchain.tape": "41c6bb0d6a2116d39b5378c00df96eeece1aa43583409e5c9129f2e7f6214770",
+    "demos/dashboard.tape": "ef745985e6e4d17b93c575a7d3200c6142071414d1129fc429f1fffd547cdefa",
+    "demos/record_browser.py": "8252a57b0c2e88b6331356e2c28733596b923cdccdaf1c5b65fc9dc4eb984fa4",
+    "demos/build_media.sh": "44c3a27677966edce1f3ba0a20412515c6f4c1b63bc3ff724df03a645bc35824"
+  },
+  "source_notes": "demos/record_browser.py was reformatted by ruff format (one expression re-wrapped) after the browser recordings; its behavior is unchanged.",
+  "python_environment": {
+    "python": "3.12.13",
+    "origin": "Published PyPI releases installed with uv into a fresh virtual environment",
+    "packages": {
+      "pycubrid": "1.12.0",
+      "sqlalchemy-cubrid": "1.11.0",
+      "SQLAlchemy": "2.1.4",
+      "cubrid-mcp-server": "0.5.0",
+      "fastapi": "0.143.0",
+      "uvicorn": "0.54.0",
+      "playwright": "1.63.0"
+    }
+  },
+  "servers": {
+    "ai_agent": {
+      "image": "cubrid/cubrid:11.4",
+      "image_id": "sha256:1248b77ad39888df9e064655937188ab99fe056ed7e35b57d06155a015dc1791",
+      "observed_version": "11.4.6.1963",
+      "endpoint": "127.0.0.1:33113/testdb (CUBRID_PORT=33113)",
+      "state": "Empty database; the recipes' tables were dropped before demo-agent-state.gif and before agent-state.mp4, and mcp-toolchain.mp4 lists the tables those runs created"
+    },
+    "fastapi": {
+      "image": "cubrid/cubrid:11.2",
+      "image_id": "sha256:bbf8622a60496060cfb96095f01df27e9b2236de6d254998ecbcf05fdbe8345d",
+      "observed_version": "11.2.9.0866",
+      "endpoint": "127.0.0.1:33000/testdb from quickstart/5min-fastapi docker compose (project clcb-113-fastapi)",
+      "state": "cookbook_items dropped before uvicorn started, so the first item has id 1"
+    },
+    "dashboard": {
+      "cubrid_image_id": "sha256:1248b77ad39888df9e064655937188ab99fe056ed7e35b57d06155a015dc1791",
+      "observed_version": "11.4.6.1963",
+      "app_image": "python:3.12-slim",
+      "app_image_id": "sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f",
+      "app_packages": {
+        "streamlit": "1.65.0",
+        "pycubrid": "1.12.0",
+        "SQLAlchemy": "2.1.4",
+        "sqlalchemy-cubrid": "1.11.0"
+      },
+      "compose": "templates/dashboard/docker-compose.yml unchanged, with COMPOSE_PROJECT_NAME=clcb-113-dash and an override file that only sets container_name (clcb-113-dash-cubrid, clcb-113-dash-app); default ports 33000 and 8501",
+      "state": "Fresh cubrid_data volume; the pip cache volume was reused"
+    }
+  },
+  "tools": {
+    "vhs": "0.12.1 (24fa225), official release archive sha256 eb33787a5b1cebf91fe0b18bd231e2d71d36c1ff4babd99ddac1a6ab411efd10 (matches checksums.txt)",
+    "vhs_0_12_0_failure": "VHS 0.12.0 exited 0 without writing GIF or MP4 on this machine; 0.12.1 was used from an isolated tool directory",
+    "ttyd": "1.7.7-40e79c7",
+    "chrome": "Google Chrome 145.0.7632.67 (VHS terminal and Playwright via DEMO_CHROME)",
+    "ffmpeg": "4.4.2-0ubuntu0.22.04.1",
+    "font": "DejaVu Sans Mono (system font, terminal recordings)"
+  },
+  "cuts": "dashboard.tape hides the waits for the CUBRID health check and the dashboard pip install; dashboard.mp4 joins the terminal and browser recordings; the README GIFs of the dashboard and FastAPI are excerpts (build_media.sh)",
+  "media": {
+    "docs/demo-agent-state.gif": {
+      "sha256": "8fcf1f7563cf74c0e982dcecd8f9729ead7e900896ff1494e1b819cb98fbc42d",
+      "bytes": 54437,
+      "width": 1000,
+      "height": 480,
+      "duration_seconds": 8.84,
+      "frames": 221,
+      "codec": "gif"
+    },
+    "docs/demo-fastapi.gif": {
+      "sha256": "ae3a5defd74b693037e144ba89de36e5b908f30a3d86663d800b4a83f2003fd1",
+      "bytes": 1124009,
+      "width": 960,
+      "height": 540,
+      "duration_seconds": 12.0,
+      "frames": 120,
+      "codec": "gif"
+    },
+    "docs/demo-dashboard.gif": {
+      "sha256": "bba5753da6e08512f7787831eecf24323aa342555b989b77e155875b91d0ebd8",
+      "bytes": 1339922,
+      "width": 960,
+      "height": 540,
+      "duration_seconds": 11.0,
+      "frames": 110,
+      "codec": "gif"
+    },
+    "docs/assets/videos/dashboard.mp4": {
+      "sha256": "a81a703c4d39b57da3696759069a03cf4127b43227eac0cca823484a51a3cb89",
+      "bytes": 305540,
+      "width": 1280,
+      "height": 720,
+      "duration_seconds": 35.68,
+      "frames": 892,
+      "codec": "h264",
+      "pixel_format": "yuv420p"
+    },
+    "docs/assets/videos/agent-state.mp4": {
+      "sha256": "331adc78652b4edf345fe8354569abe730b631804981a6045f357fc3a7d728ca",
+      "bytes": 357263,
+      "width": 1340,
+      "height": 860,
+      "duration_seconds": 34.28,
+      "frames": 857,
+      "codec": "h264",
+      "pixel_format": "yuv420p"
+    },
+    "docs/assets/videos/mcp-toolchain.mp4": {
+      "sha256": "b96dd2880372c103ba4b1c1e292fa60278e043236b2e66c1271f918054328000",
+      "bytes": 373870,
+      "width": 1280,
+      "height": 720,
+      "duration_seconds": 30.68,
+      "frames": 767,
+      "codec": "h264",
+      "pixel_format": "yuv420p"
+    }
+  }
+}

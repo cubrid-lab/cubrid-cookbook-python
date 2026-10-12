@@ -70,3 +70,6 @@ docs/fundamentals*.md
 docs/performance.md
 docs/pitfalls.md
 docs/template-*.md
+
+# Demo recordings are staged here before review and promotion (demos/README.md)
+.demo-artifacts/

@@ -13,6 +13,8 @@
 
 <img src="docs/demo-agent-state.gif" alt="AI agent state management demo" width="100%"/>
 
+<sub>Real recordings of the examples against CUBRID; how they were made: [`demos/`](demos/README.md).</sub>
+
 ## Get Started
 
 | Your Goal | Go Here | Time |
@@ -42,6 +44,8 @@ The host-run API connects to `localhost` by default (`CUBRID_HOST` overrides it)
 To run both the API and database in Docker instead, use `docker compose up -d --build`
 in that directory; Compose sets `CUBRID_HOST=cubrid` for the API.
 
+<img src="docs/demo-fastapi.gif" alt="FastAPI quickstart: POST /items and GET /items in Swagger UI against CUBRID" width="100%"/>
+
 ### Migration Guide
 
 Side-by-side Java JDBC → Python migration with real code comparisons. Covers connections, CRUD (DB-API and ORM), transactions, and batch operations.
@@ -61,6 +65,8 @@ Copy-and-customize starting points for real applications:
 | [`batch-etl/`](templates/batch-etl/) | Data pipeline with Pandas |
 | [`ai-agent/`](templates/ai-agent/) | AI agent state store + MCP toolchain + RAG metadata (5 live-tested scripts) |
 | [`dashboard/`](templates/dashboard/) | Interactive dashboard with Streamlit |
+
+<img src="docs/demo-dashboard.gif" alt="Streamlit dashboard template showing CUBRID rows after docker compose up" width="100%"/>
 
 ### Performance
 

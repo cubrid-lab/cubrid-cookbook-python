@@ -5,7 +5,7 @@ example, so the requirement files are grouped by their normalised contents and
 each distinct set is installed into its own fresh ``uv`` virtual environment;
 nothing is flattened into one shared install. The CI and docs tooling that the
 workflows and the composite PR-smoke action install directly (``TOOLING``) and
-the demo GIF renderer's imports (``DEMO``) are two more sets, and the pinned documentation
+the browser demo recorder's imports (``DEMO``) are two more sets, and the pinned documentation
 build tools in ``.github/requirements-docs.txt`` (``DOCS``) are a third, so the inventory
 records the versions the docs workflows install. In every environment
 ``scripts/generate_third_party_licenses.py`` (standard library only) reports the
@@ -46,12 +46,12 @@ TOOLING = ("ruff==0.16.4", "pytest", "pytest-asyncio")
 # Pinned docs build tools; requirement_files() skips dot-directories, so this
 # file is read explicitly as its own set.
 DOCS_PINS = ROOT / ".github" / "requirements-docs.txt"
-# Imported by demos/render_gif.py, which renders docs/demo-agent-state.gif.
-DEMO = ("imageio", "pillow")
+# Imported by demos/record_browser.py, which records the browser demo videos.
+DEMO = ("playwright",)
 
 SOURCES = {
     "TOOLING": "CI and docs workflows and the PR-smoke action",
-    "DEMO": "demos/render_gif.py imports",
+    "DEMO": "demos/record_browser.py imports",
 }
 
 SKIP_DIRS = {"node_modules", "site-packages", "__pycache__"}

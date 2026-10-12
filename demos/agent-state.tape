@@ -1,32 +1,27 @@
-# cubrid-cookbook-python — AI agent state management demo
-Output ../docs/demo-agent-state.gif
-Set FontSize 16
-Set Width 1200
-Set Height 600
-Set Theme "Catppuccin Mocha"
+# README GIF: a real run of templates/ai-agent/01_agent_state.py against CUBRID.
+# Run from the repository root with the recording venv active and CUBRID_* set
+# (see demos/README.md). Output goes to the ignored .demo-artifacts/ staging dir.
+Require python
+Output .demo-artifacts/demo-agent-state.gif
 Set Shell bash
+Set FontFamily "DejaVu Sans Mono"
+Set FontSize 18
+Set Width 1000
+Set Height 480
+Set Theme "Catppuccin Mocha"
+Set Framerate 12
+Set TypingSpeed 35ms
+Set WaitTimeout 20s
 
-Type@50ms "pip install pycubrid"
+# Re-export the recording venv in case a login profile reset PATH.
+Hide
+Type `test -x "$VIRTUAL_ENV/bin/python" || exit 1; export PATH="$VIRTUAL_ENV/bin:$PATH"; clear`
 Enter
-Sleep 2s
+Sleep 300ms
+Show
 
-Type@50ms "python3 templates/ai-agent/01_agent_state.py"
+Type "python templates/ai-agent/01_agent_state.py"
+Sleep 300ms
 Enter
-Sleep 3s
-
-# Output shows:
-# Session created: 1
-# Conversation (4 messages):
-#   [user] What are the top 5 products?
-#   [assistant] I'll query the products table for you.
-#   [tool] Query returned 5 rows
-# Agent metadata: {'confidence': 0.95, 'model': 'demo'}
-# Agent state management working
-
-Type@30ms 'echo "CUBRID stores agent sessions, messages, and tool calls in JSON columns"'
-Enter
-Sleep 2s
-
-Type@30ms 'echo "SET types for tagging | JSON for LLM I/O | FK for relationships"'
-Enter
-Sleep 2s
+Wait+Screen /Agent state management working/
+Sleep 6s

@@ -211,17 +211,17 @@ class RequirementCoverage(unittest.TestCase):
                 self.assertIn(version, versions, f"{name} pinned {version}, inventory {versions}")
                 self.assertIn("DOCS", [s.strip() for s in found[0]["sets"].split(",")])
 
-    def test_demo_set_covers_the_gif_renderer_imports(self) -> None:
-        tree = ast.parse((ROOT / "demos" / "render_gif.py").read_text(encoding="utf-8"))
+    def test_demo_set_covers_the_browser_recorder_imports(self) -> None:
+        tree = ast.parse((ROOT / "demos" / "record_browser.py").read_text(encoding="utf-8"))
         imported = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 imported |= {alias.name.split(".")[0] for alias in node.names}
             elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
                 imported.add(node.module.split(".")[0])
-        third_party = {"imageio": "imageio", "PIL": "pillow"}
+        third_party = {"playwright": "playwright"}
         unknown = imported - set(third_party) - set(sys.stdlib_module_names) - {"__future__"}
-        self.assertFalse(unknown, f"demos/render_gif.py imports undeclared modules: {unknown}")
+        self.assertFalse(unknown, f"demos/record_browser.py imports undeclared modules: {unknown}")
         expected = {third_party[m] for m in imported & set(third_party)}
         self.assertLessEqual(expected, set(set_table()["DEMO"][1]))
 
