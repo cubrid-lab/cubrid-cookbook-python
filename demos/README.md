@@ -41,9 +41,10 @@ README); no recording here shows an LLM client such as Claude Desktop.
   `quickstart/5min-fastapi/requirements.txt` and `playwright`. Set `DEMO_CHROME`
   to a Chrome binary, or run `playwright install chromium`.
 
-Use a disposable CUBRID server and database that you own. The recipes create and
-reset their own `agent_*`, `cookbook_*` tables; `01_agent_state.py` and
-`04_agent_loop.py` currently need an empty database for each run.
+Use a disposable CUBRID server and database that you own. The recipes create
+their own `agent_*`, `cookbook_*` tables and, on each run, delete only their own
+previous demonstration rows, so they can run again on the same database. The
+recordings still start from empty tables so that the printed IDs begin at 1.
 
 ## Record
 
@@ -55,7 +56,8 @@ docker run -d --name demo-cubrid -p 127.0.0.1:33000:33000 -e CUBRID_DB=testdb cu
 timeout 180 bash -c 'until docker exec demo-cubrid csql -u dba testdb -c "SELECT 1" > /dev/null 2>&1; do sleep 2; done'
 vhs validate demos/*.tape
 vhs demos/agent-state.tape
-# 01 and 04 need an empty database (#302): drop their tables, children first
+# Optional: drop the agent tables (children first) so the second recording's
+# auto-increment IDs also start at 1, as in the committed agent-state.mp4
 docker exec demo-cubrid csql -u dba testdb -c "DROP TABLE IF EXISTS agent_tool_calls, agent_messages, agent_sessions, cookbook_agent_products"
 vhs demos/agent-state-video.tape
 vhs demos/mcp-toolchain.tape
