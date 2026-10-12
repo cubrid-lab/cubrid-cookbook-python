@@ -51,7 +51,8 @@ docker run -d --name demo-cubrid -p 127.0.0.1:33000:33000 -e CUBRID_DB=testdb cu
 timeout 180 bash -c 'until docker exec demo-cubrid csql -u dba testdb -c "SELECT 1" > /dev/null 2>&1; do sleep 2; done'
 vhs validate demos/*.tape
 vhs demos/agent-state.tape
-# empty the database again (drop the agent_* and cookbook_agent_products tables)
+# 01 and 04 need an empty database (#302): drop their tables, children first
+docker exec demo-cubrid csql -u dba testdb -c "DROP TABLE IF EXISTS agent_tool_calls, agent_messages, agent_sessions, cookbook_agent_products"
 vhs demos/agent-state-video.tape
 vhs demos/mcp-toolchain.tape
 docker rm -f demo-cubrid
