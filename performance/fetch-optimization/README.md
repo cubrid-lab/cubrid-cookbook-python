@@ -85,6 +85,20 @@ for row in session.execute(stmt).scalars():
     process(row)
 ```
 
+## Running the Benchmark
+
+`benchmark.py` connects to `localhost:33000`, database `testdb`, user `dba` with an empty password,
+which is what the repository's `docker-compose.yml` provides. From the repository root:
+
+```bash
+docker compose up -d --wait cubrid     # CUBRID on localhost:33000, database testdb
+pip install pycubrid
+python performance/fetch-optimization/benchmark.py
+docker compose down                    # stop the database when finished
+```
+
+The script creates and fills `cookbook_fetch_test` (10,000 rows), prints the time of each fetch strategy and takes about 15 seconds.
+
 ## Benchmark Reference
 
 - pycubrid 1.10.0 (2026-10-09, median of 5): 10K rows, 5 columns `fetchall()` 52 ms; 2 columns 28 ms; `SELECT *` 50 ms

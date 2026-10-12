@@ -108,6 +108,20 @@ with Session(engine) as session:
 On pycubrid 1.10.0 a per-row INSERT + COMMIT ran at ~28 rows/s versus ~1,279 rows/s with a COMMIT every 500 rows (about 45x).
 Reducing COMMIT frequency is the single most effective optimization for write-heavy workloads.
 
+## Running the Benchmark
+
+`benchmark.py` connects to `localhost:33000`, database `testdb`, user `dba` with an empty password,
+which is what the repository's `docker-compose.yml` provides. From the repository root:
+
+```bash
+docker compose up -d --wait cubrid     # CUBRID on localhost:33000, database testdb
+pip install pycubrid
+python performance/bulk-insert/benchmark.py
+docker compose down                    # stop the database when finished
+```
+
+The script creates `cookbook_bulk_test` and runs three strategies (500 rows with a COMMIT per row, then 5,000 rows twice); it takes about 45 seconds, most of it the per-row COMMIT run.
+
 ## Benchmark Reference
 
 - pycubrid 1.10.0 (2026-10-09): see the table above; INSERT + COMMIT ~36 ms per row; 10K-row per-row-COMMIT time (~357 s) is extrapolated from the 500-row run

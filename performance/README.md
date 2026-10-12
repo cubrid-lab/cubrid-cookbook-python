@@ -64,6 +64,23 @@ driver-optimization table and the row-count scaling table below are historical.
 | [bulk-insert/](./bulk-insert/) | Batch strategies for bulk INSERT operations |
 | [connection-pooling/](./connection-pooling/) | Connection pool configuration and reuse |
 
+## Running the Benchmarks
+
+Each section directory has a `benchmark.py` that connects to `localhost:33000`, database `testdb`, user `dba`
+with an empty password (the repository's `docker-compose.yml` provides this). From the repository root:
+
+```bash
+docker compose up -d --wait cubrid     # CUBRID on localhost:33000, database testdb
+pip install 'sqlalchemy-cubrid[pycubrid]'
+python performance/fetch-optimization/benchmark.py
+python performance/bulk-insert/benchmark.py
+python performance/connection-pooling/benchmark.py
+docker compose down                    # stop the database when finished
+```
+
+Expect about 15 seconds for `fetch-optimization`, about 45 seconds for `bulk-insert` and a few seconds for
+`connection-pooling`. Absolute numbers depend on your hardware and CUBRID version.
+
 ## Key Takeaways
 
 1. **≤ 500 rows** (historical, pycubrid 0.5.0): Network + server time dominates — client-side optimization has minimal effect
