@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   cubrid:
     image: cubrid/cubrid:11.2
