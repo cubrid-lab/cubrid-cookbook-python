@@ -339,10 +339,16 @@ def test_stale_request_cannot_settle_a_newer_lease_of_the_same_processor(
 
 
 @pytest.mark.parametrize("action", ["ack", "fail"])
-@pytest.mark.parametrize("lease_attempt", [None, "1", True, 1.0])
+@pytest.mark.parametrize(
+    ("lease_attempt", "status"),
+    [(None, 409), ("1", 400), (True, 400), (1.0, 400)],
+    ids=["missing", "string", "bool", "float"],
+)
 def test_settling_requires_an_integer_lease_attempt(
-    app: Flask, httpx_client: httpx.Client, action: str, lease_attempt: object
+    app: Flask, httpx_client: httpx.Client, action: str, lease_attempt: object, status: int
 ) -> None:
+    # A missing lease_attempt does not show a lease (409); a malformed one is a bad
+    # request (400). Either way the lease is left as it was.
     _create_invoice(httpx_client)
     msg = httpx_client.post(
         "/api/outbox/lease", json={"max_messages": 1, "processor_id": "worker-1"}
@@ -353,6 +359,6 @@ def test_settling_requires_an_integer_lease_attempt(
 
     response = httpx_client.post(f"/api/outbox/{msg['id']}/{action}", json=body)
 
-    assert response.status_code == 400
+    assert response.status_code == status
     assert "lease_attempt" in response.json()["error"]
     assert httpx_client.get(f"/api/outbox/{msg['id']}").json()["leased_by"] == "worker-1"

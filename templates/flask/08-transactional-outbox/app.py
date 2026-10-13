@@ -177,8 +177,12 @@ def lease_outbox_messages():
     return jsonify([message.to_dict() for message in claimed_messages])
 
 
-def _lease_claim(payload: Mapping[str, object]) -> tuple[str, int] | str:
-    """Return the caller's ``(processor_id, lease_attempt)``, or an error message.
+def _lease_claim(payload: Mapping[str, object]) -> tuple[str, int | None] | str:
+    """Return the caller's ``(processor_id, lease_attempt)``, or a 400 error message.
+
+    A missing ``lease_attempt`` is returned as None: the caller has not shown that
+    it holds a lease, which ``_lease_error()`` reports as a 409 conflict. A value of
+    the wrong type is a malformed request (400).
 
     A lease is identified by the processor that holds it and the attempt number
     ``/outbox/lease`` returned for it (the message's ``attempts`` value). Settling
@@ -189,13 +193,19 @@ def _lease_claim(payload: Mapping[str, object]) -> tuple[str, int] | str:
     if not processor_id:
         return "processor_id is required"
     lease_attempt = payload.get("lease_attempt")
+    if lease_attempt is None:
+        return processor_id, None
     if isinstance(lease_attempt, bool) or not isinstance(lease_attempt, int):
         return "lease_attempt must be the integer attempts value returned by /outbox/lease"
     return processor_id, lease_attempt
 
 
-def _lease_error(message, processor_id: str, lease_attempt: int, now: datetime) -> str | None:
+def _lease_error(
+    message, processor_id: str, lease_attempt: int | None, now: datetime
+) -> str | None:
     """Return why the caller cannot settle ``message``, or None if it holds the lease."""
+    if lease_attempt is None:
+        return "lease_attempt is required: send the attempts value returned by /outbox/lease."
     if message.leased_until is None or message.leased_until <= now:
         return "Outbox message is not currently leased."
     if message.leased_by != processor_id:
@@ -247,7 +257,7 @@ def acknowledge_outbox_message(message_id: int):
 
     now = naive_utc_now()
     lease_error = _lease_error(message, processor_id, lease_attempt, now)
-    if lease_error:
+    if lease_error or lease_attempt is None:
         return jsonify({"error": lease_error}), 409
 
     if not _update_own_lease(
@@ -287,7 +297,7 @@ def fail_outbox_message(message_id: int):
 
     now = naive_utc_now()
     lease_error = _lease_error(message, processor_id, lease_attempt, now)
-    if lease_error:
+    if lease_error or lease_attempt is None:
         return jsonify({"error": lease_error}), 409
 
     error_message = str(payload.get("error", "")).strip() or "unknown error"

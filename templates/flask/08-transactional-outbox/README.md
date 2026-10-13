@@ -17,8 +17,9 @@ the `processor_id` that took it and the `attempts` value returned for it.
 ```
 
 `/fail` also takes an optional `"error"` string. `lease_attempt` is the
-`attempts` value from the `/lease` response; it is required, and a missing or
-non-integer value returns 400. The settlement is one UPDATE whose `WHERE` clause
+`attempts` value from the `/lease` response. It is required: a missing
+`lease_attempt` returns 409 (the request does not show which lease it holds), and
+a value that is not an integer returns 400. The settlement is one UPDATE whose `WHERE` clause
 checks `leased_by`, `leased_until > now`, `status = 'pending'` and
 `attempts = lease_attempt`, and it returns 409 unless exactly one row changed.
 So a request for a lease that expired and was taken again (by another processor,
