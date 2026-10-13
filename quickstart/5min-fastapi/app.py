@@ -7,6 +7,8 @@ import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import pycubrid
+from pycubrid.connection import Connection
+from pycubrid.cursor import Cursor
 from starlette.concurrency import run_in_threadpool
 
 
@@ -27,7 +29,7 @@ class ItemOut(ItemIn):
     id: int
 
 
-def get_conn() -> pycubrid.Connection:
+def get_conn() -> Connection:
     return pycubrid.connect(
         host=os.environ.get("CUBRID_HOST", "localhost"),
         port=33000,
@@ -38,7 +40,7 @@ def get_conn() -> pycubrid.Connection:
 
 
 @contextmanager
-def database_cursor() -> Iterator[pycubrid.Cursor]:
+def database_cursor() -> Iterator[Cursor]:
     # Explicit cleanup also covers cursor creation, query, commit and rollback failures.
     with closing(get_conn()) as conn:
         try:

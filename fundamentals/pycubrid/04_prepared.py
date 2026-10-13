@@ -12,6 +12,7 @@ from __future__ import annotations
 import time
 
 import pycubrid
+from pycubrid.connection import Connection
 
 DB_CONFIG = {
     "host": "localhost",
@@ -22,11 +23,11 @@ DB_CONFIG = {
 }
 
 
-def get_connection() -> pycubrid.Connection:
+def get_connection() -> Connection:
     return pycubrid.connect(**DB_CONFIG)
 
 
-def setup(conn: pycubrid.Connection) -> None:
+def setup(conn: Connection) -> None:
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_products")
     cursor.execute("""
@@ -42,7 +43,7 @@ def setup(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def parameterized_queries(conn: pycubrid.Connection) -> None:
+def parameterized_queries(conn: Connection) -> None:
     """Use ? placeholders for safe parameterized queries."""
     print("=== Parameterized Queries ===")
     cursor = conn.cursor()
@@ -74,7 +75,7 @@ def parameterized_queries(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def sql_injection_safe(conn: pycubrid.Connection) -> None:
+def sql_injection_safe(conn: Connection) -> None:
     """Demonstrate SQL injection safety with parameterized queries."""
     print("\n=== SQL Injection Safety ===")
     cursor = conn.cursor()
@@ -100,7 +101,7 @@ def sql_injection_safe(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def batch_insert(conn: pycubrid.Connection) -> None:
+def batch_insert(conn: Connection) -> None:
     """executemany — efficient batch inserts."""
     print("\n=== Batch Insert (executemany) ===")
     cursor = conn.cursor()
@@ -134,7 +135,7 @@ def batch_insert(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def batch_update(conn: pycubrid.Connection) -> None:
+def batch_update(conn: Connection) -> None:
     """Batch updates with executemany."""
     print("\n=== Batch Update ===")
     cursor = conn.cursor()
@@ -163,7 +164,7 @@ def batch_update(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def aggregate_queries(conn: pycubrid.Connection) -> None:
+def aggregate_queries(conn: Connection) -> None:
     """Aggregation with GROUP BY."""
     print("\n=== Aggregate Queries ===")
     cursor = conn.cursor()
@@ -186,7 +187,7 @@ def aggregate_queries(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def cleanup(conn: pycubrid.Connection) -> None:
+def cleanup(conn: Connection) -> None:
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_products")
     conn.commit()

@@ -28,7 +28,7 @@ Core database patterns using pycubrid (DB-API 2.0) and SQLAlchemy ORM.
 - [transactions](fundamentals/transactions/): Commit, rollback, savepoints, isolation levels, auto-commit (redirect to `fundamentals/pycubrid/03_transactions.py`)
 - [parameterized-queries](fundamentals/parameterized-queries/): Safe `?`-style parameterized queries (driver-side binding, not server-side prepare)
 - [error-handling](fundamentals/error-handling/): PEP 249 exception hierarchy, retry patterns (`05_error_handling.py` redirects to `fundamentals/pycubrid/05_error_handling.py`)
-- [lob-handling](fundamentals/lob-handling/): BLOB/CLOB operations via `conn.create_lob()` (redirect to `fundamentals/pycubrid/06_lob.py`)
+- [lob-handling](fundamentals/lob-handling/): BLOB/CLOB operations: insert `str`/`bytes`, read back with `pycubrid.lob.Lob` (redirect to `fundamentals/pycubrid/06_lob.py`)
 - [orm-basics](fundamentals/orm-basics/): SQLAlchemy engine, Core, ORM, relationships, reflection
 - [pycubrid](fundamentals/pycubrid/): Numbered pycubrid fundamentals (connect → CRUD → collections, LOBs, window functions, timezones, date formatting)
 - [sqlalchemy](fundamentals/sqlalchemy/): Numbered SQLAlchemy ORM examples

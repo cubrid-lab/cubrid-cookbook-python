@@ -6,16 +6,12 @@ Demonstrates:
 - DATETIMELTZ: stored as an absolute instant; the server returns it in the
   session time zone, so native reads come back aware in the pinned zone
   (+09:00 here). The same instant reads as +00:00 in a UTC session.
+- TIMESTAMPTZ: second precision with an explicit zone, read back natively as a
+  tz-aware datetime (pycubrid >= 1.7.0 fixed these reads, cubrid-lab/pycubrid#289)
 - The session zone survives commit() on pycubrid >= 1.8.0 (#468/#472). On
   1.7.x a commit silently reconnected and dropped it, so reads after a commit
   fell back to the server default zone (UTC in the cubrid/cubrid images).
 - Server-side TO_CHAR rendering with the TZR (zone-region) format element
-
-Note on TIMESTAMPTZ / TIMESTAMPLTZ:
-    Reading those two column types natively currently triggers a pycubrid
-    parsing bug (cubrid-lab/pycubrid#289), so this recipe reads TIMESTAMPTZ
-    only via server-side TO_CHAR(), which is unaffected. DATETIMETZ and
-    DATETIMELTZ read back natively without issue.
 """
 
 from __future__ import annotations
@@ -84,18 +80,20 @@ def seed_events(cursor):
 
 
 def read_native(cursor):
-    # DATETIMETZ keeps its explicit zone; DATETIMELTZ comes back aware in the
-    # session zone (Asia/Seoul, +09:00), still the same instant as stored.
-    cursor.execute("SELECT id, label, at_tz, at_ltz FROM cookbook_events ORDER BY id")
-    print("\nNative tz-aware datetimes (DATETIMETZ, DATETIMELTZ):")
-    for event_id, label, at_tz, at_ltz in cursor.fetchall():
+    # DATETIMETZ and TIMESTAMPTZ keep their explicit zone; DATETIMELTZ comes back
+    # aware in the session zone (Asia/Seoul, +09:00), still the same instant as stored.
+    cursor.execute("SELECT id, label, at_tz, at_ltz, at_ts FROM cookbook_events ORDER BY id")
+    print("\nNative tz-aware datetimes (DATETIMETZ, DATETIMELTZ, TIMESTAMPTZ):")
+    for event_id, label, at_tz, at_ltz, at_ts in cursor.fetchall():
         tz_str = at_tz.isoformat(sep=" ", timespec="seconds")
         ltz_str = at_ltz.isoformat(sep=" ", timespec="seconds")
-        print(f"  id={event_id} {label:<12} tz={tz_str}  ltz={ltz_str}")
+        ts_str = at_ts.isoformat(sep=" ", timespec="seconds")
+        print(f"  id={event_id} {label:<12} tz={tz_str}  ltz={ltz_str}  ts={ts_str}")
 
 
 def read_via_to_char(cursor):
-    # TIMESTAMPTZ rendered server-side to sidestep pycubrid#289.
+    # isoformat() above prints only the UTC offset; TO_CHAR's TZR element renders
+    # the zone's region name on the server instead.
     cursor.execute(
         """
         SELECT id, label,

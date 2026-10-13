@@ -30,7 +30,7 @@
     user_id=2  tag_count=1
     user_id=3  tag_count=3
 
-[7] After UPDATE: user_id=1 theme is now '"light"'
+[7] After UPDATE: user_id=1 theme is now 'light'
 [8] After DELETE (newsletter=false): 2 rows remain
 
 --- JSON function cheat sheet ---
@@ -38,6 +38,7 @@
   JSON_UNQUOTE(JSON_EXTRACT(doc, '$.x')) scalar value (no quotes)
   JSON_LENGTH(doc_or_array)              element count
   JSON_REPLACE(doc, '$.k', new_value)    update existing key
+                                         (a SQL string becomes a JSON string)
   JSON_INSERT(doc, '$.k', value)         add key if absent
   JSON_REMOVE(doc, '$.k')                delete key
 

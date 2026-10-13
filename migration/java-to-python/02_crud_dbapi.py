@@ -28,6 +28,7 @@ Same parameter marker (?), same SQL, 60% less boilerplate.
 from __future__ import annotations
 
 import pycubrid
+from pycubrid.connection import Connection
 
 DB_CONFIG = {
     "host": "localhost",
@@ -38,11 +39,11 @@ DB_CONFIG = {
 }
 
 
-def get_connection() -> pycubrid.Connection:
+def get_connection() -> Connection:
     return pycubrid.connect(**DB_CONFIG)
 
 
-def setup_table(conn: pycubrid.Connection) -> None:
+def setup_table(conn: Connection) -> None:
     """CREATE TABLE — identical SQL in both languages.
 
     Java:
@@ -64,7 +65,7 @@ def setup_table(conn: pycubrid.Connection) -> None:
     print("Created table 'cookbook_items'")
 
 
-def insert_single(conn: pycubrid.Connection) -> None:
+def insert_single(conn: Connection) -> None:
     """INSERT one row with parameters.
 
     Java (PreparedStatement):
@@ -90,7 +91,7 @@ def insert_single(conn: pycubrid.Connection) -> None:
     print("Inserted 1 row")
 
 
-def insert_multiple(conn: pycubrid.Connection) -> None:
+def insert_multiple(conn: Connection) -> None:
     """INSERT multiple rows.
 
     Java:
@@ -120,7 +121,7 @@ def insert_multiple(conn: pycubrid.Connection) -> None:
     print(f"Inserted {len(items)} rows")
 
 
-def select_all(conn: pycubrid.Connection) -> list[tuple]:
+def select_all(conn: Connection) -> list[tuple]:
     """SELECT all rows.
 
     Java (ResultSet iteration):
@@ -148,7 +149,7 @@ def select_all(conn: pycubrid.Connection) -> list[tuple]:
     return rows
 
 
-def select_filtered(conn: pycubrid.Connection) -> None:
+def select_filtered(conn: Connection) -> None:
     """SELECT with WHERE and parameters.
 
     Java:
@@ -176,7 +177,7 @@ def select_filtered(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def select_fetchone(conn: pycubrid.Connection) -> None:
+def select_fetchone(conn: Connection) -> None:
     """Fetch one row at a time (replaces rs.next() pattern).
 
     Java:
@@ -197,7 +198,7 @@ def select_fetchone(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def update_rows(conn: pycubrid.Connection) -> None:
+def update_rows(conn: Connection) -> None:
     """UPDATE rows.
 
     Java:
@@ -229,7 +230,7 @@ def update_rows(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def delete_rows(conn: pycubrid.Connection) -> None:
+def delete_rows(conn: Connection) -> None:
     """DELETE rows.
 
     Java:
@@ -249,7 +250,7 @@ def delete_rows(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def handle_nulls(conn: pycubrid.Connection) -> None:
+def handle_nulls(conn: Connection) -> None:
     """NULL handling — much simpler in Python.
 
     Java (the wasNull pattern):
@@ -277,7 +278,7 @@ def handle_nulls(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def cleanup(conn: pycubrid.Connection) -> None:
+def cleanup(conn: Connection) -> None:
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_items")
     conn.commit()

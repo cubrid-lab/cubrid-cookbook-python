@@ -40,6 +40,7 @@ the explicit conn.setAutoCommit(false) you'd write in Java.
 from __future__ import annotations
 
 import pycubrid
+from pycubrid.connection import Connection
 
 DB_CONFIG = {
     "host": "localhost",
@@ -50,11 +51,11 @@ DB_CONFIG = {
 }
 
 
-def get_connection() -> pycubrid.Connection:
+def get_connection() -> Connection:
     return pycubrid.connect(**DB_CONFIG)
 
 
-def setup(conn: pycubrid.Connection) -> None:
+def setup(conn: Connection) -> None:
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_accounts")
     cursor.execute("""
@@ -72,7 +73,7 @@ def setup(conn: pycubrid.Connection) -> None:
     print("Setup: 3 accounts created")
 
 
-def show_balances(conn: pycubrid.Connection, label: str = "") -> None:
+def show_balances(conn: Connection, label: str = "") -> None:
     cursor = conn.cursor()
     cursor.execute("SELECT owner, balance FROM cookbook_accounts ORDER BY id")
     rows = cursor.fetchall()
@@ -81,7 +82,7 @@ def show_balances(conn: pycubrid.Connection, label: str = "") -> None:
     cursor.close()
 
 
-def commit_and_rollback(conn: pycubrid.Connection) -> None:
+def commit_and_rollback(conn: Connection) -> None:
     """Basic commit and rollback.
 
     Java equivalent:
@@ -122,7 +123,7 @@ def commit_and_rollback(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def safe_transfer(conn: pycubrid.Connection, sender: str, receiver: str, amount: float) -> bool:
+def safe_transfer(conn: Connection, sender: str, receiver: str, amount: float) -> bool:
     """Transfer with proper error handling.
 
     Java equivalent (try/catch/finally):
@@ -189,7 +190,7 @@ def safe_transfer(conn: pycubrid.Connection, sender: str, receiver: str, amount:
         cursor.close()
 
 
-def savepoint_pattern(conn: pycubrid.Connection) -> None:
+def savepoint_pattern(conn: Connection) -> None:
     """Savepoints — partial rollback within a transaction.
 
     Java:
@@ -268,7 +269,7 @@ def autocommit_pattern() -> None:
     conn.close()
 
 
-def cleanup(conn: pycubrid.Connection) -> None:
+def cleanup(conn: Connection) -> None:
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_accounts")
     conn.commit()

@@ -12,6 +12,7 @@ Demonstrates:
 from __future__ import annotations
 
 import pycubrid
+from pycubrid.connection import Connection
 
 DB_CONFIG = {
     "host": "localhost",
@@ -22,11 +23,11 @@ DB_CONFIG = {
 }
 
 
-def get_connection() -> pycubrid.Connection:
+def get_connection() -> Connection:
     return pycubrid.connect(**DB_CONFIG)
 
 
-def setup_table(conn: pycubrid.Connection) -> None:
+def setup_table(conn: Connection) -> None:
     """Create the example table."""
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_users")
@@ -43,7 +44,7 @@ def setup_table(conn: pycubrid.Connection) -> None:
     print("✓ Created table 'cookbook_users'")
 
 
-def insert_rows(conn: pycubrid.Connection) -> None:
+def insert_rows(conn: Connection) -> None:
     """INSERT — add rows to the table."""
     cursor = conn.cursor()
 
@@ -70,7 +71,7 @@ def insert_rows(conn: pycubrid.Connection) -> None:
     print(f"✓ Inserted {1 + len(users)} rows")
 
 
-def select_all(conn: pycubrid.Connection) -> None:
+def select_all(conn: Connection) -> None:
     """SELECT — read all rows."""
     cursor = conn.cursor()
     cursor.execute("SELECT id, name, email, age FROM cookbook_users ORDER BY id")
@@ -85,7 +86,7 @@ def select_all(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def select_filtered(conn: pycubrid.Connection) -> None:
+def select_filtered(conn: Connection) -> None:
     """SELECT with WHERE clause and parameters."""
     cursor = conn.cursor()
 
@@ -112,7 +113,7 @@ def select_filtered(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def select_with_fetch_methods(conn: pycubrid.Connection) -> None:
+def select_with_fetch_methods(conn: Connection) -> None:
     """Demonstrate fetchone, fetchmany, fetchall."""
     cursor = conn.cursor()
     cursor.execute("SELECT name FROM cookbook_users ORDER BY id")
@@ -132,7 +133,7 @@ def select_with_fetch_methods(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def update_rows(conn: pycubrid.Connection) -> None:
+def update_rows(conn: Connection) -> None:
     """UPDATE — modify existing rows."""
     cursor = conn.cursor()
 
@@ -154,7 +155,7 @@ def update_rows(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def delete_rows(conn: pycubrid.Connection) -> None:
+def delete_rows(conn: Connection) -> None:
     """DELETE — remove rows."""
     cursor = conn.cursor()
 
@@ -165,7 +166,7 @@ def delete_rows(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def cleanup(conn: pycubrid.Connection) -> None:
+def cleanup(conn: Connection) -> None:
     """Drop the example table."""
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_users")

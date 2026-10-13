@@ -164,13 +164,15 @@ def main() -> None:
 
         # ------------------------------------------------------------------
         # UPDATE: modify a JSON path in place with JSON_REPLACE.
+        # A SQL string argument becomes a JSON string, so pass the bare text:
+        # '"light"' would store the quotes too ("\"light\"").
         # ------------------------------------------------------------------
         print()
         cur.execute(
             "UPDATE cookbook_user_prefs "
-            "SET preferences = JSON_REPLACE(preferences, '$.theme', '\"light\"') "
+            "SET preferences = JSON_REPLACE(preferences, '$.theme', ?) "
             "WHERE user_id = ?",
-            (1,),
+            ("light", 1),
         )
         conn.commit()
         cur.execute(
@@ -206,6 +208,7 @@ def main() -> None:
     print("  JSON_UNQUOTE(JSON_EXTRACT(doc, '$.x')) scalar value (no quotes)")
     print("  JSON_LENGTH(doc_or_array)              element count")
     print("  JSON_REPLACE(doc, '$.k', new_value)    update existing key")
+    print("                                         (a SQL string becomes a JSON string)")
     print("  JSON_INSERT(doc, '$.k', value)         add key if absent")
     print("  JSON_REMOVE(doc, '$.k')                delete key")
     print()

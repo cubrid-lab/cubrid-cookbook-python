@@ -10,6 +10,7 @@ Demonstrates:
 from __future__ import annotations
 
 import pycubrid
+from pycubrid.connection import Connection
 from pycubrid.lob import Lob
 
 DB_CONFIG = {
@@ -21,11 +22,11 @@ DB_CONFIG = {
 }
 
 
-def get_connection() -> pycubrid.Connection:
+def get_connection() -> Connection:
     return pycubrid.connect(**DB_CONFIG)
 
 
-def setup(conn: pycubrid.Connection) -> None:
+def setup(conn: Connection) -> None:
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_documents")
     cursor.execute("""
@@ -47,7 +48,7 @@ def setup(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def read_lob(conn: pycubrid.Connection, lob_dict: dict) -> bytes:
+def read_lob(conn: Connection, lob_dict: dict) -> bytes:
     """Read LOB content from a LOB result dictionary.
 
     When selecting LOB columns, pycubrid returns a dict with keys:
@@ -58,7 +59,7 @@ def read_lob(conn: pycubrid.Connection, lob_dict: dict) -> bytes:
     return lob.read(lob_dict["lob_length"])
 
 
-def clob_example(conn: pycubrid.Connection) -> None:
+def clob_example(conn: Connection) -> None:
     """Store and retrieve text data using CLOB."""
     print("=== CLOB (Character Large Object) ===")
     cursor = conn.cursor()
@@ -99,7 +100,7 @@ def clob_example(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def blob_example(conn: pycubrid.Connection) -> None:
+def blob_example(conn: Connection) -> None:
     """Store and retrieve binary data using BLOB."""
     print("\n=== BLOB (Binary Large Object) ===")
     cursor = conn.cursor()
@@ -139,7 +140,7 @@ def blob_example(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def cleanup(conn: pycubrid.Connection) -> None:
+def cleanup(conn: Connection) -> None:
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_documents")
     cursor.execute("DROP TABLE IF EXISTS cookbook_files")

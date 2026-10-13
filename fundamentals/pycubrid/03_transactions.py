@@ -10,6 +10,7 @@ Demonstrates:
 from __future__ import annotations
 
 import pycubrid
+from pycubrid.connection import Connection
 
 DB_CONFIG = {
     "host": "localhost",
@@ -20,11 +21,11 @@ DB_CONFIG = {
 }
 
 
-def get_connection() -> pycubrid.Connection:
+def get_connection() -> Connection:
     return pycubrid.connect(**DB_CONFIG)
 
 
-def setup(conn: pycubrid.Connection) -> None:
+def setup(conn: Connection) -> None:
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_accounts")
     cursor.execute("""
@@ -40,7 +41,7 @@ def setup(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def show_balances(conn: pycubrid.Connection, label: str = "") -> None:
+def show_balances(conn: Connection, label: str = "") -> None:
     cursor = conn.cursor()
     cursor.execute("SELECT name, balance FROM cookbook_accounts ORDER BY id")
     rows = cursor.fetchall()
@@ -49,7 +50,7 @@ def show_balances(conn: pycubrid.Connection, label: str = "") -> None:
     cursor.close()
 
 
-def commit_example(conn: pycubrid.Connection) -> None:
+def commit_example(conn: Connection) -> None:
     """Transfer money with explicit commit."""
     print("\n=== Commit Example ===")
     show_balances(conn, "before")
@@ -76,7 +77,7 @@ def commit_example(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def rollback_example(conn: pycubrid.Connection) -> None:
+def rollback_example(conn: Connection) -> None:
     """Demonstrate rollback — changes are discarded."""
     print("\n=== Rollback Example ===")
     show_balances(conn, "before")
@@ -113,7 +114,7 @@ def autocommit_example() -> None:
     conn.close()
 
 
-def savepoint_example(conn: pycubrid.Connection) -> None:
+def savepoint_example(conn: Connection) -> None:
     """Savepoints — partial rollback within a transaction."""
     print("\n=== Savepoint Example ===")
     show_balances(conn, "before")
@@ -141,7 +142,7 @@ def savepoint_example(conn: pycubrid.Connection) -> None:
     cursor.close()
 
 
-def cleanup(conn: pycubrid.Connection) -> None:
+def cleanup(conn: Connection) -> None:
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_accounts")
     conn.commit()
