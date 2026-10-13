@@ -61,19 +61,32 @@ def issue_create_commands(text: str) -> list[str]:
     ]
 
 
+CANONICAL_PRIORITY = re.compile(r"priority: (critical|high|medium|low)")
+CANONICAL_SIZE = re.compile(r"size: (XS|S|M|L|XL)")
+# Anything that reads as a priority or size label: "priority:high", "Priority - High",
+# "P1", "size:S", "size-xs". AGENTS.md forbids these variants of the canonical names.
+PRIORITY_OR_SIZE_LIKE = re.compile(r"(?i)\s*(priority|size)\b.*|\s*p[0-9]\s*")
+
+
 def label_problems(command: str) -> list[str]:
-    """Return why ``command`` lacks exactly one canonical priority and size label."""
+    """Return why ``command`` lacks exactly one canonical priority and size label.
+
+    A label that looks like a priority or size label but is not one of the
+    canonical names (``priority:high``, ``P1``, ``size:S``) is reported too, even
+    next to a canonical one.
+    """
     labels = [
         label.strip("\"'") for label in re.findall(r"--label[ =](\"[^\"]+\"|'[^']+'|\S+)", command)
     ]
     found = []
-    for kind, pattern in (
-        ("priority", r"priority: (critical|high|medium|low)"),
-        ("size", r"size: (XS|S|M|L|XL)"),
-    ):
-        count = sum(bool(re.fullmatch(pattern, label)) for label in labels)
+    for kind, pattern in (("priority", CANONICAL_PRIORITY), ("size", CANONICAL_SIZE)):
+        count = sum(bool(pattern.fullmatch(label)) for label in labels)
         if count != 1:
             found.append(f"{count} {kind} labels in {labels}")
+    for label in labels:
+        canonical = CANONICAL_PRIORITY.fullmatch(label) or CANONICAL_SIZE.fullmatch(label)
+        if not canonical and PRIORITY_OR_SIZE_LIKE.fullmatch(label):
+            found.append(f"non-canonical label {label!r}")
     return found
 
 
@@ -276,6 +289,30 @@ class WorkflowPermissionsTest(unittest.TestCase):
         self.assertEqual([label_problems(c) for c in issue_create_commands(good)], [[]])
         self.assertTrue(label_problems('gh issue create --label "priority: low"'))
         self.assertEqual(issue_create_commands("# gh issue create in a comment\n"), [])
+
+    def test_label_check_rejects_non_canonical_variants(self) -> None:
+        good = '--label "priority: medium" --label "size: S"'
+        self.assertEqual(label_problems(f"gh issue create {good} --label ci"), [])
+        variants = [
+            "priority:high",
+            "priority-high",
+            "Priority: High",
+            "priority: urgent",
+            "P1",
+            "p0",
+            "size:S",
+            "size-xs",
+            "Size: S",
+            "size: xs",
+        ]
+        for variant in variants:
+            with self.subTest(variant=variant):
+                problems = label_problems(f'gh issue create {good} --label "{variant}"')
+                self.assertIn(f"non-canonical label {variant!r}", problems)
+        # Unrelated labels that merely contain the words are fine.
+        for label in ("ci", "area: templates", "pricing", "oversized-ok"):
+            with self.subTest(label=label):
+                self.assertEqual(label_problems(f'gh issue create {good} --label "{label}"'), [])
 
     def test_checkers_detect_violations(self) -> None:
         self.assertTrue(permission_problems("x.yml", "on: push\njobs:\n  a:\n    steps: []\n"))
