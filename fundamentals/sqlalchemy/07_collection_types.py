@@ -170,8 +170,10 @@ def main() -> None:
             print(f"[6] Updated checklist for id=3: {updated}")
             print("    (SEQUENCE preserves the new order and the duplicate 'benchmark')")
     finally:
-        Base.metadata.drop_all(engine)
-        engine.dispose()
+        try:
+            Base.metadata.drop_all(engine)
+        finally:
+            engine.dispose()
     print()
     print("[7] Cleaned up table and closed engine")
 

@@ -266,8 +266,10 @@ def main() -> None:
     finally:
         # Leave the shared database clean for other recipes, and remove the temp
         # working directory, even when a step above fails.
-        _reset_demo_state()
-        shutil.rmtree(workdir, ignore_errors=True)
+        try:
+            _reset_demo_state()
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)
 
     print()
     impl_name, transactional_ddl = _describe_migration_impl()
