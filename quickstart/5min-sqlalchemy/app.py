@@ -134,11 +134,12 @@ def main() -> int:
         return 1
     finally:
         # Leave the database as it was found, even after a failure.
-        try:
-            metadata.drop_all(engine)
-            Base.metadata.drop_all(engine)
-        except SQLAlchemyError as exc:
-            print(f"Cleanup failed: {exc}")
+        # Each table set is dropped on its own, so one failure leaves no other table.
+        for tables in (metadata, Base.metadata):
+            try:
+                tables.drop_all(engine)
+            except SQLAlchemyError as exc:
+                print(f"Cleanup failed: {exc}")
         engine.dispose()
 
 
