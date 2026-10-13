@@ -98,9 +98,11 @@ reservation, the payment hold) in the same transaction that marks the step
 `done`. If the process dies part way, the order stays `processing`.
 
 `POST /orders/{order_key}/recover` puts such an order back to `pending`, but only
-after it has been `processing` for longer than `timeout_seconds` (default 300),
-so it does not race a run that is still active (a younger order returns 409). The
-reset is a conditional UPDATE on the order's version.
+after it has been `processing` for longer than `timeout_seconds` (default 300); a
+younger order returns 409. The reset is a conditional UPDATE on the order's
+version and state. The age is measured from the order's last update, and the step
+commits do not touch the order, so a run that is still active after
+`timeout_seconds` can be reset. Pick a timeout well above the longest run.
 
 Calling `execute` again then resumes the saga: steps already marked `done` are
 skipped, not repeated, so each step takes effect exactly once. If a later step
