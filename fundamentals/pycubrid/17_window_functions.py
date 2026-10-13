@@ -30,10 +30,10 @@ def get_connection():
 
 def setup_schema(conn):
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_sales")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_window_sales")
     cursor.execute(
         """
-        CREATE TABLE cookbook_sales (
+        CREATE TABLE cookbook_window_sales (
             sale_id INT PRIMARY KEY,
             region  VARCHAR(20) NOT NULL,
             product VARCHAR(20) NOT NULL,
@@ -43,7 +43,7 @@ def setup_schema(conn):
     )
     conn.commit()
     cursor.close()
-    print("✓ Created table 'cookbook_sales'")
+    print("✓ Created table 'cookbook_window_sales'")
 
 
 def seed_sales(cursor):
@@ -56,7 +56,7 @@ def seed_sales(cursor):
         (6, "West", "Gizmo", 300),
     ]
     cursor.executemany(
-        "INSERT INTO cookbook_sales (sale_id, region, product, amount) VALUES (?, ?, ?, ?)",
+        "INSERT INTO cookbook_window_sales (sale_id, region, product, amount) VALUES (?, ?, ?, ?)",
         rows,
     )
     print(f"✓ Inserted sales rows: {len(rows)}")
@@ -72,7 +72,7 @@ def rank_within_region(cursor):
                ROW_NUMBER() OVER (PARTITION BY region ORDER BY amount DESC, sale_id) AS rn,
                RANK()       OVER (PARTITION BY region ORDER BY amount DESC, sale_id) AS rnk,
                DENSE_RANK() OVER (PARTITION BY region ORDER BY amount DESC)          AS dense
-          FROM cookbook_sales
+          FROM cookbook_window_sales
          ORDER BY region, amount DESC, sale_id
         """
     )
@@ -88,7 +88,7 @@ def running_total_and_lag(cursor):
         SELECT region, product, amount,
                LAG(amount) OVER (PARTITION BY region ORDER BY amount DESC, sale_id) AS prev_amount,
                SUM(amount) OVER (PARTITION BY region ORDER BY amount DESC, sale_id) AS running_total
-          FROM cookbook_sales
+          FROM cookbook_window_sales
          ORDER BY region, amount DESC, sale_id
         """
     )
@@ -101,10 +101,10 @@ def running_total_and_lag(cursor):
 
 def cleanup(conn):
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_sales")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_window_sales")
     conn.commit()
     cursor.close()
-    print("\n✓ Cleaned up table 'cookbook_sales'")
+    print("\n✓ Cleaned up table 'cookbook_window_sales'")
 
 
 if __name__ == "__main__":

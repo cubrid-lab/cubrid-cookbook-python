@@ -48,10 +48,10 @@ def number_series(cursor):
 
 def setup_schema(conn):
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_employees")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_cte_employees")
     cursor.execute(
         """
-        CREATE TABLE cookbook_employees (
+        CREATE TABLE cookbook_cte_employees (
             id       INT PRIMARY KEY,
             name     VARCHAR(50) NOT NULL,
             mgr_id   INT
@@ -60,7 +60,7 @@ def setup_schema(conn):
     )
     conn.commit()
     cursor.close()
-    print("✓ Created table 'cookbook_employees'")
+    print("✓ Created table 'cookbook_cte_employees'")
 
 
 def seed_employees(cursor):
@@ -73,7 +73,7 @@ def seed_employees(cursor):
         (6, "Frank", 3),
     ]
     cursor.executemany(
-        "INSERT INTO cookbook_employees (id, name, mgr_id) VALUES (?, ?, ?)",
+        "INSERT INTO cookbook_cte_employees (id, name, mgr_id) VALUES (?, ?, ?)",
         rows,
     )
     print(f"✓ Inserted employees: {len(rows)}")
@@ -85,11 +85,11 @@ def walk_hierarchy(cursor):
         """
         WITH RECURSIVE org (id, name, mgr_id, lvl, path) AS (
             SELECT id, name, mgr_id, 1, CAST(name AS VARCHAR(200))
-              FROM cookbook_employees
+              FROM cookbook_cte_employees
              WHERE mgr_id IS NULL
             UNION ALL
             SELECT e.id, e.name, e.mgr_id, o.lvl + 1, o.path || ' > ' || e.name
-              FROM cookbook_employees e
+              FROM cookbook_cte_employees e
               JOIN org o ON e.mgr_id = o.id
         )
         SELECT lvl, id, name, path FROM org ORDER BY path
@@ -103,10 +103,10 @@ def walk_hierarchy(cursor):
 
 def cleanup(conn):
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_employees")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_cte_employees")
     conn.commit()
     cursor.close()
-    print("\n✓ Cleaned up table 'cookbook_employees'")
+    print("\n✓ Cleaned up table 'cookbook_cte_employees'")
 
 
 if __name__ == "__main__":

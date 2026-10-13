@@ -24,7 +24,7 @@ class Base(DeclarativeBase):
 
 @final
 class Product(Base):
-    __tablename__ = "cookbook_products"
+    __tablename__ = "cookbook_bulk_products"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     sku_code: Mapped[str] = mapped_column(String(40), unique=True)
@@ -53,7 +53,7 @@ def main() -> None:
 
     try:
         Base.metadata.create_all(engine)
-        print("[1] Created table cookbook_products")
+        print("[1] Created table cookbook_bulk_products")
 
         fast_rows = build_rows("FAST", 500)
         orm_rows = build_rows("ORM", 500)
@@ -76,7 +76,7 @@ def main() -> None:
 
             print("\n[4] Verify row count and sample data")
             total_rows = session.scalar(select(func.count(Product.id)))
-            print(f"Total rows in cookbook_products: {total_rows}")
+            print(f"Total rows in cookbook_bulk_products: {total_rows}")
 
             sample = session.scalars(select(Product).order_by(Product.id).limit(5)).all()
             for product in sample:

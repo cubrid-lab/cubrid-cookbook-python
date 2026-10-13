@@ -43,9 +43,9 @@ def django_bridge(
             assert connection.execute(text("SELECT 1")).scalar_one() == 1
 
         existing = {name.casefold() for name in inspect(engine).get_table_names()}
-        if "cookbook_items" in existing:
+        if "cookbook_django_items" in existing:
             pytest.fail(
-                "Django bridge live test requires a dedicated database without cookbook_items",
+                "Django bridge live test requires a dedicated database without cookbook_django_items",
                 pytrace=False,
             )
 
@@ -63,7 +63,7 @@ def django_bridge(
             # The first HTTP request lazily creates this one table. If setup or
             # assertions fail partway through, remove only what this run made.
             present = {name.casefold() for name in inspect(engine).get_table_names()}
-            if "cookbook_items" in present:
+            if "cookbook_django_items" in present:
                 db.Base.metadata.drop_all(bind=engine, tables=[db.CookbookItem.__table__])
     finally:
         engine.dispose()

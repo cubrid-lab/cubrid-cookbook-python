@@ -67,37 +67,49 @@ def setup_database_url(monkeypatch, app_path):
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RECIPE_TABLES = {
-    "01_agent_state.py": ("agent_tool_calls", "agent_messages", "agent_sessions"),
+    "01_agent_state.py": (
+        "cookbook_agent_tool_calls",
+        "cookbook_agent_messages",
+        "cookbook_agent_sessions",
+    ),
     "02_mcp_toolchain.py": (),
-    "03_rag_metadata.py": ("rag_chunks", "rag_retrieval_log", "rag_documents"),
+    "03_rag_metadata.py": (
+        "cookbook_rag_chunks",
+        "cookbook_rag_retrieval_log",
+        "cookbook_rag_documents",
+    ),
     "04_agent_loop.py": (
-        "agent_tool_calls",
-        "agent_messages",
-        "agent_sessions",
+        "cookbook_agent_tool_calls",
+        "cookbook_agent_messages",
+        "cookbook_agent_sessions",
         "cookbook_agent_products",
     ),
-    "05_chatbot_backend.py": ("chat_messages", "chat_conversations", "chat_users"),
+    "05_chatbot_backend.py": (
+        "cookbook_chat_messages",
+        "cookbook_chat_conversations",
+        "cookbook_chat_users",
+    ),
 }
 # A reader's rows that look like demonstration data (a generic session key, the
 # username "alice", a document with a sample source URL but no recipe marker).
 UNRELATED_ROWS = {
     "01_agent_state.py": (
-        "INSERT INTO agent_sessions (session_key, agent_name) VALUES ('demo-001', 'reader')",
-        "SELECT COUNT(*) FROM agent_sessions WHERE session_key = 'demo-001'",
+        "INSERT INTO cookbook_agent_sessions (session_key, agent_name) VALUES ('demo-001', 'reader')",
+        "SELECT COUNT(*) FROM cookbook_agent_sessions WHERE session_key = 'demo-001'",
     ),
     "03_rag_metadata.py": (
-        "INSERT INTO rag_documents (title, source, content, metadata) VALUES ('Reader notes', "
+        "INSERT INTO cookbook_rag_documents (title, source, content, metadata) VALUES ('Reader notes', "
         "'https://github.com/cubrid-lab/pycubrid', 'Reader notes', '{\"author\": \"reader\"}')",
-        "SELECT COUNT(*) FROM rag_documents WHERE title = 'Reader notes'",
+        "SELECT COUNT(*) FROM cookbook_rag_documents WHERE title = 'Reader notes'",
     ),
     "04_agent_loop.py": (
-        "INSERT INTO agent_sessions (session_key, agent_name) VALUES ('agent-loop-demo', 'reader')",
-        "SELECT COUNT(*) FROM agent_sessions WHERE session_key = 'agent-loop-demo'",
+        "INSERT INTO cookbook_agent_sessions (session_key, agent_name) VALUES ('agent-loop-demo', 'reader')",
+        "SELECT COUNT(*) FROM cookbook_agent_sessions WHERE session_key = 'agent-loop-demo'",
     ),
     "05_chatbot_backend.py": (
-        "INSERT INTO chat_users (username, display_name, preferences) "
+        "INSERT INTO cookbook_chat_users (username, display_name, preferences) "
         "VALUES ('alice', 'Reader Alice', '{}')",
-        "SELECT COUNT(*) FROM chat_users WHERE username = 'alice'",
+        "SELECT COUNT(*) FROM cookbook_chat_users WHERE username = 'alice'",
     ),
 }
 

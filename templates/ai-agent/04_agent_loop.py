@@ -2,7 +2,7 @@
 
 Demonstrates how CUBRID serves as the backbone for an agentic workflow:
 1. Agent receives a user query
-2. Plans tool calls (recorded in agent_tool_calls)
+2. Plans tool calls (recorded in cookbook_agent_tool_calls)
 3. Executes the planned tool directly with pycubrid; the tool names mirror
    cubrid-mcp-server's, but no MCP server or read-only whitelist is involved
    (02_mcp_toolchain.py is the example that goes through the MCP server)
@@ -11,7 +11,7 @@ Demonstrates how CUBRID serves as the backbone for an agentic workflow:
    or drop data. Validate it as read-only (or route it through the MCP
    server, as 02 does) and connect as a least-privilege user first.
 4. Observes results and decides next action
-5. Synthesizes a response (all turns stored in agent_messages)
+5. Synthesizes a response (all turns stored in cookbook_agent_messages)
 """
 
 from __future__ import annotations
@@ -174,7 +174,7 @@ def main() -> None:
         # Show tool call history with timing
         cur = conn.cursor()
         cur.execute(
-            "SELECT tool_name, status, duration_ms FROM agent_tool_calls "
+            "SELECT tool_name, status, duration_ms FROM cookbook_agent_tool_calls "
             "WHERE session_id = ? ORDER BY id",
             [agent.session_id],
         )

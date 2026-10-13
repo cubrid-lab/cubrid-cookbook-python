@@ -58,7 +58,7 @@ vhs validate demos/*.tape
 vhs demos/agent-state.tape
 # Optional: drop the agent tables (children first) so the second recording's
 # auto-increment IDs also start at 1, as in the committed agent-state.mp4
-docker exec demo-cubrid csql -u dba testdb -c "DROP TABLE IF EXISTS agent_tool_calls, agent_messages, agent_sessions, cookbook_agent_products"
+docker exec demo-cubrid csql -u dba testdb -c "DROP TABLE IF EXISTS cookbook_agent_tool_calls, cookbook_agent_messages, cookbook_agent_sessions, cookbook_agent_products"
 vhs demos/agent-state-video.tape
 vhs demos/mcp-toolchain.tape
 docker rm -f demo-cubrid

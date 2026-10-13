@@ -260,9 +260,9 @@ jobs:
         # arrive as a JSON list in an env var, never interpolated into the
         # script. Every suite runs even after a failure; the step then fails if
         # any did, or if a suite passed no test (an all-skipped run proves
-        # nothing). The dashboard suite uses a separate job and database because
-        # it shares cookbook_products with Flask and adds an FK from
-        # cookbook_sales. Changed roots above the MAX_WEB_SUITES cap
+        # nothing). The dashboard suite uses a separate job and database: its
+        # fixture drops and recreates cookbook_dashboard_products and
+        # cookbook_dashboard_sales (FK-linked). Changed roots above the MAX_WEB_SUITES cap
         # (SKIPPED) are not run: each gets a warning and a summary line saying
         # it was not validated before merge.
         env:

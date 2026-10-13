@@ -91,8 +91,8 @@ def _point_recipes_at_test_database(dashboard_database_url: str) -> None:
 def _dashboard_schema_lifecycle(dashboard_database_url: str):
     """Start the session with a clean schema and drop it again afterward.
 
-    Tables are dropped in FK-safe order (``cookbook_sales`` before its parent
-    ``cookbook_products``) both before and after the session, so an interrupted
+    Tables are dropped in FK-safe order (``cookbook_dashboard_sales`` before its parent
+    ``cookbook_dashboard_products``) both before and after the session, so an interrupted
     run in this suite's dedicated live CUBRID database, or its offline SQLite
     file, does not affect a later dashboard run. Also registers and removes a
     target-URL-scoped SQLite ``AUTO_INCREMENT`` hook (see the module docstring)
@@ -102,8 +102,8 @@ def _dashboard_schema_lifecycle(dashboard_database_url: str):
 
     def _drop_all() -> None:
         with engine.begin() as connection:
-            connection.execute(text("DROP TABLE IF EXISTS cookbook_sales"))
-            connection.execute(text("DROP TABLE IF EXISTS cookbook_products"))
+            connection.execute(text("DROP TABLE IF EXISTS cookbook_dashboard_sales"))
+            connection.execute(text("DROP TABLE IF EXISTS cookbook_dashboard_products"))
 
     listener = None
     if engine.dialect.name == "sqlite":

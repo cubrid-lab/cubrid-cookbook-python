@@ -36,7 +36,7 @@ def get_connection():
 def setup_schema(conn) -> None:
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_sales_stage")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_sales")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_pipeline_sales")
     cursor.execute("""
         CREATE TABLE cookbook_sales_stage (
             stage_id     INT AUTO_INCREMENT PRIMARY KEY,
@@ -50,7 +50,7 @@ def setup_schema(conn) -> None:
         )
     """)
     cursor.execute("""
-        CREATE TABLE cookbook_sales (
+        CREATE TABLE cookbook_pipeline_sales (
             order_no      VARCHAR(40) PRIMARY KEY,
             customer_id   VARCHAR(40) NOT NULL,
             sold_at       DATETIME NOT NULL,
@@ -60,7 +60,7 @@ def setup_schema(conn) -> None:
     """)
     conn.commit()
     cursor.close()
-    print("✓ Created tables 'cookbook_sales_stage' and 'cookbook_sales'")
+    print("✓ Created tables 'cookbook_sales_stage' and 'cookbook_pipeline_sales'")
 
 
 def generate_source_rows(n: int = 1000) -> list[tuple[int, str, str, datetime.datetime, int]]:
@@ -157,12 +157,14 @@ def apply_stage(cursor) -> tuple[int, int]:
     rows = cursor.fetchall()
 
     for order_no, customer_id, sold_at, amount_cents in rows:
-        cursor.execute("SELECT COUNT(*) FROM cookbook_sales WHERE order_no = ?", (order_no,))
+        cursor.execute(
+            "SELECT COUNT(*) FROM cookbook_pipeline_sales WHERE order_no = ?", (order_no,)
+        )
         exists = cursor.fetchone()[0] > 0
         if exists:
             cursor.execute(
                 """
-                UPDATE cookbook_sales
+                UPDATE cookbook_pipeline_sales
                 SET customer_id = ?, sold_at = ?, amount_cents = ?, updated_at = ?
                 WHERE order_no = ?
                 """,
@@ -172,7 +174,7 @@ def apply_stage(cursor) -> tuple[int, int]:
         else:
             cursor.execute(
                 """
-                INSERT INTO cookbook_sales (
+                INSERT INTO cookbook_pipeline_sales (
                     order_no, customer_id, sold_at, amount_cents, updated_at
                 ) VALUES (?, ?, ?, ?, ?)
                 """,
@@ -191,7 +193,7 @@ def print_summary(cursor) -> None:
     validated = cursor.fetchone()[0]
     cursor.execute("SELECT COUNT(*) FROM cookbook_sales_stage WHERE is_valid = 0")
     rejected = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM cookbook_sales")
+    cursor.execute("SELECT COUNT(*) FROM cookbook_pipeline_sales")
     target = cursor.fetchone()[0]
 
     print("\n=== ETL Summary ===")
@@ -220,7 +222,7 @@ def print_summary(cursor) -> None:
 
     cursor.execute("""
         SELECT order_no, customer_id, amount_cents
-        FROM cookbook_sales
+        FROM cookbook_pipeline_sales
         ORDER BY order_no
     """)
     top_rows = cursor.fetchmany(5)
@@ -232,7 +234,7 @@ def print_summary(cursor) -> None:
 def cleanup(conn) -> None:
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_sales_stage")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_sales")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_pipeline_sales")
     conn.commit()
     cursor.close()
     print("\n✓ Cleaned up ETL tables")

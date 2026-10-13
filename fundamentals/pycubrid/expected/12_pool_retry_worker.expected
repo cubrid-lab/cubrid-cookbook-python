@@ -1,4 +1,4 @@
-✓ Created table 'cookbook_jobs'
+✓ Created table 'cookbook_retry_jobs'
 ✓ Seeded 5 queued jobs
 ✓ Pool health check: healthy=2, replaced=0
   Picked job id=1 payload=job-1 attempts=0
@@ -30,4 +30,4 @@
   id=5 payload=job-5 status=done attempts=2
 ✓ Total processed jobs: 5
 
-✓ Cleaned up table 'cookbook_jobs'
+✓ Cleaned up table 'cookbook_retry_jobs'

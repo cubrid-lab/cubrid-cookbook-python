@@ -445,9 +445,10 @@ jobs:
         # runs without -q so each log shows the conftest's "database: live
         # CUBRID" header.
         #
-        # The dashboard suite shares cookbook_products with Flask and owns
-        # cookbook_sales with an FK to it. It runs only after this original
-        # database is stopped and a separate container is ready below (#142).
+        # The dashboard suite drops and recreates its own FK-linked
+        # cookbook_dashboard_products and cookbook_dashboard_sales. It runs only
+        # after this original database is stopped and a separate container is
+        # ready below (#142).
         timeout-minutes: 15
         env:
           CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
@@ -489,9 +490,9 @@ jobs:
 
       - name: Run async-worker database tasks (non-PR runs only)
         if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
-        # make verify has finished, including the pycubrid example that also
-        # uses cookbook_jobs with a different schema. The worker suite refuses
-        # to delete a preexisting worker table and cleans up only its own four.
+        # make verify has finished. Every example owns distinct table names
+        # (#327), and the worker suite still refuses to delete a preexisting
+        # worker table and cleans up only its own four.
         timeout-minutes: 5
         env:
           CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
@@ -499,9 +500,9 @@ jobs:
 
       - name: Run Django SQLAlchemy bridge (non-PR runs only)
         if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
-        # cookbook_items is also used by the migration and FastAPI recipes.
-        # Both make verify and Flask/FastAPI suites must finish first; this
-        # suite refuses to delete a preexisting table.
+        # cookbook_django_items belongs to this template alone (#327). make
+        # verify and the Flask/FastAPI suites still finish first; this suite
+        # refuses to delete a preexisting table.
         timeout-minutes: 5
         env:
           CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb

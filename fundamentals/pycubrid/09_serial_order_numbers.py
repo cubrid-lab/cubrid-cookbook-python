@@ -30,7 +30,7 @@ def get_connection():
 def setup_schema(conn):
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_order_lines")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_orders")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_serial_orders")
     try:
         cursor.execute("DROP SERIAL cookbook_order_seq")
     except Exception:
@@ -39,7 +39,7 @@ def setup_schema(conn):
     cursor.execute("CREATE SERIAL cookbook_order_seq START WITH 1000 INCREMENT BY 1")
     cursor.execute(
         """
-        CREATE TABLE cookbook_orders (
+        CREATE TABLE cookbook_serial_orders (
             id             INT AUTO_INCREMENT PRIMARY KEY,
             order_no       INT NOT NULL UNIQUE,
             customer_name  VARCHAR(120) NOT NULL,
@@ -83,7 +83,7 @@ def create_order(cursor, customer, lines):
 
     cursor.execute(
         """
-        INSERT INTO cookbook_orders (order_no, customer_name, created_at_utc, total_cents)
+        INSERT INTO cookbook_serial_orders (order_no, customer_name, created_at_utc, total_cents)
         VALUES (?, ?, ?, ?)
         """,
         (order_no, customer, created_at_utc, total_cents),
@@ -106,7 +106,7 @@ def list_orders(cursor):
     cursor.execute(
         """
         SELECT order_no, customer_name, created_at_utc, total_cents
-          FROM cookbook_orders
+          FROM cookbook_serial_orders
          ORDER BY order_no
         """
     )
@@ -136,7 +136,7 @@ def list_orders(cursor):
 def cleanup(conn):
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_order_lines")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_orders")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_serial_orders")
     try:
         cursor.execute("DROP SERIAL cookbook_order_seq")
     except Exception:

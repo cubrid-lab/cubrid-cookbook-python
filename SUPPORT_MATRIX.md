@@ -187,9 +187,10 @@ when a row no longer matches the repository. Verification is split:
   Flask/FastAPI container is stopped. A pull request that touches the dashboard
   runs a separate `ci.yml` job against its own CUBRID **11.4** container.
   It falls back to a shared SQLite file when `CUBRID_TEST_URL` is unset.
-  Its `conftest.py` drops its own `cookbook_sales` and `cookbook_products`
-  in FK-safe order, but isolation—not test ordering or cross-recipe deletion—
-  protects the Flask suite's `cookbook_products` (#142).
+  Its `conftest.py` drops its own `cookbook_dashboard_sales` and
+  `cookbook_dashboard_products` in FK-safe order; isolation—not test ordering or
+  cross-recipe deletion—keeps that fixture away from other suites' tables (#142).
+  The dashboard tables no longer share a name with Flask recipe 01 (#327).
 - The **FastAPI quickstart** has an offline pytest suite in PR CI for host and
   Compose configuration, startup, HTTP responses, and database failure cleanup.
   It uses mocked DB-API connections rather than a live server.
@@ -211,7 +212,7 @@ when a row no longer matches the repository. Verification is split:
   model. `templates/django/tests` gates the existing `/health` and `/items`
   bridge on a dedicated live **11.4** job for pull requests that touch it and on the **11.2/11.4** non-PR
   smoke matrix after golden and FastAPI tests. The suite refuses a preexisting
-  `cookbook_items` table and removes only its own table.
+  `cookbook_django_items` table and removes only its own table.
 - **CUBRID 11.4** runs in the same CI smoke matrix as 11.2 (its `make verify` goldens
   are checked on both versions).
 
@@ -295,11 +296,12 @@ for f in fundamentals/pandas/*.py; do python3 "$f"; done
 ```
 
 The pytest suites create and drop their tables in whichever database
-`CUBRID_TEST_URL` points at. Every Flask/FastAPI recipe declares its own
-distinct table names (guarded by `tests/test_table_prefix.py`), so those suites
-can run concurrently against one instance. The dashboard suite still uses
-`cookbook_products`, which Flask recipe 01 also creates, so give it a
-**different database/container**: its `cookbook_sales` foreign key references
-`cookbook_products`, so leftover dashboard tables in a shared database can block
-Flask teardown even if the suites normally run in order. CI uses separate CUBRID containers; the
-dashboard fixture only deletes tables in its own database.
+`CUBRID_TEST_URL` points at. Every example directory declares its own distinct,
+`cookbook_`-prefixed table names, each with one set of columns. The guard,
+`tests/test_table_prefix.py`, reads ORM models, `Table(...)` and `to_sql(...)`
+calls and raw `CREATE TABLE` text (including f-strings over module constants) in
+every example file outside `tests/` directories (#327). The Flask/FastAPI suites
+can therefore run concurrently against one instance. CI still runs the dashboard
+suite against a **separate database/container**, because its fixture drops and
+recreates `cookbook_dashboard_products` and `cookbook_dashboard_sales` (a foreign
+key links them); the dashboard fixture only deletes tables in its own database.

@@ -1,9 +1,9 @@
 """Agent state management — store sessions, messages, and tool calls.
 
 CUBRID acts as the persistent state store for an AI agent:
-- `agent_sessions`: one row per conversation thread
-- `agent_messages`: individual turns (user / assistant / tool)
-- `agent_tool_calls`: structured records of every tool invocation
+- `cookbook_agent_sessions`: one row per conversation thread
+- `cookbook_agent_messages`: individual turns (user / assistant / tool)
+- `cookbook_agent_tool_calls`: structured records of every tool invocation
 
 Demonstrates JSON columns for LLM I/O, SET for tagging,
 and AUTO_INCREMENT for ordering.
@@ -38,7 +38,7 @@ DEMO_SESSION_KEY = "cookbook-agent-state-demo"
 
 DDL = [
     """
-    CREATE TABLE IF NOT EXISTS agent_sessions (
+    CREATE TABLE IF NOT EXISTS cookbook_agent_sessions (
         id INT AUTO_INCREMENT PRIMARY KEY,
         session_key VARCHAR(64) NOT NULL UNIQUE,
         agent_name VARCHAR(100) NOT NULL,
@@ -49,18 +49,18 @@ DDL = [
     )
     """,
     """
-    CREATE TABLE IF NOT EXISTS agent_messages (
+    CREATE TABLE IF NOT EXISTS cookbook_agent_messages (
         id INT AUTO_INCREMENT PRIMARY KEY,
         session_id INT NOT NULL,
         message_role VARCHAR(20) NOT NULL,
         content STRING,
         metadata JSON,
         created_at DATETIME DEFAULT SYS_DATETIME,
-        FOREIGN KEY (session_id) REFERENCES agent_sessions(id)
+        FOREIGN KEY (session_id) REFERENCES cookbook_agent_sessions(id)
     )
     """,
     """
-    CREATE TABLE IF NOT EXISTS agent_tool_calls (
+    CREATE TABLE IF NOT EXISTS cookbook_agent_tool_calls (
         id INT AUTO_INCREMENT PRIMARY KEY,
         session_id INT NOT NULL,
         tool_name VARCHAR(100) NOT NULL,
@@ -69,7 +69,7 @@ DDL = [
         status VARCHAR(20) DEFAULT 'pending',
         duration_ms INT,
         created_at DATETIME DEFAULT SYS_DATETIME,
-        FOREIGN KEY (session_id) REFERENCES agent_sessions(id)
+        FOREIGN KEY (session_id) REFERENCES cookbook_agent_sessions(id)
     )
     """,
 ]
@@ -89,15 +89,17 @@ def delete_session(conn: pycubrid.connection.Connection, session_key: str) -> No
     The demos use fixed keys; deleting the previous run's session first lets
     each recipe run again on the same database.
     """
-    session_ids = "SELECT id FROM agent_sessions WHERE session_key = ?"
+    session_ids = "SELECT id FROM cookbook_agent_sessions WHERE session_key = ?"
     cur = conn.cursor()
     cur.execute(
-        "DELETE FROM agent_tool_calls WHERE session_id IN (" + session_ids + ")", [session_key]
+        "DELETE FROM cookbook_agent_tool_calls WHERE session_id IN (" + session_ids + ")",
+        [session_key],
     )
     cur.execute(
-        "DELETE FROM agent_messages WHERE session_id IN (" + session_ids + ")", [session_key]
+        "DELETE FROM cookbook_agent_messages WHERE session_id IN (" + session_ids + ")",
+        [session_key],
     )
-    cur.execute("DELETE FROM agent_sessions WHERE session_key = ?", [session_key])
+    cur.execute("DELETE FROM cookbook_agent_sessions WHERE session_key = ?", [session_key])
     conn.commit()
     cur.close()
 
@@ -113,7 +115,9 @@ def create_session(
     tag_values = tags or []
     tag_set = "{" + ", ".join("?" for _ in tag_values) + "}"
     cur.execute(
-        "INSERT INTO agent_sessions (session_key, agent_name, tags) VALUES (?, ?, " + tag_set + ")",
+        "INSERT INTO cookbook_agent_sessions (session_key, agent_name, tags) VALUES (?, ?, "
+        + tag_set
+        + ")",
         [session_key, agent_name, *tag_values],
     )
     session_id = cur.lastrowid
@@ -137,7 +141,7 @@ def add_message(
     cur = conn.cursor()
     meta_json = json.dumps(metadata) if metadata else None
     cur.execute(
-        "INSERT INTO agent_messages (session_id, message_role, content, metadata) VALUES (?, ?, ?, ?)",
+        "INSERT INTO cookbook_agent_messages (session_id, message_role, content, metadata) VALUES (?, ?, ?, ?)",
         [session_id, role, content, meta_json],
     )
     msg_id = cur.lastrowid
@@ -162,7 +166,7 @@ def record_tool_call(
     """Record a tool invocation with its arguments and result."""
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO agent_tool_calls "
+        "INSERT INTO cookbook_agent_tool_calls "
         "(session_id, tool_name, arguments, result, status, duration_ms) "
         "VALUES (?, ?, ?, ?, ?, ?)",
         [
@@ -192,7 +196,7 @@ def get_conversation(
     cur = conn.cursor()
     cur.execute(
         "SELECT message_role, content, metadata, created_at "
-        "FROM agent_messages WHERE session_id = ? ORDER BY id",
+        "FROM cookbook_agent_messages WHERE session_id = ? ORDER BY id",
         [session_id],
     )
     messages = []
@@ -242,7 +246,7 @@ def main() -> None:
         # Verify JSON metadata round-trip
         cur = conn.cursor()
         cur.execute(
-            "SELECT metadata FROM agent_messages WHERE session_id = ? AND message_role = 'assistant'",
+            "SELECT metadata FROM cookbook_agent_messages WHERE session_id = ? AND message_role = 'assistant'",
             [session_id],
         )
         row = cur.fetchone()

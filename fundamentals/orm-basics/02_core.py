@@ -35,7 +35,7 @@ def get_engine():
 metadata = MetaData()
 
 departments = Table(
-    "cookbook_departments",
+    "cookbook_core_departments",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("name", String(100), nullable=False),
@@ -43,7 +43,7 @@ departments = Table(
 )
 
 employees = Table(
-    "cookbook_employees",
+    "cookbook_core_employees",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("name", String(100), nullable=False),
@@ -58,7 +58,7 @@ def create_tables(engine) -> None:
     print("=== Create Tables ===")
     metadata.drop_all(engine)
     metadata.create_all(engine)
-    print("  ✓ Created tables: cookbook_departments, cookbook_employees")
+    print("  ✓ Created tables: cookbook_core_departments, cookbook_core_employees")
 
 
 def insert_data(engine) -> None:
@@ -186,13 +186,13 @@ def raw_sql(engine) -> None:
 
     with engine.connect() as conn:
         # Simple text query
-        result = conn.execute(text("SELECT COUNT(*) FROM cookbook_employees"))
+        result = conn.execute(text("SELECT COUNT(*) FROM cookbook_core_employees"))
         print(f"  Total employees: {result.scalar()}")
 
         # Parameterized text query
         result = conn.execute(
             text(
-                "SELECT name, salary FROM cookbook_employees WHERE salary > :min_salary ORDER BY salary DESC"
+                "SELECT name, salary FROM cookbook_core_employees WHERE salary > :min_salary ORDER BY salary DESC"
             ),
             {"min_salary": 80000},
         )

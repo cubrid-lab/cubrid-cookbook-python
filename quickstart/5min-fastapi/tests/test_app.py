@@ -42,7 +42,10 @@ def test_lifespan_initializes_table(app_module, monkeypatch):
     monkeypatch.setattr(app_module, "get_conn", lambda: conn)
 
     with TestClient(app_module.app):
-        assert "CREATE TABLE IF NOT EXISTS cookbook_items" in cursor.execute.call_args.args[0]
+        assert (
+            "CREATE TABLE IF NOT EXISTS cookbook_quickstart_items"
+            in cursor.execute.call_args.args[0]
+        )
         conn.commit.assert_called_once()
         cursor.close.assert_called_once()
         conn.close.assert_called_once()

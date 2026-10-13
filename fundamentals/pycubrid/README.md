@@ -104,20 +104,20 @@ conn.close()
 ```python
 # INSERT — qmark style (? placeholders)
 cursor.execute(
-    "INSERT INTO cookbook_users (name, email, age) VALUES (?, ?, ?)",
+    "INSERT INTO cookbook_crud_users (name, email, age) VALUES (?, ?, ?)",
     ("Alice", "alice@example.com", 30),
 )
 
 # Batch INSERT with executemany()
 users = [("Bob", "bob@example.com", 25), ("Charlie", "charlie@example.com", 35)]
 cursor.executemany(
-    "INSERT INTO cookbook_users (name, email, age) VALUES (?, ?, ?)",
+    "INSERT INTO cookbook_crud_users (name, email, age) VALUES (?, ?, ?)",
     users,
 )
 conn.commit()
 
 # SELECT with filtering
-cursor.execute("SELECT name, age FROM cookbook_users WHERE age >= ?", (30,))
+cursor.execute("SELECT name, age FROM cookbook_crud_users WHERE age >= ?", (30,))
 for row in cursor.fetchall():
     print(f"  {row[0]}: age {row[1]}")
 ```
@@ -129,17 +129,17 @@ from pycubrid.lob import Lob
 
 # Store text in a CLOB column and bytes in a BLOB column: bind them directly
 cursor.execute(
-    "INSERT INTO cookbook_documents (title, content) VALUES (?, ?)",
+    "INSERT INTO cookbook_lob_documents (title, content) VALUES (?, ?)",
     ("README", "# README\n\nLarge document content here..."),
 )
 cursor.execute(
-    "INSERT INTO cookbook_files (filename, file_data) VALUES (?, ?)",
+    "INSERT INTO cookbook_lob_files (filename, file_data) VALUES (?, ?)",
     ("image.png", b"\x89PNG\r\n..."),
 )
 conn.commit()
 
 # A LOB column reads back as a dict; rebuild the Lob handle to read its bytes
-cursor.execute("SELECT content FROM cookbook_documents WHERE title = ?", ("README",))
+cursor.execute("SELECT content FROM cookbook_lob_documents WHERE title = ?", ("README",))
 clob = cursor.fetchone()[0]
 text = Lob(conn, clob["lob_type"], clob["packed_lob_handle"]).read(clob["lob_length"])
 print(text.decode("utf-8"))
@@ -183,7 +183,7 @@ SELECT CURRENT_DATE AS today             → <today's date>
 Running `02_crud.py`:
 
 ```
-✓ Created table 'cookbook_users'
+✓ Created table 'cookbook_crud_users'
 ✓ Inserted 5 rows
 
 All users (5 rows):

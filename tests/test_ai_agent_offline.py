@@ -90,9 +90,9 @@ def test_delete_session_removes_children_before_session():
 
     statements = [call.args[0] for call in cursor.execute.call_args_list]
     assert [sql.split()[2] for sql in statements] == [
-        "agent_tool_calls",
-        "agent_messages",
-        "agent_sessions",
+        "cookbook_agent_tool_calls",
+        "cookbook_agent_messages",
+        "cookbook_agent_sessions",
     ]
     assert all(
         call.args[1] == ["cookbook-agent-state-demo"] for call in cursor.execute.call_args_list

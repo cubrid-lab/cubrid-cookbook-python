@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import pandas as pd
 
 DATABASE_URL = "cubrid+pycubrid://dba@localhost:33000/testdb"
-TABLE_NAME = "cookbook_products"
+TABLE_NAME = "cookbook_pandas_products"
 
 
 def main() -> int:

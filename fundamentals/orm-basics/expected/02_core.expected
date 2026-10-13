@@ -1,5 +1,5 @@
 === Create Tables ===
-  ✓ Created tables: cookbook_departments, cookbook_employees
+  ✓ Created tables: cookbook_core_departments, cookbook_core_employees
 
 === Core INSERT ===
   ✓ Inserted 3 departments

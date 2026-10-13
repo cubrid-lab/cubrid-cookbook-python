@@ -22,7 +22,7 @@ class Base(DeclarativeBase):
 
 @final
 class User(Base):
-    __tablename__ = "cookbook_users"
+    __tablename__ = "cookbook_orm_users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(60), unique=True)
@@ -35,7 +35,7 @@ def main() -> None:
     print("=== SQLAlchemy ORM CRUD ===")
 
     try:
-        print("[1] Creating table cookbook_users")
+        print("[1] Creating table cookbook_orm_users")
         Base.metadata.create_all(engine)
 
         with Session(engine) as session:
@@ -81,7 +81,7 @@ def main() -> None:
 
         print("\nCRUD demo completed.")
     finally:
-        print("Dropping table cookbook_users")
+        print("Dropping table cookbook_orm_users")
         Base.metadata.drop_all(engine)
         engine.dispose()
         print("Cleanup complete.")

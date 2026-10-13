@@ -30,13 +30,13 @@ def get_connection():
 
 def setup_schema(conn) -> None:
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_comments")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_tasks")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_projects")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_accounts")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_cascade_comments")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_cascade_tasks")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_cascade_projects")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_cascade_accounts")
 
     cursor.execute("""
-        CREATE TABLE cookbook_accounts (
+        CREATE TABLE cookbook_cascade_accounts (
             id          INT AUTO_INCREMENT PRIMARY KEY,
             name        VARCHAR(120) NOT NULL,
             is_active   INT NOT NULL DEFAULT 1,
@@ -44,7 +44,7 @@ def setup_schema(conn) -> None:
         )
     """)
     cursor.execute("""
-        CREATE TABLE cookbook_projects (
+        CREATE TABLE cookbook_cascade_projects (
             id          INT AUTO_INCREMENT PRIMARY KEY,
             account_id  INT NOT NULL,
             title       VARCHAR(160) NOT NULL,
@@ -52,7 +52,7 @@ def setup_schema(conn) -> None:
         )
     """)
     cursor.execute("""
-        CREATE TABLE cookbook_tasks (
+        CREATE TABLE cookbook_cascade_tasks (
             id          INT AUTO_INCREMENT PRIMARY KEY,
             project_id  INT NOT NULL,
             title       VARCHAR(160) NOT NULL,
@@ -61,7 +61,7 @@ def setup_schema(conn) -> None:
         )
     """)
     cursor.execute("""
-        CREATE TABLE cookbook_comments (
+        CREATE TABLE cookbook_cascade_comments (
             id         INT AUTO_INCREMENT PRIMARY KEY,
             task_id    INT NOT NULL,
             body       VARCHAR(255) NOT NULL,
@@ -78,7 +78,7 @@ def seed_account_graph(conn) -> int:
     now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None, microsecond=0)
 
     cursor.execute(
-        "INSERT INTO cookbook_accounts (name, is_active, created_at) VALUES (?, ?, ?)",
+        "INSERT INTO cookbook_cascade_accounts (name, is_active, created_at) VALUES (?, ?, ?)",
         ("Acme Tenant", 1, now),
     )
     account_id = cursor.lastrowid
@@ -86,7 +86,7 @@ def seed_account_graph(conn) -> int:
     for p in range(1, 3):
         cursor.execute(
             """
-            INSERT INTO cookbook_projects (account_id, title, created_at)
+            INSERT INTO cookbook_cascade_projects (account_id, title, created_at)
             VALUES (?, ?, ?)
             """,
             (account_id, f"Project-{p}", now),
@@ -96,7 +96,7 @@ def seed_account_graph(conn) -> int:
         for t in range(1, 4):
             cursor.execute(
                 """
-                INSERT INTO cookbook_tasks (project_id, title, is_done, created_at)
+                INSERT INTO cookbook_cascade_tasks (project_id, title, is_done, created_at)
                 VALUES (?, ?, ?, ?)
                 """,
                 (project_id, f"Task-{p}-{t}", 1 if t % 2 == 0 else 0, now),
@@ -106,7 +106,7 @@ def seed_account_graph(conn) -> int:
             for c in range(1, 3):
                 cursor.execute(
                     """
-                    INSERT INTO cookbook_comments (task_id, body, created_at)
+                    INSERT INTO cookbook_cascade_comments (task_id, body, created_at)
                     VALUES (?, ?, ?)
                     """,
                     (task_id, f"Comment-{p}-{t}-{c}", now),
@@ -119,15 +119,17 @@ def seed_account_graph(conn) -> int:
 
 
 def preview_delete(cursor, account_id: int) -> tuple[int, int, int, int]:
-    cursor.execute("SELECT COUNT(*) FROM cookbook_accounts WHERE id = ?", (account_id,))
+    cursor.execute("SELECT COUNT(*) FROM cookbook_cascade_accounts WHERE id = ?", (account_id,))
     accounts = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM cookbook_projects WHERE account_id = ?", (account_id,))
+    cursor.execute(
+        "SELECT COUNT(*) FROM cookbook_cascade_projects WHERE account_id = ?", (account_id,)
+    )
     projects = cursor.fetchone()[0]
     cursor.execute(
         """
         SELECT COUNT(*)
-        FROM cookbook_tasks t
-        JOIN cookbook_projects p ON p.id = t.project_id
+        FROM cookbook_cascade_tasks t
+        JOIN cookbook_cascade_projects p ON p.id = t.project_id
         WHERE p.account_id = ?
         """,
         (account_id,),
@@ -136,9 +138,9 @@ def preview_delete(cursor, account_id: int) -> tuple[int, int, int, int]:
     cursor.execute(
         """
         SELECT COUNT(*)
-        FROM cookbook_comments c
-        JOIN cookbook_tasks t ON t.id = c.task_id
-        JOIN cookbook_projects p ON p.id = t.project_id
+        FROM cookbook_cascade_comments c
+        JOIN cookbook_cascade_tasks t ON t.id = c.task_id
+        JOIN cookbook_cascade_projects p ON p.id = t.project_id
         WHERE p.account_id = ?
         """,
         (account_id,),
@@ -159,11 +161,11 @@ def delete_account(cursor, account_id: int) -> tuple[int, int, int, int]:
 
     cursor.execute(
         """
-        DELETE FROM cookbook_comments
+        DELETE FROM cookbook_cascade_comments
         WHERE task_id IN (
             SELECT t.id
-            FROM cookbook_tasks t
-            JOIN cookbook_projects p ON p.id = t.project_id
+            FROM cookbook_cascade_tasks t
+            JOIN cookbook_cascade_projects p ON p.id = t.project_id
             WHERE p.account_id = ?
         )
         """,
@@ -173,19 +175,19 @@ def delete_account(cursor, account_id: int) -> tuple[int, int, int, int]:
 
     cursor.execute(
         """
-        DELETE FROM cookbook_tasks
+        DELETE FROM cookbook_cascade_tasks
         WHERE project_id IN (
-            SELECT id FROM cookbook_projects WHERE account_id = ?
+            SELECT id FROM cookbook_cascade_projects WHERE account_id = ?
         )
         """,
         (account_id,),
     )
     deleted_tasks = cursor.rowcount
 
-    cursor.execute("DELETE FROM cookbook_projects WHERE account_id = ?", (account_id,))
+    cursor.execute("DELETE FROM cookbook_cascade_projects WHERE account_id = ?", (account_id,))
     deleted_projects = cursor.rowcount
 
-    cursor.execute("DELETE FROM cookbook_accounts WHERE id = ?", (account_id,))
+    cursor.execute("DELETE FROM cookbook_cascade_accounts WHERE id = ?", (account_id,))
     deleted_accounts = cursor.rowcount
 
     print("\n=== Delete Execution ===")
@@ -198,15 +200,17 @@ def delete_account(cursor, account_id: int) -> tuple[int, int, int, int]:
 
 
 def verify_cleanup(cursor, account_id: int) -> None:
-    cursor.execute("SELECT COUNT(*) FROM cookbook_accounts WHERE id = ?", (account_id,))
+    cursor.execute("SELECT COUNT(*) FROM cookbook_cascade_accounts WHERE id = ?", (account_id,))
     accounts_left = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM cookbook_projects WHERE account_id = ?", (account_id,))
+    cursor.execute(
+        "SELECT COUNT(*) FROM cookbook_cascade_projects WHERE account_id = ?", (account_id,)
+    )
     projects_left = cursor.fetchone()[0]
     cursor.execute(
         """
         SELECT COUNT(*)
-        FROM cookbook_tasks t
-        JOIN cookbook_projects p ON p.id = t.project_id
+        FROM cookbook_cascade_tasks t
+        JOIN cookbook_cascade_projects p ON p.id = t.project_id
         WHERE p.account_id = ?
         """,
         (account_id,),
@@ -215,9 +219,9 @@ def verify_cleanup(cursor, account_id: int) -> None:
     cursor.execute(
         """
         SELECT COUNT(*)
-        FROM cookbook_comments c
-        JOIN cookbook_tasks t ON t.id = c.task_id
-        JOIN cookbook_projects p ON p.id = t.project_id
+        FROM cookbook_cascade_comments c
+        JOIN cookbook_cascade_tasks t ON t.id = c.task_id
+        JOIN cookbook_cascade_projects p ON p.id = t.project_id
         WHERE p.account_id = ?
         """,
         (account_id,),
@@ -227,8 +231,8 @@ def verify_cleanup(cursor, account_id: int) -> None:
     cursor.execute(
         """
         SELECT COUNT(*)
-        FROM cookbook_comments c
-        LEFT JOIN cookbook_tasks t ON t.id = c.task_id
+        FROM cookbook_cascade_comments c
+        LEFT JOIN cookbook_cascade_tasks t ON t.id = c.task_id
         WHERE t.id IS NULL
         """
     )
@@ -237,8 +241,8 @@ def verify_cleanup(cursor, account_id: int) -> None:
     cursor.execute(
         """
         SELECT COUNT(*)
-        FROM cookbook_tasks t
-        LEFT JOIN cookbook_projects p ON p.id = t.project_id
+        FROM cookbook_cascade_tasks t
+        LEFT JOIN cookbook_cascade_projects p ON p.id = t.project_id
         WHERE p.id IS NULL
         """
     )
@@ -257,10 +261,10 @@ def verify_cleanup(cursor, account_id: int) -> None:
 
 def cleanup(conn) -> None:
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_comments")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_tasks")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_projects")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_accounts")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_cascade_comments")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_cascade_tasks")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_cascade_projects")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_cascade_accounts")
     conn.commit()
     cursor.close()
     print("\n✓ Cleaned up tenant graph tables")

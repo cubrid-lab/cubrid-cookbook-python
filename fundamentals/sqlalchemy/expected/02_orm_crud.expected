@@ -1,5 +1,5 @@
 === SQLAlchemy ORM CRUD ===
-[1] Creating table cookbook_users
+[1] Creating table cookbook_orm_users
 
 [2] INSERT users
 Inserted 3 users
@@ -20,5 +20,5 @@ id=1, username=alice, email=alice@example.com, active_flag=1
 id=2, username=bob, email=bob@example.com, active_flag=0
 
 CRUD demo completed.
-Dropping table cookbook_users
+Dropping table cookbook_orm_users
 Cleanup complete.

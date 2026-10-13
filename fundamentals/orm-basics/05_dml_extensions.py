@@ -41,7 +41,7 @@ class Config(Base):
 
 
 class Counter(Base):
-    __tablename__ = "cookbook_counters"
+    __tablename__ = "cookbook_dml_counters"
 
     name: Mapped[str] = mapped_column(String(100), primary_key=True)
     count: Mapped[int] = mapped_column(default=0)
@@ -173,7 +173,7 @@ def merge_example(engine) -> None:
 
     with engine.begin() as conn:
         # Seed target counters
-        conn.execute(text("DELETE FROM cookbook_counters"))
+        conn.execute(text("DELETE FROM cookbook_dml_counters"))
         conn.execute(insert(Counter).values(name="page_views", count=100))
         conn.execute(insert(Counter).values(name="api_calls", count=50))
 

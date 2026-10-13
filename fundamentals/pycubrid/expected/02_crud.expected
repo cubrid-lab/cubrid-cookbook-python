@@ -1,4 +1,4 @@
-✓ Created table 'cookbook_users'
+✓ Created table 'cookbook_crud_users'
 ✓ Inserted 5 rows
 
 All users (5 rows):
@@ -45,4 +45,4 @@ All users (4 rows):
     3  Charlie       charlie@example.com         35
     4  Diana         diana@example.com           29
 
-✓ Cleaned up table 'cookbook_users'
+✓ Cleaned up table 'cookbook_crud_users'

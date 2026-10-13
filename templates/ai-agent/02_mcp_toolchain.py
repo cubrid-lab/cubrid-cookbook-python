@@ -141,7 +141,7 @@ def main() -> None:
                 "method": "tools/call",
                 "params": {
                     "name": "execute_query",
-                    "arguments": {"sql": "DROP TABLE agent_sessions"},
+                    "arguments": {"sql": "DROP TABLE cookbook_agent_sessions"},
                 },
             },
         )

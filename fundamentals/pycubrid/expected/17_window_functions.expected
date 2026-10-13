@@ -1,4 +1,4 @@
-✓ Created table 'cookbook_sales'
+✓ Created table 'cookbook_window_sales'
 ✓ Inserted sales rows: 6
 
 Ranking within each region (by amount desc):
@@ -19,4 +19,4 @@ LAG and running total within each region:
   West    Gizmo       300          300            600
   West    Gadget       50          300            650
 
-✓ Cleaned up table 'cookbook_sales'
+✓ Cleaned up table 'cookbook_window_sales'

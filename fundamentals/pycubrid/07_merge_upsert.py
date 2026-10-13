@@ -33,11 +33,11 @@ def get_connection():
 def setup_schema(conn):
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_product_stage")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_products")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_merge_products")
 
     cursor.execute(
         """
-        CREATE TABLE cookbook_products (
+        CREATE TABLE cookbook_merge_products (
             sku            VARCHAR(40) PRIMARY KEY,
             name           VARCHAR(200) NOT NULL,
             price_cents    INT NOT NULL,
@@ -57,7 +57,7 @@ def setup_schema(conn):
     )
     conn.commit()
     cursor.close()
-    print("✓ Created tables 'cookbook_products' and 'cookbook_product_stage'")
+    print("✓ Created tables 'cookbook_merge_products' and 'cookbook_product_stage'")
 
 
 def load_snapshot(cursor, rows):
@@ -73,7 +73,7 @@ def merge_snapshot(cursor):
     now_utc = datetime.now(timezone.utc)
     cursor.execute(
         """
-        MERGE INTO cookbook_products p
+        MERGE INTO cookbook_merge_products p
         USING cookbook_product_stage s
         ON (p.sku = s.sku)
         WHEN MATCHED THEN
@@ -94,7 +94,7 @@ def merge_snapshot(cursor):
 def deactivate_missing(cursor):
     cursor.execute(
         """
-        UPDATE cookbook_products p
+        UPDATE cookbook_merge_products p
            SET p.active = 0
          WHERE NOT EXISTS (
                SELECT 1
@@ -123,7 +123,7 @@ def show_results(cursor, label):
     cursor.execute(
         """
         SELECT sku, name, price_cents, active, last_seen_utc
-          FROM cookbook_products
+          FROM cookbook_merge_products
          ORDER BY sku
         """
     )
@@ -139,10 +139,10 @@ def show_results(cursor, label):
 def cleanup(conn):
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS cookbook_product_stage")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_products")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_merge_products")
     conn.commit()
     cursor.close()
-    print("\n✓ Cleaned up 'cookbook_product_stage' and 'cookbook_products'")
+    print("\n✓ Cleaned up 'cookbook_product_stage' and 'cookbook_merge_products'")
 
 
 if __name__ == "__main__":

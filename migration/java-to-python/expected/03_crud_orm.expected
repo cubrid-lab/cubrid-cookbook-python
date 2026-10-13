@@ -1,4 +1,4 @@
-Created table 'cookbook_products'
+Created table 'cookbook_jdbc_products'
 Inserted 5 products
   Product(id=1, val='Widget A', cnt=10, price=29.99)
   Product(id=2, val='Widget B', cnt=5, price=19.99)

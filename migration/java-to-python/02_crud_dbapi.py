@@ -6,7 +6,7 @@ Each function shows the Java equivalent in its docstring.
 Java JDBC pattern (what you're replacing):
 ──────────────────────────────────────────
     PreparedStatement ps = conn.prepareStatement(
-        "INSERT INTO cookbook_items (val, cnt) VALUES (?, ?)"
+        "INSERT INTO cookbook_jdbc_items (val, cnt) VALUES (?, ?)"
     );
     ps.setString(1, "widget");
     ps.setInt(2, 10);
@@ -17,7 +17,7 @@ Java JDBC pattern (what you're replacing):
 Python pycubrid (what you'll write):
 ─────────────────────────────────────
     cursor.execute(
-        "INSERT INTO cookbook_items (val, cnt) VALUES (?, ?)",
+        "INSERT INTO cookbook_jdbc_items (val, cnt) VALUES (?, ?)",
         ("widget", 10),
     )
     conn.commit()
@@ -47,13 +47,13 @@ def setup_table(conn: Connection) -> None:
     """CREATE TABLE — identical SQL in both languages.
 
     Java:
-        stmt.executeUpdate("CREATE TABLE cookbook_items (...)");
+        stmt.executeUpdate("CREATE TABLE cookbook_jdbc_items (...)");
         conn.commit();
     """
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_items")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_jdbc_items")
     cursor.execute("""
-        CREATE TABLE cookbook_items (
+        CREATE TABLE cookbook_jdbc_items (
             id   INT AUTO_INCREMENT PRIMARY KEY,
             val  VARCHAR(200) NOT NULL,
             cnt  INT DEFAULT 0,
@@ -62,7 +62,7 @@ def setup_table(conn: Connection) -> None:
     """)
     conn.commit()
     cursor.close()
-    print("Created table 'cookbook_items'")
+    print("Created table 'cookbook_jdbc_items'")
 
 
 def insert_single(conn: Connection) -> None:
@@ -70,7 +70,7 @@ def insert_single(conn: Connection) -> None:
 
     Java (PreparedStatement):
         PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO cookbook_items (val, cnt, price) VALUES (?, ?, ?)"
+            "INSERT INTO cookbook_jdbc_items (val, cnt, price) VALUES (?, ?, ?)"
         );
         ps.setString(1, "Widget A");
         ps.setInt(2, 10);
@@ -83,7 +83,7 @@ def insert_single(conn: Connection) -> None:
     """
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO cookbook_items (val, cnt, price) VALUES (?, ?, ?)",
+        "INSERT INTO cookbook_jdbc_items (val, cnt, price) VALUES (?, ?, ?)",
         ("Widget A", 10, 29.99),
     )
     conn.commit()
@@ -113,7 +113,7 @@ def insert_multiple(conn: Connection) -> None:
     ]
     cursor = conn.cursor()
     cursor.executemany(
-        "INSERT INTO cookbook_items (val, cnt, price) VALUES (?, ?, ?)",
+        "INSERT INTO cookbook_jdbc_items (val, cnt, price) VALUES (?, ?, ?)",
         items,
     )
     conn.commit()
@@ -137,7 +137,7 @@ def select_all(conn: Connection) -> list[tuple]:
     Python — fetchall() returns a list of tuples, no getInt/getString:
     """
     cursor = conn.cursor()
-    cursor.execute("SELECT id, val, cnt, price FROM cookbook_items ORDER BY id")
+    cursor.execute("SELECT id, val, cnt, price FROM cookbook_jdbc_items ORDER BY id")
     rows = cursor.fetchall()
 
     print(f"\nAll items ({len(rows)} rows):")
@@ -154,7 +154,7 @@ def select_filtered(conn: Connection) -> None:
 
     Java:
         PreparedStatement ps = conn.prepareStatement(
-            "SELECT val, price FROM cookbook_items WHERE price > ? ORDER BY price DESC"
+            "SELECT val, price FROM cookbook_jdbc_items WHERE price > ? ORDER BY price DESC"
         );
         ps.setDouble(1, 20.0);
         ResultSet rs = ps.executeQuery();
@@ -165,7 +165,7 @@ def select_filtered(conn: Connection) -> None:
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT val, price FROM cookbook_items WHERE price > ? ORDER BY price DESC",
+        "SELECT val, price FROM cookbook_jdbc_items WHERE price > ? ORDER BY price DESC",
         (20.0,),
     )
     rows = cursor.fetchall()
@@ -187,7 +187,7 @@ def select_fetchone(conn: Connection) -> None:
     Python — fetchone() returns tuple or None:
     """
     cursor = conn.cursor()
-    cursor.execute("SELECT val, cnt FROM cookbook_items ORDER BY id")
+    cursor.execute("SELECT val, cnt FROM cookbook_jdbc_items ORDER BY id")
 
     first = cursor.fetchone()
     print(f"\nFirst item: {first[0]} (count={first[1]})")
@@ -203,7 +203,7 @@ def update_rows(conn: Connection) -> None:
 
     Java:
         PreparedStatement ps = conn.prepareStatement(
-            "UPDATE cookbook_items SET price = ? WHERE val = ?"
+            "UPDATE cookbook_jdbc_items SET price = ? WHERE val = ?"
         );
         ps.setDouble(1, 24.99);
         ps.setString(2, "Widget A");
@@ -215,13 +215,13 @@ def update_rows(conn: Connection) -> None:
     cursor = conn.cursor()
 
     cursor.execute(
-        "UPDATE cookbook_items SET price = ? WHERE val = ?",
+        "UPDATE cookbook_jdbc_items SET price = ? WHERE val = ?",
         (24.99, "Widget A"),
     )
     print(f"\nUpdated Widget A price (rows affected: {cursor.rowcount})")
 
     cursor.execute(
-        "UPDATE cookbook_items SET cnt = cnt + ? WHERE price < ?",
+        "UPDATE cookbook_jdbc_items SET cnt = cnt + ? WHERE price < ?",
         (10, 10.0),
     )
     print(f"Restocked cheap items (rows affected: {cursor.rowcount})")
@@ -235,7 +235,7 @@ def delete_rows(conn: Connection) -> None:
 
     Java:
         PreparedStatement ps = conn.prepareStatement(
-            "DELETE FROM cookbook_items WHERE val = ?"
+            "DELETE FROM cookbook_jdbc_items WHERE val = ?"
         );
         ps.setString(1, "Tool E");
         int affected = ps.executeUpdate();
@@ -243,7 +243,7 @@ def delete_rows(conn: Connection) -> None:
     """
     cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM cookbook_items WHERE val = ?", ("Tool E",))
+    cursor.execute("DELETE FROM cookbook_jdbc_items WHERE val = ?", ("Tool E",))
     print(f"\nDeleted Tool E (rows affected: {cursor.rowcount})")
 
     conn.commit()
@@ -263,13 +263,13 @@ def handle_nulls(conn: Connection) -> None:
     """
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO cookbook_items (val, cnt, price) VALUES (?, NULL, NULL)",
+        "INSERT INTO cookbook_jdbc_items (val, cnt, price) VALUES (?, NULL, NULL)",
         ("NullTest",),
     )
     conn.commit()
 
     cursor.execute(
-        "SELECT val, cnt, price FROM cookbook_items WHERE val = ?",
+        "SELECT val, cnt, price FROM cookbook_jdbc_items WHERE val = ?",
         ("NullTest",),
     )
     row = cursor.fetchone()
@@ -280,10 +280,10 @@ def handle_nulls(conn: Connection) -> None:
 
 def cleanup(conn: Connection) -> None:
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_items")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_jdbc_items")
     conn.commit()
     cursor.close()
-    print("\nCleaned up table 'cookbook_items'")
+    print("\nCleaned up table 'cookbook_jdbc_items'")
 
 
 if __name__ == "__main__":

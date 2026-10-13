@@ -29,9 +29,9 @@ def get_connection() -> Connection:
 
 def setup(conn: Connection) -> None:
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_products")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_prepared_products")
     cursor.execute("""
-        CREATE TABLE cookbook_products (
+        CREATE TABLE cookbook_prepared_products (
             id       INT AUTO_INCREMENT PRIMARY KEY,
             name     VARCHAR(200) NOT NULL,
             category VARCHAR(100),
@@ -50,15 +50,15 @@ def parameterized_queries(conn: Connection) -> None:
 
     # pycubrid uses qmark paramstyle: ?
     cursor.execute(
-        "INSERT INTO cookbook_products (name, category, price, stock) VALUES (?, ?, ?, ?)",
+        "INSERT INTO cookbook_prepared_products (name, category, price, stock) VALUES (?, ?, ?, ?)",
         ("Laptop", "Electronics", 999.99, 50),
     )
     cursor.execute(
-        "INSERT INTO cookbook_products (name, category, price, stock) VALUES (?, ?, ?, ?)",
+        "INSERT INTO cookbook_prepared_products (name, category, price, stock) VALUES (?, ?, ?, ?)",
         ("Mouse", "Electronics", 29.99, 200),
     )
     cursor.execute(
-        "INSERT INTO cookbook_products (name, category, price, stock) VALUES (?, ?, ?, ?)",
+        "INSERT INTO cookbook_prepared_products (name, category, price, stock) VALUES (?, ?, ?, ?)",
         ("Desk Chair", "Furniture", 399.00, 30),
     )
     conn.commit()
@@ -66,7 +66,7 @@ def parameterized_queries(conn: Connection) -> None:
 
     # SELECT with parameters
     cursor.execute(
-        "SELECT name, price FROM cookbook_products WHERE category = ? AND price > ?",
+        "SELECT name, price FROM cookbook_prepared_products WHERE category = ? AND price > ?",
         ("Electronics", 50.0),
     )
     rows = cursor.fetchall()
@@ -81,20 +81,20 @@ def sql_injection_safe(conn: Connection) -> None:
     cursor = conn.cursor()
 
     # DANGEROUS (never do this!):
-    # user_input = "'; DROP TABLE cookbook_products; --"
-    # cursor.execute(f"SELECT * FROM cookbook_products WHERE name = '{user_input}'")
+    # user_input = "'; DROP TABLE cookbook_prepared_products; --"
+    # cursor.execute(f"SELECT * FROM cookbook_prepared_products WHERE name = '{user_input}'")
 
     # SAFE — parameters are escaped automatically:
-    malicious_input = "'; DROP TABLE cookbook_products; --"
+    malicious_input = "'; DROP TABLE cookbook_prepared_products; --"
     cursor.execute(
-        "SELECT name, price FROM cookbook_products WHERE name = ?",
+        "SELECT name, price FROM cookbook_prepared_products WHERE name = ?",
         (malicious_input,),
     )
     rows = cursor.fetchall()
     print(f"  Malicious input returned {len(rows)} rows (table is safe!)")
 
     # Verify table still exists
-    cursor.execute("SELECT COUNT(*) FROM cookbook_products")
+    cursor.execute("SELECT COUNT(*) FROM cookbook_prepared_products")
     count = cursor.fetchone()[0]
     print(f"  ✓ Table still has {count} rows — SQL injection prevented")
 
@@ -119,7 +119,7 @@ def batch_insert(conn: Connection) -> None:
 
     start = time.perf_counter()
     cursor.executemany(
-        "INSERT INTO cookbook_products (name, category, price, stock) VALUES (?, ?, ?, ?)",
+        "INSERT INTO cookbook_prepared_products (name, category, price, stock) VALUES (?, ?, ?, ?)",
         products,
     )
     conn.commit()
@@ -128,7 +128,7 @@ def batch_insert(conn: Connection) -> None:
     print(f"  ✓ Inserted {len(products)} products in {elapsed * 1000:.1f}ms")
 
     # Verify
-    cursor.execute("SELECT COUNT(*) FROM cookbook_products")
+    cursor.execute("SELECT COUNT(*) FROM cookbook_prepared_products")
     total = cursor.fetchone()[0]
     print(f"  Total products: {total}")
 
@@ -148,7 +148,7 @@ def batch_update(conn: Connection) -> None:
     ]
 
     cursor.executemany(
-        "UPDATE cookbook_products SET price = price * ? WHERE name = ?",
+        "UPDATE cookbook_prepared_products SET price = price * ? WHERE name = ?",
         updates,
     )
     conn.commit()
@@ -156,7 +156,7 @@ def batch_update(conn: Connection) -> None:
 
     # Show discounted prices
     cursor.execute(
-        "SELECT name, price FROM cookbook_products WHERE name IN ('Laptop', 'Monitor', 'Standing Desk')"
+        "SELECT name, price FROM cookbook_prepared_products WHERE name IN ('Laptop', 'Monitor', 'Standing Desk')"
     )
     for row in cursor.fetchall():
         print(f"  {row[0]:15s} → ${row[1]:.2f}")
@@ -174,7 +174,7 @@ def aggregate_queries(conn: Connection) -> None:
                COUNT(*) AS cnt,
                CAST(AVG(price) AS DOUBLE) AS avg_price,
                CAST(SUM(stock) AS INT) AS total_stock
-        FROM cookbook_products
+        FROM cookbook_prepared_products
         GROUP BY category
         ORDER BY cnt DESC
     """)
@@ -189,7 +189,7 @@ def aggregate_queries(conn: Connection) -> None:
 
 def cleanup(conn: Connection) -> None:
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_products")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_prepared_products")
     conn.commit()
     cursor.close()
     print("\n✓ Cleaned up")

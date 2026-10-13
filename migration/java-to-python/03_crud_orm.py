@@ -6,7 +6,7 @@ Each function shows the Java JPA equivalent in its docstring.
 Java JPA pattern (what you're replacing):
 ─────────────────────────────────────────
     @Entity
-    @Table(name = "cookbook_products")
+    @Table(name = "cookbook_jdbc_products")
     public class Product {
         @Id @GeneratedValue
         private int id;
@@ -20,7 +20,7 @@ Java JPA pattern (what you're replacing):
 Python SQLAlchemy (what you'll write):
 ──────────────────────────────────────
     class Product(Base):
-        __tablename__ = "cookbook_products"
+        __tablename__ = "cookbook_jdbc_products"
         id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
         val: Mapped[str] = mapped_column(String(200))
         cnt: Mapped[int] = mapped_column(default=0)
@@ -46,7 +46,7 @@ class Product(Base):
 
     Java JPA equivalent:
         @Entity
-        @Table(name = "cookbook_products")
+        @Table(name = "cookbook_jdbc_products")
         public class Product {
             @Id
             @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -65,7 +65,7 @@ class Product(Base):
         }
     """
 
-    __tablename__ = "cookbook_products"
+    __tablename__ = "cookbook_jdbc_products"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     val: Mapped[str] = mapped_column(String(200))
@@ -79,7 +79,7 @@ class Product(Base):
 def create_tables(engine) -> None:
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
-    print("Created table 'cookbook_products'")
+    print("Created table 'cookbook_jdbc_products'")
 
 
 def insert_products(engine) -> None:

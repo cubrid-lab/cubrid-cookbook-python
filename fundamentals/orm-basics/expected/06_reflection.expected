@@ -3,19 +3,19 @@
 
 === List Tables ===
   Cookbook tables (2):
-    • cookbook_ref_articles
-    • cookbook_ref_authors
+    • cookbook_reflect_articles
+    • cookbook_reflect_authors
 
 === Reflect Columns ===
 
-  cookbook_ref_authors:
+  cookbook_reflect_authors:
     Column           Type                  Nullable     Default
     ------           ----                  --------     -------
     id               INTEGER                     No        None
     name             VARCHAR(100)                No        None
     country          VARCHAR(50)                Yes        None
 
-  cookbook_ref_articles:
+  cookbook_reflect_articles:
     Column           Type                  Nullable     Default
     ------           ----                  --------     -------
     id               INTEGER                     No        None
@@ -25,18 +25,18 @@
     rating           DOUBLE                     Yes        None
 
 === Reflect Constraints ===
-  cookbook_ref_authors PK: ['id']
-  cookbook_ref_articles PK: ['id']
+  cookbook_reflect_authors PK: ['id']
+  cookbook_reflect_articles PK: ['id']
 
-  Foreign keys on cookbook_ref_articles:
-    ['author_id'] → cookbook_ref_authors.['id']
+  Foreign keys on cookbook_reflect_articles:
+    ['author_id'] → cookbook_reflect_authors.['id']
 
 === Reflect Indexes ===
-  Indexes on cookbook_ref_articles:
+  Indexes on cookbook_reflect_articles:
     idx_articles_views              columns=['views']
 
 === Autoload Table ===
-  Reflected 'cookbook_ref_authors' with 3 columns:
+  Reflected 'cookbook_reflect_authors' with 3 columns:
     • id: INTEGER
     • name: VARCHAR(100)
     • country: VARCHAR(50)

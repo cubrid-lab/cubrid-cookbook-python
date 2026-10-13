@@ -28,7 +28,7 @@ class Base(DeclarativeBase):
 
 
 class ChatUser(Base):
-    __tablename__ = "chat_users"
+    __tablename__ = "cookbook_chat_users"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(50), unique=True)
@@ -40,10 +40,10 @@ class ChatUser(Base):
 
 
 class ChatConversation(Base):
-    __tablename__ = "chat_conversations"
+    __tablename__ = "cookbook_chat_conversations"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("chat_users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("cookbook_chat_users.id"))
     title: Mapped[str] = mapped_column(String(200), default="New conversation")
     status: Mapped[str] = mapped_column(String(20), default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=sa.text("SYS_DATETIME"))
@@ -57,10 +57,10 @@ class ChatConversation(Base):
 
 
 class ChatMessage(Base):
-    __tablename__ = "chat_messages"
+    __tablename__ = "cookbook_chat_messages"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    conversation_id: Mapped[int] = mapped_column(ForeignKey("chat_conversations.id"))
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("cookbook_chat_conversations.id"))
     role: Mapped[str] = mapped_column(String(20))  # user / assistant / system / tool
     content: Mapped[str] = mapped_column(Text)
     metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)

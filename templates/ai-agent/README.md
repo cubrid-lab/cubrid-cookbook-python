@@ -44,7 +44,7 @@ The examples use fixed, recipe-owned demonstration data: the session keys
 `"recipe": "cookbook-ai-agent-rag-demo"`. Each run first deletes only its own
 previous copy of that data, so every recipe can be run again on the same
 database; other rows, including ones with the same source URL, are left alone,
-and `rag_retrieval_log` keeps accumulating.
+and `cookbook_rag_retrieval_log` keeps accumulating.
 Recipe 04 creates and seeds `cookbook_agent_products` so its product query
 does not depend on another example. Database connections and the ORM engine
 are closed even if a demonstration raises.
@@ -105,11 +105,11 @@ User Query
 │       ↓               ↓        │
 │  ┌──────────────────────────┐  │
 │  │ CUBRID (state store)     │  │
-│  │ · agent_sessions         │  │
-│  │ · agent_messages (JSON)  │  │
-│  │ · agent_tool_calls (JSON)│  │
-│  │ · rag_documents (SET)    │  │
-│  │ · rag_chunks             │  │
+│  │ · cookbook_agent_sessions         │  │
+│  │ · cookbook_agent_messages (JSON)  │  │
+│  │ · cookbook_agent_tool_calls (JSON)│  │
+│  │ · cookbook_rag_documents (SET)    │  │
+│  │ · cookbook_rag_chunks             │  │
 │  └──────────────────────────┘  │
 └─────────────────────────────────┘
 ```

@@ -120,9 +120,9 @@ def run_with_retry(pool: ConnectionPool, fn, max_retries: int = 3):
 
 def setup_schema(conn) -> None:
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_jobs")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_retry_jobs")
     cursor.execute("""
-        CREATE TABLE cookbook_jobs (
+        CREATE TABLE cookbook_retry_jobs (
             id           INT AUTO_INCREMENT PRIMARY KEY,
             payload      VARCHAR(200) NOT NULL,
             status       VARCHAR(20) NOT NULL,
@@ -133,7 +133,7 @@ def setup_schema(conn) -> None:
     """)
     conn.commit()
     cursor.close()
-    print("✓ Created table 'cookbook_jobs'")
+    print("✓ Created table 'cookbook_retry_jobs'")
 
 
 def seed_jobs(conn) -> None:
@@ -141,7 +141,7 @@ def seed_jobs(conn) -> None:
     jobs = [(f"job-{i}", "queued", 0, None, 0) for i in range(1, 6)]
     cursor.executemany(
         """
-        INSERT INTO cookbook_jobs (payload, status, attempts, processed_at, failed_once)
+        INSERT INTO cookbook_retry_jobs (payload, status, attempts, processed_at, failed_once)
         VALUES (?, ?, ?, ?, ?)
         """,
         jobs,
@@ -158,9 +158,9 @@ def process_next_job(conn):
     # This prevents two workers from picking the same job.
     cursor.execute(
         """
-        UPDATE cookbook_jobs SET status = 'processing'
+        UPDATE cookbook_retry_jobs SET status = 'processing'
         WHERE id = (
-            SELECT id FROM cookbook_jobs WHERE status = 'queued' ORDER BY id LIMIT 1
+            SELECT id FROM cookbook_retry_jobs WHERE status = 'queued' ORDER BY id LIMIT 1
         )
         """
     )
@@ -172,7 +172,7 @@ def process_next_job(conn):
     cursor.execute(
         """
         SELECT id, payload, attempts, failed_once
-        FROM cookbook_jobs
+        FROM cookbook_retry_jobs
         WHERE status = 'processing'
         ORDER BY id
         LIMIT 1
@@ -188,7 +188,7 @@ def process_next_job(conn):
 
     if failed_once == 0:
         cursor.execute(
-            "UPDATE cookbook_jobs SET failed_once = 1, attempts = attempts + 1, status = 'queued' WHERE id = ?",
+            "UPDATE cookbook_retry_jobs SET failed_once = 1, attempts = attempts + 1, status = 'queued' WHERE id = ?",
             (job_id,),
         )
         conn.commit()
@@ -198,7 +198,7 @@ def process_next_job(conn):
     finished_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None, microsecond=0)
     cursor.execute(
         """
-        UPDATE cookbook_jobs
+        UPDATE cookbook_retry_jobs
         SET status = 'done', attempts = attempts + 1, processed_at = ?
         WHERE id = ?
         """,
@@ -212,10 +212,10 @@ def process_next_job(conn):
 
 def cleanup(conn) -> None:
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_jobs")
+    cursor.execute("DROP TABLE IF EXISTS cookbook_retry_jobs")
     conn.commit()
     cursor.close()
-    print("\n✓ Cleaned up table 'cookbook_jobs'")
+    print("\n✓ Cleaned up table 'cookbook_retry_jobs'")
 
 
 if __name__ == "__main__":
@@ -236,7 +236,7 @@ if __name__ == "__main__":
             time.sleep(0.05)
 
         cursor = admin_conn.cursor()
-        cursor.execute("SELECT id, payload, status, attempts FROM cookbook_jobs ORDER BY id")
+        cursor.execute("SELECT id, payload, status, attempts FROM cookbook_retry_jobs ORDER BY id")
         rows = cursor.fetchall()
         print("\n=== Job Results ===")
         for row in rows:
@@ -245,7 +245,7 @@ if __name__ == "__main__":
         print(f"✓ Total processed jobs: {processed}")
     finally:
         # Close pool connections BEFORE dropping the table: a pooled connection
-        # may still hold row locks on cookbook_jobs from its last claim, and
+        # may still hold row locks on cookbook_retry_jobs from its last claim, and
         # DROP TABLE would block on those locks until the pool is closed.
         pool.close_all()
         cleanup(admin_conn)

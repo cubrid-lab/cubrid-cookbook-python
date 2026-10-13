@@ -1,4 +1,4 @@
-Created table 'cookbook_items'
+Created table 'cookbook_jdbc_items'
 Inserted 1 row
 Inserted 4 rows
 
@@ -40,4 +40,4 @@ All items (4 rows):
 
 Null handling: val='NullTest', cnt=None, price=None
 
-Cleaned up table 'cookbook_items'
+Cleaned up table 'cookbook_jdbc_items'

@@ -29,7 +29,7 @@ python3 manage.py runserver
 ## Routes (JSON only)
 
 - `GET /health` checks CUBRID with `SELECT 1`
-- `GET /items` lists rows from `cookbook_items`
+- `GET /items` lists rows from `cookbook_django_items`
 - `POST /items` creates one row
 
 Example create payload:
@@ -45,7 +45,7 @@ Example create payload:
 
 ## Table creation hook
 
-`app/views.py` uses lazy initialization with `_ensure_tables_initialized()` to create `cookbook_items` on first request.
+`app/views.py` uses lazy initialization with `_ensure_tables_initialized()` to create `cookbook_django_items` on first request.
 
 ## Test the CUBRID bridge
 
@@ -64,7 +64,7 @@ python -m pytest tests -v
 
 With no `CUBRID_TEST_URL`, the live test skips. An unreachable or non-CUBRID
 configured URL fails. The test refuses to touch a database where
-`cookbook_items` already exists, and removes only the table it created.
+`cookbook_django_items` already exists, and removes only the table it created.
 
 ## Quick check
 

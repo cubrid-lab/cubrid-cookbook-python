@@ -32,7 +32,7 @@ def setup(engine) -> None:
     metadata = MetaData()
 
     Table(
-        "cookbook_ref_authors",
+        "cookbook_reflect_authors",
         metadata,
         Column("id", Integer, primary_key=True, autoincrement=True),
         Column("name", String(100), nullable=False),
@@ -40,11 +40,11 @@ def setup(engine) -> None:
     )
 
     Table(
-        "cookbook_ref_articles",
+        "cookbook_reflect_articles",
         metadata,
         Column("id", Integer, primary_key=True, autoincrement=True),
         Column("title", String(200), nullable=False),
-        Column("author_id", Integer, ForeignKey("cookbook_ref_authors.id")),
+        Column("author_id", Integer, ForeignKey("cookbook_reflect_authors.id")),
         Column("views", Integer, default=0),
         Column("rating", Double, default=0.0),
     )
@@ -54,7 +54,7 @@ def setup(engine) -> None:
 
     # Add an index
     with engine.begin() as conn:
-        conn.execute(text("CREATE INDEX idx_articles_views ON cookbook_ref_articles (views)"))
+        conn.execute(text("CREATE INDEX idx_articles_views ON cookbook_reflect_articles (views)"))
 
     print("  ✓ Created tables with FK and index")
 
@@ -65,7 +65,7 @@ def list_tables(engine) -> None:
     insp = inspect(engine)
     tables = insp.get_table_names()
 
-    cookbook_tables = [t for t in tables if t.startswith("cookbook_ref_")]
+    cookbook_tables = [t for t in tables if t.startswith("cookbook_reflect_")]
     print(f"  Cookbook tables ({len(cookbook_tables)}):")
     for t in sorted(cookbook_tables):
         print(f"    • {t}")
@@ -76,7 +76,7 @@ def reflect_columns(engine) -> None:
     print("\n=== Reflect Columns ===")
     insp = inspect(engine)
 
-    for table_name in ["cookbook_ref_authors", "cookbook_ref_articles"]:
+    for table_name in ["cookbook_reflect_authors", "cookbook_reflect_articles"]:
         columns = insp.get_columns(table_name)
         print(f"\n  {table_name}:")
         print(f"    {'Column':15s}  {'Type':20s}  {'Nullable':>8s}  {'Default':>10s}")
@@ -94,13 +94,13 @@ def reflect_constraints(engine) -> None:
     insp = inspect(engine)
 
     # Primary keys
-    for table_name in ["cookbook_ref_authors", "cookbook_ref_articles"]:
+    for table_name in ["cookbook_reflect_authors", "cookbook_reflect_articles"]:
         pk = insp.get_pk_constraint(table_name)
         print(f"  {table_name} PK: {pk['constrained_columns']}")
 
     # Foreign keys
-    fks = insp.get_foreign_keys("cookbook_ref_articles")
-    print("\n  Foreign keys on cookbook_ref_articles:")
+    fks = insp.get_foreign_keys("cookbook_reflect_articles")
+    print("\n  Foreign keys on cookbook_reflect_articles:")
     for fk in fks:
         print(f"    {fk['constrained_columns']} → {fk['referred_table']}.{fk['referred_columns']}")
 
@@ -110,8 +110,8 @@ def reflect_indexes(engine) -> None:
     print("\n=== Reflect Indexes ===")
     insp = inspect(engine)
 
-    indexes = insp.get_indexes("cookbook_ref_articles")
-    print("  Indexes on cookbook_ref_articles:")
+    indexes = insp.get_indexes("cookbook_reflect_articles")
+    print("  Indexes on cookbook_reflect_articles:")
     for idx in indexes:
         unique = " (UNIQUE)" if idx.get("unique") else ""
         print(f"    {idx['name']:30s}  columns={idx['column_names']}{unique}")
@@ -123,9 +123,9 @@ def autoload_table(engine) -> None:
     metadata = MetaData()
 
     # Reflect the table from database
-    authors = Table("cookbook_ref_authors", metadata, autoload_with=engine)
+    authors = Table("cookbook_reflect_authors", metadata, autoload_with=engine)
 
-    print(f"  Reflected 'cookbook_ref_authors' with {len(authors.columns)} columns:")
+    print(f"  Reflected 'cookbook_reflect_authors' with {len(authors.columns)} columns:")
     for col in authors.columns:
         print(f"    • {col.name}: {col.type}")
 
@@ -148,7 +148,7 @@ def autoload_table(engine) -> None:
 def cleanup(engine) -> None:
     metadata = MetaData()
     metadata.reflect(bind=engine)
-    for table_name in ["cookbook_ref_articles", "cookbook_ref_authors"]:
+    for table_name in ["cookbook_reflect_articles", "cookbook_reflect_authors"]:
         if table_name in metadata.tables:
             metadata.tables[table_name].drop(engine)
     print("\n✓ Cleaned up")

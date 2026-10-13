@@ -9,7 +9,7 @@ Base = declarative_base()
 
 
 class CookbookItem(Base):
-    __tablename__ = "cookbook_items"
+    __tablename__ = "cookbook_django_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String(100), nullable=False)

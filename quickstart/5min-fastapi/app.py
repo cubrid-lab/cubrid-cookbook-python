@@ -56,7 +56,7 @@ def create_table() -> None:
     with database_cursor() as cursor:
         cursor.execute(
             """
-        CREATE TABLE IF NOT EXISTS cookbook_items (
+        CREATE TABLE IF NOT EXISTS cookbook_quickstart_items (
             id INT AUTO_INCREMENT PRIMARY KEY,
             val VARCHAR(255) NOT NULL
         )
@@ -67,21 +67,21 @@ def create_table() -> None:
 @app.get("/items", response_model=list[ItemOut])
 def list_items() -> list[ItemOut]:
     with database_cursor() as cursor:
-        cursor.execute("SELECT id, val FROM cookbook_items ORDER BY id")
+        cursor.execute("SELECT id, val FROM cookbook_quickstart_items ORDER BY id")
         return [ItemOut(id=row[0], val=row[1]) for row in cursor.fetchall()]
 
 
 @app.post("/items", response_model=ItemOut)
 def create_item(item: ItemIn) -> ItemOut:
     with database_cursor() as cursor:
-        cursor.execute("INSERT INTO cookbook_items (val) VALUES (?)", (item.val,))
+        cursor.execute("INSERT INTO cookbook_quickstart_items (val) VALUES (?)", (item.val,))
         return ItemOut(id=cursor.lastrowid, val=item.val)
 
 
 @app.get("/items/{item_id}", response_model=ItemOut)
 def get_item(item_id: int) -> ItemOut:
     with database_cursor() as cursor:
-        cursor.execute("SELECT id, val FROM cookbook_items WHERE id = ?", (item_id,))
+        cursor.execute("SELECT id, val FROM cookbook_quickstart_items WHERE id = ?", (item_id,))
         row = cursor.fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="Item not found")
