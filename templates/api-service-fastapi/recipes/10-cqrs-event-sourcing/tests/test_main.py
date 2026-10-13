@@ -5,7 +5,7 @@ from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -18,7 +18,7 @@ if str(ROOT_DIR) not in sys.path:
 import database
 import main
 from database import get_db
-from models import EventStore
+from models import AccountReadModel, EventStore
 
 
 @pytest.fixture()
@@ -221,3 +221,38 @@ def test_read_model_sequence_matches_tail(client: TestClient) -> None:
         )
 
     assert read_model_seq == tail
+
+
+def _drift_read_model(engine: Engine, account_id: str = "acct-1") -> None:
+    """Corrupt the read model the way a lost or misapplied projection would."""
+    with engine.begin() as conn:
+        conn.execute(
+            update(AccountReadModel)
+            .where(AccountReadModel.account_id == account_id)
+            .values(balance_cents=1, owner_name="drifted")
+        )
+
+
+@pytest.mark.parametrize("from_scratch", [1, 0], ids=["from-scratch", "snapshot-and-tail"])
+def test_rebuild_repairs_a_drifted_read_model(
+    client: TestClient, engine: Engine, from_scratch: int
+) -> None:
+    _open_account(client)
+    deposit = client.post(
+        "/accounts/acct-1/deposit",
+        json={"amount_cents": 4000, "expected_sequence_no": 1},
+    )
+    assert deposit.status_code == 200
+    if from_scratch == 0:
+        assert client.post("/accounts/acct-1/snapshot").status_code == 200
+    _drift_read_model(engine)
+    assert client.get("/accounts/acct-1").json()["balance_cents"] == 1
+
+    rebuild_response = client.post("/accounts/acct-1/rebuild", json={"from_scratch": from_scratch})
+
+    assert rebuild_response.status_code == 200
+    rebuilt = rebuild_response.json()
+    assert (rebuilt["balance_cents"], rebuilt["owner_name"]) == (4000, "Alice")
+    assert rebuilt["last_sequence_no"] == 2
+    stored = client.get("/accounts/acct-1").json()
+    assert (stored["balance_cents"], stored["owner_name"]) == (4000, "Alice")

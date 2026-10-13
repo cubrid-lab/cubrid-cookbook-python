@@ -30,6 +30,17 @@ uvicorn main:app --reload
 - `POST /accounts/{account_id}/snapshot` - create or replace aggregate snapshot
 - `POST /accounts/{account_id}/rebuild` - rebuild read model from snapshot+tail or full stream
 
+## Rebuilding the read model
+
+Commands project each new event into the read model and skip a state the read
+model has already reached (`sequence_no <= last_sequence_no`), so replaying an
+event twice does nothing. A rebuild is different: it replays the stream and
+overwrites the read model row with the result even when the sequence number is
+not newer, so it repairs a read model that drifted from the events.
+`{"from_scratch": 1}` replays every event from the first; `{"from_scratch": 0}`
+starts from the latest snapshot and replays the events after it. Both still use
+the read model's version guard and return 409 on a concurrent write.
+
 ## Test
 
 ```bash
