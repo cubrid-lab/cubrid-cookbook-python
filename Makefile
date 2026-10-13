@@ -128,6 +128,7 @@ lint: ## Check Python lint and formatting
 	$(RUFF) format --check .
 
 test-offline: ## Run mocked/offline suites in separate processes (no database required)
+	$(PYTHON) -m unittest discover -s tests -p 'test_check_expected_coverage.py' -v
 	$(PYTHON) -m pytest quickstart/5min-fastapi/tests -q
 	$(PYTHON) -m pytest tests/test_ai_agent_offline.py -q
 	$(PYTHON) -m unittest discover -s tests -p 'test_release*.py' -v
