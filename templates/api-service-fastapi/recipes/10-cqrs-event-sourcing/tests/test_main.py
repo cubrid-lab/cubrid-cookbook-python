@@ -256,3 +256,43 @@ def test_rebuild_repairs_a_drifted_read_model(
     assert rebuilt["last_sequence_no"] == 2
     stored = client.get("/accounts/acct-1").json()
     assert (stored["balance_cents"], stored["owner_name"]) == (4000, "Alice")
+
+
+def test_rebuild_does_not_rewind_a_newer_command(
+    client: TestClient, engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import routes
+    from schemas import AmountCommandRequest
+
+    _open_account(client)
+    deposit = client.post(
+        "/accounts/acct-1/deposit",
+        json={"amount_cents": 4000, "expected_sequence_no": 1},
+    )
+    assert deposit.status_code == 200
+
+    # A deposit commits on another session after the rebuild replayed the stream
+    # (tail 2) and before it writes the read model.
+    original = routes._project_read_model
+    pending = [True]
+
+    def project_after_a_concurrent_deposit(db, account_id, state, sequence_no, **kwargs):
+        if pending:
+            pending.clear()
+            other = sessionmaker(bind=engine, autoflush=False)()
+            try:
+                routes.deposit(
+                    "acct-1", AmountCommandRequest(amount_cents=500, expected_sequence_no=2), other
+                )
+            finally:
+                other.close()
+        return original(db, account_id, state, sequence_no, **kwargs)
+
+    monkeypatch.setattr(routes, "_project_read_model", project_after_a_concurrent_deposit)
+    rebuild_response = client.post("/accounts/acct-1/rebuild", json={"from_scratch": 1})
+    monkeypatch.undo()
+
+    assert not pending
+    assert rebuild_response.status_code == 409
+    stored = client.get("/accounts/acct-1").json()
+    assert (stored["balance_cents"], stored["last_sequence_no"]) == (4500, 3)

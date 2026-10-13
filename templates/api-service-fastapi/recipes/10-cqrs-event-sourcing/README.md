@@ -39,7 +39,10 @@ overwrites the read model row with the result even when the sequence number is
 not newer, so it repairs a read model that drifted from the events.
 `{"from_scratch": 1}` replays every event from the first; `{"from_scratch": 0}`
 starts from the latest snapshot and replays the events after it. Both still use
-the read model's version guard and return 409 on a concurrent write.
+the read model's version guard, and the UPDATE also requires
+`last_sequence_no <= :replayed_tail`: if a command commits a newer event after the
+rebuild replayed the stream, the rebuild returns 409 instead of rewinding the read
+model to the older state.
 
 ## Test
 
