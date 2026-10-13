@@ -147,9 +147,12 @@ print(text.decode("utf-8"))
 
 `conn.create_lob(lob_type)` takes only a type code (`CUBRIDDataType.CLOB` or
 `CUBRIDDataType.BLOB` from `pycubrid.constants`) and returns an empty server-side
-`Lob` to `write()` to. The standard cursor cannot bind that handle as a `?`
-parameter (it raises `ProgrammingError: unsupported parameter type`), so these
-recipes insert `str`/`bytes` directly.
+`Lob` to `write()` to. `execute()` and the default `executemany()` cannot bind
+that handle as a `?` parameter (they raise `ProgrammingError: unsupported
+parameter type`), so these recipes insert `str`/`bytes` directly. The one
+exception, since pycubrid 1.12.0, is `executemany(..., prepared=True)` on the sync
+cursor with autocommit off, which binds a `Lob` of the same connection by its
+handle.
 
 ## Expected Output
 
@@ -160,7 +163,7 @@ Running `01_connect.py`:
 1 + 1 = 2
 
 === Connection Info ===
-CUBRID version: 11.4.6.1963
+CUBRID version: <server version>
 Database: testdb
 User: DBA@<hostname>
 
@@ -174,7 +177,7 @@ Row: (1, 'hello', 3.14)
 === Multiple Queries ===
 SELECT 1 AS a                            → 1
 SELECT 'hello' AS b                      → hello
-SELECT CURRENT_DATE AS today             → 2026-10-13
+SELECT CURRENT_DATE AS today             → <today's date>
 ```
 
 Running `02_crud.py`:

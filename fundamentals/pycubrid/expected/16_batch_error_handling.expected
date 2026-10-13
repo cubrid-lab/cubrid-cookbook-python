@@ -21,7 +21,7 @@
   cursor.executemany_batch(sql_list, auto_commit=None)
     sql_list:    list[str] of COMPLETE SQL statements
     auto_commit: True = each stmt auto-commits; False = caller commits
-  Returns: list[tuple[int, int]] of (statement_type, affected_count)
+  Returns: list[tuple[int, int]] of (statement_type, result_count)
            statement_type is a CUBRIDStatementType value (20 = INSERT)
   Raises:  PEP 249 exception on first per-statement failure
   Semantics: valid statements are executed and left uncommitted;

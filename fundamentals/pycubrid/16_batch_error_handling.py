@@ -165,7 +165,7 @@ def main() -> None:
     print("  cursor.executemany_batch(sql_list, auto_commit=None)")
     print("    sql_list:    list[str] of COMPLETE SQL statements")
     print("    auto_commit: True = each stmt auto-commits; False = caller commits")
-    print("  Returns: list[tuple[int, int]] of (statement_type, affected_count)")
+    print("  Returns: list[tuple[int, int]] of (statement_type, result_count)")
     print("           statement_type is a CUBRIDStatementType value (20 = INSERT)")
     print("  Raises:  PEP 249 exception on first per-statement failure")
     print("  Semantics: valid statements are executed and left uncommitted;")
