@@ -65,14 +65,15 @@ def main() -> None:
     print()
 
     engine = create_engine(DATABASE_URL)
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-    print("[1] Created table cookbook_collection_demo")
-    print("      tags          SET(40)        unique, unordered")
-    print("      phone_numbers MULTISET(20)   duplicates allowed")
-    print("      checklist     SEQUENCE(200)  ordered, duplicates allowed")
-
+    # The guard starts right after the engine, so a failed setup is cleaned up too.
     try:
+        Base.metadata.drop_all(engine)
+        Base.metadata.create_all(engine)
+        print("[1] Created table cookbook_collection_demo")
+        print("      tags          SET(40)        unique, unordered")
+        print("      phone_numbers MULTISET(20)   duplicates allowed")
+        print("      checklist     SEQUENCE(200)  ordered, duplicates allowed")
+
         rows = [
             {
                 "id": 1,
