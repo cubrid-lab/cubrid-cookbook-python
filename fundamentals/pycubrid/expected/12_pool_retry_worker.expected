@@ -1,5 +1,12 @@
 ✓ Created table 'cookbook_retry_jobs'
 ✓ Seeded 5 queued jobs
+
+=== Claim race ===
+  Worker A and worker B both read next job id=1 / id=1
+  Worker A claims id=1: True
+  Worker B claims id=1: False (rowcount 0)
+  Worker B picks again: id=2
+
 ✓ Pool health check: healthy=2, replaced=0
   Picked job id=1 payload=job-1 attempts=0
   Retryable DB error: OperationalError (attempt 1/3), backoff=0.10s

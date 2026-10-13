@@ -5,6 +5,7 @@ Demonstrates:
 - Retry wrapper with exponential backoff
 - Replacing failed connections
 - Background-like job processing with resilient DB access
+- A job claim that two workers cannot both win (conditional UPDATE + rowcount)
 """
 
 from __future__ import annotations
@@ -151,34 +152,66 @@ def seed_jobs(conn) -> None:
     print("✓ Seeded 5 queued jobs")
 
 
+def next_queued_id(cursor):
+    cursor.execute("SELECT id FROM cookbook_retry_jobs WHERE status = 'queued' ORDER BY id LIMIT 1")
+    row = cursor.fetchone()
+    return None if row is None else row[0]
+
+
+def try_claim(conn, cursor, job_id) -> bool:
+    """Take ``job_id`` if it is still queued; return whether this worker got it.
+
+    The status is checked in the UPDATE itself, so when two workers picked the same
+    id only one changes the row (rowcount 1); the other sees rowcount 0.
+    """
+    cursor.execute(
+        "UPDATE cookbook_retry_jobs SET status = 'processing' WHERE id = ? AND status = 'queued'",
+        (job_id,),
+    )
+    claimed = cursor.rowcount == 1
+    conn.commit()
+    return claimed
+
+
+def demo_claim_race() -> None:
+    """Two workers read the same next job; only the first conditional claim wins."""
+    worker_a, worker_b = get_connection(), get_connection()
+    try:
+        cur_a, cur_b = worker_a.cursor(), worker_b.cursor()
+        job_a, job_b = next_queued_id(cur_a), next_queued_id(cur_b)
+        print(f"  Worker A and worker B both read next job id={job_a} / id={job_b}")
+        print(f"  Worker A claims id={job_a}: {try_claim(worker_a, cur_a, job_a)}")
+        print(f"  Worker B claims id={job_b}: {try_claim(worker_b, cur_b, job_b)} (rowcount 0)")
+        retry = next_queued_id(cur_b)
+        print(f"  Worker B picks again: id={retry}")
+        # Put the demo's job back so the pool below processes all five.
+        cur_a.execute("UPDATE cookbook_retry_jobs SET status = 'queued' WHERE id = ?", (job_a,))
+        worker_a.commit()
+        cur_a.close()
+        cur_b.close()
+    finally:
+        worker_a.close()
+        worker_b.close()
+
+
 def process_next_job(conn):
     """Claim and process ONE queued job; several workers never claim the same job."""
     cursor = conn.cursor()
-    # Claim: pick the oldest queued id, then take it with a conditional UPDATE. The
-    # status is checked in the UPDATE itself, so when two workers pick the same id
-    # only one changes the row (rowcount 1); the other sees rowcount 0 and picks again.
+    # Claim: pick the oldest queued id and take it with a conditional UPDATE; if
+    # another worker took it first (rowcount 0), pick again.
     while True:
-        cursor.execute(
-            "SELECT id FROM cookbook_retry_jobs WHERE status = 'queued' ORDER BY id LIMIT 1"
-        )
-        candidate = cursor.fetchone()
+        candidate = next_queued_id(cursor)
         if candidate is None:
             conn.rollback()
             cursor.close()
             return None
-        cursor.execute(
-            "UPDATE cookbook_retry_jobs SET status = 'processing' WHERE id = ? AND status = 'queued'",
-            (candidate[0],),
-        )
-        claimed = cursor.rowcount == 1
-        conn.commit()
-        if claimed:
+        if try_claim(conn, cursor, candidate):
             break
 
     # Read back the claimed job by its id, not "any processing job".
     cursor.execute(
         "SELECT id, payload, attempts, failed_once FROM cookbook_retry_jobs WHERE id = ?",
-        (candidate[0],),
+        (candidate,),
     )
     job_id, payload, attempts, failed_once = cursor.fetchone()
     print(f"  Picked job id={job_id} payload={payload} attempts={attempts}")
@@ -223,6 +256,9 @@ if __name__ == "__main__":
     try:
         setup_schema(admin_conn)
         seed_jobs(admin_conn)
+        print("\n=== Claim race ===")
+        demo_claim_race()
+        print()
         pool.health_check()
 
         while True:
