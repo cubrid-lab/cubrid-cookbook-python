@@ -6,8 +6,11 @@ Standalone FastAPI recipe that implements per-client rate limiting using a slidi
 
 - Client policy management (`limit_per_window`, `window_seconds`, `burst_allowance`)
 - Sliding-window weighted count: `current_count + int(previous_count * overlap_fraction)`
-- SQL expression increment on consume (`current_count = current_count + :cost`)
-- Optimistic version checks for policy update and reset
+- SQL expression increment on consume (`current_count = current_count + :cost`); the first
+  consume of a new window stores `current_count = :cost` instead, because the rotation's
+  reset to 0 happens only in Python and is never flushed (the session uses `autoflush=False`)
+- Optimistic version checks for consume, policy update and reset, each a conditional UPDATE
+  (`WHERE version = :expected`) whose rowcount must be 1
 - Standard rate-limit headers on successful consume
 
 ## Files
@@ -51,7 +54,9 @@ uvicorn main:app --reload
 - `GET /clients/{client_key}/quota`
   - Returns current and previous counters plus computed remaining.
 - `POST /clients/{client_key}/reset`
-  - Clears counters with optimistic lock (`expected_version`).
+  - Clears counters with optimistic lock (`expected_version`), checked in the UPDATE's
+    `WHERE` clause, so a consume that commits after the reset's read makes it fail.
+  - `404` not found, `409` stale version.
 - `GET /clients/{client_key}`
   - Returns client policy info.
 

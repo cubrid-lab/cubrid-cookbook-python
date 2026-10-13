@@ -7,6 +7,7 @@ import sys
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -173,3 +174,59 @@ def test_real_clock_is_naive_and_comparable_with_stored_values() -> None:
     stored = datetime(2026, 1, 1, 0, 0, 0)  # naive, as read back from a DATETIME column
     assert now.tzinfo is None
     assert (now - stored).total_seconds() > 0
+
+
+def _stored_window(engine: Engine) -> tuple[int, int, int]:
+    """Read (current_count, previous_count, version) from the database itself."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT current_count, previous_count, version FROM cookbook_client_rate_windows")
+        ).one()
+    return row[0], row[1], row[2]
+
+
+def test_rotation_stores_the_new_window_count(
+    client: TestClient, frozen_time: FrozenTime, engine: Engine
+) -> None:
+    _create_client(client, limit_per_window=10, window_seconds=10)
+    assert client.post("/clients/alpha/consume", json={"cost": 4}).status_code == 200
+
+    frozen_time.advance(11)
+    consumed = client.post("/clients/alpha/consume", json={"cost": 1})
+
+    assert consumed.status_code == 200
+    # The new window holds only the new cost; the old 4 moved to previous_count.
+    assert _stored_window(engine)[:2] == (1, 4)
+
+
+def test_reset_rejects_a_consume_that_landed_after_its_read(
+    client: TestClient, frozen_time: FrozenTime, engine: Engine
+) -> None:
+    _create_client(client, limit_per_window=10)
+    assert client.post("/clients/alpha/consume", json={"cost": 2}).status_code == 200
+    version = client.get("/clients/alpha/quota").json()["window_version"]
+
+    # Run a consume (+3, new version) once, just before the reset's own UPDATE and
+    # after the reset has read the window with the version it expects.
+    pending = [True]
+
+    def concurrent_consume(conn, cursor, statement, parameters, context, executemany):
+        if pending and statement.lstrip().upper().startswith("UPDATE COOKBOOK_CLIENT_RATE_WINDOWS"):
+            pending.clear()
+            cursor.execute(
+                "UPDATE cookbook_client_rate_windows"
+                " SET current_count = current_count + 3, version = version + 1"
+            )
+
+    event.listen(engine, "before_cursor_execute", concurrent_consume)
+    try:
+        reset = client.post("/clients/alpha/reset", json={"expected_version": version})
+    finally:
+        event.remove(engine, "before_cursor_execute", concurrent_consume)
+
+    assert not pending, "the reset sent no UPDATE"
+
+    assert reset.status_code == 409
+    # Nothing was cleared. The simulated consume ran on the reset's own connection,
+    # so the reset's rollback undoes it too and the window is as it was before.
+    assert _stored_window(engine) == (2, 0, version)

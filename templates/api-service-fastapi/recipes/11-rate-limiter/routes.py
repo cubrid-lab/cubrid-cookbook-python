@@ -28,10 +28,11 @@ def utcnow() -> datetime:
     return naive_utc_now()
 
 
-def _rotate_window_if_needed(window: ClientRateWindow, now: datetime, window_seconds: int) -> None:
+def _rotate_window_if_needed(window: ClientRateWindow, now: datetime, window_seconds: int) -> bool:
+    """Rotate ``window`` in Python; return whether a new window started."""
     elapsed = (now - window.current_window_start).total_seconds()
     if elapsed < window_seconds:
-        return
+        return False
 
     if elapsed >= window_seconds * 2:
         window.previous_window_start = None
@@ -42,6 +43,7 @@ def _rotate_window_if_needed(window: ClientRateWindow, now: datetime, window_sec
 
     window.current_window_start = now
     window.current_count = 0
+    return True
 
 
 def _weighted_count(window: ClientRateWindow, now: datetime, window_seconds: int) -> int:
@@ -130,7 +132,7 @@ def consume(
     if window is None:
         raise HTTPException(status_code=404, detail="rate window not found")
 
-    _rotate_window_if_needed(window, now, client.window_seconds)
+    rotated = _rotate_window_if_needed(window, now, client.window_seconds)
     weighted_before = _weighted_count(window, now, client.window_seconds)
     allowed_limit = client.limit_per_window + client.burst_allowance
 
@@ -143,11 +145,15 @@ def consume(
         )
 
     expected_version = window.version
+    # A rotation reset current_count to 0 only in Python (the session does not
+    # flush it), so a new window stores the cost itself instead of adding to the
+    # old window's count in the database.
+    new_count = payload.cost if rotated else ClientRateWindow.current_count + payload.cost
     update_stmt = (
         update(ClientRateWindow)
         .where(ClientRateWindow.id == window.id, ClientRateWindow.version == expected_version)
         .values(
-            current_count=ClientRateWindow.current_count + payload.cost,
+            current_count=new_count,
             version=ClientRateWindow.version + 1,
             last_seen_at=now,
             updated_at=now,
@@ -255,15 +261,28 @@ def reset_client(
     window = db.query(ClientRateWindow).filter(ClientRateWindow.client_id == client.id).first()
     if window is None:
         raise HTTPException(status_code=404, detail="rate window not found")
-    if window.version != payload.expected_version:
-        raise HTTPException(status_code=409, detail="stale version")
 
-    window.current_window_start = now
-    window.current_count = 0
-    window.previous_window_start = None
-    window.previous_count = 0
-    window.version += 1
-    window.last_seen_at = now
+    # The version is checked in the UPDATE itself, so a consume that commits after
+    # the read above makes this reset fail instead of being overwritten.
+    result = db.execute(
+        update(ClientRateWindow)
+        .where(
+            ClientRateWindow.id == window.id,
+            ClientRateWindow.version == payload.expected_version,
+        )
+        .values(
+            current_window_start=now,
+            current_count=0,
+            previous_window_start=None,
+            previous_count=0,
+            version=ClientRateWindow.version + 1,
+            last_seen_at=now,
+            updated_at=now,
+        )
+    )
+    if result.rowcount != 1:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="stale version")
     db.commit()
     db.refresh(window)
 
