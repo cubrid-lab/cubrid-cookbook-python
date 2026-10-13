@@ -1,5 +1,11 @@
 # CUBRID Python Cookbook (한국어)
 
+<!-- CUBRID-LAB-ROLE-ICON:START -->
+<a href="https://github.com/cubrid-lab/brand">
+  <img src="https://raw.githubusercontent.com/cubrid-lab/brand/aa62d38b48d165e39f0c56ed706a9dadb090a2bb/studies/icons/cubrid-cookbook-python.svg" alt="CUBRID Lab Cookbook icon (Python)" width="80" />
+</a>
+<!-- CUBRID-LAB-ROLE-ICON:END -->
+
 > 🌐 Translated from [README.md](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/README.md) — 한국어는 심사 기간 동안 동기화가 **필수**입니다: README.md가 바뀌면 같은 PR에서 이 파일도 업데이트하세요 (`translation-sync` CI 검사, 보류 시 `translations-deferred` 라벨). English is canonical.
 
 
