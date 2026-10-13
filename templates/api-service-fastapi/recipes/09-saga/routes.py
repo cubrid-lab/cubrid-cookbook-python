@@ -52,6 +52,13 @@ def _get_step(db: Session, order_id, step_name: str):
     return step
 
 
+def _done_steps(db: Session, order_id) -> set[str]:
+    rows = db.query(SagaStep.step_name).filter(
+        and_(SagaStep.order_id == order_id, SagaStep.status == "done")
+    )
+    return {step_name for (step_name,) in rows}
+
+
 def _compensate(db: Session, order, completed_steps: list[str]) -> None:
     for step_name in reversed(completed_steps):
         if step_name == "charge_payment":
@@ -175,114 +182,129 @@ def execute_order(order_key: str, db: Session = Depends(get_db)):
 
     order = _get_order_or_404(db, order_key)
     completed_steps: list[str] = []
+    # A step marked done committed together with its effect, so a run resumed by
+    # /recover skips it instead of reserving stock or charging the payment again.
+    done_steps = _done_steps(db, order.id)
 
-    inventory = db.query(InventoryItem).filter(InventoryItem.sku == order.sku).first()
-    if inventory is None:
-        db.execute(
-            update(Order)
-            .where(Order.id == order.id)
-            .values(
-                state="compensated", failure_reason="inventory not found", version=Order.version + 1
+    if "reserve_inventory" in done_steps:
+        completed_steps.append("reserve_inventory")
+    else:
+        inventory = db.query(InventoryItem).filter(InventoryItem.sku == order.sku).first()
+        if inventory is None:
+            db.execute(
+                update(Order)
+                .where(Order.id == order.id)
+                .values(
+                    state="compensated",
+                    failure_reason="inventory not found",
+                    version=Order.version + 1,
+                )
             )
-        )
-        db.commit()
-        raise HTTPException(status_code=422, detail="inventory not found")
-    db.execute(
-        update(SagaStep)
-        .where(and_(SagaStep.order_id == order.id, SagaStep.step_name == "reserve_inventory"))
-        .values(attempt_count=SagaStep.attempt_count + 1)
-    )
-    reserve = cast(
-        Any,
-        db.execute(
-            update(InventoryItem)
-            .where(InventoryItem.id == inventory.id)
-            .where(InventoryItem.version == inventory.version)
-            .where(InventoryItem.available_qty >= order.quantity)
-            .values(
-                reserved_qty=InventoryItem.reserved_qty + order.quantity,
-                available_qty=InventoryItem.available_qty - order.quantity,
-                version=InventoryItem.version + 1,
-            )
-        ),
-    )
-    if reserve.rowcount != 1:
-        reason = "insufficient inventory or version conflict"
+            db.commit()
+            raise HTTPException(status_code=422, detail="inventory not found")
         db.execute(
             update(SagaStep)
             .where(and_(SagaStep.order_id == order.id, SagaStep.step_name == "reserve_inventory"))
-            .values(status="failed", detail_text=reason)
+            .values(attempt_count=SagaStep.attempt_count + 1)
         )
+        reserve = cast(
+            Any,
+            db.execute(
+                update(InventoryItem)
+                .where(InventoryItem.id == inventory.id)
+                .where(InventoryItem.version == inventory.version)
+                .where(InventoryItem.available_qty >= order.quantity)
+                .values(
+                    reserved_qty=InventoryItem.reserved_qty + order.quantity,
+                    available_qty=InventoryItem.available_qty - order.quantity,
+                    version=InventoryItem.version + 1,
+                )
+            ),
+        )
+        if reserve.rowcount != 1:
+            reason = "insufficient inventory or version conflict"
+            db.execute(
+                update(SagaStep)
+                .where(
+                    and_(SagaStep.order_id == order.id, SagaStep.step_name == "reserve_inventory")
+                )
+                .values(status="failed", detail_text=reason)
+            )
+            db.execute(
+                update(Order)
+                .where(Order.id == order.id)
+                .values(state="compensated", failure_reason=reason, version=Order.version + 1)
+            )
+            db.commit()
+            raise HTTPException(status_code=422, detail=reason)
         db.execute(
-            update(Order)
-            .where(Order.id == order.id)
-            .values(state="compensated", failure_reason=reason, version=Order.version + 1)
+            update(SagaStep)
+            .where(and_(SagaStep.order_id == order.id, SagaStep.step_name == "reserve_inventory"))
+            .values(status="done", executed_at=naive_utc_now())
         )
+        completed_steps.append("reserve_inventory")
         db.commit()
-        raise HTTPException(status_code=422, detail=reason)
-    db.execute(
-        update(SagaStep)
-        .where(and_(SagaStep.order_id == order.id, SagaStep.step_name == "reserve_inventory"))
-        .values(status="done", executed_at=naive_utc_now())
-    )
-    completed_steps.append("reserve_inventory")
-    db.commit()
 
-    payment = db.query(PaymentAccount).filter(PaymentAccount.client_id == order.client_id).first()
-    if payment is None:
-        _compensate(db, order, completed_steps)
-        db.execute(
-            update(Order)
-            .where(Order.id == order.id)
-            .values(
-                state="compensated",
-                failure_reason="payment account not found",
-                version=Order.version + 1,
-            )
+    if "charge_payment" in done_steps:
+        completed_steps.append("charge_payment")
+    else:
+        payment = (
+            db.query(PaymentAccount).filter(PaymentAccount.client_id == order.client_id).first()
         )
-        db.commit()
-        raise HTTPException(status_code=422, detail="payment account not found")
-    db.execute(
-        update(SagaStep)
-        .where(and_(SagaStep.order_id == order.id, SagaStep.step_name == "charge_payment"))
-        .values(attempt_count=SagaStep.attempt_count + 1)
-    )
-    charge = cast(
-        Any,
-        db.execute(
-            update(PaymentAccount)
-            .where(PaymentAccount.id == payment.id)
-            .where(PaymentAccount.version == payment.version)
-            .where(PaymentAccount.available_cents >= order.total_cents)
-            .values(
-                held_cents=PaymentAccount.held_cents + order.total_cents,
-                available_cents=PaymentAccount.available_cents - order.total_cents,
-                version=PaymentAccount.version + 1,
+        if payment is None:
+            _compensate(db, order, completed_steps)
+            db.execute(
+                update(Order)
+                .where(Order.id == order.id)
+                .values(
+                    state="compensated",
+                    failure_reason="payment account not found",
+                    version=Order.version + 1,
+                )
             )
-        ),
-    )
-    if charge.rowcount != 1:
-        reason = "insufficient funds or version conflict"
+            db.commit()
+            raise HTTPException(status_code=422, detail="payment account not found")
         db.execute(
             update(SagaStep)
             .where(and_(SagaStep.order_id == order.id, SagaStep.step_name == "charge_payment"))
-            .values(status="failed", detail_text=reason)
+            .values(attempt_count=SagaStep.attempt_count + 1)
         )
-        _compensate(db, order, completed_steps)
+        charge = cast(
+            Any,
+            db.execute(
+                update(PaymentAccount)
+                .where(PaymentAccount.id == payment.id)
+                .where(PaymentAccount.version == payment.version)
+                .where(PaymentAccount.available_cents >= order.total_cents)
+                .values(
+                    held_cents=PaymentAccount.held_cents + order.total_cents,
+                    available_cents=PaymentAccount.available_cents - order.total_cents,
+                    version=PaymentAccount.version + 1,
+                )
+            ),
+        )
+        if charge.rowcount != 1:
+            reason = "insufficient funds or version conflict"
+            db.execute(
+                update(SagaStep)
+                .where(and_(SagaStep.order_id == order.id, SagaStep.step_name == "charge_payment"))
+                .values(status="failed", detail_text=reason)
+            )
+            _compensate(db, order, completed_steps)
+            db.execute(
+                update(Order)
+                .where(Order.id == order.id)
+                .values(state="compensated", failure_reason=reason, version=Order.version + 1)
+            )
+            db.commit()
+            raise HTTPException(status_code=422, detail=reason)
         db.execute(
-            update(Order)
-            .where(Order.id == order.id)
-            .values(state="compensated", failure_reason=reason, version=Order.version + 1)
+            update(SagaStep)
+            .where(and_(SagaStep.order_id == order.id, SagaStep.step_name == "charge_payment"))
+            .values(status="done", executed_at=naive_utc_now())
         )
+        completed_steps.append("charge_payment")
         db.commit()
-        raise HTTPException(status_code=422, detail=reason)
-    db.execute(
-        update(SagaStep)
-        .where(and_(SagaStep.order_id == order.id, SagaStep.step_name == "charge_payment"))
-        .values(status="done", executed_at=naive_utc_now())
-    )
-    completed_steps.append("charge_payment")
-    db.commit()
 
     db.execute(
         update(SagaStep)

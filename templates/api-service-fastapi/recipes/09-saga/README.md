@@ -37,6 +37,7 @@ Default database URL:
 - `POST /orders/{order_key}/execute`
 - `GET /orders/{order_key}`
 - `GET /orders/{order_key}/steps`
+- `POST /orders/{order_key}/recover`
 
 ## curl examples
 
@@ -81,6 +82,29 @@ Get step history:
 ```bash
 curl -X GET "http://127.0.0.1:8000/orders/O-1/steps"
 ```
+
+Recover an order stuck in `processing`:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/orders/O-1/recover" \
+  -H "Content-Type: application/json" \
+  -d '{"timeout_seconds":300}'
+```
+
+## Recovering a stuck order
+
+`POST /orders/{order_key}/execute` commits each step's effect (the stock
+reservation, the payment hold) in the same transaction that marks the step
+`done`. If the process dies part way, the order stays `processing`.
+
+`POST /orders/{order_key}/recover` puts such an order back to `pending`, but only
+after it has been `processing` for longer than `timeout_seconds` (default 300),
+so it does not race a run that is still active (a younger order returns 409). The
+reset is a conditional UPDATE on the order's version.
+
+Calling `execute` again then resumes the saga: steps already marked `done` are
+skipped, not repeated, so each step takes effect exactly once. If a later step
+fails, the skipped steps are compensated like any other completed step.
 
 ## Test
 
