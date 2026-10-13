@@ -24,7 +24,7 @@ Standalone FastAPI recipe implementing resource reservation with overlap checks,
 ## Setup
 
 ```bash
-cd /data/GitHub/cubrid-cookbook/python/fastapi/12-reservation-scheduling
+cd templates/api-service-fastapi/recipes/12-reservation-scheduling   # from the repository root
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt

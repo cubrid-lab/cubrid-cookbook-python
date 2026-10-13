@@ -87,7 +87,8 @@ def main() -> None:
             f"Strategy 3 (single COMMIT):      {strategy3_time:.3f}s  {num_rows} rows  ({strategy3_rows_sec:.0f} rows/sec)"
         )
         print(
-            f"\nKey insight: COMMIT is ~{strategy1_time / per_row_count * 1000:.0f}ms per call — batch your writes!"
+            f"\nKey insight: one INSERT plus its own COMMIT takes ~{strategy1_time / per_row_count * 1000:.0f}ms"
+            " per row (strategy 1 times both) — batch your writes!"
         )
         print()
 

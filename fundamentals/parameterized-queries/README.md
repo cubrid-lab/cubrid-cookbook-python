@@ -38,7 +38,10 @@ pycubrid:
 3. Concatenates the segments and literals into one SQL string.
 4. Sends the fully-rendered SQL to CUBRID via `PrepareAndExecutePacket`.
 
-The CAS function code is named `PREPARE_AND_EXECUTE`, but the protocol expects
-a complete SQL string — there is no separate typed parameter payload. See
+The CAS function code is named `PREPARE_AND_EXECUTE`, but on this default path
+pycubrid sends a complete SQL string, not a separate typed parameter payload.
+Since pycubrid 1.12.0, `cursor.executemany(sql, rows, prepared=True)` is the
+exception: it sends one PREPARE plus an EXECUTE_ARRAY request with typed binds
+for each row instead of rendered literals. See
 [pycubrid PARAMETER_BINDING.md](https://github.com/cubrid-lab/pycubrid/blob/main/docs/PARAMETER_BINDING.md)
 for the full per-type mapping and explicit non-guarantees.

@@ -74,9 +74,10 @@ def record_batch(
         record_event(cursor, key, day, delta)
 
 
-def show_rankings(cursor) -> None:
+def show_rankings(cursor, today: datetime.date) -> None:
+    # ``today`` is the day the events were recorded under. Reading the clock again
+    # here would pick the next day, and print no rows, when a run crosses UTC midnight.
     print("\n=== Top Metrics (today) ===")
-    today = datetime.datetime.now(datetime.timezone.utc).date()
     cursor.execute(
         """
         SELECT metric_key, hit_count
@@ -142,7 +143,7 @@ if __name__ == "__main__":
         conn.commit()
         print(f"✓ Recorded batch of {len(batch_events)} events")
 
-        show_rankings(cursor)
+        show_rankings(cursor, today)
         cursor.close()
     finally:
         cleanup(conn)

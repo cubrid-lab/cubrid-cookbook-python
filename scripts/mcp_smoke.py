@@ -31,10 +31,10 @@ EXPECTED = {
     "list_class_hierarchy",
     "execute_query",
 }
-# Tools added after v0.2.1 (e.g. health_check on main). Optional ONLY for
-# the pinned v0.2.1 tag; the version gate below promotes health_check to
-# required once a newer ref (see install step) is installed, so a newer
-# dispatched release that drops it fails loudly.
+# Tools added after v0.2.1 (health_check). Optional only when v0.2.1 or older
+# is installed; the version gate below makes health_check required for anything
+# newer: the PyPI release scripts/release_smoke.py installs, or the v0.4.0 git
+# tag it falls back to. A newer release that drops it fails loudly.
 OPTIONAL = {
     "health_check",
 }

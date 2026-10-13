@@ -25,8 +25,8 @@
 
 === MERGE Statement ===
   Initial counters:
-    page_views: 100
     api_calls: 50
+    page_views: 100
 
   After MERGE (increment existing, insert new):
     api_calls: 55

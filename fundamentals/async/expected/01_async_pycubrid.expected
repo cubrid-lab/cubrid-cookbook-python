@@ -22,5 +22,6 @@
   await cur.fetchone() / fetchall() / fetchmany() -> rows
   await conn.commit() / conn.rollback()
   await conn.close()
+  async with conn / conn.cursor()                 -> closed on exit
 
 See also: 02_async_sqlalchemy.py for the SQLAlchemy async engine.

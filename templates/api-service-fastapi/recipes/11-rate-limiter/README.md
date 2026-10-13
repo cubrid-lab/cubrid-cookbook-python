@@ -27,7 +27,7 @@ Standalone FastAPI recipe that implements per-client rate limiting using a slidi
 ## Setup
 
 ```bash
-cd /data/GitHub/cubrid-cookbook/python/fastapi/11-rate-limiter
+cd templates/api-service-fastapi/recipes/11-rate-limiter   # from the repository root
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt

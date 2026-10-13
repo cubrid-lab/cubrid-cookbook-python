@@ -147,18 +147,26 @@ def batch_insert_single_commit(conn: Connection) -> None:
     COMMIT is the most expensive operation (pycubrid 1.10.0 benchmarks).
     Minimizing commits maximizes throughput for trusted data.
 
-    Trade-off: If insertion fails mid-batch, all rows roll back.
+    Trade-off: if an insert fails mid-batch, nothing has been committed yet, but
+    the rows that did insert are still pending in the transaction. Nothing rolls
+    them back automatically, so the except block calls conn.rollback() to discard
+    the whole batch.
     """
     rows = [(f"fast_{i:05d}", i % 256, f"data_{i}") for i in range(2000)]
 
     cursor = conn.cursor()
 
     t0 = time.perf_counter()
-    cursor.executemany(
-        "INSERT INTO cookbook_sensors (val, cnt, file_data) VALUES (?, ?, ?)",
-        rows,
-    )
-    conn.commit()
+    try:
+        cursor.executemany(
+            "INSERT INTO cookbook_sensors (val, cnt, file_data) VALUES (?, ?, ?)",
+            rows,
+        )
+        conn.commit()
+    except pycubrid.DatabaseError:
+        conn.rollback()
+        cursor.close()
+        raise
     elapsed = time.perf_counter() - t0
 
     print(f"single commit: inserted {len(rows)} rows in {elapsed * 1000:.1f}ms")

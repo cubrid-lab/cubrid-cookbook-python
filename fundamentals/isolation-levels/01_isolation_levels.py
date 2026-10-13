@@ -194,17 +194,18 @@ def main() -> None:
     finally:
         conn.close()
 
-    show_all_levels()
-
-    # Under MVCC dirty reads are impossible even at the most permissive level.
-    no_dirty_read_demo(level="READ COMMITTED")
-
-    # Cleanup.
-    conn = get_connection()
     try:
-        cleanup(conn)
+        show_all_levels()
+
+        # Under MVCC dirty reads are impossible even at the most permissive level.
+        no_dirty_read_demo(level="READ COMMITTED")
     finally:
-        conn.close()
+        # Cleanup runs even when a demo above fails.
+        conn = get_connection()
+        try:
+            cleanup(conn)
+        finally:
+            conn.close()
 
     print()
     print("--- Choosing an isolation level ---")

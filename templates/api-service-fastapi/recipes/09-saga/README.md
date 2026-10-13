@@ -15,7 +15,7 @@ Standalone FastAPI recipe implementing a Saga with compensating transactions for
 ## Install
 
 ```bash
-cd /data/GitHub/cubrid-cookbook/python/fastapi/09-saga
+cd templates/api-service-fastapi/recipes/09-saga   # from the repository root
 pip install -r requirements.txt
 ```
 

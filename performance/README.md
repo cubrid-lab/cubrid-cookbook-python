@@ -19,13 +19,17 @@ Numbers are indicative for this host only; rerun the scripts on your own hardwar
 | fetch-optimization | `fetchone()` loop, 10K rows | 52 ms (50–225; first run cold) |
 | fetch-optimization | `fetchall()`, 5 columns, 10K rows | 52 ms (51–55) |
 | fetch-optimization | `fetchall()`, 2 columns, 10K rows | 28 ms (26–29) |
-| fetch-optimization | `SELECT *` + `fetchall()`, 10K rows | 50 ms (50–56) |
+| fetch-optimization | `fetchmany(500)` loop, 10K rows (pycubrid 1.12.0, 2026-10-13)¹ | 49 ms (47–77) |
 | bulk-insert | per-row COMMIT, 500 rows | 17.98 s (14.54–19.64), 28 rows/s (25–34) |
 | bulk-insert | COMMIT every 500 rows, 5,000 rows | 3.91 s (3.60–4.65), 1,279 rows/s (1,075–1,388) |
 | bulk-insert | single COMMIT, 5,000 rows | 3.39 s (3.36–3.84), 1,477 rows/s (1,301–1,489) |
 | connection-pooling | `NullPool`, 50 x `SELECT 1` | 293 ms total, 5.9 ms/query (5.6–5.9) |
 | connection-pooling | pool_size=5, 50 x `SELECT 1` | 40 ms total, 0.8 ms/query (0.8–0.9) |
 | connection-pooling | speedup | 7.2x (6.2–7.3) |
+
+¹ This row replaces `SELECT *` + `fetchall()` (50 ms), which ran the same query as the 5-column
+`fetchall()` row because the test table has only those 5 columns. It was measured on the same host
+with pycubrid 1.12.0; the other rows are the pycubrid 1.10.0 runs above.
 
 Not re-measured (the scripts do not cover them; new benchmarks are out of scope): the "Before / After"
 driver-optimization table and the row-count scaling table below are historical.

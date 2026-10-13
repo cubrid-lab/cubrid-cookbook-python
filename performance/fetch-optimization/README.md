@@ -101,6 +101,8 @@ The script creates and fills `cookbook_fetch_test` (10,000 rows), prints the tim
 
 ## Benchmark Reference
 
-- pycubrid 1.10.0 (2026-10-09, median of 5): 10K rows, 5 columns `fetchall()` 52 ms; 2 columns 28 ms; `SELECT *` 50 ms
+- pycubrid 1.10.0 (2026-10-09, median of 5): 10K rows, 5 columns `fetchall()` 52 ms; 2 columns 28 ms
+- pycubrid 1.12.0 (2026-10-13, median of 5, same host): `fetchmany(500)` loop over the 5 columns 49 ms (47–77).
+  It replaces the earlier `SELECT *` measurement, which ran the same query as the 5-column `fetchall()`.
 - Historical (pycubrid 0.5.0+16a8634): SELECT 10K fetch 96ms → 78ms after optimization (−19%)
 - Full details: [cubrid-benchmark/experiments/driver-comparison](https://github.com/cubrid-lab/cubrid-benchmark/tree/main/experiments/driver-comparison)
