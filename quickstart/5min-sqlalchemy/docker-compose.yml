@@ -2,11 +2,11 @@ services:
   cubrid:
     image: cubrid/cubrid:11.2
     environment:
-      CUBRID_DB: demodb
+      CUBRID_DB: testdb
     ports:
       - "33000:33000"
     healthcheck:
-      test: ["CMD", "csql", "-u", "dba", "demodb", "-c", "SELECT 1"]
+      test: ["CMD", "csql", "-u", "dba", "testdb", "-c", "SELECT 1"]
       interval: 10s
       timeout: 5s
       retries: 10

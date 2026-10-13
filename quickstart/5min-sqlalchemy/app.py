@@ -132,6 +132,14 @@ def main() -> int:
     except Exception as exc:
         print(f"Unexpected error: {exc}")
         return 1
+    finally:
+        # Leave the database as it was found, even after a failure.
+        try:
+            metadata.drop_all(engine)
+            Base.metadata.drop_all(engine)
+        except SQLAlchemyError as exc:
+            print(f"Cleanup failed: {exc}")
+        engine.dispose()
 
 
 if __name__ == "__main__":
