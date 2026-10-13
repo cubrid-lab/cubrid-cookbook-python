@@ -92,26 +92,26 @@ examples, to catch stale demonstration keys after teardown.
 ```
 User Query
     ↓
-┌─────────────────────────────────┐
-│  AI Agent (Python)              │
-│  ┌───────────┐  ┌────────────┐ │
-│  │ Think     │→ │ Act        │ │
-│  │ (LLM)     │  │ (tools)    │ │
-│  └───────────┘  └────────────┘ │
-│       ↓               ↓        │
-│  ┌───────────┐  ┌────────────┐ │
-│  │ Observe   │→ │ Respond    │ │
-│  └───────────┘  └────────────┘ │
-│       ↓               ↓        │
-│  ┌──────────────────────────┐  │
-│  │ CUBRID (state store)     │  │
-│  │ · cookbook_agent_sessions         │  │
-│  │ · cookbook_agent_messages (JSON)  │  │
-│  │ · cookbook_agent_tool_calls (JSON)│  │
-│  │ · cookbook_rag_documents (SET)    │  │
-│  │ · cookbook_rag_chunks             │  │
-│  └──────────────────────────┘  │
-└─────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  AI Agent (Python)                       │
+│  ┌───────────┐  ┌────────────┐           │
+│  │ Think     │→ │ Act        │           │
+│  │ (LLM)     │  │ (tools)    │           │
+│  └───────────┘  └────────────┘           │
+│       ↓               ↓                  │
+│  ┌───────────┐  ┌────────────┐           │
+│  │ Observe   │→ │ Respond    │           │
+│  └───────────┘  └────────────┘           │
+│       ↓               ↓                  │
+│  ┌────────────────────────────────────┐  │
+│  │ CUBRID (state store)               │  │
+│  │ · cookbook_agent_sessions          │  │
+│  │ · cookbook_agent_messages (JSON)   │  │
+│  │ · cookbook_agent_tool_calls (JSON) │  │
+│  │ · cookbook_rag_documents (SET)     │  │
+│  │ · cookbook_rag_chunks              │  │
+│  └────────────────────────────────────┘  │
+└──────────────────────────────────────────┘
 ```
 
 The `02_mcp_toolchain.py` example invokes the CUBRID MCP server and its
