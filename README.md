@@ -1,5 +1,11 @@
 # CUBRID Python Cookbook
 
+<!-- CUBRID-LAB-ROLE-ICON:START -->
+<a href="https://github.com/cubrid-lab/brand">
+  <img src="https://raw.githubusercontent.com/cubrid-lab/brand/aa62d38b48d165e39f0c56ed706a9dadb090a2bb/studies/icons/cubrid-cookbook-python.svg" alt="CUBRID Lab Cookbook icon (Python)" width="80" />
+</a>
+<!-- CUBRID-LAB-ROLE-ICON:END -->
+
 **Production-ready Python examples for CUBRID** — from first connection to production API, with migration guides, performance patterns, and common pitfalls.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
