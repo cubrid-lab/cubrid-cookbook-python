@@ -145,6 +145,7 @@ test-offline: ## Run mocked/offline suites in separate processes (no database re
 	$(PYTHON) -m unittest discover -s tests -p 'test_template_timestamps.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_table_prefix.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_quickstart_config.py' -v
+	$(PYTHON) -m unittest discover -s tests -p 'test_quickstart_cleanup.py' -v
 
 check-docs: ## Check documentation coverage and its doctests
 	$(PYTHON) -m doctest scripts/check_docs_reason.py -v
