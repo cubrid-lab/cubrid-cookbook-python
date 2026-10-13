@@ -150,7 +150,10 @@ def safe_transfer(conn: Connection, sender: str, receiver: str, amount: float) -
             );
             credit.setDouble(1, amount);
             credit.setString(2, receiver);
-            credit.executeUpdate();
+            if (credit.executeUpdate() == 0) {
+                conn.rollback();  // no such receiver: undo the debit too
+                return false;
+            }
 
             conn.commit();
             return true;
@@ -179,6 +182,11 @@ def safe_transfer(conn: Connection, sender: str, receiver: str, amount: float) -
             "UPDATE cookbook_jdbc_accounts SET balance = balance + ? WHERE owner = ?",
             (amount, receiver),
         )
+        if cursor.rowcount == 0:
+            # No such receiver: roll back the debit too, or the money disappears.
+            conn.rollback()
+            return False
+
         conn.commit()
         return True
 
@@ -290,6 +298,8 @@ if __name__ == "__main__":
         print(f"  Transfer Alice->Charlie $100: {'success' if ok else 'failed'}")
         ok = safe_transfer(conn, "Bob", "Alice", 9999.0)
         print(f"  Transfer Bob->Alice $9999: {'success' if ok else 'failed (insufficient)'}")
+        ok = safe_transfer(conn, "Alice", "Nobody", 50.0)
+        print(f"  Transfer Alice->Nobody $50: {'success' if ok else 'failed (no receiver)'}")
         show_balances(conn, "after transfers")
 
         savepoint_pattern(conn)

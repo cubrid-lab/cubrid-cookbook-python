@@ -166,6 +166,10 @@ def test_ai_agent_recipes_runs_without_errors(app_path):
     if app_path.name == "02_mcp_toolchain.py":
         assert "Server: cubrid-mcp-server" in output
         assert "DROP TABLE rejected by read-only whitelist: ✓" in output
+    if app_path.name == "05_chatbot_backend.py":
+        # Each stored message carries its own turn number, not 0 for all (#328).
+        turns = [line.split()[1] for line in output.splitlines() if line.startswith("  turn ")]
+        assert turns == ["0", "1", "2", "3"]
 
 
 @pytest.mark.parametrize("app_path", AI_AGENT_RECIPES, ids=lambda path: path.name)

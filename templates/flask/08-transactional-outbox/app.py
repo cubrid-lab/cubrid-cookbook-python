@@ -177,6 +177,40 @@ def lease_outbox_messages():
     return jsonify([message.to_dict() for message in claimed_messages])
 
 
+def _lease_error(message, processor_id: str, now: datetime) -> str | None:
+    """Return why ``processor_id`` cannot settle ``message``, or None if it holds the lease."""
+    if message.leased_until is None or message.leased_until <= now:
+        return "Outbox message is not currently leased."
+    if message.leased_by != processor_id:
+        return "Outbox message is leased by a different processor."
+    return None
+
+
+def _update_own_lease(message, processor_id: str, now: datetime, **values: object) -> bool:
+    """Apply ``values`` only while ``processor_id`` still holds the lease it read.
+
+    The lease is checked in the UPDATE itself: a lease that expired and was taken
+    again after the read above (by another processor, or by this one with a new
+    attempt number) matches no row, so it is not overwritten.
+    """
+    updated = (
+        db.session.query(OutboxMessage)
+        .filter(
+            OutboxMessage.id == message.id,
+            OutboxMessage.status == "pending",
+            OutboxMessage.leased_by == processor_id,
+            OutboxMessage.leased_until > now,
+            OutboxMessage.attempts == message.attempts,
+        )
+        .update(values, synchronize_session=False)
+    )
+    if updated != 1:
+        db.session.rollback()
+        return False
+    db.session.refresh(message)
+    return True
+
+
 @outbox_bp.post("/outbox/<int:message_id>/ack")
 def acknowledge_outbox_message(message_id: int):
     payload = _json_payload()
@@ -189,15 +223,20 @@ def acknowledge_outbox_message(message_id: int):
         return jsonify({"error": "Outbox message not found."}), 404
 
     now = naive_utc_now()
-    if message.leased_until is None or message.leased_until <= now:
-        return jsonify({"error": "Outbox message is not currently leased."}), 409
-    if message.leased_by != processor_id:
-        return jsonify({"error": "Outbox message is leased by a different processor."}), 409
+    lease_error = _lease_error(message, processor_id, now)
+    if lease_error:
+        return jsonify({"error": lease_error}), 409
 
-    message.status = "sent"
-    message.sent_at = now
-    message.leased_until = None
-    message.leased_by = None
+    if not _update_own_lease(
+        message,
+        processor_id,
+        now,
+        status="sent",
+        sent_at=now,
+        leased_until=None,
+        leased_by=None,
+    ):
+        return jsonify({"error": "Outbox message was leased again before this ack."}), 409
 
     attempt = OutboxAttempt()
     attempt.outbox_message_id = message.id
@@ -222,12 +261,30 @@ def fail_outbox_message(message_id: int):
         return jsonify({"error": "Outbox message not found."}), 404
 
     now = naive_utc_now()
-    if message.leased_until is None or message.leased_until <= now:
-        return jsonify({"error": "Outbox message is not currently leased."}), 409
-    if message.leased_by != processor_id:
-        return jsonify({"error": "Outbox message is leased by a different processor."}), 409
+    lease_error = _lease_error(message, processor_id, now)
+    if lease_error:
+        return jsonify({"error": lease_error}), 409
 
     error_message = str(payload.get("error", "")).strip() or "unknown error"
+    # The retry decision uses the attempt count of this lease; the UPDATE below only
+    # applies while that lease, and so that count, is still the current one.
+    if message.attempts >= 3:
+        outcome: dict[str, object] = {"status": "dead_letter"}
+    else:
+        outcome = {
+            "status": "pending",
+            "next_attempt_at": now + timedelta(seconds=message.attempts * 30),
+        }
+    if not _update_own_lease(
+        message,
+        processor_id,
+        now,
+        last_error=error_message,
+        leased_until=None,
+        leased_by=None,
+        **outcome,
+    ):
+        return jsonify({"error": "Outbox message was leased again before this failure."}), 409
 
     attempt = OutboxAttempt()
     attempt.outbox_message_id = message.id
@@ -236,15 +293,6 @@ def fail_outbox_message(message_id: int):
     attempt.outcome = "failure"
     attempt.error_message = error_message
     db.session.add(attempt)
-
-    message.last_error = error_message
-    message.leased_until = None
-    message.leased_by = None
-    if message.attempts >= 3:
-        message.status = "dead_letter"
-    else:
-        message.status = "pending"
-        message.next_attempt_at = now + timedelta(seconds=message.attempts * 30)
 
     db.session.commit()
     return jsonify(message.to_dict())

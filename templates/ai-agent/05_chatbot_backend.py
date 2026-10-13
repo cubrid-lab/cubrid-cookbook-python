@@ -120,12 +120,14 @@ def main() -> None:
                 ("assistant", "You have tables for users, products, and orders."),
             ]
 
-            for role, content in exchanges:
+            # Number the turns from the loop: conv.messages was loaded once when it was
+            # empty and is never refreshed, so len(conv.messages) would stay 0.
+            for turn, (role, content) in enumerate(exchanges):
                 msg = ChatMessage(
                     conversation_id=conv.id,
                     role=role,
                     content=content,
-                    metadata_={"turn": len(conv.messages), "source": "demo"},
+                    metadata_={"turn": turn, "source": "demo"},
                     token_count=len(content.split()),
                 )
                 session.add(msg)
@@ -145,10 +147,13 @@ def main() -> None:
 
             print(f"\nConversation transcript ({len(msgs)} messages):")
             for m in msgs:
-                print(f"  [{m.role}] {m.content[:60]} (tokens: {m.token_count})")
+                print(
+                    f"  turn {m.metadata_['turn']} [{m.role}] {m.content[:60]}"
+                    f" (tokens: {m.token_count})"
+                )
 
-            # Verify JSON metadata round-trip
-            assert msgs[0].metadata_["turn"] == 0
+            # Verify JSON metadata round-trip: one turn number per message, in order
+            assert [m.metadata_["turn"] for m in msgs] == list(range(len(exchanges)))
             assert msgs[0].metadata_["source"] == "demo"
             print("\n  JSON metadata round-trip: ✓")
 

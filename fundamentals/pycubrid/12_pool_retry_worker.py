@@ -152,38 +152,35 @@ def seed_jobs(conn) -> None:
 
 
 def process_next_job(conn):
-    """Pick and process ONE queued job atomically (single-worker safe)."""
+    """Claim and process ONE queued job; several workers never claim the same job."""
     cursor = conn.cursor()
-    # Atomic claim: UPDATE ... WHERE status='queued' LIMIT 1, then read back.
-    # This prevents two workers from picking the same job.
-    cursor.execute(
-        """
-        UPDATE cookbook_retry_jobs SET status = 'processing'
-        WHERE id = (
-            SELECT id FROM cookbook_retry_jobs WHERE status = 'queued' ORDER BY id LIMIT 1
+    # Claim: pick the oldest queued id, then take it with a conditional UPDATE. The
+    # status is checked in the UPDATE itself, so when two workers pick the same id
+    # only one changes the row (rowcount 1); the other sees rowcount 0 and picks again.
+    while True:
+        cursor.execute(
+            "SELECT id FROM cookbook_retry_jobs WHERE status = 'queued' ORDER BY id LIMIT 1"
         )
-        """
-    )
-    if cursor.rowcount == 0:
-        cursor.close()
-        return None
-    conn.commit()
+        candidate = cursor.fetchone()
+        if candidate is None:
+            conn.rollback()
+            cursor.close()
+            return None
+        cursor.execute(
+            "UPDATE cookbook_retry_jobs SET status = 'processing' WHERE id = ? AND status = 'queued'",
+            (candidate[0],),
+        )
+        claimed = cursor.rowcount == 1
+        conn.commit()
+        if claimed:
+            break
 
+    # Read back the claimed job by its id, not "any processing job".
     cursor.execute(
-        """
-        SELECT id, payload, attempts, failed_once
-        FROM cookbook_retry_jobs
-        WHERE status = 'processing'
-        ORDER BY id
-        LIMIT 1
-        """
+        "SELECT id, payload, attempts, failed_once FROM cookbook_retry_jobs WHERE id = ?",
+        (candidate[0],),
     )
-    row = cursor.fetchone()
-    if row is None:
-        cursor.close()
-        return None
-
-    job_id, payload, attempts, failed_once = row
+    job_id, payload, attempts, failed_once = cursor.fetchone()
     print(f"  Picked job id={job_id} payload={payload} attempts={attempts}")
 
     if failed_once == 0:

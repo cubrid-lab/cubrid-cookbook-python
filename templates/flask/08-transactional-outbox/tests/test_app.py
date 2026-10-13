@@ -200,3 +200,75 @@ def test_duplicate_send_returns_409(app: Flask, httpx_client: httpx.Client) -> N
 
     resp2 = httpx_client.post(f"/api/invoices/{invoice['id']}/send")
     assert resp2.status_code == 409
+
+
+def _release_on_first_write(app: Flask, message_id: int):
+    """Expire worker-1's lease and give it to worker-2 just before the app's first write.
+
+    The re-lease commits on its own connection after the endpoint has read the
+    message (and seen worker-1's lease), so it models a lease that expired and was
+    taken by another processor while worker-1 was still finishing its work.
+    """
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.pool import NullPool
+
+    pending = [True]
+    with app.app_context():
+        engine = db.engine
+        url = engine.url
+
+    def release_before_write(conn, cursor, statement, parameters, context, executemany):
+        if pending and statement.lstrip().upper().startswith(("UPDATE", "INSERT")):
+            pending.clear()
+            other = create_engine(url, poolclass=NullPool)
+            try:
+                with other.begin() as connection:
+                    connection.execute(
+                        update(OutboxMessage)
+                        .where(OutboxMessage.id == message_id)
+                        .values(
+                            leased_by="worker-2",
+                            leased_until=naive_utc_now() + timedelta(minutes=5),
+                            attempts=OutboxMessage.attempts + 1,
+                        )
+                    )
+            finally:
+                other.dispose()
+
+    event.listen(engine, "before_cursor_execute", release_before_write)
+    return engine, release_before_write, pending
+
+
+@pytest.mark.parametrize(
+    ("action", "payload"),
+    [("ack", {}), ("fail", {"error": "late failure"})],
+)
+def test_settling_a_lease_taken_again_after_the_read_conflicts(
+    app: Flask, httpx_client: httpx.Client, action: str, payload: dict[str, str]
+) -> None:
+    from sqlalchemy import event
+
+    _create_invoice(httpx_client)
+    lease_resp = httpx_client.post(
+        "/api/outbox/lease", json={"max_messages": 1, "processor_id": "worker-1"}
+    )
+    msg = lease_resp.json()[0]
+
+    engine, listener, pending = _release_on_first_write(app, msg["id"])
+    try:
+        response = httpx_client.post(
+            f"/api/outbox/{msg['id']}/{action}", json={"processor_id": "worker-1", **payload}
+        )
+    finally:
+        event.remove(engine, "before_cursor_execute", listener)
+
+    assert not pending, "the endpoint wrote nothing"
+    assert response.status_code == 409
+    current = httpx_client.get(f"/api/outbox/{msg['id']}").json()
+    # worker-2's lease is untouched: still pending, leased by worker-2, attempt 2.
+    assert (current["status"], current["leased_by"], current["attempts"]) == (
+        "pending",
+        "worker-2",
+        2,
+    )
+    assert current["attempts_list"] == []

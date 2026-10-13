@@ -14,6 +14,7 @@ Setup: 3 accounts created
   Balances [before transfers]: Alice=$800.00, Bob=$700.00, Charlie=$750.00
   Transfer Alice->Charlie $100: success
   Transfer Bob->Alice $9999: failed (insufficient)
+  Transfer Alice->Nobody $50: failed (no receiver)
   Balances [after transfers]: Alice=$700.00, Bob=$700.00, Charlie=$850.00
 
 === Savepoints ===
