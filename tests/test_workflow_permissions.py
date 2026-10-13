@@ -51,6 +51,32 @@ def strip_comments(text: str) -> str:
     return "\n".join(re.sub(r"(^|\s)#.*$", r"\1", line) for line in text.splitlines())
 
 
+def issue_create_commands(text: str) -> list[str]:
+    """Return every ``gh issue create`` command, with shell continuations joined."""
+    joined = re.sub(r"\\\n\s*", " ", strip_comments(text))
+    return [
+        re.sub(r"\s+", " ", match.group(0)).strip()
+        for line in joined.splitlines()
+        for match in re.finditer(r"\bgh\s+issue\s+create\b.*", line)
+    ]
+
+
+def label_problems(command: str) -> list[str]:
+    """Return why ``command`` lacks exactly one canonical priority and size label."""
+    labels = [
+        label.strip("\"'") for label in re.findall(r"--label[ =](\"[^\"]+\"|'[^']+'|\S+)", command)
+    ]
+    found = []
+    for kind, pattern in (
+        ("priority", r"priority: (critical|high|medium|low)"),
+        ("size", r"size: (XS|S|M|L|XL)"),
+    ):
+        count = sum(bool(re.fullmatch(pattern, label)) for label in labels)
+        if count != 1:
+            found.append(f"{count} {kind} labels in {labels}")
+    return found
+
+
 def workflow_paths() -> list[Path]:
     paths = sorted([*WORKFLOWS.glob("*.yml"), *WORKFLOWS.glob("*.yaml")])
     assert paths, "no workflows found; the policy check would be vacuous"
@@ -232,22 +258,24 @@ class WorkflowPermissionsTest(unittest.TestCase):
     def test_automated_issues_carry_priority_and_size_labels(self) -> None:
         # AGENTS.md: an issue gets exactly one canonical priority and size label at
         # creation, including issues a workflow opens (#330).
-        creates = []
-        for path in workflow_paths():
-            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-                if "gh issue create" in strip_comments(line):
-                    creates.append((f"{path.name}:{lineno}", line))
+        creates = [
+            (f"{path.name}: {command[:60]}", command)
+            for path in workflow_paths()
+            for command in issue_create_commands(path.read_text(encoding="utf-8"))
+        ]
         self.assertTrue(creates, "no workflow creates an issue; the check would be vacuous")
-        for where, line in creates:
-            labels = re.findall(r"--label\s+(\"[^\"]+\"|'[^']+'|\S+)", line)
-            labels = [label.strip("\"'") for label in labels]
-            priorities = [
-                x for x in labels if re.fullmatch(r"priority: (critical|high|medium|low)", x)
-            ]
-            sizes = [x for x in labels if re.fullmatch(r"size: (XS|S|M|L|XL)", x)]
+        for where, command in creates:
             with self.subTest(where=where):
-                self.assertEqual(len(priorities), 1, labels)
-                self.assertEqual(len(sizes), 1, labels)
+                self.assertEqual(label_problems(command), [])
+
+    def test_issue_create_parser_follows_shell_continuations(self) -> None:
+        split = 'run: |\n  gh issue \\\n    create --title "t" \\\n    --label ci\n'
+        self.assertEqual(issue_create_commands(split), ['gh issue create --title "t" --label ci'])
+        self.assertTrue(label_problems(issue_create_commands(split)[0]))
+        good = "gh issue create \\\n  --label \"priority: low\" \\\n  --label 'size: XS' --body x\n"
+        self.assertEqual([label_problems(c) for c in issue_create_commands(good)], [[]])
+        self.assertTrue(label_problems('gh issue create --label "priority: low"'))
+        self.assertEqual(issue_create_commands("# gh issue create in a comment\n"), [])
 
     def test_checkers_detect_violations(self) -> None:
         self.assertTrue(permission_problems("x.yml", "on: push\njobs:\n  a:\n    steps: []\n"))
