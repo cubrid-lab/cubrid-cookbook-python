@@ -30,7 +30,8 @@ USES_CHECKOUT = re.compile(r"^(\s*)(- )?uses:\s*[\"']?actions/checkout@")
 # Every write grant must be listed: workflow file -> {(scope, permission)}.
 # ``scope`` is "top" for the workflow-level block or the job id for a job-level one.
 WRITE_ALLOWLIST: dict[str, set[tuple[str, str]]] = {
-    "docs.yml": {("top", "pages"), ("top", "id-token")},
+    # Only the Pages deploy job; the build job (pip install, mkdocs) stays read-only (#330).
+    "docs.yml": {("deploy", "pages"), ("deploy", "id-token")},
     # The advisory driver-main lane (#239) reports to one tracking issue.
     "ci.yml": {("driver-main-advisory", "issues")},
     "driver-main.yml": {("report", "issues")},
@@ -228,6 +229,26 @@ class WorkflowPermissionsTest(unittest.TestCase):
         text = (WORKFLOWS / "dependabot-auto-merge.yml").read_text(encoding="utf-8")
         self.assertEqual(auto_merge_problems(text), [])
 
+    def test_automated_issues_carry_priority_and_size_labels(self) -> None:
+        # AGENTS.md: an issue gets exactly one canonical priority and size label at
+        # creation, including issues a workflow opens (#330).
+        creates = []
+        for path in workflow_paths():
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if "gh issue create" in strip_comments(line):
+                    creates.append((f"{path.name}:{lineno}", line))
+        self.assertTrue(creates, "no workflow creates an issue; the check would be vacuous")
+        for where, line in creates:
+            labels = re.findall(r"--label\s+(\"[^\"]+\"|'[^']+'|\S+)", line)
+            labels = [label.strip("\"'") for label in labels]
+            priorities = [
+                x for x in labels if re.fullmatch(r"priority: (critical|high|medium|low)", x)
+            ]
+            sizes = [x for x in labels if re.fullmatch(r"size: (XS|S|M|L|XL)", x)]
+            with self.subTest(where=where):
+                self.assertEqual(len(priorities), 1, labels)
+                self.assertEqual(len(sizes), 1, labels)
+
     def test_checkers_detect_violations(self) -> None:
         self.assertTrue(permission_problems("x.yml", "on: push\njobs:\n  a:\n    steps: []\n"))
         bad = "jobs:\n  a:\n    steps:\n      - uses: actions/checkout@abc\n"
@@ -252,7 +273,16 @@ class WorkflowPermissionsTest(unittest.TestCase):
         self.assertTrue(auto_merge_problems(weak))
         self.assertTrue(permission_problems("x.yml", "permissions: write-all\n"))
         self.assertTrue(permission_problems("x.yml", "permissions:\n  contents: write\n"))
-        self.assertEqual(permission_problems("docs.yml", "permissions:\n  pages: write\n"), [])
+        self.assertTrue(permission_problems("docs.yml", "permissions:\n  pages: write\n"))
+        deploy_only = (
+            "permissions:\n  contents: read\njobs:\n  build:\n    runs-on: x\n"
+            "  deploy:\n    permissions:\n      pages: write\n      id-token: write\n"
+        )
+        self.assertEqual(permission_problems("docs.yml", deploy_only), [])
+        build_write = deploy_only.replace(
+            "  build:\n    runs-on: x\n", "  build:\n    permissions:\n      pages: write\n"
+        )
+        self.assertTrue(permission_problems("docs.yml", build_write))
         quoted = 'jobs:\n  a:\n    steps:\n      - uses: "actions/checkout@abc"\n'
         self.assertEqual(len(checkout_problems("x.yml", quoted)), 1)
         self.assertEqual(len(checkout_problems("x.yml", quoted.replace('"', "'"))), 1)

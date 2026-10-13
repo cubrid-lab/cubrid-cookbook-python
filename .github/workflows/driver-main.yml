@@ -243,7 +243,7 @@ jobs:
             if [ -n "$issue" ]; then
               gh issue comment "$issue" --body "$body"
             else
-              gh issue create --title "$ISSUE_TITLE" --label ci --body "$body"
+              gh issue create --title "$ISSUE_TITLE" --label ci --label "priority: medium" --label "size: S" --body "$body"
             fi
             printf '## Recipes failed against driver main (advisory)\n\n%s\n' "$table" >> "$GITHUB_STEP_SUMMARY"
           elif [ -n "$issue" ]; then
