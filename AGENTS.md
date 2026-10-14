@@ -145,10 +145,9 @@ not checked, so do not add foreign closing keywords there.
   revision/environment, reproduction or investigation question, expected behavior,
   scope and non-goals, relevant files, completion criteria, validation and actual
   dependencies. Small docs/example tasks use only the fields that apply.
-- GitHub Assignees are the source of truth for implementation ownership. Set the
-  actual implementer in Assignees before implementation starts; comments or claim
-  messages alone do not replace assignment. Agree and record a handoff before
-  changing ownership, and unassign when returning unfinished work.
+- For maintainer-operated autonomous agents and internally assigned work, maintainers must set the actual implementer in GitHub Assignees before implementation. Comments alone are not a substitute for this agent assignment; autonomous agents also need explicit issue-specific authorization to take a `good first issue`.
+- Human-led outside contributors (including those using AI assistance under their direction) may work on an unclaimed issue and open a PR without prior approval or Assignee permissions. Check active assignments, comments, and PRs; an interest comment is encouraged but optional. Do not silently take over another contributor's claimed work.
+- Maintainers own assignment updates, handoffs and issue labels; preserve contributor evidence and coordinate release-blocker handoffs.
 - Before closing, preserve contributor evidence and open PRs, and recheck stale
   dependency/checklist state.
 
@@ -267,13 +266,15 @@ Rules:
 
 ### Good first issue lifecycle
 
-- Unclaimed: `good first issue`.
-- A PR is opened for it: remove `good first issue`, add `status: in progress`.
-- PR merged: the issue closes.
-- PR closed without merging: first check that no other open PR still addresses the issue. Only if none remains, remove `status: in progress` and restore `good first issue`; otherwise keep it in progress.
-- Keep at least 3 genuinely unclaimed good first issues per repository; a good first issue should have a small blast radius and an existing pattern or reference PR to follow, not just a small diff.
-- Do not implement a `good first issue` unless a maintainer explicitly authorizes that **specific issue**; broad backlog, review or release instructions are not permission.
-- Release/blocker handoff of a good first issue requires explicit maintainer action after checking assignees, comments and open PRs.
+- **Human-led community contributors, including people directing AI-assisted code:** an unassigned `good first issue` is open for participation. They may start and submit a PR without prior maintainer authorization, GitHub Assignee permissions, or internal agent tooling.
+- Before starting, check existing Assignees, comments, and open PRs. An interest comment is welcome but optional; it is neither an approval requirement nor an exclusive reservation. Coordinate before overlapping or taking over claimed work.
+- **Maintainer-operated autonomous coding agents:** require explicit maintainer authorization for that specific newcomer-reserved issue and an actual GitHub assignment before implementation. A general request to clear backlog or prepare a release is not authorization.
+- Maintainers handle Assignees and labels. Human contributors without assignment rights may still submit PRs; ordinary CI and review gates remain mandatory.
+- Unclaimed: retain `good first issue`.
+- On opening a PR: maintainers remove `good first issue` and add `status: in progress`, coordinating ownership.
+- On merge: close the issue. If a PR closes unmerged: check for other open PRs before restoring `good first issue` and removing `status: in progress`.
+- Keep at least three genuinely unclaimed XS/S good first issues with a small blast radius and an existing reference pattern.
+- A release-blocker handoff to an autonomous agent needs a recorded maintainer decision after checking Assignees, comments and open PRs.
 
 ## Documentation definition of done
 
