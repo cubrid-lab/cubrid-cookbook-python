@@ -7,7 +7,7 @@ Connection URL: `cubrid+pycubrid://dba@localhost:33000/testdb`
 ## Minimal structure
 
 ```text
-python/django/
+templates/django/
 ├── manage.py
 ├── settings.py
 ├── app/
@@ -15,13 +15,19 @@ python/django/
 │   ├── db.py
 │   ├── urls.py
 │   └── views.py
+├── tests/
+│   ├── conftest.py
+│   └── test_bridge.py
 ├── requirements.txt
 └── README.md
 ```
 
 ## Install and run
 
+From the repository root:
+
 ```bash
+cd templates/django
 pip install -r requirements.txt
 python3 manage.py runserver
 ```
