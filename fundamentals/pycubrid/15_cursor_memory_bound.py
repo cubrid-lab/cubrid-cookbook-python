@@ -2,15 +2,17 @@
 
 Demonstrates:
 - Setting ``fetch_size`` at connection level to cap server fetch page size
-- Measuring peak client memory with ``tracemalloc`` across fetch_size values
+- Measuring peak client memory with ``tracemalloc`` across fetch_size values, while
+  streaming rows with ``fetchmany()`` and, for comparison, with ``fetchall()``
 - How fetch_size differs from cursor.arraysize (page size vs client batch)
 
 ``fetch_size`` (new in pycubrid 1.6) is the page size the driver requests
 from the CAS broker when fetching rows from a result set. Smaller pages mean
-lower peak memory but more round-trips; larger pages mean fewer round-trips
-but more memory. ``arraysize`` only controls how many rows ``fetchmany()``
-returns to your application — it does NOT change how the driver pages rows
-from the server.
+more round-trips, larger pages fewer. What bounds peak client memory is mostly
+how many rows your code keeps: this demo prints the peak for a ``fetchmany()``
+loop at each fetch_size next to ``fetchall()``. ``arraysize`` only controls
+how many rows ``fetchmany()`` returns to your application — it does NOT change
+how the driver pages rows from the server.
 
 Run:
     python 15_cursor_memory_bound.py
@@ -70,19 +72,29 @@ def setup_schema(conn: Any) -> None:
     print(f"[setup] Seeded {ROW_COUNT} rows into cookbook_fetch_probe")
 
 
-def measure_peak_memory(fetch_size: int) -> tuple[int, float]:
-    """Return (peak_bytes, total_seconds) for a full table scan at fetch_size."""
+def measure_peak_memory(fetch_size: int, keep_rows: bool = False) -> tuple[int, float]:
+    """Return (peak_bytes, total_seconds) for a full table scan at fetch_size.
+
+    By default the rows are consumed in ``fetchmany(10)`` batches and dropped, as a
+    streaming reader would do. ``keep_rows=True`` uses ``fetchall()``, which holds
+    every row in one list, so its peak is the whole result whatever the fetch_size.
+    """
     conn = get_connection(fetch_size)
     cur = conn.cursor()
     tracemalloc.start()
     cur.execute("SELECT id, payload, created_at FROM cookbook_fetch_probe")
-    rows = cur.fetchall()
+    if keep_rows:
+        seen = len(cur.fetchall())
+    else:
+        seen = 0
+        while batch := cur.fetchmany(10):
+            seen += len(batch)
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
     cur.close()
     conn.close()
-    if len(rows) != ROW_COUNT:
-        raise RuntimeError(f"expected {ROW_COUNT} rows, got {len(rows)}")
+    if seen != ROW_COUNT:
+        raise RuntimeError(f"expected {ROW_COUNT} rows, got {seen}")
     return peak, 0.0
 
 
@@ -105,7 +117,14 @@ def main() -> None:
     for fs in (10, 100, 1000):
         peak_bytes, _ = measure_peak_memory(fs)
         results.append((fs, peak_bytes))
-        print(f"  fetch_size={fs:5d}  peak_memory={peak_bytes / 1024:8.1f} KB")
+        print(
+            f"  fetch_size={fs:5d}  peak_memory={peak_bytes / 1024:8.1f} KB  (fetchmany(10) loop)"
+        )
+    peak_bytes, _ = measure_peak_memory(100, keep_rows=True)
+    results.append((100, peak_bytes))
+    print(
+        f"  fetchall()        peak_memory={peak_bytes / 1024:8.1f} KB  (fetch_size=100, all rows kept)"
+    )
 
     smallest_peak = min(p for _, p in results)
     largest_peak = max(p for _, p in results)
@@ -114,9 +133,11 @@ def main() -> None:
         print()
         print(f"Peak memory ratio (largest / smallest): {ratio:.1f}x")
         print()
-        print("Key takeaway: smaller fetch_size caps peak client memory at the")
-        print("cost of more round-trips. Choose a fetch_size that matches your")
-        print("expected working set and broker latency.")
+        print("Key takeaway: peak client memory follows the rows you keep. Reading in")
+        print("fetchmany() batches stays near one batch, while fetchall() holds the")
+        print("whole result. fetch_size sets how many rows each round-trip brings, so")
+        print("smaller pages mean more round-trips; compare the fetchmany() lines above")
+        print("to see how much the page size itself adds on your system.")
 
     print()
     print("--- fetch_size vs arraysize ---")

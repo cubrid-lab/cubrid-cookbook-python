@@ -7,6 +7,9 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
+  # CUBRID Lab repository icon, pinned to an immutable cubrid-lab/brand commit.
+  logo: https://raw.githubusercontent.com/cubrid-lab/brand/94e2bf6b915d7ef6a1111e06376f693f70bf6c4e/dist/icons/cubrid-cookbook-python.svg
+  favicon: https://raw.githubusercontent.com/cubrid-lab/brand/94e2bf6b915d7ef6a1111e06376f693f70bf6c4e/dist/icons/cubrid-cookbook-python.svg
   features:
     - navigation.tabs
     - navigation.sections

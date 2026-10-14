@@ -4,15 +4,18 @@
 
 Comparing peak client memory for a full table scan of 5000 wide rows:
 
-  fetch_size=   10  peak_memory={{MEM}} KB
-  fetch_size=  100  peak_memory={{MEM}} KB
-  fetch_size= 1000  peak_memory={{MEM}} KB
+  fetch_size=   10  peak_memory={{MEM}} KB  (fetchmany(10) loop)
+  fetch_size=  100  peak_memory={{MEM}} KB  (fetchmany(10) loop)
+  fetch_size= 1000  peak_memory={{MEM}} KB  (fetchmany(10) loop)
+  fetchall()        peak_memory={{MEM}} KB  (fetch_size=100, all rows kept)
 
 Peak memory ratio (largest / smallest): {{RATIO}}x
 
-Key takeaway: smaller fetch_size caps peak client memory at the
-cost of more round-trips. Choose a fetch_size that matches your
-expected working set and broker latency.
+Key takeaway: peak client memory follows the rows you keep. Reading in
+fetchmany() batches stays near one batch, while fetchall() holds the
+whole result. fetch_size sets how many rows each round-trip brings, so
+smaller pages mean more round-trips; compare the fetchmany() lines above
+to see how much the page size itself adds on your system.
 
 --- fetch_size vs arraysize ---
   fetch_size: server page size (connection-level, set via connect())

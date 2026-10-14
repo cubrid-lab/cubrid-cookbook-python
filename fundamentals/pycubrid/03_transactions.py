@@ -4,7 +4,8 @@ Demonstrates:
 - Manual commit/rollback
 - Autocommit mode
 - Savepoints (SAVEPOINT, ROLLBACK TO SAVEPOINT)
-- Transaction isolation
+
+Isolation levels are not shown here; see fundamentals/isolation-levels/.
 """
 
 from __future__ import annotations

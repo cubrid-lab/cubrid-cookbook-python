@@ -32,22 +32,22 @@ class Base(DeclarativeBase):
 class Config(Base):
     __tablename__ = "cookbook_config"
 
-    key: Mapped[str] = mapped_column(String(100), primary_key=True)
-    value: Mapped[str] = mapped_column(String(500))
+    config_key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    val: Mapped[str] = mapped_column(String(500))
     description: Mapped[str | None] = mapped_column(String(500), default=None)
 
     def __repr__(self) -> str:
-        return f"Config(key='{self.key}', value='{self.value}')"
+        return f"Config(config_key='{self.config_key}', val='{self.val}')"
 
 
 class Counter(Base):
     __tablename__ = "cookbook_dml_counters"
 
     name: Mapped[str] = mapped_column(String(100), primary_key=True)
-    count: Mapped[int] = mapped_column(default=0)
+    cnt: Mapped[int] = mapped_column(default=0)
 
     def __repr__(self) -> str:
-        return f"Counter(name='{self.name}', count={self.count})"
+        return f"Counter(name='{self.name}', cnt={self.cnt})"
 
 
 def setup(engine) -> None:
@@ -58,9 +58,9 @@ def setup(engine) -> None:
 
 
 def show_configs(session: Session) -> None:
-    rows = session.scalars(select(Config).order_by(Config.key)).all()
+    rows = session.scalars(select(Config).order_by(Config.config_key)).all()
     for r in rows:
-        print(f"    {r.key:20s} = {r.value:20s}  ({r.description or ''})")
+        print(f"    {r.config_key:20s} = {r.val:20s}  ({r.description or ''})")
 
 
 def on_duplicate_key_update_example(engine) -> None:
@@ -74,8 +74,8 @@ def on_duplicate_key_update_example(engine) -> None:
     with Session(engine) as session:
         # Initial insert
         stmt = insert(Config).values(
-            key="app.name",
-            value="CUBRID Cookbook",
+            config_key="app.name",
+            val="CUBRID Cookbook",
             description="Application name",
         )
         session.execute(stmt)
@@ -87,12 +87,12 @@ def on_duplicate_key_update_example(engine) -> None:
         stmt = (
             insert(Config)
             .values(
-                key="app.name",
-                value="CUBRID Cookbook v2",
+                config_key="app.name",
+                val="CUBRID Cookbook v2",
                 description="Updated application name",
             )
             .on_duplicate_key_update(
-                value="CUBRID Cookbook v2",
+                val="CUBRID Cookbook v2",
                 description="Updated application name",
             )
         )
@@ -105,11 +105,11 @@ def on_duplicate_key_update_example(engine) -> None:
         stmt = (
             insert(Config)
             .values(
-                key="app.version",
-                value="1.0.0",
+                config_key="app.version",
+                val="1.0.0",
                 description="Application version",
             )
-            .on_duplicate_key_update(value="1.0.0")
+            .on_duplicate_key_update(val="1.0.0")
         )
         session.execute(stmt)
         session.commit()
@@ -128,8 +128,8 @@ def replace_example(engine) -> None:
     with Session(engine) as session:
         # Insert initial config
         stmt = replace(Config).values(
-            key="db.host",
-            value="localhost",
+            config_key="db.host",
+            val="localhost",
             description="Database host",
         )
         session.execute(stmt)
@@ -139,8 +139,8 @@ def replace_example(engine) -> None:
 
         # Replace existing — deletes old row, inserts new
         stmt = replace(Config).values(
-            key="db.host",
-            value="production.db.local",
+            config_key="db.host",
+            val="production.db.local",
             description="Production database host",
         )
         session.execute(stmt)
@@ -166,7 +166,7 @@ def merge_example(engine) -> None:
         "cookbook_counter_staging",
         staging_metadata,
         Column("name", String(100), primary_key=True),
-        Column("count", Integer, default=0),
+        Column("cnt", Integer, default=0),
     )
     staging_metadata.drop_all(engine)
     staging_metadata.create_all(engine)
@@ -174,13 +174,13 @@ def merge_example(engine) -> None:
     with engine.begin() as conn:
         # Seed target counters
         conn.execute(text("DELETE FROM cookbook_dml_counters"))
-        conn.execute(insert(Counter).values(name="page_views", count=100))
-        conn.execute(insert(Counter).values(name="api_calls", count=50))
+        conn.execute(insert(Counter).values(name="page_views", cnt=100))
+        conn.execute(insert(Counter).values(name="api_calls", cnt=50))
 
     with Session(engine) as session:
         print("  Initial counters:")
-        for c in session.scalars(select(Counter)).all():
-            print(f"    {c.name}: {c.count}")
+        for c in session.scalars(select(Counter).order_by(Counter.name)).all():
+            print(f"    {c.name}: {c.cnt}")
 
     with engine.begin() as conn:
         # Populate staging table with updates + new entries
@@ -189,9 +189,9 @@ def merge_example(engine) -> None:
         conn.execute(
             sa_insert(counter_source),
             [
-                {"name": "page_views", "count": 10},  # exists → update
-                {"name": "api_calls", "count": 5},  # exists → update
-                {"name": "errors", "count": 1},  # new → insert
+                {"name": "page_views", "cnt": 10},  # exists → update
+                {"name": "api_calls", "cnt": 5},  # exists → update
+                {"name": "errors", "cnt": 1},  # new → insert
             ],
         )
 
@@ -203,11 +203,11 @@ def merge_example(engine) -> None:
             merge(counters_table)
             .using(counter_source)
             .on(counters_table.c.name == counter_source.c.name)
-            .when_matched_then_update({"count": counters_table.c.count + counter_source.c.count})
+            .when_matched_then_update({"cnt": counters_table.c.cnt + counter_source.c.cnt})
             .when_not_matched_then_insert(
                 {
                     counters_table.c.name: counter_source.c.name,
-                    counters_table.c.count: counter_source.c.count,
+                    counters_table.c.cnt: counter_source.c.cnt,
                 }
             )
         )
@@ -216,7 +216,7 @@ def merge_example(engine) -> None:
     with Session(engine) as session:
         print("\n  After MERGE (increment existing, insert new):")
         for c in session.scalars(select(Counter).order_by(Counter.name)).all():
-            print(f"    {c.name}: {c.count}")
+            print(f"    {c.name}: {c.cnt}")
 
     # Clean up staging
     staging_metadata.drop_all(engine)

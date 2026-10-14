@@ -60,7 +60,7 @@ constrains installation to its selected published driver version.
 | `16_batch_error_handling.py` | All-or-nothing batch recovery | ``executemany_batch`` error paths, `rollback()` for all-or-nothing semantics |
 | `17_window_functions.py` | Analytic (window) functions | `ROW_NUMBER`/`RANK`/`DENSE_RANK`, `LAG`, running `SUM` `OVER (PARTITION BY ... ORDER BY ...)` |
 | `18_recursive_cte.py` | Recursive CTEs | `WITH RECURSIVE`, number series, hierarchy path building (contrast with 08 CONNECT BY) |
-| `19_pagination.py` | Server-side pagination | `LIMIT`/`OFFSET` vs CUBRID `FOR ORDERBY_NUM() BETWEEN`, `ROWNUM` caveat |
+| `19_pagination.py` | Server-side pagination | `LIMIT`/`OFFSET` vs CUBRID `FOR ORDERBY_NUM() BETWEEN`, `ROWNUM` caveat (docstring note) |
 | `20_timezone_datetime.py` | Timezone-aware datetimes | `DATETIMETZ`/`DATETIMELTZ`/`TIMESTAMPTZ` native reads, `SET TIME ZONE`, `TO_CHAR(... TZR)` |
 | `21_enum_type.py` | The ENUM column type | declaration-order sorting, `col + 0` ordinal, out-of-set rejection |
 | `22_date_formatting.py` | Date formatting & parsing | `TO_CHAR(date/number, fmt)`, `TO_DATE(str, fmt)`, fixed-width padding |

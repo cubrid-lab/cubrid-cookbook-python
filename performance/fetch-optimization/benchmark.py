@@ -69,19 +69,24 @@ def main() -> None:
         rows_count = len(rows)
         specific_cols_time = time.time() - start
 
-        # Benchmark 4: SELECT * (all columns)
+        # Benchmark 4: fetchmany() batches (all columns). SELECT * would be the
+        # same query as benchmark 2, because the table has only these 5 columns.
         start = time.time()
-        cursor.execute("SELECT * FROM cookbook_fetch_test")
-        rows = cursor.fetchall()
-        rows_count = len(rows)
-        select_all_time = time.time() - start
+        cursor.execute("SELECT id, name, val, description, is_active FROM cookbook_fetch_test")
+        rows_count = 0
+        while True:
+            batch = cursor.fetchmany(500)
+            if not batch:
+                break
+            rows_count += len(batch)
+        fetchmany_time = time.time() - start
 
         # Print results
         print("=== Fetch Optimization Benchmark ===")
         print(f"fetchone() loop:                 {fetchone_time:.3f}s")
         print(f"fetchall() (all columns):        {fetchall_time:.3f}s")
         print(f"fetchall() (specific columns):   {specific_cols_time:.3f}s")
-        print(f"SELECT * (fetchall()):           {select_all_time:.3f}s")
+        print(f"fetchmany(500) loop:             {fetchmany_time:.3f}s")
         print()
 
     finally:

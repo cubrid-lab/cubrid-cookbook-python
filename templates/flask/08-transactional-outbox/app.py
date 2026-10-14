@@ -177,21 +177,53 @@ def lease_outbox_messages():
     return jsonify([message.to_dict() for message in claimed_messages])
 
 
-def _lease_error(message, processor_id: str, now: datetime) -> str | None:
-    """Return why ``processor_id`` cannot settle ``message``, or None if it holds the lease."""
+def _lease_claim(payload: Mapping[str, object]) -> tuple[str, int | None] | str:
+    """Return the caller's ``(processor_id, lease_attempt)``, or a 400 error message.
+
+    A missing ``lease_attempt`` is returned as None: the caller has not shown that
+    it holds a lease, which ``_lease_error()`` reports as a 409 conflict. A value of
+    the wrong type is a malformed request (400).
+
+    A lease is identified by the processor that holds it and the attempt number
+    ``/outbox/lease`` returned for it (the message's ``attempts`` value). Settling
+    requires both, so a worker whose lease expired cannot settle a newer lease,
+    even one taken again under the same ``processor_id``.
+    """
+    processor_id = str(payload.get("processor_id", "")).strip()
+    if not processor_id:
+        return "processor_id is required"
+    lease_attempt = payload.get("lease_attempt")
+    if lease_attempt is None:
+        return processor_id, None
+    if isinstance(lease_attempt, bool) or not isinstance(lease_attempt, int):
+        return "lease_attempt must be the integer attempts value returned by /outbox/lease"
+    return processor_id, lease_attempt
+
+
+def _lease_error(
+    message, processor_id: str, lease_attempt: int | None, now: datetime
+) -> str | None:
+    """Return why the caller cannot settle ``message``, or None if it holds the lease."""
+    if lease_attempt is None:
+        return "lease_attempt is required: send the attempts value returned by /outbox/lease."
     if message.leased_until is None or message.leased_until <= now:
         return "Outbox message is not currently leased."
     if message.leased_by != processor_id:
         return "Outbox message is leased by a different processor."
+    if message.attempts != lease_attempt:
+        return "Outbox message was leased again; this lease is stale."
     return None
 
 
-def _update_own_lease(message, processor_id: str, now: datetime, **values: object) -> bool:
-    """Apply ``values`` only while ``processor_id`` still holds the lease it read.
+def _update_own_lease(
+    message, processor_id: str, lease_attempt: int, now: datetime, **values: object
+) -> bool:
+    """Apply ``values`` only while the caller's lease is still the current one.
 
-    The lease is checked in the UPDATE itself: a lease that expired and was taken
-    again after the read above (by another processor, or by this one with a new
-    attempt number) matches no row, so it is not overwritten.
+    The lease is checked in the UPDATE itself, against the attempt number the
+    caller sent: a lease that expired and was taken again (by another processor,
+    or by the same one with a new attempt number), before or after the read above,
+    matches no row, so it is not overwritten.
     """
     updated = (
         db.session.query(OutboxMessage)
@@ -200,7 +232,7 @@ def _update_own_lease(message, processor_id: str, now: datetime, **values: objec
             OutboxMessage.status == "pending",
             OutboxMessage.leased_by == processor_id,
             OutboxMessage.leased_until > now,
-            OutboxMessage.attempts == message.attempts,
+            OutboxMessage.attempts == lease_attempt,
         )
         .update(values, synchronize_session=False)
     )
@@ -214,22 +246,24 @@ def _update_own_lease(message, processor_id: str, now: datetime, **values: objec
 @outbox_bp.post("/outbox/<int:message_id>/ack")
 def acknowledge_outbox_message(message_id: int):
     payload = _json_payload()
-    processor_id = str(payload.get("processor_id", "")).strip()
-    if not processor_id:
-        return jsonify({"error": "processor_id is required"}), 400
+    claim = _lease_claim(payload)
+    if isinstance(claim, str):
+        return jsonify({"error": claim}), 400
+    processor_id, lease_attempt = claim
 
     message = db.session.get(OutboxMessage, message_id)
     if message is None:
         return jsonify({"error": "Outbox message not found."}), 404
 
     now = naive_utc_now()
-    lease_error = _lease_error(message, processor_id, now)
-    if lease_error:
+    lease_error = _lease_error(message, processor_id, lease_attempt, now)
+    if lease_error or lease_attempt is None:
         return jsonify({"error": lease_error}), 409
 
     if not _update_own_lease(
         message,
         processor_id,
+        lease_attempt,
         now,
         status="sent",
         sent_at=now,
@@ -252,32 +286,34 @@ def acknowledge_outbox_message(message_id: int):
 @outbox_bp.post("/outbox/<int:message_id>/fail")
 def fail_outbox_message(message_id: int):
     payload = _json_payload()
-    processor_id = str(payload.get("processor_id", "")).strip()
-    if not processor_id:
-        return jsonify({"error": "processor_id is required"}), 400
+    claim = _lease_claim(payload)
+    if isinstance(claim, str):
+        return jsonify({"error": claim}), 400
+    processor_id, lease_attempt = claim
 
     message = db.session.get(OutboxMessage, message_id)
     if message is None:
         return jsonify({"error": "Outbox message not found."}), 404
 
     now = naive_utc_now()
-    lease_error = _lease_error(message, processor_id, now)
-    if lease_error:
+    lease_error = _lease_error(message, processor_id, lease_attempt, now)
+    if lease_error or lease_attempt is None:
         return jsonify({"error": lease_error}), 409
 
     error_message = str(payload.get("error", "")).strip() or "unknown error"
-    # The retry decision uses the attempt count of this lease; the UPDATE below only
-    # applies while that lease, and so that count, is still the current one.
-    if message.attempts >= 3:
+    # The retry decision uses the attempt number of the caller's lease; the UPDATE
+    # below only applies while that lease is still the current one.
+    if lease_attempt >= 3:
         outcome: dict[str, object] = {"status": "dead_letter"}
     else:
         outcome = {
             "status": "pending",
-            "next_attempt_at": now + timedelta(seconds=message.attempts * 30),
+            "next_attempt_at": now + timedelta(seconds=lease_attempt * 30),
         }
     if not _update_own_lease(
         message,
         processor_id,
+        lease_attempt,
         now,
         last_error=error_message,
         leased_until=None,

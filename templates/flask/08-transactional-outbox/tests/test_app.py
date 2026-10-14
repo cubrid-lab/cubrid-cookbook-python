@@ -94,7 +94,10 @@ def test_ack_sets_status_to_sent(app: Flask, httpx_client: httpx.Client) -> None
     )
     msg = lease_resp.json()[0]
 
-    ack_resp = httpx_client.post(f"/api/outbox/{msg['id']}/ack", json={"processor_id": "worker-1"})
+    ack_resp = httpx_client.post(
+        f"/api/outbox/{msg['id']}/ack",
+        json={"processor_id": "worker-1", "lease_attempt": msg["attempts"]},
+    )
     assert ack_resp.status_code == 200
     acked = ack_resp.json()
     assert acked["status"] == "sent"
@@ -112,7 +115,11 @@ def test_fail_with_retries_requeues(app: Flask, httpx_client: httpx.Client) -> N
 
     fail_resp = httpx_client.post(
         f"/api/outbox/{msg['id']}/fail",
-        json={"processor_id": "worker-1", "error": "connection timeout"},
+        json={
+            "processor_id": "worker-1",
+            "lease_attempt": msg["attempts"],
+            "error": "connection timeout",
+        },
     )
     assert fail_resp.status_code == 200
     failed = fail_resp.json()
@@ -131,7 +138,8 @@ def test_fail_three_times_dead_letters(app: Flask, httpx_client: httpx.Client) -
     )
     msg = lease_resp.json()[0]
     httpx_client.post(
-        f"/api/outbox/{msg['id']}/fail", json={"processor_id": "worker-1", "error": "err1"}
+        f"/api/outbox/{msg['id']}/fail",
+        json={"processor_id": "worker-1", "lease_attempt": msg["attempts"], "error": "err1"},
     )
 
     # Need to advance next_attempt_at for subsequent leases
@@ -150,7 +158,8 @@ def test_fail_three_times_dead_letters(app: Flask, httpx_client: httpx.Client) -
     )
     msg2 = lease_resp.json()[0]
     httpx_client.post(
-        f"/api/outbox/{msg2['id']}/fail", json={"processor_id": "worker-1", "error": "err2"}
+        f"/api/outbox/{msg2['id']}/fail",
+        json={"processor_id": "worker-1", "lease_attempt": msg2["attempts"], "error": "err2"},
     )
 
     with app.app_context():
@@ -168,7 +177,8 @@ def test_fail_three_times_dead_letters(app: Flask, httpx_client: httpx.Client) -
     )
     msg3 = lease_resp.json()[0]
     fail_resp = httpx_client.post(
-        f"/api/outbox/{msg3['id']}/fail", json={"processor_id": "worker-1", "error": "err3"}
+        f"/api/outbox/{msg3['id']}/fail",
+        json={"processor_id": "worker-1", "lease_attempt": msg3["attempts"], "error": "err3"},
     )
     assert fail_resp.status_code == 200
     dead = fail_resp.json()
@@ -202,12 +212,13 @@ def test_duplicate_send_returns_409(app: Flask, httpx_client: httpx.Client) -> N
     assert resp2.status_code == 409
 
 
-def _release_on_first_write(app: Flask, message_id: int):
-    """Expire worker-1's lease and give it to worker-2 just before the app's first write.
+def _release_on_first_write(app: Flask, message_id: int, holder: str = "worker-2"):
+    """Expire worker-1's lease and give it to ``holder`` just before the app's first write.
 
     The re-lease commits on its own connection after the endpoint has read the
     message (and seen worker-1's lease), so it models a lease that expired and was
-    taken by another processor while worker-1 was still finishing its work.
+    taken again (by another processor, or by worker-1 itself with a new attempt
+    number) while worker-1 was still finishing its work.
     """
     from sqlalchemy import create_engine, event
     from sqlalchemy.pool import NullPool
@@ -227,7 +238,7 @@ def _release_on_first_write(app: Flask, message_id: int):
                         update(OutboxMessage)
                         .where(OutboxMessage.id == message_id)
                         .values(
-                            leased_by="worker-2",
+                            leased_by=holder,
                             leased_until=naive_utc_now() + timedelta(minutes=5),
                             attempts=OutboxMessage.attempts + 1,
                         )
@@ -239,12 +250,13 @@ def _release_on_first_write(app: Flask, message_id: int):
     return engine, release_before_write, pending
 
 
+@pytest.mark.parametrize("holder", ["worker-2", "worker-1"])
 @pytest.mark.parametrize(
     ("action", "payload"),
     [("ack", {}), ("fail", {"error": "late failure"})],
 )
 def test_settling_a_lease_taken_again_after_the_read_conflicts(
-    app: Flask, httpx_client: httpx.Client, action: str, payload: dict[str, str]
+    app: Flask, httpx_client: httpx.Client, action: str, payload: dict[str, str], holder: str
 ) -> None:
     from sqlalchemy import event
 
@@ -254,10 +266,11 @@ def test_settling_a_lease_taken_again_after_the_read_conflicts(
     )
     msg = lease_resp.json()[0]
 
-    engine, listener, pending = _release_on_first_write(app, msg["id"])
+    engine, listener, pending = _release_on_first_write(app, msg["id"], holder)
     try:
         response = httpx_client.post(
-            f"/api/outbox/{msg['id']}/{action}", json={"processor_id": "worker-1", **payload}
+            f"/api/outbox/{msg['id']}/{action}",
+            json={"processor_id": "worker-1", "lease_attempt": msg["attempts"], **payload},
         )
     finally:
         event.remove(engine, "before_cursor_execute", listener)
@@ -265,10 +278,87 @@ def test_settling_a_lease_taken_again_after_the_read_conflicts(
     assert not pending, "the endpoint wrote nothing"
     assert response.status_code == 409
     current = httpx_client.get(f"/api/outbox/{msg['id']}").json()
-    # worker-2's lease is untouched: still pending, leased by worker-2, attempt 2.
+    # The new lease is untouched: still pending, leased by its holder, attempt 2.
     assert (current["status"], current["leased_by"], current["attempts"]) == (
         "pending",
-        "worker-2",
+        holder,
         2,
     )
     assert current["attempts_list"] == []
+
+
+def _expire_lease(app: Flask, message_id: int) -> None:
+    with app.app_context():
+        db.session.execute(
+            update(OutboxMessage)
+            .where(OutboxMessage.id == message_id)
+            .values(leased_until=naive_utc_now() - timedelta(seconds=1))
+        )
+        db.session.commit()
+
+
+@pytest.mark.parametrize(
+    ("action", "payload"),
+    [("ack", {}), ("fail", {"error": "late failure"})],
+)
+def test_stale_request_cannot_settle_a_newer_lease_of_the_same_processor(
+    app: Flask, httpx_client: httpx.Client, action: str, payload: dict[str, str]
+) -> None:
+    _create_invoice(httpx_client)
+    lease = {"max_messages": 1, "processor_id": "worker-1"}
+    first = httpx_client.post("/api/outbox/lease", json=lease).json()[0]
+    assert first["attempts"] == 1
+
+    # worker-1's first lease expires and worker-1 leases the message again
+    # (attempt 2) before its first, stale request arrives.
+    _expire_lease(app, first["id"])
+    second = httpx_client.post("/api/outbox/lease", json=lease).json()[0]
+    assert (second["id"], second["attempts"]) == (first["id"], 2)
+
+    stale = httpx_client.post(
+        f"/api/outbox/{first['id']}/{action}",
+        json={"processor_id": "worker-1", "lease_attempt": first["attempts"], **payload},
+    )
+
+    assert stale.status_code == 409
+    assert "stale" in stale.json()["error"]
+    current = httpx_client.get(f"/api/outbox/{first['id']}").json()
+    assert (current["status"], current["leased_by"], current["attempts"]) == (
+        "pending",
+        "worker-1",
+        2,
+    )
+    assert current["attempts_list"] == []
+
+    # The current lease still settles normally.
+    fresh = httpx_client.post(
+        f"/api/outbox/{first['id']}/{action}",
+        json={"processor_id": "worker-1", "lease_attempt": second["attempts"], **payload},
+    )
+    assert fresh.status_code == 200
+
+
+@pytest.mark.parametrize("action", ["ack", "fail"])
+@pytest.mark.parametrize(
+    ("lease_attempt", "status"),
+    [(None, 409), ("1", 400), (True, 400), (1.0, 400)],
+    ids=["missing", "string", "bool", "float"],
+)
+def test_settling_requires_an_integer_lease_attempt(
+    app: Flask, httpx_client: httpx.Client, action: str, lease_attempt: object, status: int
+) -> None:
+    # A missing lease_attempt does not show a lease (409); a malformed one is a bad
+    # request (400). Either way the lease is left as it was.
+    _create_invoice(httpx_client)
+    msg = httpx_client.post(
+        "/api/outbox/lease", json={"max_messages": 1, "processor_id": "worker-1"}
+    ).json()[0]
+    body: dict[str, object] = {"processor_id": "worker-1"}
+    if lease_attempt is not None:
+        body["lease_attempt"] = lease_attempt
+
+    response = httpx_client.post(f"/api/outbox/{msg['id']}/{action}", json=body)
+
+    assert response.status_code == status
+    assert "lease_attempt" in response.json()["error"]
+    assert httpx_client.get(f"/api/outbox/{msg['id']}").json()["leased_by"] == "worker-1"

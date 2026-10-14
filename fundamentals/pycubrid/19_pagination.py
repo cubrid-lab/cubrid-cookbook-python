@@ -4,7 +4,11 @@ Demonstrates:
 - Portable LIMIT ... OFFSET paging
 - CUBRID-idiomatic FOR ORDERBY_NUM() BETWEEN ... AND ... paging
 - Why the two return the SAME ordered page
-- A note on ROWNUM (assigned BEFORE ORDER BY, so it is not a paging tool)
+
+Note on ROWNUM (not run here): CUBRID assigns ROWNUM before ORDER BY, so
+``WHERE ROWNUM <= n ... ORDER BY`` sorts whichever n rows were read first rather
+than returning the first n of the sorted result. Use ORDER BY with LIMIT or
+FOR ORDERBY_NUM() for pages.
 
 Rule of thumb: always ORDER BY a unique key before paging, otherwise the
 "page" is undefined.

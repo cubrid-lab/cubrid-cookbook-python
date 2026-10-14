@@ -15,7 +15,7 @@ Standalone FastAPI recipe showing CQRS with an event store, read model projectio
 ## Run
 
 ```bash
-cd /data/GitHub/cubrid-cookbook/python/fastapi/10-cqrs-event-sourcing
+cd templates/api-service-fastapi/recipes/10-cqrs-event-sourcing   # from the repository root
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
