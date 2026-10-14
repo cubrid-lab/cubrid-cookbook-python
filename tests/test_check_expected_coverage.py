@@ -212,6 +212,10 @@ class MainTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
 
+    def test_real_repository_passes(self):
+        with mock.patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(coverage.main([]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
