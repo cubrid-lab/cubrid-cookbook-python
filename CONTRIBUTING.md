@@ -836,6 +836,16 @@ code, later comments are checked; and after a raw-text element name such as
 are always checked. External contributors do not need to install internal agent
 tools or create duplicate work.
 
+### Good first issues and contribution claims
+
+An unassigned `good first issue` is open to **human-led contributors**, including people who direct and review AI-assisted work. They can start and submit a PR **without prior maintainer approval, GitHub Assignee access, or internal AI tooling**.
+
+Before beginning, check the issue's Assignees, comments and open PRs. A brief comment expressing interest helps avoid duplicate work but is optional; it is not a permission gate or an exclusive claim. If someone already owns the issue or is preparing a PR, coordinate first. Maintainers handle issue assignments and labels, including requests from contributors who cannot self-assign.
+
+**Maintainer-operated autonomous agents** are distinct from human-directed AI assistance. Before an autonomous agent implements a newcomer-reserved `good first issue`, a maintainer must authorize **that specific issue** and assign its implementer. Broad backlog/release instructions are insufficient.
+
+Existing tests, docs requirements and PR review/merge policies remain unchanged.
+
 ## Pull request and commit titles
 
 This rule covers issue titles, pull request titles and commit subjects in every
