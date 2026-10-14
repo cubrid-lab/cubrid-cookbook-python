@@ -270,3 +270,24 @@ def test_delete_category_with_active_children_returns_409(httpx_client: httpx.Cl
     assert response.json() == {
         "error": "Cannot delete category with active children. Delete or reassign children first."
     }
+
+
+@pytest.mark.parametrize("malformed_parent_id", ["not-an-id", [1], {"id": 1}])
+def test_create_category_malformed_parent_id_returns_400(
+    httpx_client: httpx.Client, malformed_parent_id: object
+) -> None:
+    response = httpx_client.post(
+        "/api/categories",
+        json={"name": "Subcategory", "parent_id": malformed_parent_id},
+    )
+    assert response.status_code == 400
+    assert response.json() == {"error": "parent_id must be an integer"}
+
+
+def test_create_category_unknown_parent_id_returns_404(httpx_client: httpx.Client) -> None:
+    response = httpx_client.post(
+        "/api/categories",
+        json={"name": "Subcategory", "parent_id": 99999},
+    )
+    assert response.status_code == 404
+    assert response.json() == {"error": "Parent category not found."}
