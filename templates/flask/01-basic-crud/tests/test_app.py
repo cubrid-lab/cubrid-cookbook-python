@@ -132,24 +132,23 @@ def test_api_create_product_missing_category(client) -> None:
     create_response = client.post(
         "/api/products",
         json={
-            "name":"Book",
-            "description":"Hardcover",
-            "price":"30.00",
-            "category":" ",
-            "in_stock":120,
+            "name": "Book",
+            "description": "Hardcover",
+            "price": "30.00",
+            "category": " ",
+            "in_stock": 120,
         },
     )
 
     res_missing = client.post(
         "/api/products",
         json={
-            "name":"Book",
-            "description":"Hardcover",
-            "price":"30.00",
-            "in_stock":120,
+            "name": "Book",
+            "description": "Hardcover",
+            "price": "30.00",
+            "in_stock": 120,
         },
     )
-
 
     assert create_response.status_code == 400
     assert res_missing.status_code == 400
@@ -157,20 +156,25 @@ def test_api_create_product_missing_category(client) -> None:
     assert create_response.get_json()["error"] == "category is required"
     assert res_missing.get_json()["error"] == "category is required"
 
+    assert client.get("/api/products").get_json() == []
+
 
 def test_api_create_product_non_object_json(client) -> None:
     create_response = client.post(
         "/api/products",
-        json=["invalid","data"],
+        json=["invalid", "data"],
     )
 
-    invalid_tpye = client.post(
+    null_response = client.post(
         "/api/products",
-        json=None,
+        data="null",
+        content_type="application/json",
     )
 
     assert create_response.status_code == 400
-    assert invalid_tpye.status_code == 400
+    assert null_response.status_code == 400
 
     assert create_response.get_json()["error"] == "name is required"
-    assert invalid_tpye.get_json()["error"] == "name is required"
+    assert null_response.get_json()["error"] == "name is required"
+
+    assert client.get("/api/products").get_json() == []
