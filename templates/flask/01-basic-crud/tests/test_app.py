@@ -126,3 +126,55 @@ def test_api_list_contains_created_product(client) -> None:
     assert len(payload) == 1
     assert payload[0]["name"] == "Monitor"
     assert payload[0]["price"] == "249.99"
+
+
+def test_api_create_product_missing_category(client) -> None:
+    create_response = client.post(
+        "/api/products",
+        json={
+            "name": "Book",
+            "description": "Hardcover",
+            "price": "30.00",
+            "category": " ",
+            "in_stock": 120,
+        },
+    )
+
+    res_missing = client.post(
+        "/api/products",
+        json={
+            "name": "Book",
+            "description": "Hardcover",
+            "price": "30.00",
+            "in_stock": 120,
+        },
+    )
+
+    assert create_response.status_code == 400
+    assert res_missing.status_code == 400
+
+    assert create_response.get_json()["error"] == "category is required"
+    assert res_missing.get_json()["error"] == "category is required"
+
+    assert client.get("/api/products").get_json() == []
+
+
+def test_api_create_product_non_object_json(client) -> None:
+    create_response = client.post(
+        "/api/products",
+        json=["invalid", "data"],
+    )
+
+    null_response = client.post(
+        "/api/products",
+        data="null",
+        content_type="application/json",
+    )
+
+    assert create_response.status_code == 400
+    assert null_response.status_code == 400
+
+    assert create_response.get_json()["error"] == "name is required"
+    assert null_response.get_json()["error"] == "name is required"
+
+    assert client.get("/api/products").get_json() == []
