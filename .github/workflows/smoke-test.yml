@@ -287,7 +287,7 @@ jobs:
         # corrupt artifact fails here. release_smoke.py then checks the exact file
         # set, every SHA-256 and the wheel metadata before installing anything.
         if: inputs.mode == 'candidate' && inputs.candidate_artifact != ''
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ inputs.candidate_artifact }}
           path: ${{ runner.temp }}/candidate
@@ -636,7 +636,7 @@ jobs:
       - name: Upload release verification result
         # Only release requests write the file; other runs upload nothing.
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           # Candidate parts are namespaced by request_id plus "--", so they never
           # match the published release-verification-part-* download or another
@@ -716,7 +716,7 @@ jobs:
         # Kept so the report always runs; a non-success outcome fails the report
         # below (v8 can fail its digest check after extracting files).
         continue-on-error: true
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: ${{ inputs.mode == 'candidate' && format('release-candidate-part-{0}--*', inputs.request_id) || 'release-verification-part-*' }}
           path: ${{ runner.temp }}/release-verification-parts
@@ -739,7 +739,7 @@ jobs:
 
       - name: Upload release verification report
         if: ${{ always() && steps.report.outputs.release == 'true' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ steps.report.outputs.artifact }}
           path: ${{ runner.temp }}/release-verification/release-verification.json
