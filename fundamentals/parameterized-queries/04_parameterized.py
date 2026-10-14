@@ -5,9 +5,9 @@ canonical, golden-verified recipe lives at ``fundamentals/pycubrid/04_prepared.p
 It is intentionally a thin redirect (no ``expected/`` golden) so the same recipe is
 not double-counted as distinct ``make verify`` coverage.
 
-Run the canonical recipe instead::
+Run the canonical recipe instead, from the repository root::
 
-    python ../pycubrid/04_prepared.py
+    python fundamentals/pycubrid/04_prepared.py
 
 The canonical recipe demonstrates parameterized queries (qmark ``?`` style), SQL
 injection safety, and batch operations with ``executemany``. See also this folder's
@@ -21,5 +21,5 @@ CANONICAL_RECIPE = "fundamentals/pycubrid/04_prepared.py"
 if __name__ == "__main__":
     print(
         "This is a topic redirect. The canonical, verified recipe lives at "
-        f"{CANONICAL_RECIPE}. Run: python ../pycubrid/04_prepared.py"
+        f"{CANONICAL_RECIPE}. Run: python {CANONICAL_RECIPE} from the repository root."
     )
