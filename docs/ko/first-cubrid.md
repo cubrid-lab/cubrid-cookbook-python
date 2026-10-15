@@ -173,8 +173,10 @@ for note in ("My first row", "My second row"):
 conn.commit()
 ```
 
-- `?`는 **파라미터**입니다. pycubrid는 값을 SQL과 따로 보내므로, 값이 문장의
-  뜻을 바꿀 수 없습니다. 값을 SQL 문자열에 직접 붙여 넣지 말고 항상 이렇게 넘기세요.
+- `?`는 **파라미터 자리 표시자**입니다. 값은 Python 인자로 따로 넘기고, pycubrid가
+  각 값을 올바르게 이스케이프한 값으로 문장에 넣으므로 값이 문장의 뜻을 바꿀 수 없습니다.
+  값을 SQL 문자열에 직접 붙여 넣지 말고 항상 이렇게 넘기세요. (pycubrid가 값을 바인딩하는 방식:
+  [파라미터화된 쿼리](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/fundamentals/parameterized-queries/README.md))
 - 변경은 **`commit()`**을 호출해야 확정됩니다. pycubrid는 자동 커밋이 꺼진 채로
   시작하므로, 마지막 커밋 이후의 모든 변경이 하나의 **트랜잭션**이 됩니다.
   `commit()`은 새 테이블과 두 행을 영구히 저장하고 다른 연결에서도 보이게 합니다.

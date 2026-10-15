@@ -176,9 +176,11 @@ for note in ("My first row", "My second row"):
 conn.commit()
 ```
 
-- The `?` is a **parameter**: pycubrid sends the value separately from the SQL,
-  so a value can never change the meaning of the statement. Always pass values
-  this way instead of pasting them into the SQL text.
+- The `?` is a **parameter placeholder**. You pass the values as a separate
+  Python argument, and pycubrid puts each one into the statement as a properly
+  escaped value, so a value can never change the meaning of the statement.
+  Always pass values this way instead of pasting them into the SQL text
+  yourself. (How pycubrid binds values: [parameterized queries](../../fundamentals/parameterized-queries/README.md).)
 - Changes are not permanent until you call **`commit()`**. pycubrid starts with
   autocommit off: everything since the last commit forms one **transaction**.
   `commit()` makes the new table and both rows durable and visible to other
