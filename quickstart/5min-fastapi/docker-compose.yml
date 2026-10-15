@@ -1,23 +1,43 @@
 services:
   cubrid:
     image: cubrid/cubrid:11.2
+    # CUBRID records the host name in databases.txt: a fixed one lets a new
+    # container (after `docker compose down`) open the database kept in the volumes.
+    hostname: cubrid-fastapi
     environment:
       CUBRID_DB: testdb
     ports:
-      - "33000:33000"
+      - "127.0.0.1:33000:33000"  # local-only: the lab's dba account has no password
     healthcheck:
       test: ["CMD", "csql", "-u", "dba", "testdb", "-c", "SELECT 1"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
+    volumes:
+      # Named volumes keep the database across `docker compose down`; only
+      # `docker compose down -v` deletes it. Images up to 11.3 keep databases in
+      # /var/lib/cubrid, the 11.4 image in /home/cubrid/CUBRID/databases.
+      - cubrid_data:/var/lib/cubrid
+      - cubrid_databases:/home/cubrid/CUBRID/databases
 
   api:
     build: .
     environment:
-      CUBRID_HOST: cubrid
+      CUBRID_HOST: cubrid  # the database service's name on the Compose network
     depends_on:
       cubrid:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
+    # The container runs before Uvicorn listens: this check lets
+    # `docker compose up --wait` return only once the API answers.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/openapi.json')"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  cubrid_data:
+  cubrid_databases:

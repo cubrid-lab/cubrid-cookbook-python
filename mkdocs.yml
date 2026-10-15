@@ -38,6 +38,8 @@ nav:
   - Home: index.md
   - Getting Started:
       - "New to CUBRID? Start here": first-cubrid.md
+      - FastAPI quickstart: quickstart-fastapi.md
+      - SQLAlchemy quickstart: quickstart-sqlalchemy.md
       - Getting Started: getting-started.md
       - Quick Start (site guide): quickstart.md
   - Usage:
@@ -66,6 +68,8 @@ nav:
           - 한국어: README.ko.md
           - 시작하기 (한국어): ko/getting-started.md
           - 첫 CUBRID 튜토리얼 (한국어): ko/first-cubrid.md
+          - FastAPI 빠른 시작 (한국어): ko/quickstart-fastapi.md
+          - SQLAlchemy 빠른 시작 (한국어): ko/quickstart-sqlalchemy.md
       - Changelog: changelog.md
 
 markdown_extensions:

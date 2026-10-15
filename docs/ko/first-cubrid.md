@@ -264,8 +264,8 @@ Dropped cookbook_first_cubrid_notes.
 
 - **pycubrid로 SQL 더 익히기**: [pycubrid 기초 예제](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/fundamentals/pycubrid/README.md)는
   같은 실습 환경에서 CRUD, prepared statement, 오류 처리, LOB 등으로 이어집니다.
-- **SQL 문자열 대신 Python 객체로**: [SQLAlchemy 빠른 시작](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/quickstart/5min-sqlalchemy/README.md).
-- **작은 웹 API**: [FastAPI 빠른 시작](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/quickstart/5min-fastapi/README.md).
+- **SQL 문자열 대신 Python 객체로**: [SQLAlchemy 빠른 시작](quickstart-sqlalchemy.md).
+- **작은 웹 API**: [FastAPI 빠른 시작](quickstart-fastapi.md).
 
 연결, 브로커, 트랜잭션이 어떻게 동작하는지 더 깊이 알고 싶다면
 [pycubrid 문서](https://github.com/cubrid-lab/pycubrid#readme)를 보세요.

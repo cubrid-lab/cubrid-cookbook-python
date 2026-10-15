@@ -30,8 +30,8 @@ shows `commit`, `rollback` and cleanup, before any framework.
 | Your Goal | Go Here | Time |
 |-----------|---------|------|
 | **New to CUBRID** | [`quickstart/first-cubrid/`](quickstart/first-cubrid/) | about 15 min once Docker and Python are installed |
-| **Start in 5 minutes** | [`quickstart/5min-fastapi/`](quickstart/5min-fastapi/) | 5 min |
-| **Start with SQLAlchemy** | [`quickstart/5min-sqlalchemy/`](quickstart/5min-sqlalchemy/) | 5 min |
+| **Start in 5 minutes** | [`quickstart/5min-fastapi/`](quickstart/5min-fastapi/README.md) | about 5 min once Docker is installed |
+| **Start with SQLAlchemy** | [`quickstart/5min-sqlalchemy/`](quickstart/5min-sqlalchemy/README.md) | about 5 min once Docker and Python are installed |
 | **Migrate from Java** | [`migration/java-to-python/`](migration/java-to-python/) | 30 min |
 | **Build a production API** | [`templates/api-service-fastapi/`](templates/api-service-fastapi/) | 15 min |
 
@@ -41,19 +41,22 @@ shows `commit`, `rollback` and cleanup, before any framework.
 
 ### Quickstart
 
-Get a working CUBRID + FastAPI app running with Docker in under 5 minutes.
+Get a working CUBRID + FastAPI app running with Docker in about 5 minutes, once
+Docker is installed and its images are downloaded:
 
 ```bash
-cd quickstart/5min-fastapi
-docker compose up -d --wait cubrid
-pip install -r requirements.txt
-uvicorn app:app --reload
+git clone https://github.com/cubrid-lab/cubrid-cookbook-python.git
+cd cubrid-cookbook-python/quickstart/5min-fastapi
+docker compose up -d --build --wait
+curl -sS -X POST localhost:8000/items -H 'Content-Type: application/json' -d '{"val": "hello from the quickstart"}'
+# {"val":"hello from the quickstart","id":1}
 # Open http://localhost:8000/docs
 ```
 
-The host-run API connects to `localhost` by default (`CUBRID_HOST` overrides it).
-To run both the API and database in Docker instead, use `docker compose up -d --build`
-in that directory; Compose sets `CUBRID_HOST=cubrid` for the API.
+The [FastAPI quickstart](quickstart/5min-fastapi/README.md) explains each step,
+also runs the API on your machine with Uvicorn, and shows how to stop and clean
+up. The [SQLAlchemy quickstart](quickstart/5min-sqlalchemy/README.md) does the
+same for one Core and ORM script.
 
 <a href="docs/demo-fastapi.gif"><img src="docs/demo-fastapi.png" alt="FastAPI quickstart: GET /items in Swagger UI returning the item created with POST /items against CUBRID, last frame of the recording" width="100%"/></a>
 

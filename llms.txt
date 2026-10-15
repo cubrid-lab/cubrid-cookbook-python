@@ -17,8 +17,8 @@ Key facts:
 ## Quickstart
 
 - [First CUBRID tutorial](quickstart/first-cubrid/): new to CUBRID? A local lab, a first query, commit, rollback and cleanup with pycubrid
-- [5min FastAPI](quickstart/5min-fastapi/): Docker + FastAPI + CUBRID running in under 5 minutes
-- [5min SQLAlchemy](quickstart/5min-sqlalchemy/): SQLAlchemy 2.x ORM quickstart
+- [5min FastAPI](quickstart/5min-fastapi/): Docker + FastAPI + CUBRID, from `git clone` to an item created and read back and cleanup, in about 5 minutes once Docker is installed
+- [5min SQLAlchemy](quickstart/5min-sqlalchemy/): one SQLAlchemy 2.x Core and ORM CRUD script against a local Docker database, from `git clone` to cleanup
 
 ## Fundamentals
 

@@ -33,8 +33,8 @@
 | 목표 | 바로 가기 | 소요 시간 |
 |------|-----------|-----------|
 | **CUBRID가 처음** | [`quickstart/first-cubrid/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/quickstart/first-cubrid) | Docker와 Python 설치 후 약 15분 |
-| **5분 만에 시작** | [`quickstart/5min-fastapi/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/quickstart/5min-fastapi) | 5분 |
-| **SQLAlchemy로 시작** | [`quickstart/5min-sqlalchemy/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/quickstart/5min-sqlalchemy) | 5분 |
+| **5분 만에 시작** | [`quickstart/5min-fastapi/`](ko/quickstart-fastapi.md) | Docker 설치 후 약 5분 |
+| **SQLAlchemy로 시작** | [`quickstart/5min-sqlalchemy/`](ko/quickstart-sqlalchemy.md) | Docker와 Python 설치 후 약 5분 |
 | **Java에서 마이그레이션** | [`migration/java-to-python/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/migration/java-to-python) | 30분 |
 | **프로덕션 API 구축** | [`templates/api-service-fastapi/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/api-service-fastapi) | 15분 |
 
@@ -44,19 +44,20 @@
 
 ### 퀵스타트
 
-Docker로 CUBRID + FastAPI 앱을 5분 안에 띄웁니다.
+Docker를 설치하고 이미지를 내려받은 뒤라면, Docker로 CUBRID + FastAPI 앱을 5분 정도면 띄웁니다.
 
 ```bash
-cd quickstart/5min-fastapi
-docker compose up -d --wait cubrid
-pip install -r requirements.txt
-uvicorn app:app --reload
+git clone https://github.com/cubrid-lab/cubrid-cookbook-python.git
+cd cubrid-cookbook-python/quickstart/5min-fastapi
+docker compose up -d --build --wait
+curl -sS -X POST localhost:8000/items -H 'Content-Type: application/json' -d '{"val": "hello from the quickstart"}'
+# {"val":"hello from the quickstart","id":1}
 # http://localhost:8000/docs 접속
 ```
 
-호스트에서 실행한 API는 기본적으로 `localhost`에 연결합니다 (`CUBRID_HOST`로 변경 가능).
-API와 데이터베이스를 모두 Docker에서 실행하려면 같은 디렉터리에서
-`docker compose up -d --build`를 사용하세요. Compose는 API에 `CUBRID_HOST=cubrid`를 설정합니다.
+[FastAPI 빠른 시작](ko/quickstart-fastapi.md)은 단계마다 설명하고, API를 내 컴퓨터에서
+Uvicorn으로 실행하는 방법과 멈추고 정리하는 방법도 보여 줍니다.
+[SQLAlchemy 빠른 시작](ko/quickstart-sqlalchemy.md)은 Core와 ORM 스크립트 하나로 같은 과정을 안내합니다.
 
 <a href="demo-fastapi.gif"><img src="demo-fastapi.png" alt="FastAPI 퀵스타트: Swagger UI에서 POST /items로 만든 항목을 GET /items가 CUBRID에서 반환, 녹화의 마지막 장면" width="100%"/></a>
 

@@ -12,7 +12,8 @@ import re
 import unittest
 from pathlib import Path
 
-QUICKSTART = Path(__file__).resolve().parents[1] / "quickstart"
+ROOT = Path(__file__).resolve().parents[1]
+QUICKSTART = ROOT / "quickstart"
 # ``CUBRID_DB: <name>`` in the service environment.
 COMPOSE_DB = re.compile(r"^\s*CUBRID_DB:\s*['\"]?(\w+)['\"]?\s*$", re.MULTILINE)
 # The database the health check queries: ``csql ... "dba", "<name>", "-c"``.
@@ -47,6 +48,35 @@ class QuickstartDatabaseTests(unittest.TestCase):
                 self.assertEqual(HEALTHCHECK_DB.findall(compose), created)
                 used = app_databases((directory / "app.py").read_text(encoding="utf-8"))
                 self.assertEqual(used, set(created))
+
+    def test_compose_keeps_the_lab_local_and_its_data_named(self) -> None:
+        # #386: the READMEs promise a local-only lab whose data survives `down`.
+        for directory in self.quickstarts():
+            with self.subTest(quickstart=directory.name):
+                compose = (directory / "docker-compose.yml").read_text(encoding="utf-8")
+                ports = re.findall(r'^\s*- "([^"]+:\d+)"', compose, re.MULTILINE)
+                self.assertTrue(ports)
+                for port in ports:
+                    self.assertTrue(port.startswith("127.0.0.1:"), port)
+                self.assertRegex(compose, r"\n    hostname: cubrid-[\w-]+\n")
+                for volume in ("cubrid_data", "cubrid_databases"):
+                    self.assertRegex(compose, rf"\n\s+- {volume}:/")
+                    self.assertRegex(compose, rf"\nvolumes:\n(?:  \w+:\n)*  {volume}:\n")
+
+    def test_fastapi_api_has_a_healthcheck_for_compose_wait(self) -> None:
+        # `docker compose up --wait` returns before Uvicorn listens without one.
+        compose = (QUICKSTART / "5min-fastapi/docker-compose.yml").read_text(encoding="utf-8")
+        api = compose.split("\n  api:\n", 1)[1].split("\nvolumes:\n", 1)[0]
+        self.assertIn("healthcheck:", api)
+        self.assertIn("http://127.0.0.1:8000/", api)
+
+    def test_sqlalchemy_readmes_show_the_golden_output(self) -> None:
+        directory = QUICKSTART / "5min-sqlalchemy"
+        golden = (directory / "expected/app.expected").read_text(encoding="utf-8")
+        block = f"```text\n{golden.rstrip()}\n```"
+        for page in (directory / "README.md", ROOT / "docs/ko/quickstart-sqlalchemy.md"):
+            with self.subTest(page=page.name):
+                self.assertIn(block, page.read_text(encoding="utf-8"))
 
     def test_parsers_see_the_324_mismatch(self) -> None:
         # The pre-#324 pair: Compose created demodb, the app used testdb.
