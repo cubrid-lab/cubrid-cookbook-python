@@ -74,7 +74,10 @@ suites. Each suite uses its own process to avoid conflicting recipe module names
 These checks require no database and do not prove live CUBRID compatibility;
 run the relevant example or `make verify` against CUBRID for that evidence.
 CI runs the same `make check` command on every pull request (see
-[CI tiers](#ci-tiers) for which live lanes run on top of it).
+[CI tiers](#ci-tiers) for which live lanes run on top of it). The blocking
+documentation check has its own pinned tools; run it with
+`python3 -m pip install -r .github/requirements-docs-check.txt` and `make docs-check`
+(see [Documentation checks](#documentation-checks)).
 The repository is an example collection, so `pip install -e .` is not supported.
 
 ### CHANGELOG sections
@@ -85,8 +88,9 @@ Security, Performance, Documentation, CI, Tests. Write `Documentation`, not
 `Docs`, and put tooling entries under `CI` or `Changed`. `make check-docs` runs
 `scripts/lint_changelog.py`, which enforces this for `[Unreleased]` and for releases
 after 0.2.0. A fenced `###` line is entry content, never a heading; a fenced `## [` release
-header is an error (`scripts/extract_release_notes.py` is not fence-aware and would
-truncate the Release body); an unclosed fence is an error. Only fences that start at
+header is an error (the release-notes extractor this lint matches, `extract_release_notes.py`
+in pycubrid and cubrid-mcp-server, is not fence-aware and would truncate the Release body); an
+unclosed fence is an error. Only fences that start at
 column 0 with three backticks are recognised, not tilde or indented/nested fences.
 
 A duplicate `###` heading within one version section is an error only in `[Unreleased]`
@@ -134,7 +138,7 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 
 | Tier | When | What runs |
 |------|------|-----------|
-| 1 — cheap checks | every pull request | Ruff, `make check`, docs-sync, doc-lint, classification and the gate; the strict docs-site build |
+| 1 — cheap checks | every pull request | Ruff, `make check`, docs-sync, docs-check, doc-lint, classification and the gate; the strict docs-site build |
 | 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples; AI-agent code or other files in example trees → the same lane with a full `make verify` |
 | 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with full `make verify`, Python 3.11 + 3.14 compatibility |
 | 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
@@ -654,6 +658,44 @@ is built from the repository docs; the repository files stay the source of truth
   `GETTING_STARTED.md`, which remains the source of truth. When a change to
   `GETTING_STARTED.md` affects its commands or steps, update
   `docs/quickstart.md` in the same PR.
+
+### Documentation checks
+
+Each documentation check has one job (#353):
+
+| Check | What it enforces | Blocking |
+|-------|------------------|----------|
+| `docs-sync` (`scripts/check_docs_sync.py`) | every example directory is listed in `README.md` and `llms.txt`; smoke coverage | listing yes, coverage warns |
+| `docs-site` (`make docs`) | links of the staged pages and of `docs/` resolve on the built site (`mkdocs build --strict`) | yes |
+| `docs-check` (`make docs-check`, `scripts/check_docs_links.py`) | deterministic defects in every tracked Markdown file, offline | yes |
+| `doc-lint` (organization workflow) | style, Mermaid and external links | advisory |
+
+`docs-check` reports, for every tracked Markdown file:
+
+- a relative link or image that does not exist, or an `#anchor` that is not a
+  heading of its target. A `docs/` link to a staged page (`support-matrix.md`)
+  resolves to its source (`SUPPORT_MATRIX.md`);
+- an undefined `[text][label]` reference and an unclosed code fence;
+- a paragraph line that starts with `#` and a digit on a page the site renders
+  (`docs/` outside `docs/internal/`, and the staged sources); write `\#750`;
+- a `make` goal that the Makefile does not define, and a `scripts/...` path
+  that does not exist;
+- a recipe command whose file is missing: the file of `pip install -r <file>`,
+  `python <file>.py` or `uvicorn <module>:<app>`. It is looked up next to the
+  Markdown file, at the repository root, and in each directory the file `cd`s
+  into. Placeholders such as `python <file>.py` are skipped.
+
+`CHANGELOG.md` keeps the commands of its time, so only its links are checked.
+The job runs on every pull request, including rename- and delete-only ones that
+touch no Markdown, and it never runs live CUBRID or golden suites.
+
+A reviewed exception goes in `scripts/docs-check-allowlist.txt` as
+`PATH TEXT  # reason`: it suppresses the findings of `PATH` whose message
+contains `TEXT`. The reason is required, an entry that suppresses nothing
+fails the check, and `scripts/` is maintainer-owned in CODEOWNERS, so every
+entry gets a maintainer's review. Inline `<!-- docs-check: ignore -->` markers
+are not honoured here, and nothing in a pull request body bypasses the check.
+Prefer fixing the link or command.
 
 ---
 

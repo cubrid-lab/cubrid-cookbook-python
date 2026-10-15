@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: help up down status clean deps verify demo lint test-offline check check-docs test-normalize check-coverage docs
+.PHONY: help up down status clean deps verify demo lint test-offline check check-docs test-normalize check-coverage docs docs-check
 
 DOCKER_COMPOSE := docker compose
 NORMALIZE := bash scripts/normalize_output.sh
@@ -176,6 +176,10 @@ check-coverage: ## Fail if any opted-in example script lacks an .expected golden
 demo: up verify ## Full demo: start DB, verify all examples
 	@echo ""
 	@echo "✓ Demo complete — all examples verified against CUBRID"
+
+docs-check: ## Check Markdown links, anchors, fences and recipe commands (needs .github/requirements-docs-check.txt)
+	$(PYTHON) -m pytest tests/test_check_docs_links.py -q
+	$(PYTHON) scripts/check_docs_links.py
 
 docs: ## Stage repo docs into docs/ and build the site locally (strict)
 	bash scripts/stage_docs.sh

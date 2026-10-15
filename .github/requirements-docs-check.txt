@@ -1,0 +1,6 @@
+# Tools for scripts/check_docs_links.py and its tests (the ci.yml docs-check job
+# and `make docs-check`, #353). Pinned so an upstream release cannot change the
+# blocking documentation check without a repository change; Dependabot updates
+# the pins (the pip ecosystem covers /.github).
+markdown-it-py==4.2.0
+pytest==9.1.1

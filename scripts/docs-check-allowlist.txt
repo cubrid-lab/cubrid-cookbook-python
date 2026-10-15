@@ -1,0 +1,21 @@
+# Reviewed exceptions for scripts/check_docs_links.py (#353).
+#
+# Each entry is `PATH TEXT  # reason`: it suppresses the findings of PATH (a
+# repository-relative Markdown file) whose message contains TEXT. The reason is
+# required, and an entry that suppresses nothing fails the check, so the list
+# cannot go stale. scripts/ is maintainer-owned in CODEOWNERS: a new entry
+# needs a maintainer's review. Prefer fixing the link or command.
+
+# The quickstart page embeds the demo videos with site-relative URLs: the page
+# is served at quickstart/, so ../assets/ resolves on the MkDocs site, and the
+# videos are not shown on GitHub.
+docs/quickstart.md '../assets/videos/dashboard.mp4'      # site-relative <source src>, resolved by the site
+docs/quickstart.md '../assets/videos/agent-state.mp4'    # site-relative <source src>, resolved by the site
+docs/quickstart.md '../assets/videos/mcp-toolchain.mp4'  # site-relative <source src>, resolved by the site
+
+# The release-candidate design describes the scripts of the caller
+# repositories (pycubrid, sqlalchemy-cubrid, cubrid-mcp-server), not this one.
+docs/internal/rc-verification-design.md scripts/release_detect.py         # a caller repository's script
+docs/internal/rc-verification-design.md scripts/release_summary.py        # a caller repository's script
+docs/internal/rc-verification-design.md scripts/pypi_duplicate_guard.py   # a caller repository's script
+docs/internal/rc-verification-design.md scripts/verify_dist.py            # a caller repository's script

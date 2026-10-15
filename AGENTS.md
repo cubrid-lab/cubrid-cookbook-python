@@ -189,6 +189,7 @@ not checked, so do not add foreign closing keywords there.
 - Run the relevant example: `python <file>.py`
 - `make verify VERIFY_PATHS=<example-directory>` for matching live goldens
 - `make docs` for staged docs and strict MkDocs validation
+- `make docs-check` for links, anchors and recipe commands in every Markdown file (pinned tools: `.github/requirements-docs-check.txt`)
 - `make down` after live checks
 
 Record executed commands/results separately from AI review and checks not run.

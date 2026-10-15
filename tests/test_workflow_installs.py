@@ -24,7 +24,7 @@ CI = ROOT / ".github/workflows/ci.yml"
 
 UV_ACTION = "astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884"
 UV_VERSION = '"0.12.17"'
-UV_JOBS = {"lint-python", "quickstart-tests", "docs-site", "pytest-suites"}
+UV_JOBS = {"lint-python", "quickstart-tests", "docs-site", "docs-check", "pytest-suites"}
 PIP_INSTALL = re.compile(r"(?<!uv )\bpip3?\s+install\b")
 
 
