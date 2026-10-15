@@ -767,6 +767,30 @@ def test_fork_pr_is_evaluated_like_any_other() -> None:
 # ------------------------------------------------------- budget and decisions
 
 
+@pytest.mark.parametrize("body", ["", "  \n"])
+def test_empty_reply_only_copilot_records_are_not_rounds(body: str) -> None:
+    reviews = [
+        copilot(review_id=1, at="2026-10-15T01:00:00Z"),
+        copilot(body, review_id=2, at="2026-10-15T02:00:00Z"),
+        copilot(body, review_id=3, at="2026-10-15T03:00:00Z"),
+    ]
+    replies = [
+        {"pull_request_review_id": 2, "in_reply_to_id": 7},
+        {"pull_request_review_id": 3, "in_reply_to_id": 7},
+    ]
+    verdict = evaluate(data(reviews, comments=replies))
+    assert verdict.passed
+    assert any("AI round 1" in e for e in verdict.evidence)
+    assert sum("empty record" in n for n in verdict.notes) == 2
+
+
+def test_empty_record_that_opens_a_thread_is_still_a_round() -> None:
+    reviews = [copilot("", review_id=1, at="2026-10-15T01:00:00Z")]
+    verdict = evaluate(data(reviews, comments=[{"pull_request_review_id": 1}]))
+    assert verdict.passed
+    assert any("AI round 1" in e for e in verdict.evidence)
+
+
 def test_exactly_two_copilot_rounds_pass() -> None:
     reviews = [
         copilot(sha=OLD, review_id=1, at="2026-10-15T01:00:00Z"),

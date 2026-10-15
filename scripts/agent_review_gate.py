@@ -332,6 +332,10 @@ def protected_paths(paths: Iterable[str]) -> list[str]:
 
 def copilot_assessment(body: str, inline_comments: int) -> tuple[str, str]:
     """Classify a Copilot review as "substantive", "summary" or "notice", and why."""
+    if not body.strip() and not inline_comments:
+        # A record with no body and no new thread, such as a reply to an existing
+        # thread, is not a review and spends no AI review round.
+        return "notice", "an empty record (a thread reply), not a review"
     verdict = COPILOT_VERDICT.search(body)
     findings = COPILOT_FINDINGS.search(body)
     if verdict and findings and verdict.end() < findings.start():

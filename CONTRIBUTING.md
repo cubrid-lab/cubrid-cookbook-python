@@ -809,7 +809,8 @@ listed in the summary but never count.
 - **Substantive Copilot review.** It has inline comments, or its overview states
   a verdict, an assessment sentence and an open-findings count. A summary of what
   changed, or an error or quota notice, is not an assessment. A notice is not an
-  AI review round, so a quota failure may be re-requested.
+  AI review round, so a quota failure may be re-requested; neither is an empty
+  record with no new thread, such as a reply to an existing thread.
 - **Stale reviews.** A review of an older commit counts only when the PR's change
   against `main` is identical at that commit and at the head: the same files,
   statuses and exact patches, hunk line numbers included, and for a file without
