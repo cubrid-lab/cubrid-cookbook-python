@@ -299,6 +299,20 @@ def _login(user: Any) -> str:
     return user.get("login", "") if isinstance(user, dict) else ""
 
 
+def _identity(record: dict[str, Any], key: str, what: str) -> str:
+    """The login in ``record[key]``: "" for an explicit null (a deleted account);
+    a missing field or an account without a login fails closed."""
+    if key not in record:
+        raise GateError(f"API data lacks {what}")
+    user = record[key]
+    if user is None:
+        return ""
+    login = user.get("login") if isinstance(user, dict) else None
+    if not isinstance(login, str) or not login:
+        raise GateError(f"API data has {what} without a login")
+    return login
+
+
 def _paths(files: Iterable[dict[str, Any]]) -> set[str]:
     paths = set()
     for item in files:
@@ -587,10 +601,13 @@ def evaluate(data: dict[str, Any], event_head: str = "") -> Verdict:
             raise GateError("a review thread's first comment has no comment ID")
         if not isinstance(body, str):
             raise GateError("a review thread's first comment has no body")
-        opener = _login(first.get("author"))
+        resolved = thread.get("isResolved")
+        if not isinstance(resolved, bool):
+            raise GateError("a review thread has no resolution state")
+        opener = _identity(first, "author", "a review thread's author")
         place = f"{first.get('path')} ({first.get('url')})"
         if opener not in COPILOT_THREAD_AUTHORS and opener not in MAINTAINERS:
-            if not thread.get("isResolved"):
+            if not resolved:
                 verdict.notes.append(
                     f"Unresolved thread at {place} by {opener or 'a deleted account'}: not "
                     "opened by Copilot or a maintainer, so it does not block."
@@ -599,7 +616,7 @@ def evaluate(data: dict[str, Any], event_head: str = "") -> Verdict:
         severity = severities.get(root, "")
         texts = [body, *replies.get(root, [])]
         serious = severity in BLOCKING_SEVERITIES or any(SECURITY_WORDS.search(t) for t in texts)
-        if not thread.get("isResolved"):
+        if not resolved:
             if serious:
                 verdict.errors.append(
                     f"Unresolved {severity + '-severity ' if severity else ''}"
@@ -610,7 +627,7 @@ def evaluate(data: dict[str, Any], event_head: str = "") -> Verdict:
                 )
             else:
                 verdict.notes.append(f"Unresolved thread at {place}.")
-        elif serious and _login(thread.get("resolvedBy")) == author:
+        elif serious and _identity(thread, "resolvedBy", "a resolved thread's resolver") == author:
             verdict.errors.append(
                 f"The {severity or 'security-relevant'} finding at {place} was resolved by "
                 "the PR author; a maintainer must unresolve and resolve it after checking."

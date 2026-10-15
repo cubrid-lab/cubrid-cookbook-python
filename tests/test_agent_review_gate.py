@@ -515,6 +515,48 @@ def test_incomplete_thread_fails_closed(broken: dict[str, Any]) -> None:
     assert run_main(data([copilot()], threads=[item])) == 1
 
 
+@pytest.mark.parametrize("author", ["missing", {}, {"login": ""}, {"login": None}, "x"])
+def test_thread_author_without_identity_fails_closed(author: Any) -> None:
+    item = thread(2, "Possible SQL injection.")
+    node = item["comments"]["nodes"][0]
+    if author == "missing":
+        del node["author"]
+    else:
+        node["author"] = author
+    assert run_main(data([review(MAINTAINER, "APPROVED")], threads=[item])) == 1
+
+
+def test_thread_by_a_deleted_account_does_not_block() -> None:
+    item = thread(2, "Possible SQL injection.")
+    item["comments"]["nodes"][0]["author"] = None
+    verdict = evaluate(data([copilot()], threads=[item]))
+    assert verdict.passed
+    assert any("a deleted account" in n for n in verdict.notes)
+
+
+@pytest.mark.parametrize("resolver", ["missing", {}, {"login": ""}, "x"])
+def test_resolver_without_identity_fails_closed(resolver: Any) -> None:
+    item = thread(2, "Possible SQL injection.", True)
+    if resolver == "missing":
+        del item["resolvedBy"]
+    else:
+        item["resolvedBy"] = resolver
+    assert run_main(data([review(MAINTAINER, "APPROVED")], threads=[item])) == 1
+
+
+def test_thread_resolved_by_a_deleted_account_is_not_the_author() -> None:
+    item = thread(2, "Possible SQL injection.", True)
+    item["resolvedBy"] = None
+    assert evaluate(data([copilot()], threads=[item])).passed
+
+
+@pytest.mark.parametrize("state", [None, "yes"])
+def test_thread_without_resolution_state_fails_closed(state: Any) -> None:
+    item = thread(2, "Nit.")
+    item["isResolved"] = state
+    assert run_main(data([copilot()], threads=[item])) == 1
+
+
 def test_security_reply_makes_a_thread_blocking() -> None:
     reply = {"pull_request_review_id": 8, "in_reply_to_id": 3, "body": "It leaks credentials."}
     records = data([copilot()], threads=[thread(3, "Nit: naming.")], comments=[reply])
