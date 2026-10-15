@@ -261,7 +261,7 @@ database keeps running between runs.
 | Command | The container | Your data |
 |---------|---------------|-----------|
 | `docker compose stop` | stopped; `docker compose start` resumes it | kept |
-| `docker compose down` | removed | kept in the lab's Docker volumes; the next `docker compose up -d` brings it back |
+| `docker compose down` | removed | kept in the lab's Docker volumes; the next `CUBRID_VERSION=11.4 docker compose up -d` brings it back |
 | `docker compose down -v` | removed | **deleted**, including `testdb` itself |
 
 `docker compose down -v` deletes only this lab's volumes, the ones

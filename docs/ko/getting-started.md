@@ -16,6 +16,46 @@ docker compose up -d        # localhost:33000의 CUBRID 11.2, 데이터베이스
 docker exec cubrid-cookbook bash -lc "csql -u dba testdb -c 'SELECT 1;'"
 ```
 
+### 2026년 10월 실습 환경 수정 전에 만든 실습 환경
+
+이제 `docker-compose.yml`은 데이터베이스를 이름 있는 볼륨에 보관하고, 컨테이너에
+고정된 호스트 이름을 줍니다(#385). 이전 파일로 시작한 실습 환경은 새 파일이 컨테이너를
+처음 다시 만들 때 열리지 않습니다. CUBRID가 이전 컨테이너의 호스트 이름을 기록해 두었기
+때문입니다(`-353 Failed to connect to database server`). 데이터는 그대로 남아 있으니,
+저장소 폴더에서 아래와 같이 복구하세요. **데이터를 지우는 `docker compose down -v`는
+실행하지 마세요.** 필요한 데이터가 있다면 먼저 따로 복사해 두세요.
+
+`CUBRID_VERSION` 없이(기본값인 CUBRID 11.2로) 시작했다면, 데이터베이스가 새 호스트
+이름을 가리키게 하고 다시 시작합니다.
+
+```bash
+docker compose up -d
+docker compose exec -T -u cubrid cubrid sh -c 'sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1cubrid-cookbook/" "$CUBRID_DATABASES/databases.txt"'
+docker compose restart cubrid
+python3 scripts/wait_for_cubrid.py
+```
+
+`CUBRID_VERSION=11.4`로 시작했다면, 데이터베이스가 이름 없는 볼륨에 있습니다. 저장소를
+업데이트하기 전에 그 볼륨을 기록하고 실습 환경을 멈추세요.
+
+```bash
+OLD=$(docker inspect cubrid-cookbook --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
+docker compose stop
+```
+
+그다음 저장소를 업데이트하고(`git pull`), 데이터베이스를 새 이름 있는 볼륨에 복사한 뒤
+호스트 이름을 고치고 실습 환경을 시작합니다.
+
+```bash
+CUBRID_VERSION=11.4 docker compose create
+NEW=$(docker inspect cubrid-cookbook --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
+docker run --rm -v "$OLD":/from:ro -v "$NEW":/to --entrypoint sh cubrid/cubrid:11.4 -c 'cp -a /from/. /to/ && sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1cubrid-cookbook/" /to/databases.txt && chown cubrid:cubrid /to/databases.txt'
+CUBRID_VERSION=11.4 docker compose up -d
+python3 scripts/wait_for_cubrid.py
+```
+
+데이터가 돌아온 것을 확인한 뒤 `docker volume rm "$OLD"`로 이전 사본을 지우세요.
+
 ## 1. 5분 만에 첫 쿼리 (pycubrid)
 
 ```bash

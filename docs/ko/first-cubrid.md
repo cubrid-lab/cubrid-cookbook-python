@@ -252,7 +252,7 @@ Dropped cookbook_first_cubrid_notes.
 | 명령 | 컨테이너 | 데이터 |
 |------|----------|--------|
 | `docker compose stop` | 멈춤. `docker compose start`로 다시 시작 | 남음 |
-| `docker compose down` | 삭제 | 실습 환경의 Docker 볼륨에 남음. 다음 `docker compose up -d`에서 되살아남 |
+| `docker compose down` | 삭제 | 실습 환경의 Docker 볼륨에 남음. 다음 `CUBRID_VERSION=11.4 docker compose up -d`에서 되살아남 |
 | `docker compose down -v` | 삭제 | `testdb`까지 포함해 **삭제** |
 
 `docker compose down -v`는 `docker-compose.yml`에 이름이 적힌 이 실습 환경의 볼륨만

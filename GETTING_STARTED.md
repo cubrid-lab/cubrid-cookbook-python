@@ -14,6 +14,48 @@ Readiness takes up to a minute on first start:
 docker exec cubrid-cookbook bash -lc "csql -u dba testdb -c 'SELECT 1;'"
 ```
 
+### A lab created before the October 2026 lab fix
+
+`docker-compose.yml` now keeps the database in named volumes and gives the
+container a fixed host name (#385). A lab started from the earlier file breaks
+the first time the new file recreates its container: CUBRID records the old
+container's host name, so the database fails to open (`-353 Failed to connect
+to database server`). Your data is still there. Recover it as follows, from the
+repository folder. **Do not run `docker compose down -v`, which deletes the
+data**; if the lab holds anything you need, copy it out first.
+
+If you started the lab without `CUBRID_VERSION` (CUBRID 11.2, the default),
+point the database at the new host name and restart:
+
+```bash
+docker compose up -d
+docker compose exec -T -u cubrid cubrid sh -c 'sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1cubrid-cookbook/" "$CUBRID_DATABASES/databases.txt"'
+docker compose restart cubrid
+python3 scripts/wait_for_cubrid.py
+```
+
+If you started it with `CUBRID_VERSION=11.4`, its database sits in a volume
+without a name. Before you update the repository, note that volume and stop
+the lab:
+
+```bash
+OLD=$(docker inspect cubrid-cookbook --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
+docker compose stop
+```
+
+Then update the repository (`git pull`), copy the database into the new named
+volume, fix its host name and start the lab:
+
+```bash
+CUBRID_VERSION=11.4 docker compose create
+NEW=$(docker inspect cubrid-cookbook --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
+docker run --rm -v "$OLD":/from:ro -v "$NEW":/to --entrypoint sh cubrid/cubrid:11.4 -c 'cp -a /from/. /to/ && sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1cubrid-cookbook/" /to/databases.txt && chown cubrid:cubrid /to/databases.txt'
+CUBRID_VERSION=11.4 docker compose up -d
+python3 scripts/wait_for_cubrid.py
+```
+
+When your data is back, `docker volume rm "$OLD"` removes the old copy.
+
 ## 1. Five-minute first query (pycubrid)
 
 ```bash
