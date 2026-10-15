@@ -83,6 +83,23 @@ write permissions or that sibling repositories call to verify a release
 Their review must explicitly assess what they can write, publish or verify for
 other repositories, and a maintainer confirms that disposition before merge.
 
+**`agent-review` check (advisory only):** `.github/workflows/agent-review.yml`
+reports from GitHub's own review records whether this route is met (rules in
+[CONTRIBUTING.md](CONTRIBUTING.md#agent-review-evidence-gate); the gate is a copy
+of cubrid-mcp-server's, with only its constants block changed). It counts a
+substantive Copilot review of the head within the two-round budget, or a
+maintainer's `APPROVED` review, or `COMMENTED` review that opens an inline
+thread; never PR-body checkboxes, pending requests, self-review, other people's
+or other AI agents' reviews, summary-only bot text or a review of an older
+commit (unless the PR's change against `main` is identical at both commits).
+Protected paths (every workflow and composite action, `.github/dependabot.yml`,
+`scripts/release_smoke.py`, `scripts/mcp_smoke.py` and the gate itself) need a
+maintainer's `APPROVED` review. A PR can publish a check with the same name, so
+the check is a reading aid and must not be made a required status check until it
+is posted from an identity a PR cannot impersonate (#378). A run triggered by
+Copilot's review waits as "action required": re-run it, or edit the PR body,
+after Copilot reviews.
+
 **Human contributions:** follow the normal PR and review process. This route
 is not a fallback for unnamed standalone agent tools, which use the route above.
 No OpenCode, Oracle, Copilot, Claude Code or Codex installation is a contribution

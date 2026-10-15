@@ -1,0 +1,70 @@
+name: agent-review
+
+# Agent-review evidence gate (#351): passes only when GitHub's own review records
+# show the review AGENTS.md requires at the PR head. The decision is made by
+# scripts/agent_review_gate.py; its docstring and CONTRIBUTING.md
+# ("Agent-review evidence gate") define the evidence rules.
+#
+# Security: runs on `pull_request` and `pull_request_review` (never
+# `pull_request_target`), so a fork PR gets a read-only token and no secrets.
+# The job checks out nothing. It downloads the gate script from the BASE branch
+# through the contents API and runs it with `python3 -I`; the script only reads
+# the REST and GraphQL APIs as data. The PR's own copy of the script runs only
+# while the base branch has none (the PR that adds the gate), in advisory mode,
+# and never for a fork. Keep the job name "agent-review" stable.
+#
+# ADVISORY ONLY. GitHub reads this workflow file from the PR's merge commit, so a
+# PR can edit it, or add another workflow with an "agent-review" job, and publish
+# a passing check under the same name: a GitHub Actions check cannot prove who
+# produced it. Do not make "agent-review" a required status check until the
+# verdict is posted from an identity a PR cannot impersonate, such as a GitHub
+# App. Every workflow is a protected path for the base-branch script, which
+# helps only while this workflow still runs it.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions: {}
+
+concurrency:
+  group: agent-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  agent-review:
+    name: agent-review
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Evaluate review evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          set -euo pipefail
+          gate="$RUNNER_TEMP/agent_review_gate.py"
+          path="repos/$GITHUB_REPOSITORY/contents/scripts/agent_review_gate.py"
+          mode=()
+          if gh api -X GET -H "Accept: application/vnd.github.raw" "$path" -f ref="$BASE_REF" \
+              > "$gate" 2> "$RUNNER_TEMP/fetch.err"; then
+            echo "Gate script: $BASE_REF (base branch)"
+          elif grep -q "HTTP 404" "$RUNNER_TEMP/fetch.err" && [ "$HEAD_REPO" = "$GITHUB_REPOSITORY" ]; then
+            echo "::warning title=agent-review::The base branch has no gate script; running this PR's copy in advisory bootstrap mode."
+            gh api -X GET -H "Accept: application/vnd.github.raw" "$path" -f ref="$HEAD_SHA" > "$gate"
+            mode=(--bootstrap)
+          else
+            cat "$RUNNER_TEMP/fetch.err"
+            echo "::error title=agent-review::Could not read the gate script from the base branch; failing closed."
+            exit 1
+          fi
+          python3 -I "$gate" --repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER" \
+            --event-head-sha "$HEAD_SHA" "${mode[@]}"

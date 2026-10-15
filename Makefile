@@ -133,6 +133,7 @@ test-offline: ## Run mocked/offline suites in separate processes (no database re
 	$(PYTHON) -m unittest discover -s tests -p 'test_example_requirements.py' -v
 	$(PYTHON) -m pytest quickstart/5min-fastapi/tests -q
 	$(PYTHON) -m pytest tests/test_ai_agent_offline.py -q
+	$(PYTHON) -m pytest tests/test_agent_review_gate.py -q
 	$(PYTHON) -m unittest discover -s tests -p 'test_release*.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_make_commands.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_wait_for_cubrid.py' -v

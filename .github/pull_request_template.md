@@ -28,7 +28,11 @@ Include a description of changes associated with your commit(s)
 - Finding disposition: fixed commit + test / rejected with reason / deferred issue.
 - Unresolved review threads and reason, or "none" after verification.
 - Maintainer merge decision: **pending**; complete only after checking the applicable review, final code, required CI, applicable live validation and thread dispositions.
-<!-- A requested review, green CI or automated "approval recommended" text alone does not complete the review route. -->
+<!-- A requested review, green CI or automated "approval recommended" text alone does not complete the review route.
+     The advisory `agent-review` check reads only GitHub's submitted reviews of the head commit;
+     this section and its checkboxes are records for maintainers, never evidence. Protected paths
+     (every workflow and action, dependabot.yml, release_smoke.py, mcp_smoke.py, the gate) need a
+     maintainer's APPROVED review. See CONTRIBUTING.md#agent-review-evidence-gate. -->
 
 ## Reviewers
 - Request reviewers through GitHub review requests; avoid repeated bot @mentions and review requests.
