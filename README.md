@@ -23,8 +23,13 @@
 
 ## Get Started
 
+**New to CUBRID? Start here:** [your first CUBRID database from Python](quickstart/first-cubrid/README.md)
+starts a local practice database, connects from Python, saves and reads rows, and
+shows `commit`, `rollback` and cleanup, before any framework.
+
 | Your Goal | Go Here | Time |
 |-----------|---------|------|
+| **New to CUBRID** | [`quickstart/first-cubrid/`](quickstart/first-cubrid/) | about 15 min once Docker and Python are installed |
 | **Start in 5 minutes** | [`quickstart/5min-fastapi/`](quickstart/5min-fastapi/) | 5 min |
 | **Start with SQLAlchemy** | [`quickstart/5min-sqlalchemy/`](quickstart/5min-sqlalchemy/) | 5 min |
 | **Migrate from Java** | [`migration/java-to-python/`](migration/java-to-python/) | 30 min |
@@ -119,7 +124,7 @@ Step-by-step reference for every core operation:
 
 ```
 pycubrid (DB-API 2.0 driver)
-├── Direct usage ─── fundamentals/pycubrid (connect, crud, transactions are redirects to it)
+├── Direct usage ─── quickstart/first-cubrid (start here), fundamentals/pycubrid (connect, crud, transactions are redirects to it)
 ├── SQLAlchemy ───── fundamentals/orm-basics, sqlalchemy, quickstart/5min-sqlalchemy
 ├── FastAPI ──────── quickstart/5min-fastapi, templates/api-service-fastapi
 ├── Flask ─────────── templates/flask
@@ -164,6 +169,7 @@ docker compose up -d
 ```
 cubrid-cookbook-python/
 ├── quickstart/
+│   ├── first-cubrid/          # New to CUBRID: a guided first tutorial with pycubrid
 │   ├── 5min-fastapi/          # Docker + FastAPI in 5 minutes
 │   └── 5min-sqlalchemy/       # Docker + SQLAlchemy in 5 minutes
 ├── migration/

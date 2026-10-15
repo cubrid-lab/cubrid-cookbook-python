@@ -166,7 +166,7 @@ when a row no longer matches the repository. Verification is split:
 - **Golden-backed recipes** carry stdout goldens (`expected/*.expected`) and are
   checked by `make verify` on **CUBRID 11.2 and 11.4 / Python 3.12** on `main`,
   nightly and release verification, and on 11.4 for pull requests that touch them
-  (fundamentals, migration, the SQLAlchemy quickstart, the batch-etl template, and
+  (fundamentals, migration, the SQLAlchemy quickstart, the first CUBRID tutorial, the batch-etl template, and
   the reserved-word DDL check behind `pitfalls/`).
 - The **Flask and FastAPI** recipes are covered by pytest suites that the smoke
   job runs against its live CUBRID container on **11.2 and 11.4** for every push
@@ -226,6 +226,7 @@ when a row no longer matches the repository. Verification is split:
 | Async + Alembic + JSON + Isolation | 5 | `make verify` (CI, 11.2 + 11.4) |
 | Java-to-Python migration | 5 | `make verify` (CI, 11.2 + 11.4) |
 | SQLAlchemy quickstart | 1 | `make verify` (CI, 11.2 + 11.4) |
+| First CUBRID tutorial | 4 | `make verify` (CI, 11.2 + 11.4) |
 | Pandas batch-etl template | 5 | `make verify` (CI, 11.2 + 11.4) |
 | Pitfalls: reserved-word DDL | 1 | `make verify` (CI, 11.2 + 11.4) |
 | Flask templates | 11 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
@@ -235,7 +236,7 @@ when a row no longer matches the repository. Verification is split:
 | Streamlit templates | 5 | pytest (CI on `main` + nightly, 11.2 + 11.4; PR CI 11.4 when touched) |
 | Django template | 1 | Django HTTP + SQLAlchemy bridge: live pytest (PR CI 11.4 when touched; `main` + nightly 11.2 + 11.4); no native Django ORM |
 | Celery async-worker template | 1 | database tasks: live pytest (PR CI 11.4 when touched; `main` + nightly 11.2 + 11.4); broker/worker manual |
-| **Total** | **97** | 61 golden-backed via `make verify` on 11.2 + 11.4; Flask, FastAPI, Streamlit and Django bridge pytest suites in CI; async-worker database tasks and AI agent suite live-tested; Celery broker/worker and native Django ORM are not covered |
+| **Total** | **101** | 65 golden-backed via `make verify` on 11.2 + 11.4; Flask, FastAPI, Streamlit and Django bridge pytest suites in CI; async-worker database tasks and AI agent suite live-tested; Celery broker/worker and native Django ORM are not covered |
 
 ## Known Limitations by Version
 

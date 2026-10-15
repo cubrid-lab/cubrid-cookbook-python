@@ -6,6 +6,8 @@ Runnable Python examples and production-shaped application templates for CUBRID 
 - **Every golden-backed recipe is CI-verified** — `make verify` compares exact stdout against `expected/*.expected` files on a **CUBRID 11.2 + 11.4 job matrix** for every `main` push, nightly and release verification; pull requests check the examples they touch on 11.4
 - **6 application templates**: FastAPI service, Flask app, Django app, Streamlit dashboard, Celery async worker, pandas batch ETL — the dashboard is a one-command `docker compose up` demo
 
+**New to CUBRID? Start here:** [your first CUBRID database from Python](first-cubrid.md), a guided tutorial from a local practice database to `commit`, `rollback` and cleanup.
+
 ## The three paths
 
 | Path | Installs | Start |

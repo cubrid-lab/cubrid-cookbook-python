@@ -63,6 +63,7 @@ site/
 # Staged into docs/ by scripts/stage_docs.sh at build time (not authored there)
 docs/catalog.md
 docs/getting-started.md
+docs/first-cubrid.md
 docs/support-matrix.md
 docs/known-issues.md
 docs/changelog.md

@@ -37,6 +37,7 @@ theme:
 nav:
   - Home: index.md
   - Getting Started:
+      - "New to CUBRID? Start here": first-cubrid.md
       - Getting Started: getting-started.md
       - Quick Start (site guide): quickstart.md
   - Usage:
@@ -64,6 +65,7 @@ nav:
       - Translations:
           - 한국어: README.ko.md
           - 시작하기 (한국어): ko/getting-started.md
+          - 첫 CUBRID 튜토리얼 (한국어): ko/first-cubrid.md
       - Changelog: changelog.md
 
 markdown_extensions:

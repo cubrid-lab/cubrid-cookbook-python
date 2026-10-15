@@ -48,6 +48,7 @@ UNPUBLISHED_DOCS = ("docs/internal/",)
 STAGE = [
     ("README.md", "docs/catalog.md"),
     ("GETTING_STARTED.md", "docs/getting-started.md"),
+    ("quickstart/first-cubrid/README.md", "docs/first-cubrid.md"),
     ("SUPPORT_MATRIX.md", "docs/support-matrix.md"),
     ("KNOWN_ISSUES.md", "docs/known-issues.md"),
     ("CHANGELOG.md", "docs/changelog.md"),

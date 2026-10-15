@@ -2,8 +2,11 @@ services:
   cubrid:
     image: cubrid/cubrid:${CUBRID_VERSION:-11.2}
     container_name: cubrid-cookbook
+    # CUBRID records the host name in databases.txt: a fixed one lets a new
+    # container (after `docker compose down`) open the database kept in the volumes.
+    hostname: cubrid-cookbook
     ports:
-      - "33000:33000"
+      - "127.0.0.1:33000:33000"  # local-only: the lab's dba account has no password
     environment:
       CUBRID_DB: testdb
     healthcheck:
@@ -13,7 +16,12 @@ services:
       retries: 10
       start_period: 30s
     volumes:
+      # Named volumes keep the database across `docker compose down`; only
+      # `docker compose down -v` deletes it. Images up to 11.3 keep databases in
+      # /var/lib/cubrid, the 11.4 image in /home/cubrid/CUBRID/databases.
       - cubrid_data:/var/lib/cubrid
+      - cubrid_databases:/home/cubrid/CUBRID/databases
 
 volumes:
   cubrid_data:
+  cubrid_databases:

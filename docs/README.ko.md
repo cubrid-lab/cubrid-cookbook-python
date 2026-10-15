@@ -26,8 +26,13 @@
 
 ## 시작하기
 
+**CUBRID가 처음이라면 여기서 시작하세요:** [처음 만드는 CUBRID 데이터베이스 (Python)](ko/first-cubrid.md)는
+내 컴퓨터에 연습용 데이터베이스를 띄우고, Python에서 접속해 행을 저장하고 읽고,
+프레임워크보다 먼저 `commit`, `rollback`, 정리를 보여 줍니다.
+
 | 목표 | 바로 가기 | 소요 시간 |
 |------|-----------|-----------|
+| **CUBRID가 처음** | [`quickstart/first-cubrid/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/quickstart/first-cubrid) | Docker와 Python 설치 후 약 15분 |
 | **5분 만에 시작** | [`quickstart/5min-fastapi/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/quickstart/5min-fastapi) | 5분 |
 | **SQLAlchemy로 시작** | [`quickstart/5min-sqlalchemy/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/quickstart/5min-sqlalchemy) | 5분 |
 | **Java에서 마이그레이션** | [`migration/java-to-python/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/migration/java-to-python) | 30분 |
@@ -122,7 +127,7 @@ Java JDBC → Python 마이그레이션을 실제 코드 나란히 비교로 제
 
 ```
 pycubrid (DB-API 2.0 드라이버)
-├── 직접 사용 ─────── fundamentals/pycubrid (connect, crud, transactions는 이쪽으로 리다이렉트)
+├── 직접 사용 ─────── quickstart/first-cubrid (여기서 시작), fundamentals/pycubrid (connect, crud, transactions는 이쪽으로 리다이렉트)
 ├── SQLAlchemy ────── fundamentals/orm-basics, sqlalchemy, quickstart/5min-sqlalchemy
 ├── FastAPI ───────── quickstart/5min-fastapi, templates/api-service-fastapi
 ├── Flask ─────────── templates/flask
@@ -167,6 +172,7 @@ docker compose up -d
 ```
 cubrid-cookbook-python/
 ├── quickstart/
+│   ├── first-cubrid/          # CUBRID가 처음: pycubrid로 따라 하는 첫 튜토리얼
 │   ├── 5min-fastapi/          # 5분 만에 Docker + FastAPI
 │   └── 5min-sqlalchemy/       # 5분 만에 Docker + SQLAlchemy
 ├── migration/

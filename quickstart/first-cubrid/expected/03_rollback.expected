@@ -1,0 +1,3 @@
+Rows before the change: 2
+Rows inside the open transaction: 3
+Rows after rollback: 2

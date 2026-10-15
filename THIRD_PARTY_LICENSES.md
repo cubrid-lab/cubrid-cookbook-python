@@ -159,7 +159,7 @@ added or removed, or when its declared packages change.
 |---|---|---|
 | S01 | `fundamentals/alembic/requirements.txt` | alembic, pycubrid, sqlalchemy, sqlalchemy-cubrid |
 | S02 | `fundamentals/async/requirements.txt` | pycubrid, sqlalchemy, sqlalchemy-cubrid |
-| S03 | `fundamentals/isolation-levels/requirements.txt`<br>`fundamentals/json/requirements.txt`<br>`pitfalls/reserved-words/requirements.txt` | pycubrid |
+| S03 | `fundamentals/isolation-levels/requirements.txt`<br>`fundamentals/json/requirements.txt`<br>`pitfalls/reserved-words/requirements.txt`<br>`quickstart/first-cubrid/requirements.txt` | pycubrid |
 | S04 | `fundamentals/orm-basics/requirements.txt` | pycubrid, sqlalchemy, sqlalchemy-cubrid |
 | S05 | `fundamentals/pandas/requirements.txt` | pandas, pycubrid, sqlalchemy, sqlalchemy-cubrid |
 | S06 | `fundamentals/pycubrid/requirements.txt` | pycubrid |
