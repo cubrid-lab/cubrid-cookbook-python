@@ -470,7 +470,9 @@ def evaluate(data: dict[str, Any], event_head: str = "") -> Verdict:
     committers = set()
     for commit in data["commits"]:
         if not _neutral_merge(commit, data):
-            committers.update({_login(commit.get("author")), _login(commit.get("committer"))})
+            # null: the commit's email maps to no GitHub account.
+            committers.add(_identity(commit, "author", "a commit's author"))
+            committers.add(_identity(commit, "committer", "a commit's committer"))
     committers -= {"", "web-flow"}
 
     # Inline comments that open a thread; a reply to an existing thread is not an

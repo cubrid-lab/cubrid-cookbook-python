@@ -272,6 +272,26 @@ def test_reviewer_who_committed_to_the_pr_is_rejected() -> None:
     assert any("authored commits" in w for w in verdict.warnings)
 
 
+@pytest.mark.parametrize("field", ["author", "committer"])
+@pytest.mark.parametrize("value", ["missing", {}, {"login": ""}, "x"])
+def test_commit_without_identity_fails_closed(field: str, value: Any) -> None:
+    other = commit(HEAD)  # author AUTHOR, committer web-flow: the approval would count
+    if value == "missing":
+        del other[field]
+    else:
+        other[field] = value
+    records = data([review(MAINTAINER, "APPROVED")], commits=[commit(OLD), other])
+    assert run_main(records) == 1
+
+
+@pytest.mark.parametrize("field", ["author", "committer"])
+def test_commit_identity_without_an_account_is_allowed(field: str) -> None:
+    unlinked = commit(HEAD)
+    unlinked[field] = None  # the commit email maps to no GitHub account
+    records = data([review(MAINTAINER, "APPROVED")], commits=[commit(OLD), unlinked])
+    assert evaluate(records).passed
+
+
 def test_non_maintainer_and_other_bot_reviews_are_rejected() -> None:
     reviews = [
         review("member-not-owner", "APPROVED", association="MEMBER", review_id=1),
