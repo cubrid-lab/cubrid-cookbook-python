@@ -178,7 +178,9 @@ def test_commands_are_checked_only_in_code(tmp_path: Path) -> None:
     assert check.run(_tree(tmp_path, page)) == [
         "docs/PAGE.md:3: `make lnit` is not a Makefile target; did you mean 'lint'?",
         "docs/PAGE.md:6: `make tset` is not a Makefile target; did you mean 'test'?",
-        "docs/PAGE.md:7: scripts/gone.py does not exist",
+        # A command's script is looked up like other recipe files (cookbook #353).
+        "docs/PAGE.md:7: `python scripts/gone.py`: scripts/gone.py does not exist next to this "
+        "file, at the repository root or in a directory it cds into",
     ]
 
 
@@ -863,3 +865,68 @@ def test_the_docs_check_job_always_runs_and_gates_the_merge() -> None:
     gate = workflow.split("\n  ci-gate:\n", 1)[1]
     assert "docs-check" in gate.split("needs:", 1)[1].split("\n", 1)[0]
     assert "R_DOCS_CHECK: ${{ needs.docs-check.result }}" in gate
+
+
+def test_allowlist_text_may_contain_a_hash(tmp_path: Path) -> None:
+    """The reason starts at the documented "  #", so TEXT may contain "#"."""
+    page = "[a](TARGET.md#legacy)\n\n[b](TARGET.md#other)\n"
+    root = _allowlist(_tree(tmp_path, page), "docs/PAGE.md anchor #legacy  # reviewed exception\n")
+    assert check.run(root) == [
+        "docs/PAGE.md:3: anchor #other is not a heading or anchor of docs/TARGET.md"
+    ]
+
+
+def test_an_allowlist_entry_with_a_hash_but_no_reason_is_rejected(tmp_path: Path) -> None:
+    page = "[a](TARGET.md#legacy)\n"
+    root = _allowlist(_tree(tmp_path, page), "docs/PAGE.md anchor #legacy\n")
+    assert check.run(root) == [
+        f"{check.ALLOWLIST}:1: an entry is 'PATH TEXT  # reason'",
+        "docs/PAGE.md:1: anchor #legacy is not a heading or anchor of docs/TARGET.md",
+    ]
+
+
+def test_only_published_docs_pages_link_staged_pages(tmp_path: Path) -> None:
+    extra = {
+        "SUPPORT_MATRIX.md": MATRIX,
+        "quickstart/5min/README.md": "[m](../../docs/support-matrix.md)\n",
+        "docs/internal/notes.md": "[m](../support-matrix.md)\n",
+    }
+    assert check.run(_tree(tmp_path, "# Page\n", extra)) == [
+        "docs/internal/notes.md:1: link target '../support-matrix.md' is a generated staged "
+        "page; link SUPPORT_MATRIX.md instead",
+        "quickstart/5min/README.md:1: link target '../../docs/support-matrix.md' is a "
+        "generated staged page; link SUPPORT_MATRIX.md instead",
+    ]
+
+
+def test_a_staged_link_is_checked_against_its_source_after_make_docs(tmp_path: Path) -> None:
+    page = "[m](support-matrix.md#recipe-coverage) [s](support-matrix.md#stale-heading)\n"
+    extra = {
+        "SUPPORT_MATRIX.md": MATRIX,
+        # A generated copy left by `make docs`, with a heading the source no longer has.
+        "docs/support-matrix.md": "# Support Matrix\n\n## Stale heading\n",
+    }
+    assert check.run(_tree(tmp_path, page, extra)) == [
+        "docs/PAGE.md:1: anchor #stale-heading is not a heading or anchor of SUPPORT_MATRIX.md"
+    ]
+
+
+def test_a_recipe_local_script_resolves(tmp_path: Path) -> None:
+    extra = dict(
+        RECIPE,
+        **{
+            "templates/flask/scripts/seed.py": "",
+            "templates/flask/README.md": "```bash\npython scripts/seed.py\n```\n",
+        },
+    )
+    assert check.run(_tree(tmp_path, "# Page\n", extra)) == []
+
+
+def test_a_missing_uvicorn_module_under_scripts_is_reported(tmp_path: Path) -> None:
+    extra = dict(
+        RECIPE, **{"templates/flask/README.md": "```bash\nuvicorn scripts.missing:app\n```\n"}
+    )
+    assert check.run(_tree(tmp_path, "# Page\n", extra)) == [
+        "templates/flask/README.md:2: `uvicorn scripts.missing:app`: scripts/missing.py does not "
+        "exist next to this file, at the repository root or in a directory it cds into"
+    ]

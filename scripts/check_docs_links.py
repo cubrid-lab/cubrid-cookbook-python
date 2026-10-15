@@ -100,7 +100,8 @@ def load_allowlist(path: Path) -> tuple[list[tuple[str, str, int]], list[str]]:
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        entry, _, reason = line.partition("#")
+        # The reason follows the documented "  #" (two spaces), so TEXT may hold "#".
+        entry, _, reason = line.partition("  #")
         parts = entry.split(None, 1)
         if not reason.strip() or len(parts) != 2:
             problems.append(f"{ALLOWLIST}:{number}: an entry is 'PATH TEXT  # reason'")
@@ -236,8 +237,15 @@ class Checker:
         dest = path.resolve() if not file_part else (path.parent / file_part).resolve()
         if not dest.is_relative_to(self.root):
             return f"link target {target!r} points outside the repository"
-        if not dest.exists() and dest in self.staged:
-            dest = self.staged[dest]  # a staged site page: its source
+        if dest in self.staged:
+            if not self.is_site_page(self.rel(path)) or not self.rel(path).startswith(SITE_DIR):
+                return (
+                    f"link target {target!r} is a generated staged page; link "
+                    f"{self.rel(self.staged[dest])} instead"
+                )
+            # A published docs/ page links the site page: check its source, even
+            # when `make docs` has left a (possibly stale) generated copy.
+            dest = self.staged[dest]
         if not dest.exists():
             siblings = [p.name for p in dest.parent.iterdir()] if dest.parent.is_dir() else []
             # File names share suffixes (".md"), so ask for a closer match.
@@ -287,9 +295,14 @@ class Checker:
                             + _suggest(goal, sorted(self.make_targets)),
                         )
                     )
-        found += [] if historical else self.recipe_problems(path, parsed)
+        recipe_found, command_paths = (
+            ([], set()) if historical else self.recipe_problems(path, parsed)
+        )
+        found += recipe_found
         for number, line in enumerate([] if historical else lines, 1):
             for script in _SCRIPT.findall(line):
+                if script in command_paths:
+                    continue  # a recipe command: checked above, with its own lookup
                 if not (self.root / script).is_file():
                     names = [p.name for p in (self.root / "scripts").glob("*")]
                     found.append(
@@ -306,18 +319,23 @@ class Checker:
             if not self.allowed(rel, problem)
         ]
 
-    def recipe_problems(self, path: Path, parsed: Parsed) -> list[tuple[int, str]]:
-        """Return recipe commands whose requirements file, script or module is missing."""
+    def recipe_problems(self, path: Path, parsed: Parsed) -> tuple[list[tuple[int, str]], set[str]]:
+        """Return recipe commands whose file is missing, and every path a command names.
+
+        The paths are looked up next to the file, at the root and in ``cd``
+        targets, so a recipe-local ``scripts/seed.py`` resolves; the raw
+        ``scripts/`` scan skips them to report each command once.
+        """
         here = path.resolve().parent
         commands = [(line, recipe_files(command)) for line, command in parsed.code]
         bases = [here, self.root]
         for _line, (cds, _files) in commands:
             bases += [(base / cd).resolve() for cd in cds for base in (here, self.root)]
         found = []
+        named: set[str] = set()
         for line, (_cds, files) in commands:
             for what, candidates in files:
-                if _SCRIPT.fullmatch(candidates[0]):
-                    continue  # the scripts/ path check below reports it once
+                named.update(candidates)
                 if not any((base / c).is_file() for c in candidates for base in bases):
                     found.append(
                         (
@@ -326,7 +344,7 @@ class Checker:
                             "at the repository root or in a directory it cds into",
                         )
                     )
-        return found
+        return found, named
 
 
 def run(root: Path, files: list[Path] | None = None) -> list[str]:
