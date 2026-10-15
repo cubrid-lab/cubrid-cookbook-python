@@ -93,7 +93,8 @@ thread; never PR-body checkboxes, pending requests, self-review, other people's
 or other AI agents' reviews, summary-only bot text or a review of an older
 commit (unless the PR's change against `main` is identical at both commits).
 Protected paths (every workflow and composite action, `.github/dependabot.yml`,
-`scripts/release_smoke.py`, `scripts/mcp_smoke.py` and the gate itself) need a
+`scripts/release_smoke.py`, `scripts/mcp_smoke.py`, the lane selection in
+`scripts/ci_scope.py` and `scripts/driver_floors.py`, and the gate itself) need a
 maintainer's `APPROVED` review. A PR can publish a check with the same name, so
 the check is a reading aid and must not be made a required status check until it
 is posted from an identity a PR cannot impersonate (#378). A run triggered by

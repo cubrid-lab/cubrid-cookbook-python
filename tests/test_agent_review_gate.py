@@ -364,6 +364,8 @@ def test_changes_requested_blocks_until_superseded() -> None:
         ".github/dependabot.yml",
         "scripts/release_smoke.py",
         "scripts/mcp_smoke.py",
+        "scripts/ci_scope.py",
+        "scripts/driver_floors.py",
         "scripts/agent_review_gate.py",
         "tests/test_agent_review_gate.py",
     ],

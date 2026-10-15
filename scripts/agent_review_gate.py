@@ -92,6 +92,10 @@ PROTECTED_PATHS = (
     # The release smoke scripts that smoke-test.yml runs for other repositories.
     "scripts/release_smoke.py",
     "scripts/mcp_smoke.py",
+    # Lane selection: ci_scope.py decides which CI lanes run (ci.yml, the pr-smoke
+    # action, smoke-test.yml) and driver_floors.py which goldens the floor lane runs.
+    "scripts/ci_scope.py",
+    "scripts/driver_floors.py",
     # The gate itself and the tests that pin its behaviour.
     "scripts/agent_review_gate.py",
     "tests/test_agent_review_gate.py",

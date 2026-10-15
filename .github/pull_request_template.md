@@ -31,7 +31,8 @@ Include a description of changes associated with your commit(s)
 <!-- A requested review, green CI or automated "approval recommended" text alone does not complete the review route.
      The advisory `agent-review` check reads only GitHub's submitted reviews of the head commit;
      this section and its checkboxes are records for maintainers, never evidence. Protected paths
-     (every workflow and action, dependabot.yml, release_smoke.py, mcp_smoke.py, the gate) need a
+     (every workflow and action, dependabot.yml, release_smoke.py, mcp_smoke.py, ci_scope.py,
+     driver_floors.py, the gate) need a
      maintainer's APPROVED review. See CONTRIBUTING.md#agent-review-evidence-gate. -->
 
 ## Reviewers

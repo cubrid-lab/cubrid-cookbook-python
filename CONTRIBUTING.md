@@ -829,7 +829,9 @@ listed in the summary but never count.
   `.github/workflows/` (including `smoke-test.yml`, which sibling repositories
   call to verify their releases) or `.github/actions/`, to
   `.github/dependabot.yml`, to the release smoke scripts `scripts/release_smoke.py`
-  and `scripts/mcp_smoke.py`, or to the gate itself (`scripts/agent_review_gate.py`,
+  and `scripts/mcp_smoke.py`, to the lane selection in `scripts/ci_scope.py`
+  (which CI lanes run) and `scripts/driver_floors.py` (which goldens the floor
+  lane runs), or to the gate itself (`scripts/agent_review_gate.py`,
   `tests/test_agent_review_gate.py`) needs a maintainer's `APPROVED` review of
   the head.
 - **Blocking findings.** A maintainer whose latest decision is
