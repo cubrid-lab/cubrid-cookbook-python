@@ -328,9 +328,17 @@ class Checker:
         """
         here = path.resolve().parent
         commands = [(line, recipe_files(command)) for line, command in parsed.code]
+        # Successive `cd`s resolve against each other (`cd templates && cd flask`),
+        # in document order; every directory reached stays a lookup base.
         bases = [here, self.root]
+        current = {here, self.root}
         for _line, (cds, _files) in commands:
-            bases += [(base / cd).resolve() for cd in cds for base in (here, self.root)]
+            for cd in cds:
+                current = {(c / cd).resolve() for c in current} | {
+                    (here / cd).resolve(),
+                    (self.root / cd).resolve(),
+                }
+                bases += sorted(current)
         found = []
         named: set[str] = set()
         for line, (_cds, files) in commands:

@@ -930,3 +930,14 @@ def test_a_missing_uvicorn_module_under_scripts_is_reported(tmp_path: Path) -> N
         "templates/flask/README.md:2: `uvicorn scripts.missing:app`: scripts/missing.py does not "
         "exist next to this file, at the repository root or in a directory it cds into"
     ]
+
+
+@pytest.mark.parametrize(
+    "readme",
+    [
+        "```bash\ncd templates && cd flask && python run.py\n```\n",
+        "```bash\ncd templates\ncd flask\npip install -r requirements.txt\n```\n",
+    ],
+)
+def test_successive_cds_resolve_against_each_other(tmp_path: Path, readme: str) -> None:
+    assert check.run(_tree(tmp_path, "# Page\n", dict(RECIPE, **{"README.md": readme}))) == []
