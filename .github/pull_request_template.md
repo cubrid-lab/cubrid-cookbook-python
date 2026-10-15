@@ -24,7 +24,7 @@ Include a description of changes associated with your commit(s)
 <!-- Record the route actually used; human contributors do not need a specific AI tool. -->
 - Development route: OpenCode + Oracle pre/post / trivial OpenCode with recorded Oracle skip / standalone Claude Code / standalone Codex / standalone ChatGPT or other agent (name it) / human (select one).
 - Trivial OpenCode exception, if used: skipped Oracle phases and reason, or not applicable.
-- Review evidence: actual Oracle or submitted GitHub review link, reviewer and reviewed head SHA, or **pending**.
+- Review evidence: actual Oracle review references, or the submitted Copilot review link or maintainer review link, reviewer and reviewed head SHA, or **pending**. For standalone agents only a Copilot or maintainer review qualifies.
 - Finding disposition: fixed commit + test / rejected with reason / deferred issue.
 - Unresolved review threads and reason, or "none" after verification.
 - Maintainer merge decision: **pending**; complete only after checking the applicable review, final code, required CI, applicable live validation and thread dispositions.

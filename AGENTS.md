@@ -60,17 +60,28 @@ or automated "approval recommended" summary is not a completed review.
 
 Trivial OpenCode typo/single-line work may omit Oracle phases 1 and 4 only with
 a recorded reason. Both Oracle reviews satisfy this tool-specific route;
-additional GitHub Copilot review is not automatically required. Existing CI,
+an additional GitHub Copilot review is not required. Existing CI,
 maintainer/repository checks and live-CUBRID rules still apply.
 
 **Standalone agents (Claude Code, Codex, ChatGPT, or other agent tools):**
 implement and test, open a PR, then **wait for a substantive submitted GitHub
-Copilot review or another person's review** before merging. A submitted
-COMMENTED review with an actual assessment counts as evidence but is not formal
-APPROVED status. Requested/pending review, a boilerplate approval suggestion,
-self-review or CI success does not qualify.
+Copilot review or a review by a maintainer**, recorded on the PR, before
+merging (maintainer decision, 2026-10-15). A maintainer is a code owner in
+`.github/CODEOWNERS` other than the PR's author. Reviews by other people, and
+reviews by AI agents other than Copilot, are welcome but do not satisfy this
+route. A submitted Copilot COMMENTED review with an actual assessment counts as
+evidence but is not formal APPROVED status. Requested/pending review, a
+boilerplate approval suggestion, self-review or CI success does not qualify.
 Validate accepted fixes at the final relevant head; leave the PR unmerged if
-the required review has not arrived.
+the required review has not arrived. No CI check enforces this today; whether
+to add one is pending a maintainer decision (#351).
+
+**Security-sensitive paths, under every route:** changes to workflows that hold
+write permissions or that sibling repositories call to verify a release
+(`smoke-test.yml`), and to the release smoke scripts they run
+(`scripts/release_smoke.py`, `scripts/mcp_smoke.py`), get stricter scrutiny.
+Their review must explicitly assess what they can write, publish or verify for
+other repositories, and a maintainer confirms that disposition before merge.
 
 **Human contributions:** follow the normal PR and review process. This route
 is not a fallback for unnamed standalone agent tools, which use the route above.
@@ -101,8 +112,9 @@ when they actually produced the work.
 
 ## Review disposition and merge evidence
 
-- Record the development route, reviewer/Oracle evidence, relevant reviewed
-  head SHA and pending/complete status in the PR.
+- Record the development route, the Oracle evidence or the Copilot or
+  maintainer review, the reviewer, the relevant reviewed head SHA and
+  pending/complete status in the PR.
 - Triage each actionable review finding as fixed (commit and focused tests),
   rejected (specific contract/reproduction reason), or deferred (linked issue).
   Do not expand a recipe's behavior merely because an AI suggested it.

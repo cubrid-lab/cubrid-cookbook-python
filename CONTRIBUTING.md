@@ -29,9 +29,12 @@ Maintainer/agent-authored PRs follow the tool-specific route in
   Oracle post-implementation review, with documented findings and validation.
   Trivial OpenCode changes may skip those Oracle phases with a recorded reason.
 - **Standalone agents (Claude Code, Codex, ChatGPT, or other agent tools):**
-  wait for a substantive submitted GitHub Copilot review or another person's
-  review after opening the PR. A pending request, green CI or automated
-  approval wording alone does not complete the review route.
+  after opening the PR, wait for a substantive submitted GitHub Copilot review
+  or a review by a maintainer (a code owner other than the PR's author),
+  recorded on the PR (maintainer decision, 2026-10-15). Other people's reviews
+  and other AI agents' reviews do not satisfy this route. A pending request,
+  green CI, self-review or automated approval wording alone does not complete
+  it.
 - **Human contributions:** normal project review, with no internal agent-tool
   installation requirement. This is not a fallback for unnamed standalone agents.
 
@@ -744,8 +747,12 @@ pinning the caller alone does not freeze those resources.
   before merge. Non-trivial OpenCode work records Oracle pre/post evidence;
   trivial OpenCode edits may omit those reviews with a recorded reason.
   Standalone Claude Code, Codex, ChatGPT and other agent tools require a
-  substantive submitted GitHub Copilot review or another person's review.
-  A pending request does not complete the route. Human contributions follow
+  substantive submitted GitHub Copilot review or a maintainer's review
+  (2026-10-15). A pending request does not complete the route. Under every
+  route, changes to workflows that hold write permissions or that sibling
+  repositories call to verify a release (`smoke-test.yml`), and to
+  `scripts/release_smoke.py` or `scripts/mcp_smoke.py`, need a review that
+  explicitly assesses them, confirmed by a maintainer. Human contributions follow
   ordinary review, and outstanding review threads need a disposition.
 - CI must pass (lint checks).
 - Examples must be tested against a live CUBRID instance.
