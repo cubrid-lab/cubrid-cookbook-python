@@ -37,20 +37,24 @@ theme:
 
 nav:
   - Home: index.md
-  - Getting Started:
-      - "New to CUBRID? Start here": first-cubrid.md
+  - Start here:
+      - "New to CUBRID? Start here (lesson 1: prepare the lab)": first-cubrid.md
       - "Lesson 2: Run your first query": first-cubrid-first-query.md
-      - FastAPI quickstart: quickstart-fastapi.md
-      - SQLAlchemy quickstart: quickstart-sqlalchemy.md
-      - Getting Started: getting-started.md
-      - Quick Start (site guide): quickstart.md
-  - Usage:
+      - "Lesson 3: Save rows and read them back": first-cubrid-save-a-row.md
+      - "Lesson 4: Undo a change with rollback": first-cubrid-rollback.md
+      - "Lesson 5: Finish safely": first-cubrid-finish.md
+  - Optional goals:
+      - "Build a small web API (FastAPI quickstart)": quickstart-fastapi.md
+      - "Use the ORM (SQLAlchemy quickstart)": quickstart-sqlalchemy.md
+  - How-to guides:
+      - "Choose a path and verify a checkout (Getting Started)": getting-started.md
+      - "Watch recorded walkthroughs (Quick Start)": quickstart.md
       - Full example catalog: catalog.md
       - Fundamentals overview: fundamentals.md
       - pycubrid recipes: fundamentals-pycubrid.md
       - SQLAlchemy recipes: fundamentals-sqlalchemy.md
       - pandas recipes: fundamentals-pandas.md
-      - Parameterized queries: fundamentals-parameterized-queries.md
+      - "Pass values safely (parameterized queries)": fundamentals-parameterized-queries.md
       - Performance patterns: performance.md
       - CUBRID quirks & pitfalls: pitfalls.md
       - Templates:
@@ -63,16 +67,24 @@ nav:
           - AI agent: template-ai-agent.md
   - Reference:
       - Support matrix: support-matrix.md
-  - Operations:
+  - Help:
       - Known issues: known-issues.md
+      - "Ask a question or report a bug": https://github.com/cubrid-lab/cubrid-cookbook-python/issues/new/choose
+      - "Report a vulnerability privately": https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/SECURITY.md
+  - 한국어:
+      - 한국어 README: README.ko.md
+      - 여기서 시작:
+          - "CUBRID가 처음이라면 (1단원: 실습 환경 준비)": ko/first-cubrid.md
+          - "2단원: 첫 쿼리 실행하기": ko/first-cubrid-first-query.md
+          - "3단원: 행 저장하고 다시 읽기": ko/first-cubrid-save-a-row.md
+          - "4단원: rollback으로 변경 되돌리기": ko/first-cubrid-rollback.md
+          - "5단원: 안전하게 마치기": ko/first-cubrid-finish.md
+      - 선택 목표:
+          - "작은 웹 API 만들기 (FastAPI 빠른 시작)": ko/quickstart-fastapi.md
+          - "ORM 쓰기 (SQLAlchemy 빠른 시작)": ko/quickstart-sqlalchemy.md
+      - 사용 방법:
+          - "경로 고르기와 체크아웃 검증 (시작하기)": ko/getting-started.md
   - Project:
-      - Translations:
-          - 한국어: README.ko.md
-          - 시작하기 (한국어): ko/getting-started.md
-          - 첫 CUBRID 튜토리얼 (한국어): ko/first-cubrid.md
-          - 2단원 첫 쿼리 실행하기 (한국어): ko/first-cubrid-first-query.md
-          - FastAPI 빠른 시작 (한국어): ko/quickstart-fastapi.md
-          - SQLAlchemy 빠른 시작 (한국어): ko/quickstart-sqlalchemy.md
       - Changelog: changelog.md
 
 markdown_extensions:

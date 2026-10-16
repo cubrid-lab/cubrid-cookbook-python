@@ -686,10 +686,11 @@ is built from the repository docs; the repository files stay the source of truth
   `make docs` on every PR (`Docs site build (strict)`).
 - `docs/internal/` (planning material such as the PRD) is excluded from the
   rendered site and its search index.
-- `docs/quickstart.md` is a hand-maintained site guide condensed from
-  `GETTING_STARTED.md`, which remains the source of truth. When a change to
-  `GETTING_STARTED.md` affects its commands or steps, update
-  `docs/quickstart.md` in the same PR.
+- `docs/quickstart.md` is a hand-maintained compatibility page (#392): its
+  headings keep old links working and point to the tutorial or to
+  `GETTING_STARTED.md`, and it holds the recorded walkthroughs. It repeats no
+  commands, so a change to `GETTING_STARTED.md` needs no copy there; update it
+  only when a heading it points to is renamed.
 
 ### Documentation structure
 
@@ -702,16 +703,40 @@ by git. Korean pages under `docs/ko/` are authored there.
 | Source | Site page | Reader and question | Decision | Before / after it |
 |---|---|---|---|---|
 | `quickstart/first-cubrid/README.md` | `first-cubrid/` | Newcomer: where do I start, and how do I prepare the lab? | The single beginner landing and lesson 1 (preparation). Steps 3 to 5 become lessons; every existing heading stays, so old links still land. | none / `first-cubrid-first-query/` |
-| `quickstart/first-cubrid/first-query.md` | `first-cubrid-first-query/` | Newcomer: how do I connect and read one row? | Lesson 2 (new; the code is `01_first_query.py`, unchanged). | lesson 1 / step 4 |
-| Steps 4 and 5 of `quickstart/first-cubrid/README.md` | `first-cubrid/#4-…`, `#5-…` | Newcomer: how do I save a row, undo a change and finish safely? | Split next into lessons 3 to 5, with the table ownership checks and recovery kept. | the previous lesson / the next lesson |
-| `GETTING_STARTED.md` | `getting-started/` | Returning user: which path (driver, ORM, MCP), how do I verify a checkout, how do I recover an old lab? | Keep; becomes a How-to page with an action label, and points newcomers to the landing. | any page |
-| `docs/quickstart.md` (authored, condensed from `GETTING_STARTED.md`) | `quickstart/` | The same questions, plus the recorded walkthroughs | Keep the URL as a compatibility landing that points to the landing and to `getting-started/`; the recorded walkthroughs stay. | any page |
+| `quickstart/first-cubrid/first-query.md` | `first-cubrid-first-query/` | Newcomer: how do I connect and read one row? | Lesson 2 (`01_first_query.py`, unchanged). | lesson 1 / lesson 3 |
+| `quickstart/first-cubrid/save-a-row.md` | `first-cubrid-save-a-row/` | Newcomer: how do I save rows and see them from another connection? | Lesson 3, split from step 4 (`02_save_and_verify.py`, unchanged). | lesson 2 / lesson 4 |
+| `quickstart/first-cubrid/rollback.md` | `first-cubrid-rollback/` | Newcomer: what does `rollback()` discard? | Lesson 4, split from step 4 (`03_rollback.py`, unchanged). | lesson 3 / lesson 5 |
+| `quickstart/first-cubrid/finish.md` | `first-cubrid-finish/` | Newcomer: how do I clean up, recover and stop the lab safely? | Lesson 5, split from step 5 (`04_cleanup.py`, unchanged), with the ownership check, recovery and `down -v` warning. | lesson 4 / the next task |
+| `GETTING_STARTED.md` | `getting-started/` | Returning user: which path (driver, ORM, MCP), how do I verify a checkout, how do I recover an old lab? | Keep; How-to guide "Choose a path and verify a checkout", with a pointer for newcomers to the tutorial. | any page |
+| `docs/quickstart.md` (authored) | `quickstart/` | Old links to the condensed copy of `GETTING_STARTED.md`; the recorded walkthroughs | Compatibility page: every old heading stays and points to the tutorial or to `getting-started/`; the recorded walkthroughs stay. How-to guide "Watch recorded walkthroughs". | any page |
 | `quickstart/5min-fastapi/README.md`, `quickstart/5min-sqlalchemy/README.md` | `quickstart-fastapi/`, `quickstart-sqlalchemy/` | User with a framework goal | Keep, labelled as optional goals after the tutorial; the #386 instructions are not changed. | the tutorial / the templates |
-| `docs/ko/first-cubrid.md`, `docs/ko/first-cubrid-first-query.md`, `docs/ko/getting-started.md`, `docs/ko/quickstart-*.md`, `docs/README.ko.md` | `ko/...` | Korean reader: the same questions | Mirror each English page and its lesson position; move from Project / Translations to a peer Korean group. | as in English |
+| `docs/ko/first-cubrid.md`, `docs/ko/first-cubrid-first-query.md`, `docs/ko/getting-started.md`, `docs/ko/quickstart-*.md`, `docs/README.ko.md` | `ko/...` | Korean reader: the same questions | Mirror each English page and its lesson position, in a peer 한국어 group with the same order (moved from Project / Translations). | as in English |
 | `README.md` | `catalog/` | Anyone: what is in this repository? | Keep; its start link already points to the landing. | — |
-| `docs/index.md` | site home | Anyone: what is this site, where do I start? | Keep; one "Start here" link to the landing. | — / the landing |
+| `docs/index.md` | site home | Anyone: what is this site, where do I start? | Keep; one "Start here" link to the landing, and the path table links `getting-started/`. | — / the landing |
 | `fundamentals/**/README.md`, `performance/`, `pitfalls/`, `templates/**` | `fundamentals*/`, `performance/`, `pitfalls/`, `template-*/` | User with a task | Keep as How-to guides. | any page |
-| `SUPPORT_MATRIX.md`, `KNOWN_ISSUES.md` | `support-matrix/`, `known-issues/` | User looking up support or a known problem | Keep in Reference and Help. | any page |
+| `SUPPORT_MATRIX.md`, `KNOWN_ISSUES.md` | `support-matrix/`, `known-issues/` | User looking up support or a known problem | Keep in Reference and Help (Help also links the issue forms and `SECURITY.md`). | any page |
+
+#### Writing a tutorial lesson
+
+Keep one beginner route: a new learning page joins the tutorial's lesson
+sequence instead of starting another "Start here" page, and a task, reference or
+recovery page links into the route instead of repeating it. Give each lesson:
+
+1. **Goal**: one or two sentences and the lesson it follows.
+2. **Before you start**: what earlier lessons must have produced (a printed
+   checkpoint, a table, an active virtual environment); never an open Python
+   session.
+3. **The program and the command**: a named file in the repository and the
+   command that runs it.
+4. **Checkpoint**: the exact output, backed by the script's `expected/` golden.
+5. **Explanation**: what the new calls did, with the warning that applies (for
+   example, local-only credentials) beside it.
+6. **Next step**: a link to the next lesson.
+
+Put readiness, ownership and cleanup mechanics in the preparation or finish
+lesson, keep their safety checks visible, and keep the Korean page in the same
+position with the same code and output. Lesson sources live next to their
+scripts and are staged; the Korean pages link the English page by its site URL.
 
 ### Documentation checks
 

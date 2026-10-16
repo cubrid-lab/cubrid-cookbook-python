@@ -2,6 +2,8 @@
 
 Three paths, from a 5-minute first query to a natural-language MCP session. Everything installs from PyPI — no git checkouts, no C compiler.
 
+New to CUBRID? Start with the beginner tutorial, [your first CUBRID database from Python](quickstart/first-cubrid/README.md): it explains the lab and the connection settings and goes one step at a time. This page is for choosing a path, verifying a full checkout and recovering an older lab.
+
 ## 0. Start CUBRID (all paths)
 
 ```bash

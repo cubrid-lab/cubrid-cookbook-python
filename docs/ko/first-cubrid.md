@@ -11,12 +11,13 @@ CUBRID는 써 본 적이 없는 분을 위한 튜토리얼입니다. 내 컴퓨�
 준비물을 설치한 뒤라면 15분 정도 걸립니다. 처음에는 데이터베이스 이미지를
 내려받느라 인터넷 속도에 따라 더 걸릴 수 있습니다.
 
-튜토리얼은 다음 순서로 진행합니다.
+튜토리얼은 다섯 개의 짧은 단원으로, 다음 순서로 진행합니다.
 
 1. 이 페이지의 "1. 무엇을 설치하나요"와 "2. 실습 환경 준비"
 2. [첫 쿼리 실행하기](first-cubrid-first-query.md)
-3. 이 페이지의 "4. 데이터 저장, 커밋, 다른 연결에서 확인"
-4. 이 페이지의 "5. 마무리, 복구, 다시 실행"
+3. [행 저장하고 다시 읽기](first-cubrid-save-a-row.md)
+4. [rollback으로 변경 되돌리기](first-cubrid-rollback.md)
+5. [안전하게 마치기](first-cubrid-finish.md): 정리, 복구, 실습 환경 멈추기
 
 ## 1. 무엇을 설치하나요
 
@@ -100,115 +101,17 @@ CUBRID 컨테이너)이 그 포트를 쓰고 있는 것이니 그 프로그램�
 
 이 단계는 별도 단원에서 다룹니다. [2단원: 첫 쿼리 실행하기](first-cubrid-first-query.md)에서
 `01_first_query.py`를 실행해 출력을 확인하고, 그 프로그램이 쓰는 연결과 커서를 설명합니다.
-`Connected to database: testdb`가 출력되면 이 페이지의 4단계로 돌아오세요.
 
 ## 4. 데이터 저장, 커밋, 다른 연결에서 확인
 
-[`02_save_and_verify.py`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/quickstart/first-cubrid/02_save_and_verify.py)는
-자기 전용 테이블 `cookbook_first_cubrid_notes`를 만들고 행 두 개를 저장합니다. 테이블에
-주석(comment)으로 표시를 남겨서, 이후 단계가 이 테이블만 다루게 합니다. 같은 이름의
-테이블이 이미 있으면 아무것도 바꾸지 않고 멈춥니다.
-
-핵심 부분:
-
-```python
-cursor.execute(
-    "CREATE TABLE cookbook_first_cubrid_notes ("
-    " id INT AUTO_INCREMENT PRIMARY KEY,"
-    " note VARCHAR(100) NOT NULL"
-    ") COMMENT = 'created by the cubrid-cookbook first-cubrid tutorial'"
-)
-for note in ("My first row", "My second row"):
-    cursor.execute("INSERT INTO cookbook_first_cubrid_notes (note) VALUES (?)", (note,))
-conn.commit()
-```
-
-- `?`는 **파라미터 자리 표시자**입니다. 값은 Python 인자로 따로 넘기고, pycubrid가
-  각 값을 올바르게 이스케이프한 값으로 문장에 넣으므로 값이 문장의 뜻을 바꿀 수 없습니다.
-  값을 SQL 문자열에 직접 붙여 넣지 말고 항상 이렇게 넘기세요. (pycubrid가 값을 바인딩하는 방식:
-  [파라미터화된 쿼리](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/fundamentals/parameterized-queries/README.md))
-- 변경은 **`commit()`**을 호출해야 확정됩니다. pycubrid는 자동 커밋이 꺼진 채로
-  시작하므로, 마지막 커밋 이후의 모든 변경이 하나의 **트랜잭션**이 됩니다.
-  `commit()`은 새 테이블과 두 행을 영구히 저장하고 다른 연결에서도 보이게 합니다.
-
-커밋한 뒤 스크립트는 다른 프로그램처럼 **두 번째 독립 연결**을 열어 테이블을 읽습니다.
-
-```bash
-python quickstart/first-cubrid/02_save_and_verify.py
-```
-
-**확인.** 예상 출력:
-
-```text
-Created cookbook_first_cubrid_notes and saved 2 rows.
-A second connection reads:
-  1: My first row
-  2: My second row
-```
-
-id `1`과 `2`는 새 테이블의 `AUTO_INCREMENT`가 매긴 값입니다.
-
-**rollback으로 변경 되돌리기.**
-[`03_rollback.py`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/quickstart/first-cubrid/03_rollback.py)는
-행을 하나 더 넣고 열린 트랜잭션 안에서 보여 준 뒤 **`rollback()`**을 호출합니다.
-`rollback()`은 마지막 커밋 이후의 모든 변경을 버립니다. 저장해 둔 두 행은 남습니다.
-
-```bash
-python quickstart/first-cubrid/03_rollback.py
-```
-
-**확인.** 예상 출력:
-
-```text
-Rows before the change: 2
-Rows inside the open transaction: 3
-Rows after rollback: 2
-```
-
-각 스크립트는 끝나기 전에 연결을 닫습니다. 데이터를 읽기만 한 트랜잭션도 열려
-있는 동안에는 잠금을 잡고 있어서, 다른 연결의 `DROP TABLE`이 그 잠금을 기다리게 됩니다.
+이 단계는 이제 두 개의 단원입니다. [3단원: 행 저장하고 다시 읽기](first-cubrid-save-a-row.md)에서
+`02_save_and_verify.py`를, [4단원: rollback으로 변경 되돌리기](first-cubrid-rollback.md)에서
+`03_rollback.py`를 실행합니다.
 
 ## 5. 마무리, 복구, 다시 실행
 
-**튜토리얼 테이블 정리.**
-[`04_cleanup.py`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/quickstart/first-cubrid/04_cleanup.py)는
-이 튜토리얼이 만든 경우에만 `cookbook_first_cubrid_notes`를 지웁니다. 그래서 언제든, 몇 번을
-실행해도 안전합니다.
-
-```bash
-python quickstart/first-cubrid/04_cleanup.py
-```
-
-**확인.** 예상 출력:
-
-```text
-Dropped cookbook_first_cubrid_notes.
-```
-
-한 번 더 실행하면 `Nothing to clean up: cookbook_first_cubrid_notes does not exist.`가 출력됩니다.
-
-**다시 실행하기.** 정리한 뒤 3단계부터 다시 시작하세요. 데이터베이스는 그동안 계속 실행 중입니다.
-
-**단계가 중간에 끊겼다면** (Ctrl-C를 눌렀거나 터미널이 닫혔다면):
-
-- 커밋 전에 끊긴 단계는 아무것도 저장하지 않았습니다. 그 단계를 다시 실행하세요.
-- 4단계가 `cookbook_first_cubrid_notes is left over from an earlier run.`을 출력하면
-  `04_cleanup.py`를 실행한 뒤 4단계를 다시 실행하세요.
-- `A table named cookbook_first_cubrid_notes already exists and was not created by this tutorial.`이
-  출력되면 그 테이블은 다른 사람의 것입니다. 튜토리얼은 아무것도 바꾸지 않고, 그 테이블을 지우지도 않습니다.
-- 데이터베이스 자체가 멈췄다면 `CUBRID_VERSION=11.4 docker compose up -d`와
-  `python scripts/wait_for_cubrid.py`를 다시 실행하세요.
-
-**실습 환경 멈추기.** 얼마나 지울지 고르세요. `cubrid-cookbook-python` 폴더에서 실행합니다.
-
-| 명령 | 컨테이너 | 데이터 |
-|------|----------|--------|
-| `docker compose stop` | 멈춤. `docker compose start`로 다시 시작 | 남음 |
-| `docker compose down` | 삭제 | 실습 환경의 Docker 볼륨에 남음. 다음 `CUBRID_VERSION=11.4 docker compose up -d`에서 되살아남 |
-| `docker compose down -v` | 삭제 | `testdb`까지 포함해 **삭제** |
-
-`docker compose down -v`는 `docker-compose.yml`에 이름이 적힌 이 실습 환경의 볼륨만
-지웁니다. 다른 컨테이너나 볼륨은 건드리지 않습니다. Python 환경에서 나오려면 `deactivate`를 실행하세요.
+튜토리얼 테이블 정리, 끊긴 실행의 복구, 실습 환경 멈추기는
+[5단원: 안전하게 마치기](first-cubrid-finish.md)에 있습니다.
 
 ## 다음 단계
 

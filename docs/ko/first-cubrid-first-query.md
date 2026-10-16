@@ -96,5 +96,4 @@ Connected to database: testdb
 
 ## 다음 단계
 
-데이터를 저장하고 커밋한 뒤 다른 연결에서 확인합니다.
-[첫 페이지](first-cubrid.md)의 "4. 데이터 저장, 커밋, 다른 연결에서 확인"으로 이어 가세요.
+행을 저장하고 커밋한 뒤 다른 연결에서 읽습니다. [3단원](first-cubrid-save-a-row.md)으로 이어 가세요.

@@ -98,5 +98,5 @@ has no password. Never use them for a shared or remote server.
 
 ## Next step
 
-Save data, commit it and check it from another connection:
-[step 4 of the tutorial](README.md#4-save-data-commit-it-and-check-it-from-another-connection).
+Save rows, commit them and read them from another connection:
+[lesson 3](save-a-row.md).

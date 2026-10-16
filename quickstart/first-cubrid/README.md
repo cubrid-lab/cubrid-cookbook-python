@@ -11,13 +11,14 @@ download of the database image takes longer on a slow connection.
 
 > Korean: [첫 CUBRID 튜토리얼](../../docs/ko/first-cubrid.md)
 
-The tutorial goes in this order:
+The tutorial has five short lessons, in this order:
 
 1. [What you are installing](#1-what-you-are-installing) and
    [Prepare the lab](#2-prepare-the-lab), on this page.
 2. [Run your first query](first-query.md).
-3. [Save data, commit it and check it from another connection](#4-save-data-commit-it-and-check-it-from-another-connection).
-4. [Finish, recover and run it again](#5-finish-recover-and-run-it-again).
+3. [Save rows and read them back](save-a-row.md).
+4. [Undo a change with rollback](rollback.md).
+5. [Finish safely](finish.md): clean up, recover and stop the lab.
 
 ## 1. What you are installing
 
@@ -104,123 +105,18 @@ Next: [run your first query](first-query.md).
 
 This step has its own lesson: [Lesson 2: Run your first query](first-query.md)
 runs `01_first_query.py`, shows its output and explains the connection and
-cursor it uses. Come back here for step 4 when it prints
-`Connected to database: testdb`.
+cursor it uses.
 
 ## 4. Save data, commit it and check it from another connection
 
-[`02_save_and_verify.py`](02_save_and_verify.py) creates a table of its own,
-`cookbook_first_cubrid_notes`, and saves two rows. It marks the table with a comment,
-so later steps only ever touch this table. If a table with that name already
-exists, it stops without changing anything.
-
-The important lines:
-
-```python
-cursor.execute(
-    "CREATE TABLE cookbook_first_cubrid_notes ("
-    " id INT AUTO_INCREMENT PRIMARY KEY,"
-    " note VARCHAR(100) NOT NULL"
-    ") COMMENT = 'created by the cubrid-cookbook first-cubrid tutorial'"
-)
-for note in ("My first row", "My second row"):
-    cursor.execute("INSERT INTO cookbook_first_cubrid_notes (note) VALUES (?)", (note,))
-conn.commit()
-```
-
-- The `?` is a **parameter placeholder**. You pass the values as a separate
-  Python argument, and pycubrid puts each one into the statement as a properly
-  escaped value, so a value can never change the meaning of the statement.
-  Always pass values this way instead of pasting them into the SQL text
-  yourself. (How pycubrid binds values: [parameterized queries](../../fundamentals/parameterized-queries/README.md).)
-- Changes are not permanent until you call **`commit()`**. pycubrid starts with
-  autocommit off: everything since the last commit forms one **transaction**.
-  `commit()` makes the new table and both rows durable and visible to other
-  connections.
-
-After the commit, the script opens a **second, independent connection** and
-reads the table, the way another program would.
-
-```bash
-python quickstart/first-cubrid/02_save_and_verify.py
-```
-
-**Checkpoint.** Expected output:
-
-```text
-Created cookbook_first_cubrid_notes and saved 2 rows.
-A second connection reads:
-  1: My first row
-  2: My second row
-```
-
-The ids `1` and `2` come from `AUTO_INCREMENT` on a new table.
-
-**Undo a change with rollback.** [`03_rollback.py`](03_rollback.py) inserts
-one more row, shows it inside its open transaction, then calls
-**`rollback()`**, which discards everything since the last commit. Your two
-saved rows stay.
-
-```bash
-python quickstart/first-cubrid/03_rollback.py
-```
-
-**Checkpoint.** Expected output:
-
-```text
-Rows before the change: 2
-Rows inside the open transaction: 3
-Rows after rollback: 2
-```
-
-Each script closes its connections before it exits. An open transaction,
-even one that only read data, holds locks: a later `DROP TABLE` from another
-connection would wait for it.
+This step is now two lessons: [Lesson 3: Save rows and read them back](save-a-row.md)
+runs `02_save_and_verify.py`, and [Lesson 4: Undo a change with rollback](rollback.md)
+runs `03_rollback.py`.
 
 ## 5. Finish, recover and run it again
 
-**Clean up the tutorial's table.** [`04_cleanup.py`](04_cleanup.py) drops
-`cookbook_first_cubrid_notes` only if this tutorial created it, so it is safe to run at
-any time, as often as you like.
-
-```bash
-python quickstart/first-cubrid/04_cleanup.py
-```
-
-**Checkpoint.** Expected output:
-
-```text
-Dropped cookbook_first_cubrid_notes.
-```
-
-Run it again and it prints `Nothing to clean up: cookbook_first_cubrid_notes does not exist.`
-
-**Run the tutorial again.** After the cleanup, start again at step 3. The
-database keeps running between runs.
-
-**If a step was interrupted** (you pressed Ctrl-C, or the terminal closed):
-
-- Interrupted before its commit, a step saved nothing; run it again.
-- If step 4 prints `cookbook_first_cubrid_notes is left over from an earlier run.`, run
-  `04_cleanup.py`, then step 4 again.
-- If it prints `A table named cookbook_first_cubrid_notes already exists and was not
-  created by this tutorial.`, that table belongs to someone else; the tutorial
-  changes nothing and will not drop it.
-- If the database itself stopped, run `CUBRID_VERSION=11.4 docker compose up -d`
-  and `python scripts/wait_for_cubrid.py` again.
-
-**Stop the lab.** Choose how much to remove; run these from
-`cubrid-cookbook-python`:
-
-| Command | The container | Your data |
-|---------|---------------|-----------|
-| `docker compose stop` | stopped; `docker compose start` resumes it | kept |
-| `docker compose down` | removed | kept in the lab's Docker volumes; the next `CUBRID_VERSION=11.4 docker compose up -d` brings it back |
-| `docker compose down -v` | removed | **deleted**, including `testdb` itself |
-
-`docker compose down -v` deletes only this lab's volumes, the ones
-`docker-compose.yml` names. It does not touch other containers or volumes. To
-leave the Python environment, run `deactivate`.
+Cleaning up the tutorial's table, recovering from an interrupted run and
+stopping the lab are in [Lesson 5: Finish safely](finish.md).
 
 ## What next?
 

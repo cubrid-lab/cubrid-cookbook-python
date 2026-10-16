@@ -6,15 +6,15 @@ Runnable Python examples and production-shaped application templates for CUBRID 
 - **Every golden-backed recipe is CI-verified** — `make verify` compares exact stdout against `expected/*.expected` files on a **CUBRID 11.2 + 11.4 job matrix** for every `main` push, nightly and release verification; pull requests check the examples they touch on 11.4
 - **6 application templates**: FastAPI service, Flask app, Django app, Streamlit dashboard, Celery async worker, pandas batch ETL — the dashboard is a one-command `docker compose up` demo
 
-**New to CUBRID? Start here:** [your first CUBRID database from Python](first-cubrid.md), a guided tutorial from a local practice database to `commit`, `rollback` and cleanup.
+**New to CUBRID? Start here:** [your first CUBRID database from Python](first-cubrid.md), five short lessons from a local practice database to a first query, `commit`, `rollback` and a safe clean-up. The paths below are for readers who already know what they want to build; the [Help](known-issues.md) pages cover known problems.
 
 ## The three paths
 
 | Path | Installs | Start |
 |------|----------|-------|
-| Driver — first query in 5 minutes | `pip install pycubrid` | [Quick Start](quickstart.md) |
-| ORM & application templates | `pip install 'sqlalchemy-cubrid[pycubrid]'` | [Quick Start](quickstart.md#2-orm-and-application-templates-sqlalchemy-cubrid) |
-| Natural language over the database | `uvx cubrid-mcp-server` | [Quick Start](quickstart.md#3-natural-language-over-the-database-cubrid-mcp-server) |
+| Driver — first query in 5 minutes | `pip install pycubrid` | [Getting Started](getting-started.md#1-five-minute-first-query-pycubrid) |
+| ORM & application templates | `pip install 'sqlalchemy-cubrid[pycubrid]'` | [Getting Started](getting-started.md#2-orm-and-application-templates-sqlalchemy-cubrid) |
+| Natural language over the database | `uvx cubrid-mcp-server` | [Getting Started](getting-started.md#3-natural-language-over-the-database-cubrid-mcp-server) |
 
 ## What's inside
 
