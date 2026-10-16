@@ -8,6 +8,7 @@ only by ``scripts/agent_eval.py run``.
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import re
 from pathlib import Path
@@ -103,4 +104,35 @@ def test_message_helpers_use_the_declared_columns():
         for match in (insert, select):
             if match:
                 used |= {c.strip().strip('"[]`').lower() for c in match.group(1).split(",")}
+    assert used and used <= declared, sorted(used - declared)
+
+
+def test_every_agent_messages_query_names_declared_columns():
+    """All SQL text in the recipe, ``main()`` included: column lists and predicates."""
+    path = ROOT / "templates" / "ai-agent" / "01_agent_state.py"
+    declared = set(_tables(_module("01_agent_state.py"))["agent_messages"])
+    texts = [
+        node.value
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8")))
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+    ]
+    used = set()
+    for sql in texts:
+        if "agent_messages" not in sql or re.search(r"CREATE\s+TABLE", sql, re.I):
+            continue
+        for pattern in (
+            r"INSERT\s+INTO\s+agent_messages\s*\(([^)]*)\)",
+            r"SELECT\s+(.*?)\s+FROM\s+agent_messages",
+        ):
+            for match in re.finditer(pattern, sql, re.I | re.S):
+                used |= {c.strip().strip('"[]`').lower() for c in match.group(1).split(",")}
+        where = re.search(r"\bWHERE\b(.*)", sql, re.I | re.S)
+        if where:
+            used |= {
+                m.group(1).lower()
+                for m in re.finditer(
+                    r"\b(\w+)\s*(?:=|<>|!=|<=|>=|<|>|\bLIKE\b|\bIN\b)", where.group(1), re.I
+                )
+            }
+    used.discard("")
     assert used and used <= declared, sorted(used - declared)

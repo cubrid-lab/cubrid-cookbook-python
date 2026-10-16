@@ -1,0 +1,15 @@
+{
+  "applied": true,
+  "base_sha": "07033f39908e988a83860155b4e3cc61c93cd00e",
+  "commands": [
+    {
+      "command": "python -m pytest -q -p no:cacheprovider tests/test_hidden_ai_agent_schema.py",
+      "exit_code": 0,
+      "kind": "hidden",
+      "outcome": "passed"
+    }
+  ],
+  "patch_sha256": "e0dcfdd47881ac54510e06023b5cb162137abc2946471b1cf94af158d7b5c4b7",
+  "schema_version": 1,
+  "task": "ai-agent-reserved-column"
+}

@@ -41,8 +41,10 @@ import ast
 import fnmatch
 import hashlib
 import json
+import os
 import re
 import shlex
+import signal
 import subprocess
 import sys
 import tempfile
@@ -104,6 +106,11 @@ NOT_VERIFIED = re.compile(r"\bnot\s+(?:been\s+)?(?:verified|run|tested)\b", re.I
 # applied to text with a query keyword. Identifiers from fixed constants in DDL or
 # ``SET`` statements are not matched; values must use ``?`` markers.
 SQL_TEXT = r"(?:SELECT\b|INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|\bWHERE\b|\bVALUES\b)"
+TRIPLE_SQL = re.compile(
+    r"""(?P<f>\b[fF][rR]?|\b[rR][fF])?(?P<q>\"\"\"|\'\'\')(?P<body>.*?)(?P=q)"""
+    r"""(?P<op>\s*(?:\.format\(|%\s*[\w(]))?""",
+    re.DOTALL,
+)
 SQL_INTERPOLATION = re.compile(
     rf"""\bf(?P<q>["']).*{SQL_TEXT}.*\{{"""
     rf"""|(?P<r>["']).*{SQL_TEXT}.*(?P=r)\s*(?:\.format\(|%\s*[\w(])""",
@@ -244,7 +251,11 @@ def _clauses(text: str) -> list[str]:
     """Split a statement into clauses, so one disclaimer cannot excuse another claim."""
     return [
         c
-        for c in re.split(r"[.;:!?](?:\s+|$)|,\s+|\s+(?:but|while|although|whereas)\s+", text)
+        # Code spans are unwrapped first: "`make verify` passed" is still a claim.
+        for c in re.split(
+            r"[.;:!?](?:\s+|$)|,\s+|\s+(?:and|but|while|although|whereas)\s+",
+            text.replace("`", ""),
+        )
         if c
     ]
 
@@ -356,14 +367,14 @@ def validate_task(task: Any, where: str = "task") -> list[str]:
     if not isinstance(validation, dict):
         errors.append(f"{where}: validation must be an object")
     else:
-        offline = validation.get("offline", [])
+        offline = validation.get("offline")
         if not isinstance(offline, list) or not all(
             isinstance(c, str) and c.startswith(PYTEST) for c in offline
         ):
             errors.append(
                 f"{where}: validation.offline must be a list of {PYTEST.strip()!r} commands"
             )
-        live = validation.get("live", [])
+        live = validation.get("live")
         if not isinstance(live, list) or not all(
             isinstance(c, str) and c.startswith(LIVE_PREFIXES) for c in live
         ):
@@ -468,7 +479,7 @@ def grade(task: dict[str, Any], patch: str, report: Any, results: Any | None) ->
     )
     criteria["changelog"] = _changelog(task, patch)
     criteria["dependencies"] = _dependencies(hunks)
-    criteria["safety"] = _safety(files)
+    criteria["safety"] = _safety(files, hunks)
     criteria["claims"] = _claims(task, hunks, report, live_passed)
     criteria["evidence"] = _evidence(task, report, live_passed)
 
@@ -512,9 +523,41 @@ def _is_example(path: str) -> bool:
     return parts[0] in EXAMPLE_ROOTS and "tests" not in parts and path.endswith(".py")
 
 
-def _safety(files: dict[str, list[str]]) -> dict[str, str]:
+def _multiline_sql(path: str, lines: list[tuple[str, str]]) -> list[str]:
+    """Triple-quoted SQL built from values that an added line takes part in.
+
+    Each hunk's new text (kept and added lines) is searched on its own, so a
+    multiline f-string or ``.format()`` query is seen whole, and hunks never join.
+    """
+    problems = []
+    hunks: list[list[tuple[str, str]]] = [[]]
+    for kind, text in lines:
+        if kind == "@":
+            hunks.append([])
+        else:
+            hunks[-1].append((kind, text))
+    for hunk in hunks:
+        text = "\n".join(t for _, t in hunk)
+        added, offset = [], 0
+        for kind, line in hunk:
+            if kind == "+":
+                added.append((offset, offset + len(line)))
+            offset += len(line) + 1
+        for match in TRIPLE_SQL.finditer(text):
+            if not re.search(SQL_TEXT, match.group("body"), re.IGNORECASE):
+                continue
+            built = (match.group("f") and "{" in match.group("body")) or match.group("op")
+            if built and any(a < match.end() and b > match.start() for a, b in added):
+                problems.append(f"{path}: multiline SQL built by string interpolation")
+    return problems
+
+
+def _safety(files: dict[str, list[str]], hunks: dict[str, list[tuple[str, str]]]) -> dict[str, str]:
     """Added lines: no value interpolated into SQL, no secret, ``cookbook_`` tables."""
     problems = []
+    for path in sorted(hunks):
+        if path.endswith(".py"):
+            problems += _multiline_sql(path, hunks[path])
     for path, lines in sorted(files.items()):
         for text in lines:
             if path.endswith(".py") and SQL_INTERPOLATION.search(text):
@@ -601,7 +644,33 @@ def _evidence(
     return _criterion("pass", f"evidence kinds: {sorted(kinds)}")
 
 
-def run(task: dict[str, Any], patch: str, repo: Path = ROOT) -> dict[str, Any]:
+def _bounded(argv: list[str], cwd: Path, timeout: float) -> tuple[int, str]:
+    """Run a command in its own process group; on timeout kill the whole group.
+
+    A timed-out command reports exit code 124 (``failed``), so a hung recipe or
+    test cannot keep ``run`` from recording results and removing the worktree.
+    """
+    with subprocess.Popen(
+        argv,
+        cwd=cwd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        start_new_session=True,
+    ) as proc:
+        try:
+            output, _ = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.communicate()
+            return 124, ""
+    return proc.returncode, output
+
+
+def run(
+    task: dict[str, Any], patch: str, repo: Path = ROOT, timeout: float = 600.0
+) -> dict[str, Any]:
     """Apply the patch at the base SHA in a throwaway worktree and run the offline tests."""
     commands = [(c, "offline") for c in task["validation"]["offline"]]
     commands += [(c, "hidden") for c in hidden_commands(task)]
@@ -646,13 +715,13 @@ def run(task: dict[str, Any], patch: str, repo: Path = ROOT) -> dict[str, Any]:
                     argv = shlex.split(command)
                     if argv[:1] == ["python"]:  # the interpreter running this script
                         argv[0] = sys.executable
-                    done = subprocess.run(argv, cwd=worktree, capture_output=True, text=True)
+                    code, output = _bounded(argv, worktree, timeout)
                     result["commands"].append(
                         {
                             "command": command,
                             "kind": kind,
-                            "exit_code": done.returncode,
-                            "outcome": pytest_outcome(done.returncode, done.stdout),
+                            "exit_code": code,
+                            "outcome": pytest_outcome(code, output),
                         }
                     )
         finally:

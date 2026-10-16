@@ -1,0 +1,7 @@
+{
+  "criteria": {
+    "safety": "fail",
+    "scope": "pass"
+  },
+  "verdict": "fail"
+}
