@@ -27,11 +27,21 @@ Usage::
     python scripts/agent_eval.py check
     python scripts/agent_eval.py run --task ID --patch P --output J
     python scripts/agent_eval.py grade --task ID --patch P --report R [--results J]
+    python scripts/agent_eval.py run --task ID --patch P --output J --live [--cubrid-version V]
+    python scripts/agent_eval.py prompt --task ID
+    python scripts/agent_eval.py record --task ID --patch P --report R [--results J] \\
+        --prompt-file F --agent A --model M [--findings F] [--exclude REASON] --output O
+    python scripts/agent_eval.py summarize RUN.json [RUN.json ...]
 
 ``run`` is the local dry run: it checks out the task's base SHA in a temporary
 ``git worktree``, applies the patch, copies the hidden tests into its ``tests/``
 directory, runs the offline and hidden commands, records each pytest outcome and
-removes the worktree. It needs the base SHA in the local clone.
+removes the worktree. It needs the base SHA in the local clone. ``run --live``
+also runs the task's live checks through the worktree's ``make up`` /
+``make verify`` / ``make clean`` and records the CUBRID image and server version,
+the current ``scripts/ci_scope.py`` selection and the exact commands. ``prompt``,
+``record`` and ``summarize`` support manual agent runs (see the README); nothing
+here starts an agent.
 """
 
 from __future__ import annotations
@@ -41,6 +51,7 @@ import ast
 import fnmatch
 import hashlib
 import json
+import math
 import os
 import re
 import shlex
@@ -91,6 +102,11 @@ OUTCOMES = ("passed", "skipped", "failed")
 # Directories whose Python files are user-facing examples (tests/ excluded).
 EXAMPLE_ROOTS = ("quickstart", "migration", "templates", "performance", "fundamentals", "pitfalls")
 PREFIX = "cookbook_"
+# The live path: the CUBRID PR CI runs on, the Compose container the Makefile
+# names, and a per-step limit so a hung server or recipe cannot stall a run.
+DEFAULT_CUBRID = "11.4"
+CONTAINER = "cubrid-cookbook"
+LIVE_TIMEOUT = 900.0
 
 # A statement that claims live verification. Matched case-insensitively, clause by
 # clause, in the report's statements and in Markdown paragraphs the patch adds.
@@ -100,6 +116,9 @@ LIVE_CLAIM = re.compile(
     r"|\b(?:make\s+verify|goldens?|live\s+(?:CUBRID\s+)?(?:tests?|suites?|run))\s+"
     r"(?:passe[sd]|succeeded|(?:is|are)\s+green)\b",
     re.IGNORECASE,
+)
+SUCCESS_WORD = re.compile(
+    r"\b(?:passe[sd]|verified|tested|confirmed|works?|ran|succeeded|green)\b", re.IGNORECASE
 )
 NOT_VERIFIED = re.compile(r"\bnot\s+(?:been\s+)?(?:verified|run|tested)\b", re.IGNORECASE)
 # Added SQL that builds a query from values: an f-string, ``.format()`` or ``%``
@@ -485,7 +504,8 @@ def grade(task: dict[str, Any], patch: str, report: Any, results: Any | None) ->
     criteria["changelog"] = _changelog(task, patch)
     criteria["dependencies"] = _dependencies(hunks)
     criteria["safety"] = _safety(files, hunks)
-    criteria["claims"] = _claims(task, hunks, report, live_passed)
+    live_info = results.get("live") if same_patch and results is not None else None
+    criteria["claims"] = _claims(task, hunks, report, live_passed, live_info)
     criteria["evidence"] = _evidence(task, report, live_passed)
 
     statuses = {c["status"] for c in criteria.values()}
@@ -507,6 +527,8 @@ def _check_results(results: Any) -> None:
             raise EvalError(f"results.json needs a string {key!r}")
     if not isinstance(results.get("applied"), bool):
         raise EvalError("results.json needs a boolean 'applied'")
+    if "live" in results and not isinstance(results["live"], dict):
+        raise EvalError("results.json 'live' must be an object")
     for entry in results["commands"]:
         if (
             not isinstance(entry, dict)
@@ -627,9 +649,26 @@ def _claims(
     files: dict[str, list[tuple[str, str]]],
     report: dict[str, Any],
     live_passed: set[str],
+    live: Any = None,
 ) -> dict[str, str]:
     statements = report.get("statements", [])
     problems = []
+    if isinstance(live, dict) and live.get("version_mismatch"):
+        # The run used another image than requested: a live claim may name only
+        # the version that ran.
+        wanted = str(live.get("requested_cubrid_version"))
+        named = re.compile(rf"(?<![\d.]){re.escape(wanted)}(?![\d])")
+        for text in statements + _added_paragraphs(files):
+            for clause in _clauses(text):
+                if (
+                    named.search(clause)
+                    and SUCCESS_WORD.search(clause)
+                    and not NOT_VERIFIED.search(clause)
+                ):
+                    problems.append(
+                        f"claims CUBRID {wanted}, but the live run used {live.get('image')}:"
+                        f" {clause.strip()!r}"
+                    )
     if not live_passed:
         # Each clause on its own: "make verify passed. Suites were not run." still
         # claims a live result in its first sentence.
@@ -682,7 +721,9 @@ def _evidence(
     return _criterion("pass", f"evidence kinds: {sorted(kinds)}")
 
 
-def _bounded(argv: list[str], cwd: Path, timeout: float) -> tuple[int, str]:
+def _bounded(
+    argv: list[str], cwd: Path, timeout: float, env: dict[str, str] | None = None
+) -> tuple[int, str]:
     """Run a command in its own process group; on timeout kill the whole group.
 
     A timed-out command reports exit code 124 (``failed``), so a hung recipe or
@@ -691,6 +732,7 @@ def _bounded(argv: list[str], cwd: Path, timeout: float) -> tuple[int, str]:
     with subprocess.Popen(
         argv,
         cwd=cwd,
+        env=env,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
@@ -707,9 +749,20 @@ def _bounded(argv: list[str], cwd: Path, timeout: float) -> tuple[int, str]:
 
 
 def run(
-    task: dict[str, Any], patch: str, repo: Path = ROOT, timeout: float = 600.0
+    task: dict[str, Any],
+    patch: str,
+    repo: Path = ROOT,
+    live: bool = False,
+    cubrid_version: str = DEFAULT_CUBRID,
+    timeout: float = LIVE_TIMEOUT,
+    offline_timeout: float = 600.0,
 ) -> dict[str, Any]:
-    """Apply the patch at the base SHA in a throwaway worktree and run the offline tests."""
+    """Apply the patch at the base SHA in a throwaway worktree and run its tests.
+
+    The offline and hidden tests always run. With ``live`` the task's live checks
+    also run, through the worktree's own ``make up`` / ``make verify`` /
+    ``make clean`` (see ``_live``).
+    """
     commands = [(c, "offline") for c in task["validation"]["offline"]]
     commands += [(c, "hidden") for c in hidden_commands(task)]
     result: dict[str, Any] = {
@@ -753,7 +806,7 @@ def run(
                     argv = shlex.split(command)
                     if argv[:1] == ["python"]:  # the interpreter running this script
                         argv[0] = sys.executable
-                    code, output = _bounded(argv, worktree, timeout)
+                    code, output = _bounded(argv, worktree, offline_timeout)
                     result["commands"].append(
                         {
                             "command": command,
@@ -762,12 +815,349 @@ def run(
                             "outcome": pytest_outcome(code, output),
                         }
                     )
+                if live:
+                    result["live"] = _live(
+                        task, patch, worktree, result["commands"], cubrid_version, timeout
+                    )
         finally:
             subprocess.run(
                 ["git", "-C", str(repo), "worktree", "remove", "--force", str(worktree)],
                 capture_output=True,
             )
     return result
+
+
+SEVERITIES = ("critical", "major", "minor", "info")
+# Optional run metrics: elapsed time, the time limit the agent ran under, and how
+# many review rounds the change needed before it was acceptable (review rework).
+METRICS = ("wall_clock_seconds", "timeout_seconds", "rework_rounds")
+
+
+def _metric(value: Any) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and value >= 0
+    )
+
+
+def task_revision(task_id: str, root: Path = EVALS) -> str:
+    """SHA-256 of the task manifest bytes: which revision of the task a run used."""
+    return hashlib.sha256((root / "tasks" / task_id / "task.json").read_bytes()).hexdigest()
+
+
+def prompt(task: dict[str, Any]) -> str:
+    """The task statement given to an agent in a manual run.
+
+    It leaves out the grading key (fix commit, allowed files, docs decision,
+    evidence and expected result): an agent that reads the original fix measures
+    recall, not the change it would make. It names the issue, which a contributor
+    would have and a CHANGELOG entry cites, and spells out the report format,
+    because the base SHA predates ``agent-evals/``.
+    """
+    lines = [
+        f"# {task['title']}",
+        "",
+        f"Repository: cubrid-lab/cubrid-cookbook-python at {task['base_sha']} (issue {task['issue']}).",
+        f"Recipe: {task['recipe']}",
+        "",
+        task["problem"],
+        "",
+        "Non-goals:",
+        *(f"- {goal}" for goal in task["non_goals"]),
+        "",
+        "Offline validation (no database needed):",
+        *(f"- `{command}`" for command in task["validation"]["offline"]),
+    ]
+    if task["validation"].get("live"):
+        lines += [
+            "",
+            "Live validation (needs a CUBRID server; report it as not run if you have none):",
+            *(f"- `{command}`" for command in task["validation"]["live"]),
+        ]
+    lines += [
+        "",
+        "Follow AGENTS.md. Deliver the change as `git diff` output against the base SHA and a",
+        "report.json listing every command you ran or skipped and what you did not verify:",
+        "",
+        "```json",
+        "{",
+        '  "agent": {"name": "<tool and version>", "model": "<model>"},',
+        '  "tests": [{"command": "<exact command>", "evidence": "<kind>", "result": "<result>"}],',
+        '  "statements": ["<what was verified and what was not>"]',
+        "}",
+        "```",
+        "",
+        f"`evidence` is one of: {', '.join(EVIDENCE_KINDS)} (only the *_live kinds involve a"
+        " server).",
+        f"`result` is one of: {', '.join(RESULTS)}.",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def record(
+    task: dict[str, Any],
+    revision: str,
+    prompt_text: str,
+    agent: dict[str, Any],
+    patch: str,
+    report: Any,
+    results: Any | None,
+    metrics: dict[str, Any],
+    findings: list[Any],
+    exclude: str | None = None,
+) -> dict[str, Any]:
+    """One manual run's record: who ran what, what was skipped, and the rubric result."""
+    if not isinstance(agent.get("name"), str) or not isinstance(agent.get("model"), str):
+        raise EvalError("the agent needs a name and a model")
+    for finding in findings:
+        if (
+            not isinstance(finding, dict)
+            or finding.get("severity") not in SEVERITIES
+            or not isinstance(finding.get("summary"), str)
+            or not isinstance(finding.get("source"), str)
+        ):
+            raise EvalError(f"a review finding needs source, summary and severity in {SEVERITIES}")
+    for key, value in metrics.items():
+        if key not in METRICS or not _metric(value):
+            raise EvalError(f"metric {key!r} must be one of {METRICS} and a finite number >= 0")
+    if exclude is not None and (not isinstance(exclude, str) or not exclude.strip()):
+        raise EvalError("an excluded run needs a reason")
+    rubric = grade(task, patch, report, results)
+    live = set(task["validation"].get("live", []))
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "task": task["id"],
+        "task_revision": revision,
+        "prompt_sha256": hashlib.sha256(prompt_text.encode("utf-8")).hexdigest(),
+        "agent": agent,
+        "start_sha": task["base_sha"],
+        "patch_sha256": hashlib.sha256(patch.encode("utf-8")).hexdigest(),
+        "changed_files": rubric["changed_files"],
+        "reported_tests": report["tests"],
+        "observed_commands": [] if results is None else results.get("commands", []),
+        # Reported as not run, or run by the dry run but every test skipped.
+        "skipped_live_checks": sorted(
+            (
+                {t["command"] for t in report["tests"] if t["result"] == "not run"}
+                | {
+                    c["command"]
+                    for c in ([] if results is None else results["commands"])
+                    if c["outcome"] == "skipped"
+                }
+            )
+            & live
+        ),
+        # The live run's CUBRID image, server version, ci_scope selection and setup
+        # commands, when ``run --live`` recorded one.
+        "live_run": None if results is None else results.get("live"),
+        "warnings": _record_warnings(None if results is None else results.get("live")),
+        "metrics": dict(sorted(metrics.items())),
+        "review_findings": findings,
+        # A run that is not a fair sample (the agent read the public fix, the task
+        # changed under it, ...) is kept for the record but left out of summaries.
+        "excluded": exclude,
+        "rubric": {"criteria": rubric["criteria"], "verdict": rubric["verdict"]},
+    }
+
+
+def _record_warnings(live: Any) -> list[str]:
+    """What a reader of the record must not miss about its live run."""
+    if not isinstance(live, dict):
+        return []
+    warnings = []
+    if live.get("version_mismatch"):
+        warnings.append(
+            f"requested CUBRID {live.get('requested_cubrid_version')} but the container ran "
+            f"{live.get('image')}: the live result is evidence for "
+            f"{live.get('ran_cubrid_version')} only"
+        )
+    elif live.get("version_mismatch") is None and live.get("image") is None:
+        warnings.append("the live run's CUBRID image is unknown (the server did not start)")
+    return warnings
+
+
+def wilson(passed: int, total: int, z: float = 1.96) -> list[float]:
+    """The 95% Wilson score interval for a pass rate (wide for few runs, never a bare rate)."""
+    if total == 0:
+        return [0.0, 1.0]
+    rate = passed / total
+    denominator = 1 + z * z / total
+    centre = (rate + z * z / (2 * total)) / denominator
+    half = z * math.sqrt(rate * (1 - rate) / total + z * z / (4 * total * total)) / denominator
+    return [round(max(0.0, centre - half), 3), round(min(1.0, centre + half), 3)]
+
+
+def summarize(records: list[Any]) -> dict[str, Any]:
+    """Distribution of repeated runs per task revision and model: counts and an interval."""
+    groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for entry in records:
+        if not isinstance(entry, dict) or entry.get("schema_version") != SCHEMA_VERSION:
+            raise EvalError("every run record must be a schema version 1 object")
+        try:
+            key = (entry["task"], entry["task_revision"], entry["agent"]["model"])
+            verdict = entry["rubric"]["verdict"]
+        except (KeyError, TypeError) as exc:
+            raise EvalError(f"run record without {exc}") from exc
+        if not all(isinstance(part, str) and part for part in key):
+            raise EvalError("run record task, task_revision and agent.model must be strings")
+        if verdict not in ("pass", "incomplete", "fail"):
+            raise EvalError(f"run record with verdict {verdict!r}")
+        criteria = entry["rubric"].get("criteria")
+        if not isinstance(criteria, dict) or not all(
+            isinstance(c, dict) and c.get("status") in ("pass", "fail", "not_run")
+            for c in criteria.values()
+        ):
+            raise EvalError("run record criteria must map names to pass/fail/not_run statuses")
+        metrics = entry.get("metrics", {})
+        if not isinstance(metrics, dict) or not all(_metric(v) for v in metrics.values()):
+            raise EvalError("run record metrics must be an object of finite non-negative numbers")
+        excluded = entry.get("excluded")
+        if excluded is not None and not isinstance(excluded, str):
+            raise EvalError("run record 'excluded' must be null or a reason")
+        groups.setdefault(key, []).append(entry)
+    summary = []
+    for (task_id, revision, model), entries in sorted(groups.items()):
+        runs = [e for e in entries if e.get("excluded") is None]
+        verdicts = {v: 0 for v in ("pass", "incomplete", "fail")}
+        failed: dict[str, int] = {}
+        for entry in runs:
+            verdicts[entry["rubric"]["verdict"]] += 1
+            for name, criterion in entry["rubric"]["criteria"].items():
+                if criterion["status"] != "pass":
+                    failed[name] = failed.get(name, 0) + 1
+        ranges = {}
+        for name in METRICS:
+            values = sorted(e["metrics"][name] for e in runs if name in e.get("metrics", {}))
+            if values:
+                ranges[name] = {"min": values[0], "median": _median(values), "max": values[-1]}
+        summary.append(
+            {
+                "task": task_id,
+                "task_revision": revision,
+                "model": model,
+                "runs": len(runs),
+                "excluded": len(entries) - len(runs),
+                # Runs whose live check ran on another CUBRID than requested.
+                "live_version_mismatches": sum(
+                    1 for e in runs if (e.get("live_run") or {}).get("version_mismatch")
+                ),
+                "verdicts": verdicts,
+                "pass_interval_95": wilson(verdicts["pass"], len(runs)),
+                "criteria_not_passed": dict(sorted(failed.items())),
+                "metrics": ranges,
+            }
+        )
+    return {"schema_version": SCHEMA_VERSION, "groups": summary}
+
+
+def _median(values: list[float]) -> float:
+    middle = len(values) // 2
+    if len(values) % 2:
+        return values[middle]
+    return (values[middle - 1] + values[middle]) / 2
+
+
+def verify_outcome(exit_code: int, output: str) -> str:
+    """``passed`` only when ``make verify`` compared at least one golden and none failed.
+
+    ``make verify`` ends with ``Results: P passed, F failed, S skipped``; a run that
+    compared nothing (or could not start) is ``skipped``, never proof.
+    """
+    found = re.findall(r"Results: (\d+) passed, (\d+) failed, (\d+) skipped", output)
+    if not found:
+        return "failed" if exit_code else "skipped"
+    passed, failed, skipped = (int(n) for n in found[-1])
+    if exit_code == 0 and passed > 0 and failed == 0 and skipped == 0:
+        return "passed"
+    if passed == 0 and failed == 0:
+        return "skipped"
+    return "failed"
+
+
+def _live(
+    task: dict[str, Any],
+    patch: str,
+    worktree: Path,
+    commands: list[dict[str, Any]],
+    version: str,
+    timeout: float,
+) -> dict[str, Any]:
+    """Run the task's live checks on a CUBRID the worktree's own Makefile starts.
+
+    It records the requested and the actual image, the server's ``cubrid_rel``
+    line, the exact commands and the selection the current ``scripts/ci_scope.py``
+    makes for the changed paths (``verify_paths`` and the suites), so a live result
+    can be compared with what CI would have run. ``make clean`` always runs last;
+    it also removes the run's volumes. Live outcomes are appended to ``commands``.
+    """
+    changed = "".join(f"{path}\n" for path in sorted(parse_patch(patch)))
+    scope = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "ci_scope.py"), "--event", "pull_request"]
+        + ["--root", str(worktree)],
+        input=changed,
+        capture_output=True,
+        text=True,
+    )
+    env = dict(os.environ, CUBRID_VERSION=version)
+    env.setdefault("CUBRID_TEST_URL", "cubrid://dba:@localhost:33000/testdb")
+    info: dict[str, Any] = {
+        "requested_cubrid_version": version,
+        "selection": dict(line.split("=", 1) for line in scope.stdout.splitlines() if "=" in line),
+        "setup": [],
+        "timeout_seconds": timeout,
+    }
+    up = ["make", "up", f"CUBRID_VERSION={version}"]
+    try:
+        code, _ = _bounded(up, worktree, timeout, env)
+        up_code = code
+        info["setup"].append({"command": shlex.join(up), "exit_code": code})
+        image = subprocess.run(
+            ["docker", "inspect", "--format", "{{.Config.Image}}", CONTAINER],
+            capture_output=True,
+            text=True,
+        )
+        release = subprocess.run(
+            ["docker", "exec", CONTAINER, "cubrid_rel"], capture_output=True, text=True
+        )
+        info["image"] = image.stdout.strip() or None
+        info["server"] = next(
+            (line.strip() for line in release.stdout.splitlines() if "CUBRID" in line), None
+        )
+        # An old base SHA's docker-compose.yml may pin its own image and ignore
+        # CUBRID_VERSION: say so instead of reporting the requested version.
+        info["ran_cubrid_version"] = (
+            info["image"].rsplit(":", 1)[-1] if info["image"] and ":" in info["image"] else None
+        )
+        info["version_mismatch"] = (
+            None if info["ran_cubrid_version"] is None else info["ran_cubrid_version"] != version
+        )
+        for command in task["validation"]["live"]:
+            if up_code != 0:  # no server: the check did not run
+                commands.append(
+                    {"command": command, "kind": "live", "exit_code": up_code, "outcome": "skipped"}
+                )
+                continue
+            argv = shlex.split(command)
+            if argv[:1] == ["python"]:
+                argv[0] = sys.executable
+            elif argv[:2] == ["make", "verify"]:
+                argv.append(f"PYTHON={sys.executable}")
+            done, output = _bounded(argv, worktree, timeout, env)
+            outcome = (
+                verify_outcome(done, output)
+                if argv[:2] == ["make", "verify"]
+                else pytest_outcome(done, output)
+            )
+            commands.append(
+                {"command": command, "kind": "live", "exit_code": done, "outcome": outcome}
+            )
+    finally:
+        clean = ["make", "clean"]
+        clean_code, _ = _bounded(clean, worktree, timeout, env)
+        info["setup"].append({"command": shlex.join(clean), "exit_code": clean_code})
+    return info
 
 
 def load_task(task_id: str, root: Path = EVALS) -> dict[str, Any]:
@@ -832,11 +1222,32 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--task", required=True)
     r.add_argument("--patch", required=True, type=Path)
     r.add_argument("--output", required=True, type=Path)
+    r.add_argument("--live", action="store_true", help="also run the live checks (needs Docker)")
+    r.add_argument("--cubrid-version", default=DEFAULT_CUBRID, help="CUBRID image for --live")
+    r.add_argument("--timeout", type=float, default=LIVE_TIMEOUT, help="seconds per live step")
     g = sub.add_parser("grade", help="grade one candidate")
     g.add_argument("--task", required=True)
     g.add_argument("--patch", required=True, type=Path)
     g.add_argument("--report", required=True, type=Path)
     g.add_argument("--results", type=Path)
+    p = sub.add_parser("prompt", help="print the task statement for a manual agent run")
+    p.add_argument("--task", required=True)
+    rec = sub.add_parser("record", help="write one manual run's record (grades it too)")
+    rec.add_argument("--task", required=True)
+    rec.add_argument("--patch", required=True, type=Path)
+    rec.add_argument("--report", required=True, type=Path)
+    rec.add_argument("--results", type=Path)
+    rec.add_argument("--prompt-file", required=True, type=Path, help="the prompt the agent got")
+    rec.add_argument("--agent", required=True, help="agent tool and version")
+    rec.add_argument("--model", required=True, help="model identity as the tool reports it")
+    rec.add_argument("--findings", type=Path, help="JSON list of review findings")
+    rec.add_argument("--wall-clock-seconds", type=float)
+    rec.add_argument("--timeout-seconds", type=float, help="the time limit the agent ran under")
+    rec.add_argument("--rework-rounds", type=int, help="review rounds before it was acceptable")
+    rec.add_argument("--exclude", metavar="REASON", help="keep the record out of summaries")
+    rec.add_argument("--output", required=True, type=Path)
+    sm = sub.add_parser("summarize", help="distribution of repeated run records")
+    sm.add_argument("records", nargs="+", type=Path)
     args = parser.parse_args(argv)
     try:
         if args.command == "validate":
@@ -852,9 +1263,49 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             print("agent-evals: every fixture grades as expected")
             return 0
+        if args.command == "summarize":
+            sys.stdout.write(dump(summarize([load_json(path) for path in args.records])))
+            return 0
         task = load_task(args.task)
+        if args.command == "prompt":
+            sys.stdout.write(prompt(task))
+            return 0
+        if args.command == "record":
+            findings = load_json(args.findings) if args.findings else []
+            if not isinstance(findings, list):
+                raise EvalError("--findings must hold a JSON list")
+            metrics = {
+                name: value
+                for name, value in (
+                    ("wall_clock_seconds", args.wall_clock_seconds),
+                    ("timeout_seconds", args.timeout_seconds),
+                    ("rework_rounds", args.rework_rounds),
+                )
+                if value is not None
+            }
+            entry = record(
+                task,
+                task_revision(args.task),
+                args.prompt_file.read_text(encoding="utf-8"),
+                {"name": args.agent, "model": args.model},
+                args.patch.read_text(encoding="utf-8"),
+                load_json(args.report),
+                load_json(args.results) if args.results else None,
+                metrics,
+                findings,
+                args.exclude,
+            )
+            args.output.write_text(dump(entry), encoding="utf-8")
+            print(f"agent-eval: wrote {args.output} ({entry['rubric']['verdict']})")
+            return 0
         if args.command == "run":
-            observed = run(task, args.patch.read_text(encoding="utf-8"))
+            observed = run(
+                task,
+                args.patch.read_text(encoding="utf-8"),
+                live=args.live,
+                cubrid_version=args.cubrid_version,
+                timeout=args.timeout,
+            )
             args.output.write_text(dump(observed), encoding="utf-8")
             print(f"agent-eval: wrote {args.output}")
             return 0

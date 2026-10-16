@@ -1,0 +1,22 @@
+{
+  "agent": {
+    "model": "n/a (historical commit 988b4b6)",
+    "name": "reference fix"
+  },
+  "statements": [
+    "Offline: the evaluator's checks pass for the changed recipe.",
+    "make verify passed for fundamentals/isolation-levels on cubrid/cubrid:11.2, the image the base SHA's docker-compose.yml pins; CUBRID 11.4 was requested but not verified."
+  ],
+  "tests": [
+    {
+      "command": "python -m pytest -q -p no:cacheprovider tests/test_hidden_isolation_levels.py",
+      "evidence": "offline",
+      "result": "passed"
+    },
+    {
+      "command": "make verify VERIFY_PATHS=fundamentals/isolation-levels",
+      "evidence": "golden_live",
+      "result": "passed"
+    }
+  ]
+}
