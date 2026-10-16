@@ -116,8 +116,22 @@ def generate_report(
 
 @app.task(name="tasks.cleanup_old_records")
 def cleanup_old_records(days: int = 30) -> dict[str, int]:
+    """Delete completed Jobs and Reports older than ``days`` days.
+
+    ``days`` must be a whole number of days, 0 or more; ``0`` removes every
+    completed Job and Report created before now. The period is checked before
+    any Job is recorded or the database is touched: a negative value would move
+    the cutoff into the future and delete recent records.
+    """
+    if isinstance(days, bool) or not isinstance(days, int):
+        raise TypeError(f"days must be an int, not {type(days).__name__}")
+    if days < 0:
+        raise ValueError(f"days must be 0 or more, got {days}")
+    try:
+        threshold = datetime.now(timezone.utc) - timedelta(days=days)
+    except OverflowError as exc:
+        raise ValueError(f"days={days} is too large to compute a cutoff date") from exc
     job_id = _start_job("cleanup_old_records")
-    threshold = datetime.now(timezone.utc) - timedelta(days=days)
 
     try:
         with session_scope() as session:
