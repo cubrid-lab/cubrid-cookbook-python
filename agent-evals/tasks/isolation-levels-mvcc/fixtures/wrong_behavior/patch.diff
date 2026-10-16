@@ -1,0 +1,54 @@
+diff --git a/README.md b/README.md
+index 8a10a59..47ac6da 100644
+--- a/README.md
++++ b/README.md
+@@ -88,7 +88,7 @@ Step-by-step reference for every core operation:
+ | [Async I/O](fundamentals/async/) | pycubrid.aio and SQLAlchemy async engine |
+ | [Alembic migrations](fundamentals/alembic/) | Programmatic migration setup with CubridImpl |
+ | [JSON type CRUD](fundamentals/json/) | Native JSON columns, JSON_EXTRACT/UNQUOTE patterns |
+-| [Isolation levels](fundamentals/isolation-levels/) | 6 CUBRID levels, dirty-read demonstration |
++| [Isolation levels](fundamentals/isolation-levels/) | 3 MVCC levels, no-dirty-read demonstration |
+ 
+ ---
+ 
+@@ -170,7 +170,7 @@ cubrid-cookbook-python/
+ │   ├── async/                 # pycubrid.aio + async SQLAlchemy
+ │   ├── alembic/               # Programmatic Alembic migrations
+ │   ├── json/                  # Native JSON column CRUD
+-│   └── isolation-levels/      # 6 CUBRID isolation levels
++│   └── isolation-levels/      # 3 MVCC isolation levels
+ └── docker-compose.yml         # CUBRID 11.2
+ ```
+ 
+diff --git a/fundamentals/isolation-levels/expected/01_isolation_levels.expected b/fundamentals/isolation-levels/expected/01_isolation_levels.expected
+new file mode 100644
+index 0000000..648c568
+--- /dev/null
++++ b/fundamentals/isolation-levels/expected/01_isolation_levels.expected
+@@ -0,0 +1,26 @@
++=== CUBRID Isolation Levels Demo ===
++
++CUBRID uses MVCC. Three isolation levels are accepted in raw SQL:
++  READ COMMITTED   - statement-level snapshot (default)
++  REPEATABLE READ  - transaction-level snapshot
++  SERIALIZABLE     - full serializable
++
++[setup] Created cookbook_isolation_demo with row (id=1, val=100)
++
++[1] Setting and reading each isolation level:
++
++  SET ... READ COMMITTED   ->  GET code=4 (ok)
++  SET ... REPEATABLE READ  ->  GET code=5 (ok)
++  SET ... SERIALIZABLE     ->  GET code=6 (ok)
++
++[2] Dirty-read demo at READ COMMITTED:
++
++  reader observed val=100 (committed value) -> no dirty read (MVCC)
++
++--- Choosing an isolation level ---
++  Read-heavy / typical web app : READ COMMITTED  (CUBRID default)
++  Consistent multi-read units  : REPEATABLE READ
++  Strict serialization         : SERIALIZABLE
++
++Tip: SQLAlchemy exposes these names via
++     sqlalchemy_cubrid/dialect.py:_ISOLATION_LEVEL_MAP.

@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: help up down status clean deps verify demo lint test-offline check check-docs test-normalize check-coverage docs docs-check
+.PHONY: help up down status clean deps verify demo lint test-offline check check-docs test-normalize check-coverage docs docs-check agent-eval-check
 
 DOCKER_COMPOSE := docker compose
 NORMALIZE := bash scripts/normalize_output.sh
@@ -134,6 +134,7 @@ test-offline: ## Run mocked/offline suites in separate processes (no database re
 	$(PYTHON) -m pytest quickstart/5min-fastapi/tests -q
 	$(PYTHON) -m pytest tests/test_ai_agent_offline.py -q
 	$(PYTHON) -m pytest tests/test_agent_review_gate.py -q
+	$(PYTHON) -m pytest tests/test_agent_eval.py -q
 	$(PYTHON) -m unittest discover -s tests -p 'test_release*.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_make_commands.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_wait_for_cubrid.py' -v
@@ -150,6 +151,10 @@ test-offline: ## Run mocked/offline suites in separate processes (no database re
 	$(PYTHON) -m unittest discover -s tests -p 'test_table_prefix.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_quickstart_config.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_quickstart_cleanup.py' -v
+
+agent-eval-check: ## Validate the agent-evals tasks and re-grade their fixtures (offline; no model, no DB)
+	$(PYTHON) scripts/agent_eval.py validate
+	$(PYTHON) scripts/agent_eval.py check
 
 check-docs: ## Check documentation coverage and its doctests
 	$(PYTHON) -m doctest scripts/check_docs_reason.py -v

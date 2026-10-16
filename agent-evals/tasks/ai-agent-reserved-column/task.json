@@ -1,0 +1,40 @@
+{
+  "allowed_files": [
+    "templates/ai-agent/*.py",
+    "templates/ai-agent/README*.md",
+    "tests/test_ai_agent*.py",
+    "CHANGELOG.md"
+  ],
+  "base_sha": "07033f39908e988a83860155b4e3cc61c93cd00e",
+  "changelog": null,
+  "docs": [],
+  "evidence": {
+    "live": "absent",
+    "required_kinds": [
+      "offline"
+    ]
+  },
+  "expected": "The DDL of 01_agent_state.py and 03_rag_metadata.py declares no reserved-word column and no TEXT type, and add_message()/get_conversation() name only declared agent_messages columns, with values still bound by ? markers. This is offline evidence; the recipe suite (tests/test_ai_agent.py) needs a live CUBRID and is reported as not run without one.",
+  "fix_commit": "d866c3368604c0523760b66abdadc1bcd713e23c",
+  "goldens": [],
+  "hidden_tests": [
+    "test_hidden_ai_agent_schema.py"
+  ],
+  "id": "ai-agent-reserved-column",
+  "issue": "#125",
+  "non_goals": [
+    "no new tables, recipes or dependencies",
+    "no claim that the schema was created on a live CUBRID unless a live run is recorded"
+  ],
+  "problem": "templates/ai-agent/01_agent_state.py creates agent_messages with a column named role, a CUBRID reserved word, and 01_agent_state.py and 03_rag_metadata.py declare TEXT columns, which CUBRID does not have; setup_schema()/setup() fail against a live server. Make the schemas valid CUBRID without depending on quoting modes, keep every query that reads or writes these tables consistent with the new columns, and keep binding values with ? markers.",
+  "recipe": "templates/ai-agent",
+  "required_tests": [],
+  "schema_version": 1,
+  "title": "Make the ai-agent recipes' schema valid CUBRID: no reserved column name, no TEXT type",
+  "validation": {
+    "live": [
+      "python -m pytest -q tests/test_ai_agent.py"
+    ],
+    "offline": []
+  }
+}

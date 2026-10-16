@@ -1,0 +1,21 @@
+{
+  "agent": {
+    "model": "n/a (historical commit 2beffa5)",
+    "name": "reference fix"
+  },
+  "statements": [
+    "Offline: the evaluator's checks pass for the changed recipe."
+  ],
+  "tests": [
+    {
+      "command": "python -m pytest -q -p no:cacheprovider tests/test_hidden_async_floor.py",
+      "evidence": "offline",
+      "result": "passed"
+    },
+    {
+      "command": "make verify VERIFY_PATHS=fundamentals/async",
+      "evidence": "golden_live",
+      "result": "not run"
+    }
+  ]
+}

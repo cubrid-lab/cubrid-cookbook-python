@@ -1,0 +1,15 @@
+{
+  "criteria": {
+    "behavior": "pass",
+    "changelog": "pass",
+    "claims": "pass",
+    "dependencies": "pass",
+    "docs": "pass",
+    "evidence": "pass",
+    "goldens": "pass",
+    "regression_test": "pass",
+    "safety": "pass",
+    "scope": "pass"
+  },
+  "verdict": "pass"
+}

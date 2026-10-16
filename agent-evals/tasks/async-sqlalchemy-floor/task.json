@@ -1,0 +1,47 @@
+{
+  "allowed_files": [
+    "fundamentals/async/*",
+    "SUPPORT_MATRIX.md",
+    "README.md",
+    "fundamentals/README*.md",
+    "CHANGELOG.md"
+  ],
+  "base_sha": "b317f7748cf53640a8fb78718734324c5c3a883a",
+  "changelog": null,
+  "docs": [
+    [
+      "SUPPORT_MATRIX.md"
+    ]
+  ],
+  "evidence": {
+    "live": "absent",
+    "required_kinds": [
+      "offline"
+    ]
+  },
+  "expected": "requirements.txt pins sqlalchemy-cubrid to at least 1.2.3, the recipe's printed Requirements: line and its golden state the same floor, and SUPPORT_MATRIX.md ties that floor to the async recipe. Whether the recipe runs on that floor is only shown by installing it and running make verify against a live CUBRID.",
+  "fix_commit": "2beffa5d71e8248b38f69ac03d6aa51828ad4017",
+  "goldens": [
+    "fundamentals/async/expected/02_async_sqlalchemy.expected"
+  ],
+  "hidden_tests": [
+    "test_hidden_async_floor.py"
+  ],
+  "id": "async-sqlalchemy-floor",
+  "issue": "#94",
+  "non_goals": [
+    "no change to the sync recipes' floors or to the README badge",
+    "no new dependency"
+  ],
+  "problem": "fundamentals/async/02_async_sqlalchemy.py builds an AsyncEngine with cubrid+aiopycubrid://, but that async dialect is first installable from PyPI in sqlalchemy-cubrid 1.2.3. The recipe's requirements.txt, its printed Requirements: line and the matching golden all advertise sqlalchemy-cubrid>=1.0. Correct the floor everywhere it is stated and document in the support matrix that the async recipe needs more than the sync recipes.",
+  "recipe": "fundamentals/async",
+  "required_tests": [],
+  "schema_version": 1,
+  "title": "State the sqlalchemy-cubrid floor the async recipe really needs",
+  "validation": {
+    "live": [
+      "make verify VERIFY_PATHS=fundamentals/async"
+    ],
+    "offline": []
+  }
+}
