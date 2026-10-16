@@ -15,6 +15,7 @@ theme:
     - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.footer
     - content.code.copy
     - search.highlight
     - search.suggest
@@ -38,6 +39,7 @@ nav:
   - Home: index.md
   - Getting Started:
       - "New to CUBRID? Start here": first-cubrid.md
+      - "Lesson 2: Run your first query": first-cubrid-first-query.md
       - FastAPI quickstart: quickstart-fastapi.md
       - SQLAlchemy quickstart: quickstart-sqlalchemy.md
       - Getting Started: getting-started.md
@@ -68,6 +70,7 @@ nav:
           - 한국어: README.ko.md
           - 시작하기 (한국어): ko/getting-started.md
           - 첫 CUBRID 튜토리얼 (한국어): ko/first-cubrid.md
+          - 2단원 첫 쿼리 실행하기 (한국어): ko/first-cubrid-first-query.md
           - FastAPI 빠른 시작 (한국어): ko/quickstart-fastapi.md
           - SQLAlchemy 빠른 시작 (한국어): ko/quickstart-sqlalchemy.md
       - Changelog: changelog.md

@@ -64,6 +64,7 @@ site/
 docs/catalog.md
 docs/getting-started.md
 docs/first-cubrid.md
+docs/first-cubrid-first-query.md
 docs/quickstart-fastapi.md
 docs/quickstart-sqlalchemy.md
 docs/support-matrix.md

@@ -11,6 +11,13 @@ CUBRID는 써 본 적이 없는 분을 위한 튜토리얼입니다. 내 컴퓨�
 준비물을 설치한 뒤라면 15분 정도 걸립니다. 처음에는 데이터베이스 이미지를
 내려받느라 인터넷 속도에 따라 더 걸릴 수 있습니다.
 
+튜토리얼은 다음 순서로 진행합니다.
+
+1. 이 페이지의 "1. 무엇을 설치하나요"와 "2. 실습 환경 준비"
+2. [첫 쿼리 실행하기](first-cubrid-first-query.md)
+3. 이 페이지의 "4. 데이터 저장, 커밋, 다른 연결에서 확인"
+4. 이 페이지의 "5. 마무리, 복구, 다시 실행"
+
 ## 1. 무엇을 설치하나요
 
 두 가지는 서로 다릅니다.
@@ -87,70 +94,13 @@ CUBRID is ready: the in-container csql query passed.
 CUBRID 컨테이너)이 그 포트를 쓰고 있는 것이니 그 프로그램을 먼저 멈추세요.
 내가 만들지 않은 컨테이너나 볼륨은 지우지 마세요.
 
+다음으로 [첫 쿼리를 실행하세요](first-cubrid-first-query.md).
+
 ## 3. 첫 성공: 접속해서 값 읽기
 
-첫 프로그램 전체입니다.
-[`quickstart/first-cubrid/01_first_query.py`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/quickstart/first-cubrid/01_first_query.py):
-
-```python
-"""01_first_query.py — connect to CUBRID from Python and read a first result.
-
-Step 3 of the beginner tutorial (quickstart/first-cubrid/README.md).
-"""
-
-from __future__ import annotations
-
-import pycubrid
-
-# The disposable lab started by docker-compose.yml: a local-only database with
-# an empty password for the dba account. Never use these settings for a shared
-# or remote server.
-SETTINGS = {
-    "host": "localhost",  # the machine running the lab container
-    "port": 33000,  # the broker port: the connection entry point
-    "database": "testdb",  # the database the lab image creates
-    "user": "dba",
-    "password": "",
-}
-
-
-def main() -> None:
-    conn = pycubrid.connect(**SETTINGS)  # open a connection to the database
-    try:
-        cursor = conn.cursor()  # a cursor sends SQL and holds its results
-        cursor.execute("SELECT 1 + 1, 'Hello, CUBRID'")
-        total, greeting = cursor.fetchone()  # one row, as a tuple
-        print(f"1 + 1 = {total}")
-        print(f"Greeting: {greeting}")
-
-        cursor.execute("SELECT database()")
-        print(f"Connected to database: {cursor.fetchone()[0]}")
-    finally:
-        conn.close()
-
-
-if __name__ == "__main__":
-    main()
-```
-
-- `pycubrid.connect(...)`는 **연결**, 즉 서버와의 세션 하나를 엽니다.
-- `conn.cursor()`는 **커서**를 줍니다. 커서는 `execute(...)`로 SQL을 보냅니다.
-- `fetchone()`은 다음 결과 행을 튜플로 돌려주고, `fetchall()`은 모든 행을 돌려줍니다.
-- `conn.close()`는 세션을 끝냅니다. `try`/`finally` 덕분에 중간에 실패해도 닫힙니다.
-
-실행:
-
-```bash
-python quickstart/first-cubrid/01_first_query.py
-```
-
-**확인.** 예상 출력:
-
-```text
-1 + 1 = 2
-Greeting: Hello, CUBRID
-Connected to database: testdb
-```
+이 단계는 별도 단원에서 다룹니다. [2단원: 첫 쿼리 실행하기](first-cubrid-first-query.md)에서
+`01_first_query.py`를 실행해 출력을 확인하고, 그 프로그램이 쓰는 연결과 커서를 설명합니다.
+`Connected to database: testdb`가 출력되면 이 페이지의 4단계로 돌아오세요.
 
 ## 4. 데이터 저장, 커밋, 다른 연결에서 확인
 
