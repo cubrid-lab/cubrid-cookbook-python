@@ -13,7 +13,9 @@ import importlib.util
 import re
 import shlex
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -172,6 +174,34 @@ class RequirementCoverage(unittest.TestCase):
             set(listed),
             on_disk,
             "requirements files changed; run scripts/build_license_inventory.py --write",
+        )
+
+    def test_requirement_files_excludes_ignored_environments(self) -> None:
+        paths = [
+            "examples/basic/requirements.txt",
+            "examples/nested/demo/requirements.txt",
+            ".venv/requirements.txt",
+            ".tools/requirements.txt",
+            "examples/node_modules/requirements.txt",
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for rel in paths:
+                path = root / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch()
+
+            with patch.object(build.subprocess, "run") as git_run:
+                git_run.return_value.stdout = "\0".join(paths) + "\0"
+                found = build.requirement_files(root)
+
+        self.assertEqual(
+            [path.relative_to(root).as_posix() for path in found],
+            [
+                "examples/basic/requirements.txt",
+                "examples/nested/demo/requirements.txt",
+            ],
         )
 
     def test_each_file_declares_the_packages_of_its_set(self) -> None:
