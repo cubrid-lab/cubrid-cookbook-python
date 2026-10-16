@@ -693,22 +693,47 @@ def _substitution_end(command: str, index: int) -> int:
     the ``)`` after a ``case`` pattern (``case x in x) ...;; esac``) does not
     close the substitution. ``case`` and ``esac`` are keywords only at the
     start of a command and never inside arithmetic (``$((case + 1))``), so
-    ``printf case`` is an argument; ``esac`` also closes a ``case`` that has
-    no pattern (``case x in esac``). Nested substitutions stay in the body,
-    which the caller checks as a command of its own.
+    ``printf case`` is an argument. ``esac`` closes a ``case`` only where a
+    clause may start, so ``case x in esac`` is an empty ``case`` while
+    ``(esac)`` and ``x|esac)`` are patterns. Nested substitutions stay in the
+    body, which the caller checks as a command of its own.
     """
     depth, size, at_start = 0, len(command), True
     # Whether each open parenthesis holds arithmetic rather than commands.
     arithmetic: list[bool] = []
-    # Each open ``case``: its depth and what comes next (``subject``, ``in``,
-    # ``pattern``: a pattern or ``esac``, ``body``: commands until ``;;``).
+    # Each open ``case``: its depth and where its header or clause is:
+    # ``subject`` (the word to match), ``in``, ``pattern`` (a clause starts:
+    # a pattern or ``esac``), ``more`` (inside a pattern) or ``body``.
     cases: list[list[int | str]] = []
+
+    def state() -> object:
+        return cases[-1][1] if cases and cases[-1][0] == depth else None
+
+    def fragment(word: str | None) -> bool:
+        """Advance the innermost ``case`` header or pattern; ``None`` is quoted text."""
+        current = state()
+        if current == "subject":
+            cases[-1][1] = "in"
+        elif current == "in":
+            if word == "in":
+                cases[-1][1] = "pattern"
+        elif current == "pattern":
+            if word == "esac":
+                cases.pop()
+            else:
+                cases[-1][1] = "more"
+        elif current != "more":
+            return False
+        return True
+
     while index < size:
         char = command[index]
         if char == "\\":
+            fragment(None)
             index, at_start = index + 2, False
             continue
         if char in "'\"":
+            fragment(None)
             index, at_start = _quoted_end(command, index), False
             if index < 0:
                 return -1
@@ -716,15 +741,16 @@ def _substitution_end(command: str, index: int) -> int:
         if char in " \t":
             index += 1
             continue
-        if char == ";" and cases and command.startswith(";;", index) and cases[-1][0] == depth:
+        if char == ";" and command.startswith(";;", index) and state() in ("body", "more"):
             cases[-1][1], at_start = "pattern", True  # ``;;`` ends a case clause
             index += 2
             continue
         if char in "\n;&|":
             index, at_start = index + 1, True
             continue
-        if char == "(" and cases and cases[-1][0] == depth and cases[-1][1] == "pattern":
-            index += 1  # the optional ``(`` before a case pattern
+        if char == "(" and state() == "pattern":
+            cases[-1][1] = "more"  # the optional ``(`` before a case pattern
+            index += 1
             continue
         if char == "(":
             after_dollar = index > 0 and command[index - 1] == "$"
@@ -734,7 +760,7 @@ def _substitution_end(command: str, index: int) -> int:
                 arithmetic.append(bool(arithmetic) and arithmetic[-1])
             depth, at_start = depth + 1, True
         elif char == ")":
-            if cases and cases[-1][0] == depth and cases[-1][1] == "pattern":
+            if state() in ("pattern", "more"):
                 cases[-1][1], at_start = "body", True  # a case pattern's terminator
                 index += 1
                 continue
@@ -748,20 +774,11 @@ def _substitution_end(command: str, index: int) -> int:
             while end + 1 < size and command[end + 1] not in " \t\n;&|()'\"\\":
                 end += 1
             word = command[index : end + 1]
-            in_command = not (arithmetic and arithmetic[-1])
-            state = cases[-1][1] if cases and cases[-1][0] == depth else None
-            if state == "subject":
-                cases[-1][1] = "in"
-            elif state == "in":
-                if word == "in":
-                    cases[-1][1] = "pattern"
-            elif state == "pattern":
-                if word == "esac":
+            if not fragment(word) and at_start and not (arithmetic and arithmetic[-1]):
+                if word == "case":
+                    cases.append([depth, "subject"])
+                elif word == "esac" and state() == "body":
                     cases.pop()
-            elif in_command and at_start and word == "case":
-                cases.append([depth, "subject"])
-            elif in_command and at_start and state == "body" and word == "esac":
-                cases.pop()
             index, at_start = end, False
         index += 1
     return -1

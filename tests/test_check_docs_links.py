@@ -341,6 +341,11 @@ def test_a_word_split_across_a_continuation_is_one_word(tmp_path: Path) -> None:
         ("make removed N=$(case x in esac)", ["removed"]),
         ("make test VAR=$(case x in (x) printf esac;; esac)", ["test"]),
         ("make a N=$(case x in case) make b;; esac)", ["a", "b"]),
+        # A quoted subject is one word; esac is a pattern after ( or |.
+        ('make test N=$(case "x" in x) printf y;; esac)', ["test"]),
+        ("echo \"$(case 'x' in x) make removed;; esac)\"", ["removed"]),
+        ("make N=$(case esac in (esac) printf y;; esac) removed", ["removed"]),
+        ("make N=$(case esac in x|esac) printf y;; esac) removed", ["removed"]),
     ],
 )
 def test_adjacent_shell_operators_are_separate(command: str, goals: list[str]) -> None:
