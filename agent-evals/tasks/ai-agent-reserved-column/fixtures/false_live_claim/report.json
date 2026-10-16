@@ -1,0 +1,22 @@
+{
+  "agent": {
+    "model": "n/a (historical commit d866c33)",
+    "name": "reference fix"
+  },
+  "statements": [
+    "Offline: the evaluator's checks pass for the changed recipe.",
+    "Verified against a live cubrid/cubrid:11.4 container: setup_schema() and setup() now run."
+  ],
+  "tests": [
+    {
+      "command": "python -m pytest -q -p no:cacheprovider tests/test_hidden_ai_agent_schema.py",
+      "evidence": "offline",
+      "result": "passed"
+    },
+    {
+      "command": "python -m pytest -q tests/test_ai_agent.py",
+      "evidence": "suite_live",
+      "result": "not run"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "applied": true,
+  "base_sha": "5f3dcde214c5acca9cf04734a629c0d1b2fa2c32",
+  "commands": [
+    {
+      "command": "python -m pytest -q -p no:cacheprovider tests/test_hidden_isolation_levels.py",
+      "exit_code": 0,
+      "kind": "hidden",
+      "outcome": "passed"
+    }
+  ],
+  "patch_sha256": "069e378b4c2a4283ba168585da09a1506f8fa49fbc7efdd6725f417a6aafd053",
+  "schema_version": 1,
+  "task": "isolation-levels-mvcc"
+}

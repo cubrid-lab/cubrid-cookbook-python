@@ -1,0 +1,7 @@
+{
+  "criteria": {
+    "dependencies": "fail",
+    "docs": "fail"
+  },
+  "verdict": "fail"
+}

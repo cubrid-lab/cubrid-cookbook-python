@@ -80,6 +80,18 @@ documentation check has its own pinned tools; run it with
 (see [Documentation checks](#documentation-checks)).
 The repository is an example collection, so `pip install -e .` is not supported.
 
+### Agent evaluations
+
+[`agent-evals/`](agent-evals/README.md) holds opt-in benchmark tasks for coding
+agents that change recipes (#352): frozen historical fixes with their base SHA,
+allowed files, goldens, documentation and the live checks they lack, graded offline
+by `scripts/agent_eval.py`. `make agent-eval-check` (part of `make test-offline`)
+re-grades the recorded fixtures; it runs no model and needs no database. No
+contributor needs an AI tool, and no agent score gates a pull request. If you change
+the grader or a task, keep every fixture's `expected.json` truthful and rerun
+`make agent-eval-check`. An offline or mocked result never counts as `make verify`
+or a live suite: report those as not run when you have no CUBRID.
+
 ### CHANGELOG sections
 
 `CHANGELOG.md` `###` headings use the standard list, in this order and only when

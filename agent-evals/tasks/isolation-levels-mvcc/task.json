@@ -1,0 +1,50 @@
+{
+  "allowed_files": [
+    "fundamentals/isolation-levels/*",
+    "README.md",
+    "README.*.md",
+    "fundamentals/README*.md",
+    "CHANGELOG.md"
+  ],
+  "base_sha": "5f3dcde214c5acca9cf04734a629c0d1b2fa2c32",
+  "changelog": null,
+  "docs": [
+    [
+      "README.md",
+      "README.*.md",
+      "fundamentals/README*.md",
+      "fundamentals/isolation-levels/README*.md"
+    ]
+  ],
+  "evidence": {
+    "live": "absent",
+    "required_kinds": [
+      "offline"
+    ]
+  },
+  "expected": "Run against a fake driver, the recipe sets only READ COMMITTED, REPEATABLE READ and SERIALIZABLE (each of them), the golden expected/01_isolation_levels.expected exists, and the README describes the MVCC levels. Whether the golden matches a server is only shown by make verify against a live CUBRID.",
+  "fix_commit": "988b4b60c33d49e32fcd3dbb19d9fbf5d5f6c490",
+  "goldens": [
+    "fundamentals/isolation-levels/expected/01_isolation_levels.expected"
+  ],
+  "hidden_tests": [
+    "test_hidden_isolation_levels.py"
+  ],
+  "id": "isolation-levels-mvcc",
+  "issue": "#54",
+  "non_goals": [
+    "no change to other recipes or to make verify",
+    "no claim that the golden matches a live server unless make verify is recorded"
+  ],
+  "problem": "fundamentals/isolation-levels/01_isolation_levels.py sets isolation with numeric SQL (SET TRANSACTION ISOLATION LEVEL 1..6), which CUBRID's MVCC engine rejects (errno -495), and the recipe has no golden, so make verify never runs it. Rewrite it to the level names CUBRID accepts, add the expected/ golden make verify compares against, and update the README text that describes the recipe.",
+  "recipe": "fundamentals/isolation-levels",
+  "required_tests": [],
+  "schema_version": 1,
+  "title": "Teach the isolation levels CUBRID accepts under MVCC, with a golden",
+  "validation": {
+    "live": [
+      "make verify VERIFY_PATHS=fundamentals/isolation-levels"
+    ],
+    "offline": []
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "applied": true,
+  "base_sha": "b317f7748cf53640a8fb78718734324c5c3a883a",
+  "commands": [
+    {
+      "command": "python -m pytest -q -p no:cacheprovider tests/test_hidden_async_floor.py",
+      "exit_code": 1,
+      "kind": "hidden",
+      "outcome": "failed"
+    }
+  ],
+  "patch_sha256": "ac5ca089e88c3c3bb88110e90699f89b1b98d484303d77fc13933abc9970a630",
+  "schema_version": 1,
+  "task": "async-sqlalchemy-floor"
+}
