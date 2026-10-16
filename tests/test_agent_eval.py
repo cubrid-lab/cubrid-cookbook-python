@@ -421,12 +421,14 @@ def test_verify_outcome(exit_code: int, output: str, outcome: str) -> None:
 def test_live_path_uses_make_and_always_cleans_up(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    calls: list[list[str]] = []
+    calls: list[tuple[list[str], float, dict[str, str] | None]] = []
 
     def fake_bounded(argv, cwd, timeout, env=None):  # noqa: ANN001, ANN202
-        calls.append(list(argv))
-        if argv[:2] == ["make", "up"]:
-            return 0, ""
+        calls.append((list(argv), timeout, env))
+        if argv[:2] == ["docker", "inspect"]:
+            return 0, "cubrid/cubrid:11.4\n"
+        if argv[:2] == ["docker", "exec"]:
+            return 0, "\nCUBRID 11.4 (11.4.0.1778) (64bit release build)\n"
         if argv[:2] == ["make", "verify"]:
             raise RuntimeError("verify crashed")
         return 0, ""
@@ -437,22 +439,45 @@ def test_live_path_uses_make_and_always_cleans_up(
         "run",
         lambda argv, **kw: subprocess.CompletedProcess(argv, 0, "tier=pr\nverify_paths=x\n", ""),
     )
+    monkeypatch.setenv("CUBRID_TEST_URL", "cubrid://dba:@elsewhere:33000/otherdb")
     task = ae.load_task(ISO)
     commands: list[dict[str, Any]] = []
     with pytest.raises(RuntimeError):
         ae._live(task, "", tmp_path, commands, "11.4", 5)
-    assert calls[0] == ["make", "up", "CUBRID_VERSION=11.4"]
-    assert calls[1][:3] == ["make", "verify", "VERIFY_PATHS=fundamentals/isolation-levels"]
-    assert calls[1][-1] == f"PYTHON={sys.executable}"
-    assert calls[-1] == ["make", "clean"]
+    argvs = [argv for argv, _, _ in calls]
+    assert argvs[0] == ["make", "up", "CUBRID_VERSION=11.4"]
+    assert argvs[1][:2] == ["docker", "inspect"] and argvs[2][:2] == ["docker", "exec"]
+    assert argvs[3][:3] == ["make", "verify", "VERIFY_PATHS=fundamentals/isolation-levels"]
+    assert argvs[3][-1] == f"PYTHON={sys.executable}"
+    assert argvs[-1] == ["make", "clean"]
+    # Every step, the probes included, is bounded; the suite URL is pinned to the lab.
+    assert all(timeout <= 5 for _, timeout, _ in calls)
+    assert all(env["CUBRID_TEST_URL"] == ae.LAB_URL for _, _, env in calls if env)
 
     calls.clear()
-    monkeypatch.setattr(
-        ae, "_bounded", lambda argv, cwd, timeout, env=None: calls.append(argv) or (2, "")
-    )
+
+    def no_server(argv, cwd, timeout, env=None):  # noqa: ANN001, ANN202
+        calls.append((list(argv), timeout, env))
+        return (124, "") if argv[0] == "docker" else (2, "")
+
+    monkeypatch.setattr(ae, "_bounded", no_server)
     info = ae._live(task, "", tmp_path, commands, "11.2", 5)
-    assert commands[-1]["outcome"] == "skipped" and calls[-1] == ["make", "clean"]
+    assert commands[-1]["outcome"] == "skipped" and calls[-1][0] == ["make", "clean"]
+    assert (info["image"], info["server"], info["version_mismatch"]) == (None, None, None)
     assert info["selection"] == {"tier": "pr", "verify_paths": "x"}
+
+
+def test_disclosing_the_requested_version_is_not_a_claim_of_it() -> None:
+    task = ae.load_task(ISO)
+    patch, report, results = _fixture(ISO, "claims_requested_version")
+    for statement, status in (
+        ("make verify passed on CUBRID 11.2 (11.4 was requested).", "pass"),
+        ("make verify passed on CUBRID 11.4.", "fail"),
+        ("CUBRID 11.4 was requested but not verified.", "pass"),
+    ):
+        honest = copy.deepcopy(report)
+        honest["statements"] = [statement]
+        assert _statuses(ae.grade(task, patch, honest, results))["claims"] == status, statement
 
 
 @pytest.mark.parametrize("task_id", TASK_IDS)
@@ -553,6 +578,8 @@ def test_summarize_reports_counts_intervals_and_exclusions() -> None:
         dict(passing, agent={"model": []}),
         dict(passing, metrics={"wall_clock_seconds": float("inf")}),
         dict(passing, rubric={"verdict": "pass", "criteria": []}),
+        dict(passing, live_run=["image"]),
+        dict(passing, live_run="cubrid/cubrid:11.2"),
     ):
         with pytest.raises(ae.EvalError):
             ae.summarize([broken])

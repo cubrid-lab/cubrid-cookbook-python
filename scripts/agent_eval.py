@@ -107,6 +107,8 @@ PREFIX = "cookbook_"
 DEFAULT_CUBRID = "11.4"
 CONTAINER = "cubrid-cookbook"
 LIVE_TIMEOUT = 900.0
+PROBE_TIMEOUT = 60.0
+LAB_URL = "cubrid://dba:@localhost:33000/testdb"
 
 # A statement that claims live verification. Matched case-insensitively, clause by
 # clause, in the report's statements and in Markdown paragraphs the patch adds.
@@ -660,9 +662,13 @@ def _claims(
         named = re.compile(rf"(?<![\d.]){re.escape(wanted)}(?![\d])")
         for text in statements + _added_paragraphs(files):
             for clause in _clauses(text):
+                # "passed on CUBRID 11.2 (11.4 was requested)" names the version that
+                # ran and only discloses the request; that is honest, not a claim.
+                ran = str(live.get("ran_cubrid_version"))
                 if (
                     named.search(clause)
                     and SUCCESS_WORD.search(clause)
+                    and not re.search(rf"(?<![\d.]){re.escape(ran)}(?![\d])", clause)
                     and not NOT_VERIFIED.search(clause)
                 ):
                     problems.append(
@@ -1013,6 +1019,8 @@ def summarize(records: list[Any]) -> dict[str, Any]:
         metrics = entry.get("metrics", {})
         if not isinstance(metrics, dict) or not all(_metric(v) for v in metrics.values()):
             raise EvalError("run record metrics must be an object of finite non-negative numbers")
+        if entry.get("live_run") is not None and not isinstance(entry["live_run"], dict):
+            raise EvalError("run record 'live_run' must be null or an object")
         excluded = entry.get("excluded")
         if excluded is not None and not isinstance(excluded, str):
             raise EvalError("run record 'excluded' must be null or a reason")
@@ -1101,7 +1109,9 @@ def _live(
         text=True,
     )
     env = dict(os.environ, CUBRID_VERSION=version)
-    env.setdefault("CUBRID_TEST_URL", "cubrid://dba:@localhost:33000/testdb")
+    # Always the lab started here: an inherited URL could point the suites at another
+    # server while the recorded image and version describe this one.
+    env["CUBRID_TEST_URL"] = LAB_URL
     info: dict[str, Any] = {
         "requested_cubrid_version": version,
         "selection": dict(line.split("=", 1) for line in scope.stdout.splitlines() if "=" in line),
@@ -1113,17 +1123,19 @@ def _live(
         code, _ = _bounded(up, worktree, timeout, env)
         up_code = code
         info["setup"].append({"command": shlex.join(up), "exit_code": code})
-        image = subprocess.run(
-            ["docker", "inspect", "--format", "{{.Config.Image}}", CONTAINER],
-            capture_output=True,
-            text=True,
+        # Bounded like every other step; a failed or stalled probe leaves it unknown.
+        probe = min(timeout, PROBE_TIMEOUT)
+        image_code, image = _bounded(
+            ["docker", "inspect", "--format", "{{.Config.Image}}", CONTAINER], worktree, probe, env
         )
-        release = subprocess.run(
-            ["docker", "exec", CONTAINER, "cubrid_rel"], capture_output=True, text=True
+        release_code, release = _bounded(
+            ["docker", "exec", CONTAINER, "cubrid_rel"], worktree, probe, env
         )
-        info["image"] = image.stdout.strip() or None
-        info["server"] = next(
-            (line.strip() for line in release.stdout.splitlines() if "CUBRID" in line), None
+        info["image"] = (image.strip() or None) if image_code == 0 else None
+        info["server"] = (
+            next((line.strip() for line in release.splitlines() if "CUBRID" in line), None)
+            if release_code == 0
+            else None
         )
         # An old base SHA's docker-compose.yml may pin its own image and ignore
         # CUBRID_VERSION: say so instead of reporting the requested version.

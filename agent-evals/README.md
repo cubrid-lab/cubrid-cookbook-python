@@ -122,7 +122,8 @@ python scripts/agent_eval.py run --task ID --patch patch.diff --output results.j
 
 In the temporary worktree it runs `make up CUBRID_VERSION=<version>`, each
 `validation.live` command (`make verify VERIFY_PATHS=...` with this interpreter, or the
-recipe's pytest suite with `CUBRID_TEST_URL` defaulting to the local lab), and always
+recipe's pytest suite with `CUBRID_TEST_URL` always set to that lab, never an inherited
+URL, so the recorded server is the one tested), and always
 `make clean` last, which also removes the run's volumes. Each step has the time limit.
 `results.json` then holds a `live` object with:
 
@@ -175,8 +176,10 @@ one, and a run never merges, pushes, tags or publishes anything.
    the non-goals, the offline and live checks and the `report.json` format, and leaves
    out the grading key (the fix commit, allowed files, goldens, docs decision, hidden
    tests, evidence and expected result). Use it unchanged; `record` stores its SHA-256.
-3. **Collect the artifacts.** `git diff BASE_SHA > patch.diff` and the agent's
-   `report.json`. Note the wall-clock time.
+3. **Collect the artifacts.** Keep the agent's `report.json` outside the clone. Stage
+   everything first, so new files such as a golden are in the patch:
+   `git add -A && git diff --cached BASE_SHA > ../patch.diff`. Note the wall-clock
+   time.
 4. **Dry run and record** from this repository's checkout (the grader never runs inside
    the agent's directory):
 
