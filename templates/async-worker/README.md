@@ -106,6 +106,31 @@ refuses to modify a database where any of its four tables
 tables, including after a failing assertion. These tests do not start Redis,
 a Celery worker, or exercise Celery's result backend.
 
+## Job records
+
+Every task invocation writes one row to `cookbook_jobs` when it starts
+(`STARTED`) and updates that row when it ends. A row stands for **one
+attempt**, so a retried `send_notification` leaves one row per attempt:
+
+| Status | Meaning |
+|---|---|
+| `STARTED` | The attempt is running, or it ended in a way that could not be recorded (see below) |
+| `SUCCESS` | The attempt finished; `result` holds its return value |
+| `RETRY` | `send_notification` failed and Celery retries it; `result` holds the error and the retry count |
+| `FAILED` | The attempt failed and is not retried; `result` holds the error |
+
+`aggregate_sales` checks its date arguments before it writes a row, so an
+invalid date raises `ValueError` without leaving a Job. Every other failure
+after the row exists records `FAILED` (or `RETRY`) and then re-raises the
+original error, or lets Celery's retry signal through unchanged. Ended
+attempts have `completed_at` set, so `cleanup_old_records` can remove them.
+
+Limits: the status update is a separate transaction from the task's work.
+If it fails too, for example because the database is unavailable, the error is
+logged and the row stays `STARTED`; the task's own error still propagates. A
+worker process that is killed mid-task also leaves `STARTED`. This example has
+no reconciler for such rows, and it does not make tasks run exactly once.
+
 ## Notes
 
 - No Celery Beat (periodic scheduler) is used in this cookbook example.

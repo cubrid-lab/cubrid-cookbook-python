@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from importlib import import_module
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -14,6 +15,8 @@ models = import_module("models")
 Job = models.Job
 Report = models.Report
 SalesRecord = models.SalesRecord
+
+logger = logging.getLogger(__name__)
 
 
 def _start_job(task_name: str) -> int:
@@ -34,32 +37,51 @@ def _finish_job(job_id: int, status: str, payload: dict[str, Any]) -> None:
         job.completed_at = datetime.now(timezone.utc)
 
 
+def _fail_job(job_id: int, exc: BaseException) -> None:
+    """Record a failed attempt; never let that replace the task's own error.
+
+    If the status store is unavailable too, the Job stays STARTED and the
+    failure is only logged: nothing can be recorded then.
+    """
+    try:
+        _finish_job(job_id, "FAILED", {"error": str(exc)})
+    except Exception:
+        logger.exception("could not record job %s as FAILED", job_id)
+
+
 @app.task(name="tasks.aggregate_sales")
 def aggregate_sales(start_date: str | None = None, end_date: str | None = None) -> dict[str, Any]:
-    job_id = _start_job("aggregate_sales")
+    # Invalid dates fail before any Job is recorded.
     start_dt = datetime.fromisoformat(start_date) if start_date else None
     end_dt = datetime.fromisoformat(end_date) if end_date else None
+    job_id = _start_job("aggregate_sales")
 
-    with session_scope() as session:
-        stmt = select(func.count(SalesRecord.id), func.coalesce(func.sum(SalesRecord.amount), 0))
-        if start_dt is not None:
-            stmt = stmt.where(SalesRecord.created_at >= start_dt)
-        if end_dt is not None:
-            stmt = stmt.where(SalesRecord.created_at <= end_dt)
+    try:
+        with session_scope() as session:
+            stmt = select(
+                func.count(SalesRecord.id), func.coalesce(func.sum(SalesRecord.amount), 0)
+            )
+            if start_dt is not None:
+                stmt = stmt.where(SalesRecord.created_at >= start_dt)
+            if end_dt is not None:
+                stmt = stmt.where(SalesRecord.created_at <= end_dt)
 
-        total_orders, total_amount = session.execute(stmt).one()
-        payload = {
-            "start_date": start_date,
-            "end_date": end_date,
-            "total_orders": int(total_orders or 0),
-            "total_amount": float(total_amount or Decimal("0")),
-        }
+            total_orders, total_amount = session.execute(stmt).one()
+            payload = {
+                "start_date": start_date,
+                "end_date": end_date,
+                "total_orders": int(total_orders or 0),
+                "total_amount": float(total_amount or Decimal("0")),
+            }
 
-        report = Report(
-            report_name="sales-aggregation",
-            content=json.dumps(payload),
-        )
-        session.add(report)
+            report = Report(
+                report_name="sales-aggregation",
+                content=json.dumps(payload),
+            )
+            session.add(report)
+    except Exception as exc:
+        _fail_job(job_id, exc)
+        raise
 
     _finish_job(job_id, "SUCCESS", payload)
     return payload
@@ -75,14 +97,18 @@ def generate_report(
         "aggregation": aggregation,
     }
 
-    with session_scope() as session:
-        report = Report(report_name=report_name, content=json.dumps(report_payload))
-        session.add(report)
-        session.flush()
-        result = {
-            "report_id": report.id,
-            "report_name": report_name,
-        }
+    try:
+        with session_scope() as session:
+            report = Report(report_name=report_name, content=json.dumps(report_payload))
+            session.add(report)
+            session.flush()
+            result = {
+                "report_id": report.id,
+                "report_name": report_name,
+            }
+    except Exception as exc:
+        _fail_job(job_id, exc)
+        raise
 
     _finish_job(job_id, "SUCCESS", result)
     return result
@@ -93,27 +119,33 @@ def cleanup_old_records(days: int = 30) -> dict[str, int]:
     job_id = _start_job("cleanup_old_records")
     threshold = datetime.now(timezone.utc) - timedelta(days=days)
 
-    with session_scope() as session:
-        old_jobs = (
-            session.execute(
-                select(Job.id)
-                .where(Job.completed_at.is_not(None))
-                .where(Job.completed_at < threshold)
+    try:
+        with session_scope() as session:
+            old_jobs = (
+                session.execute(
+                    select(Job.id)
+                    .where(Job.completed_at.is_not(None))
+                    .where(Job.completed_at < threshold)
+                )
+                .scalars()
+                .all()
             )
-            .scalars()
-            .all()
-        )
-        old_reports = (
-            session.execute(select(Report.id).where(Report.created_at < threshold)).scalars().all()
-        )
+            old_reports = (
+                session.execute(select(Report.id).where(Report.created_at < threshold))
+                .scalars()
+                .all()
+            )
 
-        deleted_jobs = len(old_jobs)
-        deleted_reports = len(old_reports)
+            deleted_jobs = len(old_jobs)
+            deleted_reports = len(old_reports)
 
-        if old_jobs:
-            session.execute(delete(Job).where(Job.id.in_(old_jobs)))
-        if old_reports:
-            session.execute(delete(Report).where(Report.id.in_(old_reports)))
+            if old_jobs:
+                session.execute(delete(Job).where(Job.id.in_(old_jobs)))
+            if old_reports:
+                session.execute(delete(Report).where(Report.id.in_(old_reports)))
+    except Exception as exc:
+        _fail_job(job_id, exc)
+        raise
 
     result = {
         "deleted_jobs": int(deleted_jobs or 0),
