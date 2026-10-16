@@ -471,6 +471,14 @@ def grade(task: dict[str, Any], patch: str, report: Any, results: Any | None) ->
             criteria["behavior"] = _criterion("not_run", f"not run: {missing}")
         elif failed:
             criteria["behavior"] = _criterion("fail", f"failed or skipped: {failed}")
+        elif live_failed := [
+            c["command"]
+            for c in results["commands"]
+            if c["kind"] == "live" and c["outcome"] == "failed"
+        ]:
+            # A live check that ran and failed is observed wrong behavior, however
+            # honestly it is reported; a skipped one stays unverified, not failed.
+            criteria["behavior"] = _criterion("fail", f"live check failed: {live_failed}")
         else:
             criteria["behavior"] = _criterion("pass", "every offline and hidden command passed")
 
@@ -819,6 +827,9 @@ def run(
                             "kind": kind,
                             "exit_code": code,
                             "outcome": pytest_outcome(code, output),
+                            # What really ran: the interpreter path the manifest's
+                            # ``python`` resolved to.
+                            "executed": shlex.join(argv),
                         }
                     )
                 if live:
@@ -1163,7 +1174,14 @@ def _live(
                 else pytest_outcome(done, output)
             )
             commands.append(
-                {"command": command, "kind": "live", "exit_code": done, "outcome": outcome}
+                {
+                    "command": command,
+                    "kind": "live",
+                    "exit_code": done,
+                    "outcome": outcome,
+                    # The command as run, with the interpreter override make verify got.
+                    "executed": shlex.join(argv),
+                }
             )
     finally:
         clean = ["make", "clean"]

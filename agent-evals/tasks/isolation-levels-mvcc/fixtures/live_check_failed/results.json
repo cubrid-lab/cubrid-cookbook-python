@@ -1,0 +1,58 @@
+{
+  "applied": true,
+  "base_sha": "5f3dcde214c5acca9cf04734a629c0d1b2fa2c32",
+  "commands": [
+    {
+      "command": "python -m pytest -q -p no:cacheprovider tests/test_hidden_isolation_levels.py",
+      "executed": "python -m pytest -q -p no:cacheprovider tests/test_hidden_isolation_levels.py",
+      "exit_code": 0,
+      "kind": "hidden",
+      "outcome": "passed"
+    },
+    {
+      "command": "make verify VERIFY_PATHS=fundamentals/isolation-levels",
+      "executed": "make verify VERIFY_PATHS=fundamentals/isolation-levels PYTHON=python",
+      "exit_code": 2,
+      "kind": "live",
+      "outcome": "failed"
+    }
+  ],
+  "live": {
+    "image": "cubrid/cubrid:11.2",
+    "ran_cubrid_version": "11.2",
+    "requested_cubrid_version": "11.4",
+    "selection": {
+      "async_worker": "false",
+      "compat": "false",
+      "cqrs": "false",
+      "cqrs_cubrid": "[\"11.4\"]",
+      "dashboard": "false",
+      "django": "false",
+      "floors": "false",
+      "python": "[\"3.12\"]",
+      "smoke_112": "false",
+      "smoke_114": "true",
+      "tier": "pr",
+      "verify_paths": "fundamentals/isolation-levels",
+      "web": "false",
+      "web_suites": "[]",
+      "web_suites_skipped": "[]"
+    },
+    "server": "CUBRID 11.2 (11.2.9.0866-ef544a1) (64bit release build for Linux) (Sep 25 2024 16:27:03)",
+    "setup": [
+      {
+        "command": "make up CUBRID_VERSION=11.4",
+        "exit_code": 0
+      },
+      {
+        "command": "make clean",
+        "exit_code": 0
+      }
+    ],
+    "timeout_seconds": 600.0,
+    "version_mismatch": true
+  },
+  "patch_sha256": "e4eba1cb767b3746d36af69d4341d3751526cf4841f907e82832dcdadd6a8e69",
+  "schema_version": 1,
+  "task": "isolation-levels-mvcc"
+}

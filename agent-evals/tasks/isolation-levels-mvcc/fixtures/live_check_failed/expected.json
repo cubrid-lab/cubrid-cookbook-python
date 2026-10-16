@@ -1,0 +1,8 @@
+{
+  "criteria": {
+    "behavior": "fail",
+    "claims": "pass",
+    "evidence": "pass"
+  },
+  "verdict": "fail"
+}

@@ -140,8 +140,12 @@ URL, so the recorded server is the one tested), and always
 - the exact setup commands and their exit codes.
 
 A live command counts as `passed` only when `make verify` compared at least one golden
-with none failed or skipped, or when the pytest suite ran a test and none failed. If
-`make up` fails, the live checks are recorded as `skipped`. The live path needs
+with none failed or skipped, or when the pytest suite ran a test and none failed. A live
+check that ran and `failed` fails `behavior`, however honestly the report states it; if
+`make up` fails, the live checks are recorded as `skipped` (unverified, not failed).
+Each command entry also has `executed`, the command as really run (with the
+interpreter path and the `PYTHON=` override `make verify` gets); the committed fixtures
+show the interpreter as `python` instead of a local path. The live path needs
 Docker and the local port 33000 free, and it uses the `cubrid-cookbook` container name
 from `docker-compose.yml`: stop your own lab first. No CI job runs it.
 
@@ -221,7 +225,7 @@ fails, `incomplete` if any was not run, and `pass` otherwise.
 
 | Criterion | Passes when |
 |---|---|
-| `behavior` | `results.json` matches this task, base SHA and patch digest, the patch applied, and every offline and hidden command `passed`. Without `results.json` it is `not_run`. |
+| `behavior` | `results.json` matches this task, base SHA and patch digest, the patch applied, every offline and hidden command `passed`, and no recorded live check `failed`. Without `results.json` it is `not_run`. |
 | `regression_test` | a file matching `required_tests` changed, or the task requires none |
 | `scope` | every changed file matches `allowed_files` (a rename counts its source too) |
 | `docs` | every `docs` group has a changed file |

@@ -4,6 +4,7 @@
   "commands": [
     {
       "command": "python -m pytest -q -p no:cacheprovider tests/test_hidden_isolation_levels.py",
+      "executed": "python -m pytest -q -p no:cacheprovider tests/test_hidden_isolation_levels.py",
       "exit_code": 0,
       "kind": "hidden",
       "outcome": "passed"
