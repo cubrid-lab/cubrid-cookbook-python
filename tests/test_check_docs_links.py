@@ -346,6 +346,21 @@ def test_a_word_split_across_a_continuation_is_one_word(tmp_path: Path) -> None:
         ("echo \"$(case 'x' in x) make removed;; esac)\"", ["removed"]),
         ("make N=$(case esac in (esac) printf y;; esac) removed", ["removed"]),
         ("make N=$(case esac in x|esac) printf y;; esac) removed", ["removed"]),
+        # ;& ends a clause, a quoted suffix makes esac a pattern, a comment changes nothing.
+        ("make N=$(case x in x) printf y;& y) printf z;; esac) removed", ["removed"]),
+        ("make N=$(case x in x) printf y;;& y) printf z;; esac) removed", ["removed"]),
+        ('make N=$(case esacx in esac"x") printf y;; esac) removed', ["removed"]),
+        ('make N=$(case x in esac"") printf y;; esac) removed', ["removed"]),
+        ("make N=$(case x in esac\\*) printf y;; esac) removed", ["removed"]),
+        ('make removed N="$(case x in x) printf y;; # note\nesac)"', ["removed"]),
+        ("echo $(\n# a (comment) it's\nmake x\n)", ["x"]),
+        ("make removed N=$(echo $(printf x)#not-a-comment)", ["removed"]),
+        # An escaped separator or a quote keeps the word going, so the # is literal.
+        ("make removed N=$(printf x\\ #literal)", ["removed"]),
+        ("make removed N=$(printf x\\;#literal)", ["removed"]),
+        ("make removed N=$(printf x\\|#literal)", ["removed"]),
+        ("make removed N=$(printf x\\(#literal)", ["removed"]),
+        ('make removed N=$(printf "x"#literal)', ["removed"]),
     ],
 )
 def test_adjacent_shell_operators_are_separate(command: str, goals: list[str]) -> None:
