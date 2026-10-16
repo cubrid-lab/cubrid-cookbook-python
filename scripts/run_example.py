@@ -13,11 +13,14 @@ exits 128 + N). POSIX only: it needs process groups.
 
 Usage:
     python scripts/run_example.py --timeout SECONDS -- COMMAND [ARG ...]
+
+SECONDS must be a finite number greater than 0 (fractions allowed).
 """
 
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import signal
 import subprocess
@@ -78,8 +81,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
-    if not command or args.timeout <= 0:
-        parser.error("needs a positive --timeout and a command")
+    # NaN and infinity (including overflowing values such as 1e309) are no deadline.
+    if not command or not math.isfinite(args.timeout) or args.timeout <= 0:
+        parser.error("needs a finite positive --timeout and a command")
     return run(command, args.timeout)
 
 

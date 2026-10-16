@@ -457,6 +457,39 @@ class RunExampleTests(OrphanChecks):
         self.assertNotEqual(code, 0)
         self.assertIn("run_example.py requires POSIX process groups", stderr.getvalue())
 
+    def _load_run_example(self):
+        spec = importlib.util.spec_from_file_location(
+            "run_example", ROOT / "scripts/run_example.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_non_finite_timeout_is_a_usage_error_before_any_command_runs(self) -> None:
+        # #382: NaN and infinity are not a deadline. They must be rejected by the
+        # parser, before run() or Popen is reached.
+        module = self._load_run_example()
+        for value in ("nan", "inf", "1e309", "NaN", "Infinity"):
+            with self.subTest(timeout=value):
+                stderr = io.StringIO()
+                with (
+                    mock.patch.object(module, "run") as run,
+                    mock.patch.object(module.subprocess, "Popen") as popen,
+                    contextlib.redirect_stderr(stderr),
+                    self.assertRaises(SystemExit) as raised,
+                ):
+                    module.main(["--timeout", value, "--", "never-executed"])
+                self.assertEqual(raised.exception.code, 2)
+                self.assertIn("finite positive --timeout", stderr.getvalue())
+                run.assert_not_called()
+                popen.assert_not_called()
+
+    def test_finite_fractional_timeout_reaches_run(self) -> None:
+        module = self._load_run_example()
+        with mock.patch.object(module, "run", return_value=0) as run:
+            self.assertEqual(module.main(["--timeout", "0.25", "--", "true"]), 0)
+        run.assert_called_once_with(["true"], 0.25)
+
 
 class OfflineWorkflowTests(unittest.TestCase):
     def test_python_compatibility_is_a_small_classified_live_matrix(self) -> None:
