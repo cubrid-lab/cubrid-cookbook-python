@@ -628,31 +628,116 @@ _OPERATORS = (
 )
 
 
+def _keyword_at(command: str, index: int, word: str) -> bool:
+    """Return whether the whole word ``word`` starts at ``index`` of ``command``."""
+    end = index + len(word)
+    return command.startswith(word, index) and (end == len(command) or command[end] in " \t\n;&|)")
+
+
+def _add_substitution(command: str, start: int, end: int, substitutions: list[str]) -> None:
+    """Record what the substitution ``command[start:end]`` runs.
+
+    A command substitution runs its body. Arithmetic expansion (``$((...))``)
+    runs no command, only the command substitutions nested in it.
+    """
+    body = command[start + 2 : end - 1]
+    if command.startswith("$((", start) and body.endswith(")"):
+        _nested_commands(body[1:-1], substitutions)
+    else:
+        substitutions.append(body)
+
+
+def _nested_commands(text: str, substitutions: list[str]) -> None:
+    """Record the command substitutions of ``text`` (an arithmetic expression)."""
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char == "\\":
+            index += 2
+        elif char in "'\"":
+            index = _quoted_end(text, index, substitutions)
+            if index < 0:
+                return
+        elif char == "$" and text.startswith("(", index + 1):
+            end = _substitution_end(text, index + 1)
+            if end < 0:
+                return
+            _add_substitution(text, index, end, substitutions)
+            index = end
+        else:
+            index += 1
+
+
+def _quoted_end(command: str, index: int, substitutions: list[str] | None = None) -> int:
+    """Return the index after the quote that closes the one at ``index``, or ``-1``.
+
+    Single quotes are literal. In double quotes a backslash escapes the next
+    character, and a ``$(...)`` substitution is scanned as a whole (its body
+    goes to ``substitutions``, if given, since the shell runs it; nested ones
+    stay in that body).
+    """
+    quote, index, size = command[index], index + 1, len(command)
+    while index < size and command[index] != quote:
+        if quote == '"' and command[index] == "\\":
+            index += 2
+        elif quote == '"' and command.startswith("$(", index):
+            end = _substitution_end(command, index + 1)
+            if end < 0:
+                return -1
+            if substitutions is not None:
+                _add_substitution(command, index, end, substitutions)
+            index = end
+        else:
+            index += 1
+    return index + 1 if index < size else -1
+
+
 def _substitution_end(command: str, index: int) -> int:
     """Return the index after the ``)`` that closes the ``(`` at ``index``, or ``-1``.
 
-    Nested parentheses, quotes and backslash escapes inside are honoured.
+    Nested parentheses, quotes and backslash escapes inside are honoured, and
+    the ``)`` after a ``case`` pattern (``case x in x) ...;; esac``) does not
+    close the substitution. ``case`` and ``esac`` are keywords only at the
+    start of a command, so ``printf case`` is an argument. Nested
+    substitutions stay in the body, which the caller checks as a command of
+    its own.
     """
-    depth, size = 0, len(command)
+    depth, size, at_start = 0, len(command), True
+    cases: list[int] = []  # the depth at each open ``case``
     while index < size:
         char = command[index]
         if char == "\\":
-            index += 2
+            index, at_start = index + 2, False
             continue
         if char in "'\"":
-            end = index + 1
-            while end < size and command[end] != char:
-                end += 2 if char == '"' and command[end] == "\\" else 1
-            if end >= size:
+            index, at_start = _quoted_end(command, index), False
+            if index < 0:
                 return -1
-            index = end + 1
+            continue
+        if char in " \t":
+            index += 1
+            continue
+        if char in "\n;&|":
+            index, at_start = index + 1, True
             continue
         if char == "(":
-            depth += 1
+            depth, at_start = depth + 1, True
         elif char == ")":
-            depth -= 1
+            if cases and cases[-1] == depth:
+                index, at_start = index + 1, True  # a case pattern's terminator
+                continue
+            depth, at_start = depth - 1, False
             if depth == 0:
                 return index + 1
+        else:
+            if at_start and _keyword_at(command, index, "case"):
+                cases.append(depth)
+            elif at_start and cases and _keyword_at(command, index, "esac"):
+                cases.pop()
+            # skip the rest of the word: a keyword starts only a word
+            while index + 1 < size and command[index + 1] not in " \t\n;&|()'\"\\":
+                index += 1
+            at_start = False
         index += 1
     return -1
 
@@ -681,21 +766,27 @@ def _shell_tokens(command: str, substitutions: list[str] | None = None) -> list[
 
     while index < size:
         char = command[index]
-        if char in " \t\n":
+        if char == "\n":  # an unquoted newline ends a command, as ``;`` does
+            flush()
+            tokens.append((";", True))
+            index += 1
+        elif char in " \t":
             flush()
             index += 1
         elif char == "#" and not in_word:
-            break
+            newline = command.find("\n", index)  # a comment ends at the newline
+            if newline < 0:
+                break
+            index = newline
         elif char == "\\":
             word.append(command[index + 1 : index + 2])
             in_word = True
             index += 2
         elif char in "'\"":
-            end = index + 1
-            while end < size and command[end] != char:
-                end += 2 if char == '"' and command[end] == "\\" else 1
-            if end >= size:
+            end = _quoted_end(command, index, substitutions)
+            if end < 0:
                 return []
+            end -= 1  # the closing quote
             text = command[index + 1 : end]
             word.append(re.sub(r'\\(["\\$`])', r"\1", text) if char == '"' else text)
             in_word = True
@@ -705,7 +796,7 @@ def _shell_tokens(command: str, substitutions: list[str] | None = None) -> list[
             if end < 0:
                 return []
             if substitutions is not None:
-                substitutions.append(command[index + 2 : end - 1])
+                _add_substitution(command, index, end, substitutions)
             word.append(command[index:end])
             in_word = True
             index = end
@@ -734,6 +825,8 @@ def make_goals(command: str) -> list[str]:
     goals = []
     substitutions: list[str] = []
     tokens = _shell_tokens(command, substitutions)
+    if not tokens:
+        return []  # not a shell command: substitution bodies seen so far don't count
     # ``make`` counts only as the command word of a simple command, after any
     # ``VAR=value`` prefixes: ``echo make test`` names no goal.
     index, in_make, at_start = 0, False, True
