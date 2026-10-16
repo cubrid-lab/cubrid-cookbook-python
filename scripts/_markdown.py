@@ -181,16 +181,28 @@ def site_slugifier(mkdocs_yml: Path) -> Callable[[str], str]:
 _REPO_SITE_SLUG = site_slugifier(Path(__file__).resolve().parents[1] / "mkdocs.yml")
 
 
-def _allocate(base: str, used: set[str], separator: str, number_empty: bool = False) -> str:
-    """Return ``base`` or its first free ``<separator>N`` duplicate suffix.
-
-    With ``number_empty``, an empty ``base`` is numbered too, as the site's
-    ``toc`` does (``_1``, ``_2``, ...).
-    """
+def _allocate(base: str, used: set[str], separator: str) -> str:
+    """Return ``base`` or its first free ``<separator>N`` duplicate suffix."""
     slug, count = base, 0
-    while slug in used or (number_empty and not slug):
+    while slug in used:
         count += 1
         slug = f"{base}{separator}{count}"
+    used.add(slug)
+    return slug
+
+
+_ID_COUNT = re.compile(r"^(.*)_([0-9]+)$")
+
+
+def _site_unique(slug: str, used: set[str]) -> str:
+    """Return the site's id for ``slug``, as Python-Markdown's ``toc`` ``unique()`` does.
+
+    An empty or taken id gets ``_1``, and an id already ending in ``_N`` is
+    incremented instead, so ``_1`` is followed by ``_2``, not ``_1_1``.
+    """
+    while slug in used or not slug:
+        match = _ID_COUNT.match(slug)
+        slug = f"{match.group(1)}_{int(match.group(2)) + 1}" if match else f"{slug}_1"
     used.add(slug)
     return slug
 
@@ -486,8 +498,7 @@ def parse(path: Path, site_slug: Callable[[str], str] | None = None) -> Parsed:
                 anchors.add(explicit.group(1))
                 site_used.add(explicit.group(1))
             else:
-                slug = (site_slug or _REPO_SITE_SLUG)(heading)
-                anchors.add(_allocate(slug, site_used, "_", number_empty=True))
+                anchors.add(_site_unique((site_slug or _REPO_SITE_SLUG)(heading), site_used))
     definitions = []
     for label, ref in references.items():
         if isinstance(ref, dict):

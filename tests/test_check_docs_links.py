@@ -779,6 +779,26 @@ def test_site_slugifier_follows_mkdocs_yml(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
+    ("headings", "github", "site"),
+    [
+        # An empty id is numbered, and a taken ``_N`` is incremented, not suffixed.
+        (["한글", "_1"], {"한글", "_1"}, {"_1", "_2"}),
+        (["same", "same", "same_1"], {"same", "same-1", "same_1"}, {"same", "same_1", "same_2"}),
+        (["a_1", "a_1"], {"a_1", "a_1-1"}, {"a_1", "a_2"}),
+    ],
+)
+def test_site_anchors_are_unique_as_toc_makes_them(
+    tmp_path: Path, headings: list[str], github: set[str], site: set[str]
+) -> None:
+    path = tmp_path / "t.md"
+    path.write_text("".join(f"## {h}\n\n" for h in headings), encoding="utf-8")
+    assert parse(path, _markdown.default_site_slug).anchors == github | site
+    markdown = pytest.importorskip("markdown")
+    html = markdown.markdown(path.read_text(encoding="utf-8"), extensions=["toc"])
+    assert set(re.findall(r'id="([^"]*)"', html)) == site
+
+
+@pytest.mark.parametrize(
     ("slugifier", "site"),
     [
         ("default_site_slug", {"resume", "_1", "_2"}),
