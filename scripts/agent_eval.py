@@ -111,6 +111,8 @@ TRIPLE_SQL = re.compile(
     r"""(?P<op>\s*(?:\.format\(|%\s*[\w(]))?""",
     re.DOTALL,
 )
+STRING_START = re.compile(r"""[rRbBfF]{0,2}["']""")
+STRING_LITERAL = re.compile(r"""(?<![\w"'])([rRbBfF]{0,2})(["'])((?:\\.|(?!\2).)*)\2""")
 SQL_INTERPOLATION = re.compile(
     rf"""\bf(?P<q>["']).*{SQL_TEXT}.*\{{"""
     rf"""|(?P<r>["']).*{SQL_TEXT}.*(?P=r)\s*(?:\.format\(|%\s*[\w(])""",
@@ -380,7 +382,10 @@ def validate_task(task: Any, where: str = "task") -> list[str]:
         ):
             errors.append(f"{where}: validation.live must list 'make verify'/pytest commands")
     docs = task.get("docs")
-    if not isinstance(docs, list) or not all(isinstance(group, list) and group for group in docs):
+    if not isinstance(docs, list) or not all(
+        isinstance(group, list) and group and all(isinstance(g, str) and g for g in group)
+        for group in docs
+    ):
         errors.append(f"{where}: docs must be a list of non-empty file-glob groups")
     changelog = task.get("changelog")
     if changelog is not None and not (
@@ -543,12 +548,38 @@ def _multiline_sql(path: str, lines: list[tuple[str, str]]) -> list[str]:
             if kind == "+":
                 added.append((offset, offset + len(line)))
             offset += len(line) + 1
+        problems += _adjacent_sql(path, hunk)
         for match in TRIPLE_SQL.finditer(text):
             if not re.search(SQL_TEXT, match.group("body"), re.IGNORECASE):
                 continue
             built = (match.group("f") and "{" in match.group("body")) or match.group("op")
             if built and any(a < match.end() and b > match.start() for a, b in added):
                 problems.append(f"{path}: multiline SQL built by string interpolation")
+    return problems
+
+
+def _adjacent_sql(path: str, hunk: list[tuple[str, str]]) -> list[str]:
+    """SQL split over adjacent string literals, one of them an interpolating f-string.
+
+    A run is a line followed by the lines that start with a string literal (Python
+    joins adjacent literals), such as ``cur.execute("... VALUES ("`` then
+    ``f"{value})"``. A run is checked only when an added line is part of it.
+    """
+    problems = []
+    runs: list[list[tuple[str, str]]] = []
+    for kind, line in hunk:
+        if runs and STRING_START.match(line.strip()):
+            runs[-1].append((kind, line))
+        else:
+            runs.append([(kind, line)])
+    for run in runs:
+        if len(run) < 2 or not any(kind == "+" for kind, _ in run):
+            continue
+        literals = STRING_LITERAL.findall(" ".join(line for _, line in run))
+        joined = "".join(body for _, _, body in literals)
+        interpolated = any("f" in prefix.lower() and "{" in body for prefix, _, body in literals)
+        if interpolated and re.search(SQL_TEXT, joined, re.IGNORECASE):
+            problems.append(f"{path}: SQL built from adjacent strings with interpolation")
     return problems
 
 
@@ -630,6 +661,13 @@ def _evidence(
             continue
         if result == "passed":
             kinds.add(kind)
+            # A live check is live whatever the label: reported as passed offline
+            # evidence, it would bypass the live-run requirement.
+            command = entry["command"]
+            if kind not in LIVE_KINDS and (
+                command in task["validation"]["live"] or command.startswith("make verify")
+            ):
+                problems.append(f"live check {command!r} reported as {kind} evidence")
             # Live evidence counts only for a live command the runner saw pass.
             if kind in LIVE_KINDS and entry["command"] not in live_passed:
                 problems.append(

@@ -21,6 +21,20 @@ RECIPES = ("01_agent_state.py", "03_rag_metadata.py")
 RESERVED = {"role", "value", "count", "data", "user", "date", "time", "order", "group", "level"}
 CREATE = re.compile(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.*)\)", re.S | re.I)
 CONSTRAINT = {"primary", "foreign", "unique", "constraint", "key", "index", "check"}
+# The tables each recipe's helpers need, with the columns that keep their names
+# (the renamed message-role column may take any non-reserved name).
+REQUIRED = {
+    "01_agent_state.py": {
+        "agent_sessions": {"id", "session_key", "agent_name", "status", "tags", "created_at"},
+        "agent_messages": {"id", "session_id", "content", "metadata", "created_at"},
+        "agent_tool_calls": {"id", "session_id", "tool_name", "arguments", "result", "status"},
+    },
+    "03_rag_metadata.py": {
+        "rag_documents": {"id", "title", "source", "content", "metadata", "tags", "chunk_count"},
+        "rag_chunks": {"id", "document_id", "chunk_index", "content"},
+        "rag_retrieval_log": {"id", "query_text", "llm_response"},
+    },
+}
 
 
 def _module(name):
@@ -52,7 +66,11 @@ def _tables(module):
 
 @pytest.mark.parametrize("recipe", RECIPES)
 def test_columns_avoid_reserved_words_and_text(recipe):
-    for table, columns in _tables(_module(recipe)).items():
+    tables = _tables(_module(recipe))
+    for table, needed in REQUIRED[recipe].items():
+        assert table in tables, f"{recipe} no longer creates {table}"
+        assert needed <= set(tables[table]), (table, sorted(needed - set(tables[table])))
+    for table, columns in tables.items():
         assert not RESERVED & set(columns), (table, sorted(RESERVED & set(columns)))
         assert "TEXT" not in columns.values(), (table, columns)
 

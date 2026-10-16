@@ -87,6 +87,10 @@ def test_missing_results_is_incomplete_never_pass(task_id: str) -> None:
         (AI, "unsafe_query", "safety"),
         (AI, "unsafe_multiline_query", "safety"),
         (AI, "partial_rename", "behavior"),
+        (AI, "missing_schema", "behavior"),
+        (AI, "unsafe_adjacent_strings", "safety"),
+        (ASYNC, "commented_requirement", "behavior"),
+        (ISO, "live_check_labelled_offline", "evidence"),
         (AI, "hardcoded_secret", "safety"),
         (AI, "unrelated_file", "scope"),
         (AI, "false_live_claim", "claims"),
@@ -184,6 +188,21 @@ def test_multiline_sql_is_checked_whole_within_a_hunk() -> None:
     assert ae._safety({}, split)["status"] == "pass"
 
 
+@pytest.mark.parametrize(
+    ("lines", "flagged"),
+    [
+        ([" cur.execute(", '+  "INSERT INTO t (a) VALUES ("', '+  f"{a})",'], True),
+        (["+cur.execute(", '+  "SELECT * FROM t "', '+  f"WHERE id = {i}")'], True),
+        (["+cur.execute(", '+  "SELECT * FROM t "', '+  "WHERE id = ?", [i])'], False),
+        ([' q = "SELECT 1"', '+print(f"{x}")'], False),
+        ([' cur.execute("SELECT 1 "', ' f"{x}")', "+print('done')"], False),
+    ],
+)
+def test_adjacent_string_literals_are_joined(lines: list[str], flagged: bool) -> None:
+    hunk = [(line[0], line[1:]) for line in lines]
+    assert bool(ae._adjacent_sql("a.py", hunk)) is flagged
+
+
 def test_safety_checks_tables_only_in_example_files() -> None:
     bad = ae._safety({"fundamentals/x/01_x.py": ['DDL = "CREATE TABLE scratch (id INT)"']}, {})
     assert bad["status"] == "fail"
@@ -245,6 +264,8 @@ def test_validate_task_reports_each_problem() -> None:
     broken["validation"] = {"offline": ["pytest x"], "live": ["docker compose up"]}
     assert "validation.live" in " ".join(ae.validate_task(dict(task, validation={"offline": []})))
     assert "validation.offline" in " ".join(ae.validate_task(dict(task, validation={"live": []})))
+    for docs in ([[None]], [[""]], [[]], ["README.md"]):
+        assert "docs must be" in " ".join(ae.validate_task(dict(task, docs=docs))), docs
     broken["evidence"] = {"live": "maybe", "required_kinds": ["smoke"]}
     del broken["expected"]
     errors = " ".join(ae.validate_task(broken))

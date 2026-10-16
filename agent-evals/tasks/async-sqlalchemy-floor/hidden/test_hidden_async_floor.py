@@ -23,8 +23,11 @@ def _version(text):
 
 
 def _floor():
+    # Only an active requirement line counts, never a comment that mentions one.
     text = (RECIPE_DIR / "requirements.txt").read_text(encoding="utf-8")
-    match = FLOOR.search(text)
+    match = next(
+        (FLOOR.match(line.strip()) for line in text.splitlines() if FLOOR.match(line.strip())), None
+    )
     assert match, "requirements.txt pins no sqlalchemy-cubrid floor"
     return match.group(1)
 

@@ -1,0 +1,84 @@
+diff --git a/templates/ai-agent/01_agent_state.py b/templates/ai-agent/01_agent_state.py
+index 41a64e4..3757a55 100644
+--- a/templates/ai-agent/01_agent_state.py
++++ b/templates/ai-agent/01_agent_state.py
+@@ -46,8 +46,8 @@ DDL = [
+     CREATE TABLE IF NOT EXISTS agent_messages (
+         id INT AUTO_INCREMENT PRIMARY KEY,
+         session_id INT NOT NULL,
+-        role VARCHAR(20) NOT NULL,
+-        content TEXT,
++        message_role VARCHAR(20) NOT NULL,
++        content STRING,
+         metadata JSON,
+         created_at DATETIME DEFAULT SYS_DATETIME,
+         FOREIGN KEY (session_id) REFERENCES agent_sessions(id)
+@@ -107,7 +107,7 @@ def add_message(
+     cur = conn.cursor()
+     meta_json = json.dumps(metadata) if metadata else None
+     cur.execute(
+-        "INSERT INTO agent_messages (session_id, role, content, metadata) VALUES (?, ?, ?, ?)",
++        "INSERT INTO agent_messages (session_id, message_role, content, metadata) VALUES (?, ?, ?, ?)",
+         [session_id, role, content, meta_json],
+     )
+     conn.commit()
+@@ -153,7 +153,7 @@ def get_conversation(
+     """Retrieve the full conversation for a session."""
+     cur = conn.cursor()
+     cur.execute(
+-        "SELECT role, content, metadata, created_at "
++        "SELECT message_role, content, metadata, created_at "
+         "FROM agent_messages WHERE session_id = ? ORDER BY id",
+         [session_id],
+     )
+@@ -203,7 +203,7 @@ def main() -> None:
+     # Verify JSON metadata round-trip
+     cur = conn.cursor()
+     cur.execute(
+-        "SELECT metadata FROM agent_messages WHERE session_id = ? AND role = 'assistant'",
++        "SELECT metadata FROM agent_messages WHERE session_id = ? AND message_role = 'assistant'",
+         [session_id],
+     )
+     row = cur.fetchone()
+diff --git a/templates/ai-agent/03_rag_metadata.py b/templates/ai-agent/03_rag_metadata.py
+index 293ee17..20d5a7c 100644
+--- a/templates/ai-agent/03_rag_metadata.py
++++ b/templates/ai-agent/03_rag_metadata.py
+@@ -22,13 +22,14 @@ DB_CONFIG = {
+     "database": os.environ.get("CUBRID_DATABASE", "testdb"),
+ }
+ 
+-DDL = [
++DDL: list[str] = []
++_UNUSED_DDL = [
+     """
+     CREATE TABLE IF NOT EXISTS rag_documents (
+         id INT AUTO_INCREMENT PRIMARY KEY,
+         title VARCHAR(200) NOT NULL,
+         source VARCHAR(500),
+-        content TEXT,
++        content STRING,
+         metadata JSON,
+         tags SET(VARCHAR(50)),
+         chunk_count INT DEFAULT 0,
+@@ -40,7 +41,7 @@ DDL = [
+         id INT AUTO_INCREMENT PRIMARY KEY,
+         document_id INT NOT NULL,
+         chunk_index INT NOT NULL,
+-        content TEXT,
++        content STRING,
+         token_count INT,
+         embedding_ref VARCHAR(500),
+         FOREIGN KEY (document_id) REFERENCES rag_documents(id)
+@@ -49,9 +50,9 @@ DDL = [
+     """
+     CREATE TABLE IF NOT EXISTS rag_retrieval_log (
+         id INT AUTO_INCREMENT PRIMARY KEY,
+-        query_text TEXT,
++        query_text STRING,
+         retrieved_doc_ids SEQUENCE(INT),
+-        llm_response TEXT,
++        llm_response STRING,
+         relevance_scores JSON,
+         created_at DATETIME DEFAULT SYS_DATETIME
+     )
