@@ -42,7 +42,15 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 | 3.10 | ❌ Not supported by the current cookbook (upstream end of life 2026-10-01); use an older cookbook/driver combination or upgrade Python | n/a |
 | 3.9 | ❌ Not supported | n/a |
 
-The resolved versions column records a dated observation of what the four `Python compatibility` jobs installed in `ci.yml` run 38125283280 (`main` at `27f98d6`, 2026-10-11; the `Successfully installed` line of each job's setup step). They are unpinned `>=` resolutions, so a later run can resolve newer releases; refresh the column when a driver release changes them.
+The resolved versions column is a **dated record**, not the current state: what
+the four `Python compatibility` jobs installed in `ci.yml` run
+[38125283280](https://github.com/cubrid-lab/cubrid-cookbook-python/actions/runs/38125283280)
+(cookbook `main` at `27f98d6`, 2026-10-11; the `Successfully installed` line of each
+job's setup step). The drivers came from PyPI as unpinned `>=` resolutions, so a
+later run can resolve newer releases. The record covers only the two connect
+recipes those jobs run on CUBRID 11.4, not every recipe or server version. It is
+refreshed only from a later run's actual output, never with versions no run
+installed (see [Refreshing version statements](CONTRIBUTING.md#refreshing-version-statements)).
 
 The `ci.yml` compatibility matrix covers Python 3.11–3.14 with
 `fundamentals/pycubrid/01_connect.py` and
@@ -70,20 +78,6 @@ Failure, cancellation or a skip the classifier did not select fails the CI gate.
 | Pandas | ≥ 2.0 | ✅ |
 | Streamlit | ≥ 1.30 | ✅ |
 | Django | ≥ 5.2 | ✅ (minimal recipe; floor checked with `manage.py check` and the `/health`, `/items` views on 4.2, 5.0 and 5.2, CI runs the live bridge suite on the latest release) |
-
-**SQLAlchemy 2.2 is not in the supported range.** The cookbook follows the reviewed
-sqlalchemy-cubrid support contract, which documents SQLAlchemy 2.0 and 2.1 as supported and
-2.2 and later as not supported
-([`docs/SUPPORT_MATRIX.md` at `da9c397`](https://github.com/cubrid-lab/sqlalchemy-cubrid/blob/da9c3977d21e94f739667ae5e9467c04d53fdd0b/docs/SUPPORT_MATRIX.md)).
-What can be installed is a separate question from what is supported:
-
-- **Current `main` of sqlalchemy-cubrid (unreleased)** requires `sqlalchemy>=2.0,<2.2`
-  (checked at `a6339df` on 2026-10-11). This cap has not been published.
-- **Published `sqlalchemy-cubrid` 1.10.0 on PyPI** (the latest release when this was written,
-  2026-10-11) still declares `sqlalchemy>=2.0,<2.3`, so its metadata would let pip install
-  SQLAlchemy 2.2 once that is released (the latest SQLAlchemy on PyPI is 2.1.4). That is an installation range, not a support claim, and no cookbook recipe is
-  verified on SQLAlchemy 2.2. Any forward-compatibility run against a newer
-  SQLAlchemy is advisory only.
 
 [^async]: The sync SQLAlchemy dialect (`cubrid+pycubrid://`) works from `sqlalchemy-cubrid` 1.0. The async dialect (`cubrid+aiopycubrid://`, used by `fundamentals/async/02_async_sqlalchemy.py`) first became installable from PyPI in 1.2.3 (its entry points were missing from the 1.2.0–1.2.1 releases and 1.2.2 was yanked; 1.2.1 only shipped the `get_pool_class()`/`create_async_engine()` fix), but 1.4.x fails with SQLAlchemy 2.1 (which its metadata allows; the async adapter calls the removed `await_` attribute), so `fundamentals/async` pins `≥ 1.5`, the first release the floor lane passes on. The other advanced SQLAlchemy recipes (pandas, Django, dashboard) keep `≥ 1.4.2`; `fundamentals/sqlalchemy` needs `≥ 1.9` (see below).
 
@@ -156,6 +150,47 @@ installed versions with `pip freeze`, and execute its seven existing pytest
 tests with `CUBRID_TEST_URL` set. This validates that recipe's pinned framework
 versions; the driver ranges still resolve normally. The broad non-PR smoke
 suites use a shared dependency list and may install different framework versions.
+
+This page answers three separate questions. The table and the per-recipe floors above are the
+**current support policy**: what the cookbook supports and requires. The **published
+package requirements** below record what a released artifact declares, which is
+what pip will install. The **dated records** say which exact combination a
+specific run tested, on which date; they are history and are not refreshed
+automatically (see [Refreshing version statements](CONTRIBUTING.md#refreshing-version-statements)).
+
+### Current support policy
+
+**SQLAlchemy 2.2 is not in the supported range.** The cookbook follows the reviewed
+sqlalchemy-cubrid support contract, which documents SQLAlchemy 2.0 and 2.1 as supported and
+2.2 and later as not supported
+([`docs/SUPPORT_MATRIX.md` at `da9c397`](https://github.com/cubrid-lab/sqlalchemy-cubrid/blob/da9c3977d21e94f739667ae5e9467c04d53fdd0b/docs/SUPPORT_MATRIX.md)).
+What a package's metadata lets pip install is a separate question from what is
+supported, and no cookbook recipe is verified on SQLAlchemy 2.2. Any
+forward-compatibility run against a newer SQLAlchemy is advisory only.
+
+### Published package requirements
+
+Each row is read from the published wheel itself, not from the PyPI JSON
+metadata alone: the wheel's `METADATA` `Requires-Dist`, with the wheel's SHA-256
+checked against the digest PyPI lists for that file. A driver's `main` branch or
+an open release PR is not a published release, and a lookup that fails is "not
+verified", so neither appears here.
+
+| Package | Version | Declares | Evidence | Checked |
+|---------|---------|----------|----------|---------|
+| sqlalchemy-cubrid | 1.11.0 | `sqlalchemy>=2.0,<2.2` | `sqlalchemy_cubrid-1.11.0-py3-none-any.whl` SHA-256 `594ec50a6294dea5f40dcd557e806af9fb7d8555f6728acf90a774c1d7f355cc` | 2026-10-16 |
+| sqlalchemy-cubrid | 1.10.0 | `sqlalchemy>=2.0,<2.3` | `sqlalchemy_cubrid-1.10.0-py3-none-any.whl` SHA-256 `76dfe2912e736fd7a532a86bae383002c563b02d5c9569d8a386a87676e30164` | 2026-10-16 |
+
+1.11.0 is the first release whose metadata caps SQLAlchemy below 2.2, matching
+the support policy. 1.10.0 still lets pip install SQLAlchemy 2.2 once that is
+released: an installation range, not a support claim.
+
+### Dated record: 2026-10-11
+
+Kept as written then. On 2026-10-11 the unreleased `main` of sqlalchemy-cubrid
+(checked at `a6339df`) required `sqlalchemy>=2.0,<2.2`, and the newest published
+release, 1.10.0, still declared `sqlalchemy>=2.0,<2.3`; the latest SQLAlchemy
+on PyPI was 2.1.4. The `<2.2` cap shipped in 1.11.0 (see the table above).
 
 ## Recipe Coverage
 

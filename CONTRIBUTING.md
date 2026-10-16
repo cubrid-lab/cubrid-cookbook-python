@@ -615,6 +615,38 @@ Run the smoke dependency guards without a database or network:
 python3 -m unittest discover -s tests -p 'test_release*.py' -v
 ```
 
+#### Refreshing version statements
+
+`SUPPORT_MATRIX.md` keeps three kinds of version information apart (#393), and
+each has one source:
+
+| Statement | Source of truth |
+| --- | --- |
+| Installation floors | each recipe's own `requirements.txt` (checked by `scripts/check_dependency_floors.py` and run by `scripts/driver_floors.py`) |
+| Support policy | the reviewed text and table in `SUPPORT_MATRIX.md` (the SQLAlchemy range is pinned in `scripts/check_support_matrix_counts.py`) |
+| Published package requirements | the published wheel's `METADATA`, with its SHA-256 matching the digest PyPI lists |
+| Tested versions | the actual output of a run (**Tested upstream versions**, a job's `Successfully installed` line), with its run URL and date |
+
+A driver's `main`, an open release PR or a project-level PyPI `info.version`
+never proves an installable release, and a lookup that fails is "not
+verified", never "unpublished" or "unchanged".
+
+The documentation maintainer refreshes these statements after reviewing release
+evidence: when a driver release is published, or when a release-verification
+run shows that a changed combination was installed. Then:
+
+1. Add a row to "Published package requirements" for the new artifact (wheel
+   filename, its SHA-256 checked against PyPI, the declared requirement, the
+   date). `make check-docs` rejects a row without that evidence, and any row
+   for a `main`, candidate or unverified version.
+2. Review only the current-facing statements that release changed, and leave
+   dated records as they are: a dated record is replaced or extended only with
+   a later run's actual output, never with versions no run installed.
+3. When no new run is available yet, say so next to the affected statement
+   ("refresh pending: <release>, not yet tested here") instead of letting the
+   old text read as current. A stale advisory statement never makes a
+   successful package publication count as failed.
+
 #### Excluded from golden verification
 
 Some examples are **intentionally** outside `make verify`. They are still real,

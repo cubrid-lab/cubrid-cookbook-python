@@ -118,5 +118,81 @@ class SupportMatrixCountTests(unittest.TestCase):
                     self.assertTrue(errors[0].startswith(f"{name} must say"), errors)
 
 
+ROW_1110 = (
+    "| sqlalchemy-cubrid | 1.11.0 | `sqlalchemy>=2.0,<2.2` |"
+    " `sqlalchemy_cubrid-1.11.0-py3-none-any.whl` SHA-256"
+    " `594ec50a6294dea5f40dcd557e806af9fb7d8555f6728acf90a774c1d7f355cc` | 2026-10-16 |"
+)
+
+
+class PublishedRequirementTests(unittest.TestCase):
+    """#393: published-requirement rows are facts about one published artifact."""
+
+    def with_row(self, row: str) -> str:
+        self.assertIn(ROW_1110, MATRIX)
+        return MATRIX.replace(ROW_1110, row + "\n" + ROW_1110)
+
+    def test_current_matrix_records_only_verified_artifacts(self) -> None:
+        self.assertEqual(counts.check_published_requirements(MATRIX), [])
+
+    def test_a_new_published_artifact_after_an_old_observation_is_accepted(self) -> None:
+        newer = (
+            "| sqlalchemy-cubrid | 1.12.0 | `sqlalchemy>=2.0,<2.2` |"
+            " `sqlalchemy_cubrid-1.12.0-py3-none-any.whl` SHA-256 `" + "a" * 64 + "` | 2026-11-02 |"
+        )
+        self.assertEqual(counts.check_published_requirements(self.with_row(newer)), [])
+
+    def test_the_dated_record_is_history_and_not_checked(self) -> None:
+        record = MATRIX.split("### Dated record: 2026-10-11", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("unreleased `main`", record)
+        self.assertEqual(counts.check_published_requirements(MATRIX), [])
+
+    def test_unpublished_or_unverified_rows_are_rejected(self) -> None:
+        for row in (
+            # an abandoned / main-only version
+            "| sqlalchemy-cubrid | 1.11.1 | `sqlalchemy>=2.0,<2.2` | unreleased `main` at `37d0b0b` | 2026-10-16 |",
+            "| sqlalchemy-cubrid | 1.11.2 | `sqlalchemy>=2.0,<2.2` | release candidate #910 | 2026-10-16 |",
+            # a failed lookup
+            "| pycubrid | 1.14.0 | not verified | PyPI lookup failed | 2026-10-16 |",
+        ):
+            with self.subTest(row=row):
+                errors = counts.check_published_requirements(self.with_row(row))
+                self.assertEqual(len(errors), 1, errors)
+                self.assertIn("is not a fact", errors[0])
+
+    def test_rows_without_artifact_evidence_are_rejected(self) -> None:
+        cases = {
+            "evidence must give the wheel's SHA-256": (
+                "| pycubrid | 1.13.0 | `x` | `pycubrid-1.13.0-py3-none-any.whl` | 2026-10-16 |"
+            ),
+            "evidence must name its wheel": (
+                "| pycubrid | 1.13.0 | `x` | `other-1.13.0-py3-none-any.whl` SHA-256 `"
+                + "b" * 64
+                + "` | 2026-10-16 |"
+            ),
+            "version must be MAJOR.MINOR.PATCH": (
+                "| pycubrid | 1.13 | `x` | `pycubrid-1.13-py3-none-any.whl` SHA-256 `"
+                + "b" * 64
+                + "` | 2026-10-16 |"
+            ),
+            "checked date must be YYYY-MM-DD": (
+                "| pycubrid | 1.13.0 | `x` | `pycubrid-1.13.0-py3-none-any.whl` SHA-256 `"
+                + "b" * 64
+                + "` | October |"
+            ),
+        }
+        for message, row in cases.items():
+            with self.subTest(message=message):
+                errors = counts.check_published_requirements(self.with_row(row))
+                self.assertTrue(any(message in e for e in errors), errors)
+
+    def test_a_missing_section_fails(self) -> None:
+        stripped = MATRIX.replace(counts.PUBLISHED_HEADING, "### Something else")
+        self.assertEqual(
+            counts.check_published_requirements(stripped),
+            [f"missing '{counts.PUBLISHED_HEADING}' section"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

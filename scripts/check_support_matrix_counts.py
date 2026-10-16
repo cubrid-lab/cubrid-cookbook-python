@@ -23,6 +23,14 @@ dialect supports (``SQLALCHEMY_SUPPORTED``) and its reviewed status wording, and
 one-line dialect descriptions listed in ``SQLALCHEMY_CLAIMS`` must use the reviewed
 wording verbatim; any other range, such as one that promotes 2.2, fails the check.
 
+Every row of the "Published package requirements" table must be a recorded fact
+about one published artifact (#393): a known package, a ``MAJOR.MINOR.PATCH``
+version, the declared requirement in backticks, the wheel's filename for that
+package and version with its 64-hex SHA-256, and an ISO check date. A ``main``,
+unreleased, candidate or "not verified" row fails, so neither an unpublished
+version nor a failed lookup can be advertised as a published requirement. Dated
+records elsewhere on the page are history and are not checked.
+
 Usage:
     python scripts/check_support_matrix_counts.py
 
@@ -230,6 +238,51 @@ def check_sqlalchemy_range(root: Path, matrix: str) -> list[str]:
     return errors
 
 
+PUBLISHED_HEADING = "### Published package requirements"
+PUBLISHED_HEADER = "| Package | Version | Declares | Evidence | Checked |"
+PUBLISHED_PACKAGES = ("pycubrid", "sqlalchemy-cubrid", "cubrid-mcp-server")
+UNPUBLISHED_WORDS = re.compile(
+    r"\b(?:main|unreleased|candidate|not verified|unknown|pending)\b", re.IGNORECASE
+)
+
+
+def check_published_requirements(matrix: str) -> list[str]:
+    """Each published-requirement row must name one verified published artifact."""
+    if PUBLISHED_HEADING not in matrix:
+        return [f"missing '{PUBLISHED_HEADING}' section"]
+    section = matrix.split(PUBLISHED_HEADING, 1)[1].split("\n#", 1)[0]
+    lines = [line.strip() for line in section.splitlines() if line.strip().startswith("|")]
+    if not lines or lines[0] != PUBLISHED_HEADER:
+        return [f"'{PUBLISHED_HEADING}' must start with the table header {PUBLISHED_HEADER!r}"]
+    rows = [[c.strip() for c in line.strip("|").split("|")] for line in lines[2:]]
+    if not rows:
+        return [f"'{PUBLISHED_HEADING}' table has no rows"]
+    errors: list[str] = []
+    for row in rows:
+        if len(row) != 5:
+            errors.append(f"published row needs 5 cells: {row}")
+            continue
+        package, version, declares, evidence, checked = row
+        where = f"published row {package} {version}"
+        if UNPUBLISHED_WORDS.search(" ".join(row)):
+            errors.append(f"{where}: an unpublished version or an unverified lookup is not a fact")
+            continue
+        if package not in PUBLISHED_PACKAGES:
+            errors.append(f"{where}: unknown package")
+        if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
+            errors.append(f"{where}: version must be MAJOR.MINOR.PATCH")
+        if not re.fullmatch(r"`[^`]+`", declares):
+            errors.append(f"{where}: the declared requirement must be in backticks")
+        wheel = f"{package.replace('-', '_')}-{version}-"
+        if f"`{wheel}" not in evidence or not re.search(r"\.whl`", evidence):
+            errors.append(f"{where}: evidence must name its wheel `{wheel}...whl`")
+        if not re.search(r"SHA-256 `[0-9a-f]{64}`", evidence):
+            errors.append(f"{where}: evidence must give the wheel's SHA-256")
+        if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", checked):
+            errors.append(f"{where}: checked date must be YYYY-MM-DD")
+    return errors
+
+
 def main() -> int:
     matrix = MATRIX_PATH.read_text(encoding="utf-8")
     failed = False
@@ -239,6 +292,10 @@ def main() -> int:
             "SQLAlchemy support claims differ from the reviewed range:",
             check_sqlalchemy_range(REPO_ROOT, matrix),
         ),
+        (
+            "Published package requirements are not recorded facts:",
+            check_published_requirements(matrix),
+        ),
     ):
         if errors:
             failed = True
@@ -247,7 +304,10 @@ def main() -> int:
                 print(f"  - {err}")
     if failed:
         return 1
-    print("SUPPORT_MATRIX.md Recipe Coverage counts and SQLAlchemy range match.")
+    print(
+        "SUPPORT_MATRIX.md Recipe Coverage counts, SQLAlchemy range and published"
+        " requirements match."
+    )
     return 0
 
 
