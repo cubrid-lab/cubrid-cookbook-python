@@ -61,7 +61,9 @@ vhs demos/agent-state.tape
 docker exec demo-cubrid csql -u dba testdb -c "DROP TABLE IF EXISTS cookbook_agent_tool_calls, cookbook_agent_messages, cookbook_agent_sessions, cookbook_agent_products"
 vhs demos/agent-state-video.tape
 vhs demos/mcp-toolchain.tape
-docker rm -f demo-cubrid
+# -v also deletes the container's anonymous database volume (the 11.4 image
+# declares one for /home/cubrid/CUBRID/databases); without it the volume stays.
+docker rm -f -v demo-cubrid
 
 # 2. FastAPI quickstart in the browser
 (cd quickstart/5min-fastapi && docker compose up -d --wait cubrid)
