@@ -2,7 +2,7 @@
 
 > 🌐 [quickstart/first-cubrid/first-query.md](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/quickstart/first-cubrid/first-query.md)의 한국어 학습 경로입니다. 영어 원문이 표준이며, 코드와 출력은 원문과 같습니다.
 >
-> English: [Lesson 2: Run your first query](../first-cubrid-first-query.md)
+> English: [Lesson 2: Run your first query](https://cubrid-lab.github.io/cubrid-cookbook-python/first-cubrid-first-query/)
 
 Python에서 연습용 데이터베이스에 접속해 SQL 문 하나를 보내고, 돌아온 행을 읽습니다.
 [처음 만드는 CUBRID 데이터베이스](first-cubrid.md)의 2단원입니다.
