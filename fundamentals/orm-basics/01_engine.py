@@ -70,7 +70,15 @@ def engine_with_echo() -> None:
     """Engine with SQL logging enabled."""
     print("\n=== Engine with SQL Echo ===")
 
-    engine = create_engine(DATABASE_URL, echo=True)
+    engine = create_engine(DATABASE_URL)
+
+    # The first connection runs the dialect's setup queries, which differ
+    # between driver releases. Open it before turning echo on so that the log
+    # shows only this example's statements. Passing echo=True to
+    # create_engine() logs the setup queries as well.
+    with engine.connect():
+        pass
+    engine.echo = True
 
     print("  (SQL statements will be logged below)")
     with engine.connect() as conn:

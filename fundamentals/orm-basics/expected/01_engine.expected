@@ -13,10 +13,6 @@
 
 === Engine with SQL Echo ===
   (SQL statements will be logged below)
-{{TIMESTAMP}} INFO sqlalchemy.engine.Engine SELECT VERSION()
-{{TIMESTAMP}} INFO sqlalchemy.engine.Engine [generated in {{TIME}}s] ()
-{{TIMESTAMP}} INFO sqlalchemy.engine.Engine SELECT SCHEMA()
-{{TIMESTAMP}} INFO sqlalchemy.engine.Engine [generated in {{TIME}}s] ()
 {{TIMESTAMP}} INFO sqlalchemy.engine.Engine BEGIN (implicit)
 {{TIMESTAMP}} INFO sqlalchemy.engine.Engine SELECT 'hello from CUBRID'
 {{TIMESTAMP}} INFO sqlalchemy.engine.Engine [generated in {{TIME}}s] ()
