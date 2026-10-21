@@ -33,6 +33,19 @@ def app_databases(text: str) -> set[str]:
     return {url or arg for url, arg in APP_DB.findall(text)}
 
 
+class TemplateDatabaseTests(unittest.TestCase):
+    def test_fastapi_template_creates_the_database_its_env_names(self) -> None:
+        # #412: the template created the image's default cubdb while .env.example
+        # named testdb, and its health check grepped for text 11.2 never prints.
+        template = ROOT / "templates" / "api-service-fastapi"
+        compose = (template / "docker-compose.yml").read_text(encoding="utf-8")
+        created = COMPOSE_DB.findall(compose)
+        self.assertEqual(len(created), 1, "expected one CUBRID_DB entry")
+        self.assertEqual(HEALTHCHECK_DB.findall(compose), created)
+        used = app_databases((template / ".env.example").read_text(encoding="utf-8"))
+        self.assertEqual(used, set(created))
+
+
 class QuickstartDatabaseTests(unittest.TestCase):
     def quickstarts(self) -> list[Path]:
         found = sorted(p.parent for p in QUICKSTART.glob("*/docker-compose.yml"))

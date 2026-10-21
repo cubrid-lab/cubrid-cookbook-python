@@ -2,14 +2,18 @@ services:
   cubrid:
     image: cubrid/cubrid:11.2
     container_name: cubrid-db
+    environment:
+      # The database .env.example's DATABASE_URL names (#412).
+      CUBRID_DB: testdb
     ports:
       - "33000:33000"
     healthcheck:
-      test: ["CMD-SHELL", "cubrid service status | grep -q 'Server is running'"]
-      interval: 15s
+      # Healthy only once testdb answers a query, not just when a server runs.
+      test: ["CMD", "csql", "-u", "dba", "testdb", "-c", "SELECT 1"]
+      interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 20s
+      start_period: 30s
 
   api:
     build: .
