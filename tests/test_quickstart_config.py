@@ -45,6 +45,22 @@ class TemplateDatabaseTests(unittest.TestCase):
         used = app_databases((template / ".env.example").read_text(encoding="utf-8"))
         self.assertEqual(used, set(created))
 
+    def test_templates_survive_a_recreated_cubrid_container(self) -> None:
+        # #413: without a fixed host name, a recreated container cannot open the
+        # database its volumes keep (-353); 11.4 keeps it outside /var/lib/cubrid.
+        for name in ("api-service-fastapi", "dashboard"):
+            with self.subTest(template=name):
+                path = ROOT / "templates" / name / "docker-compose.yml"
+                compose = path.read_text(encoding="utf-8")
+                self.assertRegex(compose, r"\n    hostname: cubrid-[\w-]+\n")
+        dashboard = (ROOT / "templates" / "dashboard" / "docker-compose.yml").read_text(
+            encoding="utf-8"
+        )
+        for volume in ("cubrid_data", "cubrid_databases"):
+            self.assertRegex(dashboard, rf"\n\s+- {volume}:/")
+            self.assertRegex(dashboard, rf"\nvolumes:\n(?:  \w+:\n)*  {volume}:\n")
+        self.assertIn("- cubrid_databases:/home/cubrid/CUBRID/databases", dashboard)
+
 
 class QuickstartDatabaseTests(unittest.TestCase):
     def quickstarts(self) -> list[Path]:

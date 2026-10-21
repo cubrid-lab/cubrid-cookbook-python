@@ -2,6 +2,9 @@ services:
   cubrid:
     image: cubrid/cubrid:11.2
     container_name: cubrid-db
+    # CUBRID records the host name in databases.txt: a fixed one lets a recreated
+    # container open the database it inherits (#413).
+    hostname: cubrid-api-service
     environment:
       # The database .env.example's DATABASE_URL names (#412).
       CUBRID_DB: testdb

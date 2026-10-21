@@ -30,7 +30,8 @@ The compose file starts CUBRID 11.4 and a Streamlit service that installs the
 pinned requirements on first start (a few minutes; later runs reuse the pip
 cache). Recipes read `DATABASE_URL` from the environment (default
 `cubrid+pycubrid://dba@localhost:33000/testdb`), and the compose service points
-it at the co-located container. `docker compose down -v` resets everything.
+it at the co-located container. `docker compose down` keeps the database in named volumes; `docker compose down -v`
+resets everything.
 
 ## Local setup (no Docker for the app)
 

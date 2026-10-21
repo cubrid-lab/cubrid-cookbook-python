@@ -2,6 +2,9 @@ services:
   cubrid:
     image: cubrid/cubrid:11.4
     container_name: cubrid-dashboard
+    # CUBRID records the host name in databases.txt: a fixed one lets a recreated
+    # container open the database it inherits (#413).
+    hostname: cubrid-dashboard
     ports:
       - "33000:33000"
     environment:
@@ -13,7 +16,11 @@ services:
       retries: 10
       start_period: 30s
     volumes:
+      # Named volumes keep the database across `docker compose down`; only
+      # `docker compose down -v` deletes it. Images up to 11.3 keep databases in
+      # /var/lib/cubrid, the 11.4 image in /home/cubrid/CUBRID/databases.
       - cubrid_data:/var/lib/cubrid
+      - cubrid_databases:/home/cubrid/CUBRID/databases
 
   dashboard:
     # Installs the pinned requirements on start (no build step) so the
@@ -38,4 +45,5 @@ services:
 
 volumes:
   cubrid_data:
+  cubrid_databases:
   pip_cache:
