@@ -30,8 +30,34 @@ The compose file starts CUBRID 11.4 and a Streamlit service that installs the
 pinned requirements on first start (a few minutes; later runs reuse the pip
 cache). Recipes read `DATABASE_URL` from the environment (default
 `cubrid+pycubrid://dba@localhost:33000/testdb`), and the compose service points
-it at the co-located container. `docker compose down` keeps the database in named volumes; `docker compose down -v`
-resets everything.
+it at the co-located container. `docker compose down` keeps the database in named
+volumes; `docker compose down -v` resets everything.
+
+### Upgrading a dashboard started from an earlier compose file
+
+Before #413 the database lived in a volume without a name, and the container had
+no fixed host name. The new file mounts a new, empty named volume, so a stack
+started from the earlier file would come up with an empty database. Your data is
+still in the old volume; move it once, from this folder. **Do not run
+`docker compose down -v`, which deletes the data.** Before you update the
+template, note the old volume and stop the stack:
+
+```bash
+OLD=$(docker inspect cubrid-dashboard --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
+docker compose stop
+```
+
+Then update the template (`git pull`), copy the database into the new named
+volume, point it at the new host name and start the stack:
+
+```bash
+docker compose create cubrid
+NEW=$(docker inspect cubrid-dashboard --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
+docker run --rm -v "$OLD":/from:ro -v "$NEW":/to --entrypoint sh cubrid/cubrid:11.4 -c 'cp -a /from/. /to/ && sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1cubrid-dashboard/" /to/databases.txt && chown cubrid:cubrid /to/databases.txt'
+docker compose up -d
+```
+
+When your data is back, `docker volume rm "$OLD"` removes the old copy.
 
 ## Local setup (no Docker for the app)
 

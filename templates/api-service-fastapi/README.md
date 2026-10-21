@@ -25,6 +25,24 @@ It is intentionally lean: sync SQLAlchemy session lifecycle, clean repository pa
    - Swagger UI: `http://localhost:8000/docs`
    - Health: `http://localhost:8000/health`
 
+## Upgrading a stack started from an earlier compose file
+
+Before #413 the `cubrid` service had no fixed host name, and CUBRID records the
+host name of the container that created the database. The new file recreates the
+container with the host name `cubrid-api-service` but keeps its database, so the
+health check fails with `-353 Failed to connect to database server` and the API
+does not start. Point the database at the new host name once, from this folder:
+
+```bash
+docker compose up -d cubrid
+docker compose exec -T -u cubrid cubrid sh -c 'sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1cubrid-api-service/" "$CUBRID_DATABASES/databases.txt"'
+docker compose restart cubrid
+docker compose up -d
+```
+
+If the data is disposable, run `docker compose down -v` and then
+`docker compose up --build` instead, to start with a fresh database.
+
 ## Project Structure
 
 ```text

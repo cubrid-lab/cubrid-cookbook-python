@@ -28,7 +28,33 @@ docker compose up -d
 # → localhost:33000 에 CUBRID 11.4, http://localhost:8501 에 대시보드
 ```
 
-Compose 파일은 CUBRID 11.4와 Streamlit 서비스를 함께 띄웁니다. 첫 기동 시 고정된(pinned) requirements를 설치하므로 몇 분 걸릴 수 있고, 이후 실행은 pip 캐시를 재사용합니다. 레시피는 환경 변수 `DATABASE_URL`을 읽습니다(기본값 `cubrid+pycubrid://dba@localhost:33000/testdb`). Compose 서비스는 같은 스택 안의 CUBRID 컨테이너를 가리킵니다. `docker compose down`은 데이터베이스를 이름 있는 볼륨에 남기고, `docker compose down -v`로 볼륨까지 지우면 전체를 초기 상태로 돌릴 수 있습니다.
+Compose 파일은 CUBRID 11.4와 Streamlit 서비스를 함께 띄웁니다. 첫 기동 시 고정된(pinned) requirements를 설치하므로 몇 분 걸릴 수 있고, 이후 실행은 pip 캐시를 재사용합니다. 레시피는 환경 변수 `DATABASE_URL`을 읽습니다(기본값 `cubrid+pycubrid://dba@localhost:33000/testdb`). Compose 서비스는 같은 스택 안의 CUBRID 컨테이너를 가리킵니다. `docker compose down`은 데이터베이스를 이름 있는 볼륨에 남기고,
+`docker compose down -v`로 볼륨까지 지우면 전체를 초기 상태로 돌릴 수 있습니다.
+
+### 이전 Compose 파일로 시작한 대시보드 업그레이드
+
+#413 이전에는 데이터베이스가 이름 없는 볼륨에 있었고 컨테이너의 호스트 이름도 고정되어
+있지 않았습니다. 새 파일은 비어 있는 새 이름 있는 볼륨을 마운트하므로, 이전 파일로 시작한
+스택은 빈 데이터베이스로 뜹니다. 데이터는 예전 볼륨에 그대로 있으니 이 폴더에서 한 번만
+옮기세요. **데이터를 삭제하는 `docker compose down -v`는 실행하지 마세요.** 템플릿을
+업데이트하기 전에 예전 볼륨을 기록하고 스택을 멈춥니다:
+
+```bash
+OLD=$(docker inspect cubrid-dashboard --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
+docker compose stop
+```
+
+그다음 템플릿을 업데이트(`git pull`)하고, 데이터베이스를 새 이름 있는 볼륨으로 복사한 뒤
+새 호스트 이름을 가리키게 하고 스택을 시작합니다:
+
+```bash
+docker compose create cubrid
+NEW=$(docker inspect cubrid-dashboard --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
+docker run --rm -v "$OLD":/from:ro -v "$NEW":/to --entrypoint sh cubrid/cubrid:11.4 -c 'cp -a /from/. /to/ && sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1cubrid-dashboard/" /to/databases.txt && chown cubrid:cubrid /to/databases.txt'
+docker compose up -d
+```
+
+데이터가 돌아오면 `docker volume rm "$OLD"`로 예전 사본을 지웁니다.
 
 ## 로컬 설정 (앱은 Docker 없이)
 
