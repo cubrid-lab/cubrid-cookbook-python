@@ -548,7 +548,14 @@ class WiringTests(unittest.TestCase):
         ):
             self.assertIn(f"\n{target}:", makefile)
         self.assertIn("CUBRID_LIVE_GATE=1 $(PYTHON) scripts/live_gate.py --gate all", makefile)
-        self.assertIn("test_live_gate.py", makefile.split("\ntest:", 1)[1].split("\n\n")[0])
+        # make test is one scripts/run_offline_tests.py run, which lists this suite (#437).
+        self.assertIn(
+            "scripts/run_offline_tests.py", makefile.split("\ntest:", 1)[1].split("\n\n")[0]
+        )
+        self.assertIn(
+            '_unittest("test_live_gate.py")',
+            (ROOT / "scripts/run_offline_tests.py").read_text(encoding="utf-8"),
+        )
         self.assertIn(".live-evidence/", (ROOT / ".gitignore").read_text(encoding="utf-8"))
 
 

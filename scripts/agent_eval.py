@@ -38,7 +38,8 @@ Usage::
 directory, runs the offline and hidden commands, records each pytest outcome and
 removes the worktree. It needs the base SHA in the local clone. ``run --live``
 also runs the task's live checks through the worktree's ``make up`` /
-``make verify`` / ``make clean`` and records the CUBRID image and server version,
+``make verify`` / ``make docker-clean`` (``make clean`` at a base SHA that predates
+it) and records the CUBRID image and server version,
 the current ``scripts/ci_scope.py`` selection and the exact commands. ``prompt``,
 ``record`` and ``summarize`` support manual agent runs (see the README); nothing
 here starts an agent.
@@ -775,7 +776,7 @@ def run(
 
     The offline and hidden tests always run. With ``live`` the task's live checks
     also run, through the worktree's own ``make up`` / ``make verify`` /
-    ``make clean`` (see ``_live``).
+    ``make docker-clean`` or ``make clean`` (see ``_live``).
     """
     commands = [(c, "offline") for c in task["validation"]["offline"]]
     commands += [(c, "hidden") for c in hidden_commands(task)]
@@ -1095,6 +1096,20 @@ def verify_outcome(exit_code: int, output: str) -> str:
     return "failed"
 
 
+def _volume_cleanup_target(worktree: Path) -> str:
+    """The worktree Makefile's target that removes the lab's containers and volumes.
+
+    ``make docker-clean`` since #437, where ``make clean`` stopped touching Docker.
+    The tasks' older base SHAs have no ``docker-clean``; there ``make clean`` still
+    runs ``docker compose down -v``.
+    """
+    try:
+        makefile = (worktree / "Makefile").read_text(encoding="utf-8")
+    except OSError:
+        return "clean"
+    return "docker-clean" if re.search(r"^docker-clean:", makefile, re.MULTILINE) else "clean"
+
+
 def _live(
     task: dict[str, Any],
     patch: str,
@@ -1108,8 +1123,9 @@ def _live(
     It records the requested and the actual image, the server's ``cubrid_rel``
     line, the exact commands and the selection the current ``scripts/ci_scope.py``
     makes for the changed paths (``verify_paths`` and the suites), so a live result
-    can be compared with what CI would have run. ``make clean`` always runs last;
-    it also removes the run's volumes. Live outcomes are appended to ``commands``.
+    can be compared with what CI would have run. ``make docker-clean`` (``make
+    clean`` on a base SHA without it) always runs last and removes the run's
+    volumes. Live outcomes are appended to ``commands``.
     """
     changed = "".join(f"{path}\n" for path in sorted(parse_patch(patch)))
     scope = subprocess.run(
@@ -1184,7 +1200,7 @@ def _live(
                 }
             )
     finally:
-        clean = ["make", "clean"]
+        clean = ["make", _volume_cleanup_target(worktree)]
         clean_code, _ = _bounded(clean, worktree, timeout, env)
         info["setup"].append({"command": shlex.join(clean), "exit_code": clean_code})
     return info

@@ -183,19 +183,24 @@ not checked, so do not add foreign closing keywords there.
 
 ## Validation
 
-- `make check` from the repository root (offline contributor checks; includes `make test`)
-- `make test` (unit and mocked suites, no database or Docker; `make test-offline` is an alias)
+- `make check test` from the repository root (offline contributor checks, as CI runs them)
+- `make check` (non-test quality gate: `lint`, `format-check`, `check-docs`, `check-coverage`;
+  changes no file); `make format` is the only target that rewrites files
+- `make test` (every offline suite, including `test-normalize`; no database or Docker;
+  `make test-offline` is an alias; suite list in `scripts/run_offline_tests.py`)
 - `make up` (starts CUBRID 11.2 by default, `CUBRID_VERSION=11.4` to override, with bounded readiness checking)
 - `make deps` (installs the drivers, pytest and every example's requirements)
 - Run the relevant example: `python <file>.py`
-- `make verify VERIFY_PATHS=<example-directory>` for matching live goldens (a partial check)
+- `make verify-goldens VERIFY_PATHS=<example-directory>` for matching live goldens (a partial
+  check; `make verify` refuses `VERIFY_PATHS`)
 - A focused live lane (`make verify-quickstart`, `verify-performance`, `verify-web`,
   `verify-django-celery`, `verify-ai-agent`, `verify-dashboard`) or the full `make verify`
   (every golden and live suite; needs dedicated `CUBRID_TEST_URL` and
   `CUBRID_DASHBOARD_TEST_URL` databases, see CONTRIBUTING.md "Live verification")
 - `make docs` for staged docs and strict MkDocs validation
 - `make docs-check` for links, anchors and recipe commands in every Markdown file (pinned tools: `.github/requirements-docs-check.txt`)
-- `make down` after live checks
+- `make down` after live checks (keeps the data; `make clean` removes only generated files and
+  caches, and `make docker-clean` is the one target that deletes the lab's volumes)
 
 Record executed commands/results separately from AI review and checks not run.
 Agent benchmark tasks and their offline grader live in

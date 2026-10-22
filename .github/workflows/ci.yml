@@ -133,7 +133,8 @@ jobs:
           uv pip install --system -r quickstart/5min-fastapi/requirements.txt pytest httpx sqlalchemy ruff==0.16.4
           uv pip freeze --system
       - name: Run the contributor checks without a database
-        run: make check
+        # make check is the non-test quality gate; make test runs the offline suites.
+        run: make check test
 
   docs-sync:
     name: Docs sync gate

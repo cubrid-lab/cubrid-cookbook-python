@@ -64,17 +64,27 @@ small offline test toolchain in a virtual environment:
 
 ```bash
 python3 -m pip install -r quickstart/5min-fastapi/requirements.txt pytest httpx sqlalchemy ruff==0.16.4
-make check
+make check test
 ```
 
-`make check` runs Ruff, documentation and golden-coverage checks, output-normalizer
-tests, mocked quickstart and AI-agent tests, release dependency guards, and fake
-Make/Compose regression tests. `make test` (alias `make test-offline`) runs just the offline test
-suites. Each suite uses its own process to avoid conflicting recipe module names.
+`make check` is the non-test quality gate: `make lint` (`ruff check`),
+`make format-check` (`ruff format --check`), the documentation checks
+(`make check-docs`) and the golden-coverage check (`make check-coverage`); none of
+them changes a file. `make format` is the only target that rewrites source files
+(`ruff check --fix`, then `ruff format`). `make test` (alias `make test-offline`)
+runs every offline suite: output-normalizer tests (`make test-normalize`), mocked
+quickstart and AI-agent tests, release dependency guards, workflow guards and fake
+Make/Compose regression tests. The suite list lives in
+`scripts/run_offline_tests.py`, and each suite runs in its own process to avoid
+conflicting recipe module names.
 These checks require no database and do not prove live CUBRID compatibility;
 run the relevant example, a `make verify-*` lane or the full `make verify` against
 CUBRID for that evidence (see [Live verification](#live-verification)).
-CI runs the same `make check` command on every pull request (see
+`make clean` removes generated files, caches and test results (`.live-evidence/`,
+`__pycache__`, `.pytest_cache`, `.ruff_cache`, the staged docs pages and `site/`)
+and never touches Docker; `make down` stops the lab and keeps its data, and only
+`make docker-clean` deletes the lab's containers and volumes, database data included.
+CI runs the same `make check test` command on every pull request (see
 [CI tiers](#ci-tiers) for which live lanes run on top of it). The blocking
 documentation check has its own pinned tools; run it with
 `python3 -m pip install -r .github/requirements-docs-check.txt` and `make docs-check`
@@ -122,7 +132,7 @@ cubrid-mcp-server and this cookbook except for repository-specific data:
 - **GitHub Actions** — checked weekly; all action bumps arrive as one grouped
   PR. Workflows pin every action by full commit SHA with a `# vX.Y.Z` comment,
   and each action uses the same pin in every workflow;
-  `tests/test_dependabot_config.py` (part of `make check`) enforces both.
+  `tests/test_dependabot_config.py` (part of `make test`) enforces both.
 - **Recipe requirements (pip)** — checked monthly across every standalone
   recipe directory. Updates are grouped by dependency name, so one PR bumps a
   package (for example `flask`) in every recipe that uses it instead of one PR
@@ -219,10 +229,10 @@ selected/passed/failed/skipped counts and case outcomes per suite. `make verify`
 writes `.live-evidence/verify-summary.json` and `verify-summary.txt`, which report the
 golden comparisons and the pytest lanes separately and name every failed golden.
 
-`make verify VERIFY_PATHS=<dirs>` (on the command line; an exported `VERIFY_PATHS`
-does not change a bare `make verify`) is not the full verification: it runs only the
-goldens under those roots and says so with a
-`PARTIAL verification` line. CI calls the same targets: `smoke-test.yml` runs the
+`make verify` is always the full verification: an exported `VERIFY_PATHS` does not
+narrow it, and `make verify VERIFY_PATHS=<dirs>` on the command line fails with a
+one-line message that names `make verify-goldens VERIFY_PATHS=<dirs>`, the partial
+check of only the goldens under those roots (#437). CI calls the same targets: `smoke-test.yml` runs the
 full `make verify` on CUBRID 11.2 and 11.4, and the pull-request smoke lanes run
 `make verify-goldens VERIFY_PATHS=<roots>` and the focused `verify-*` lanes their
 changed paths select (see [CI tiers](#ci-tiers)). The other pull-request recipe
@@ -305,8 +315,7 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   containers of the matrix version: the examples database (`localhost:33000`,
   goldens, quickstart and performance), `CUBRID_TEST_URL` (`:33100`; web,
   Django/Celery, AI agent) and `CUBRID_DASHBOARD_TEST_URL` (`:33200`). It never
-  passes `VERIFY_PATHS`, which on the command line would make `make verify` the
-  partial golden-only check. `make verify-ai-agent` then runs a second time on the same database, and
+  passes `VERIFY_PATHS`, which `make verify` refuses on the command line. `make verify-ai-agent` then runs a second time on the same database, and
   both runs keep their evidence (`ai-agent-run-1/`, `ai-agent-run-2/`). The job
   uploads `.live-evidence/` once as `live-evidence-cubrid-<version>` (also when it
   fails, with `continue-on-error` so the upload can never change the release
@@ -376,7 +385,7 @@ lanes, and 60 for `smoke-test.yml`'s `verify` job, whose step-level timeouts add
 to 57 (plus a few untimed setup steps; the observed maximum is 4 minutes).
 Jobs that call the organization's reusable workflows (`doc-lint`, `live-smoke`)
 cannot set a timeout; those callees are an exact allowlist.
-`tests/test_workflow_timeouts.py` (run by `make check`) reads every workflow and
+`tests/test_workflow_timeouts.py` (run by `make test`) reads every workflow and
 fails when an executing job lacks a bounded timeout, when a new external caller is
 not allowlisted, or when `CI Gate` loses `if: always()` or its short timeout.
 
@@ -440,9 +449,9 @@ result against that golden file. When you add a one-shot example, capture its
 golden output so CI can guard it.
 
 `make verify-goldens` checks all goldens by default; use `VERIFY_PATHS=<directory>` to
-select example roots (the pull-request smoke lanes call it this way).
-`make verify VERIFY_PATHS=<directory>` on the command line runs the
-same golden-only check and then reports it as a partial verification. Empty/missing roots, zero golden targets, a missing script
+select example roots (the pull-request smoke lanes and the driver-main canary call
+it this way); it is a partial check. `make verify VERIFY_PATHS=<directory>` fails and
+points to it. The comparison itself lives in `scripts/verify_goldens.sh`. Empty/missing roots, zero golden targets, a missing script
 for an expected file, discovery/read errors, and failed scripts or normalizers
 all fail the command. A successful summary has at least one pass and no failures
 or skips. Ordinary recipe failures are collected so the remaining selected

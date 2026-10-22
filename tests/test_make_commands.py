@@ -77,6 +77,7 @@ class VerifyCommandTests(OrphanChecks):
             "example_requirements.py",
             "normalize_output.sh",
             "run_example.py",
+            "verify_goldens.sh",
         ):
             shutil.copyfile(ROOT / "scripts" / name, scripts / name)
 
@@ -223,17 +224,27 @@ class VerifyCommandTests(OrphanChecks):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn(f"{count} passed, 0 failed, 0 skipped", result.stdout)
 
-    def test_verify_with_paths_is_a_reported_partial_golden_check(self) -> None:
-        self.example("first")
-        result = self.verify("first", target="verify")
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("1 passed, 0 failed, 0 skipped", result.stdout)
-        self.assertIn("PARTIAL verification: golden outputs under 'first' only", result.stdout)
-
-    def test_verify_without_paths_runs_the_full_live_gate(self) -> None:
+    def recorder(self) -> Path:
         recorder = self.root / "python"
         recorder.write_text('#!/bin/sh\necho "ARGS $* GATE=$CUBRID_LIVE_GATE"\n', encoding="utf-8")
         recorder.chmod(0o755)
+        return recorder
+
+    def test_verify_with_paths_on_the_command_line_fails_and_names_verify_goldens(self) -> None:
+        # #437: make verify never silently becomes the partial golden-only check.
+        self.example("first")
+        for paths in ("first", ".", ""):
+            with self.subTest(paths=paths):
+                result = self.verify(paths, target="verify", python=str(self.recorder()))
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                message = [line for line in result.stderr.splitlines() if "ERROR" in line]
+                self.assertEqual(len(message), 1, result.stderr)
+                self.assertIn("make verify-goldens", message[0])
+                self.assertNotIn("ARGS", result.stdout)
+                self.assertNotIn("passed", result.stdout)
+
+    def test_verify_without_paths_runs_the_full_live_gate(self) -> None:
+        recorder = self.recorder()
         base = {
             k: v for k, v in os.environ.items() if k not in {"VERIFY_PATHS", "CUBRID_LIVE_GATE"}
         }
@@ -244,7 +255,7 @@ class VerifyCommandTests(OrphanChecks):
                 result = self.verify(env={**base, **extra}, target="verify", python=str(recorder))
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn("ARGS scripts/live_gate.py --gate all GATE=1", result.stdout)
-                self.assertNotIn("PARTIAL", result.stdout)
+                self.assertNotIn("Verifying example outputs", result.stdout)
 
     def test_golden_results_are_recorded_for_the_live_gate(self) -> None:
         self.example("first")
@@ -542,6 +553,208 @@ class RunExampleTests(OrphanChecks):
         run.assert_called_once_with(["true"], 0.25)
 
 
+def make_dry_run(target: str, *extra: str, cwd: Path = ROOT) -> list[str]:
+    """The recipe lines `make -n` would run for ``target`` (prerequisites included)."""
+    result = subprocess.run(
+        ["make", "--no-print-directory", "-n", "-f", str(ROOT / "Makefile"), target, *extra],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout.splitlines()
+
+
+def make_rule(target: str) -> str:
+    """The Makefile rule of ``target``: its header line and recipe lines."""
+    lines = (ROOT / "Makefile").read_text(encoding="utf-8").splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith(f"{target}:"))
+    end = start + 1
+    while end < len(lines) and (lines[end].startswith(("\t", "ifeq", "endif")) or not lines[end]):
+        if not lines[end]:
+            break
+        end += 1
+    return "\n".join(lines[start:end])
+
+
+class MakeTargetSemanticsTests(unittest.TestCase):
+    """#437: predictable target names; only docker-clean destroys data."""
+
+    def test_clean_removes_generated_files_but_never_touches_docker(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "scripts").mkdir()
+            shutil.copyfile(ROOT / "scripts/stage_docs.py", root / "scripts/stage_docs.py")
+            calls = root / "docker-calls"
+            binaries = root / "bin"
+            binaries.mkdir()
+            for name in ("docker", "docker-compose"):
+                fake = binaries / name
+                fake.write_text(f'#!/bin/sh\necho "{name} $*" >> {calls}\n', encoding="utf-8")
+                fake.chmod(0o755)
+            generated = [
+                ".live-evidence/all/summary.json",
+                ".pytest_cache/v/cache/nodeids",
+                ".ruff_cache/CACHEDIR.TAG",
+                "site/index.html",
+                "recipes/__pycache__/ok.cpython-312.pyc",
+                "recipes/.pytest_cache/README.md",
+                "docs/catalog.md",
+                "docs/support-matrix.md",
+            ]
+            kept = ["recipes/ok.py", "docs/index.md", "docs/ko/getting-started.md", "README.md"]
+            for name in generated + kept:
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).write_text("x\n", encoding="utf-8")
+            result = subprocess.run(
+                ["make", "--no-print-directory", "-f", str(ROOT / "Makefile"), "clean"]
+                + [f"PYTHON={sys.executable}"],
+                cwd=root,
+                env={**os.environ, "PATH": f"{binaries}{os.pathsep}{os.environ['PATH']}"},
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            for name in generated:
+                self.assertFalse((root / name).exists(), name)
+            for name in kept:
+                self.assertTrue((root / name).exists(), name)
+            self.assertFalse(calls.exists(), "make clean ran docker")
+        self.assertNotIn("DOCKER_COMPOSE", make_rule("clean"))
+        self.assertFalse(any("docker" in line for line in make_dry_run("clean")))
+
+    def test_docker_clean_is_the_only_destructive_target(self) -> None:
+        self.assertEqual(
+            make_dry_run("docker-clean", "DOCKER_COMPOSE=docker compose")[0],
+            "docker compose down -v",
+        )
+        makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+        self.assertEqual(makefile.count("down -v"), 1)
+        self.assertIn("down -v", make_rule("docker-clean"))
+        # up and down keep their names and down keeps the data.
+        self.assertEqual(make_dry_run("down"), ["docker compose down"])
+        self.assertEqual(make_dry_run("up")[0], "docker compose up -d")
+
+    def test_test_recipe_is_one_runner_invocation_that_includes_test_normalize(self) -> None:
+        for target in ("test", "test-offline"):
+            with self.subTest(target=target):
+                self.assertEqual(
+                    make_dry_run(target, "PYTHON=python3"),
+                    ["python3 scripts/run_offline_tests.py"],
+                )
+        listed = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/run_offline_tests.py"), "--list"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        commands = listed.stdout.splitlines()
+        self.assertIn("bash scripts/test_normalize_output.sh", commands)
+        self.assertIn(
+            f"{sys.executable} -m unittest discover -s tests -p test_make_commands.py -v",
+            commands,
+        )
+        # One process per suite: every listed command names exactly one suite.
+        self.assertEqual(len(commands), len(set(commands)))
+        self.assertGreaterEqual(len(commands), 25)
+
+    def test_runner_stops_at_the_first_failing_suite(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "run_offline_tests", ROOT / "scripts/run_offline_tests.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        ran: list[list[str]] = []
+
+        def fake_run(command, cwd):  # noqa: ANN001, ANN202
+            ran.append(command)
+            return subprocess.CompletedProcess(command, 3 if len(ran) == 2 else 0)
+
+        stderr = io.StringIO()
+        with (
+            mock.patch.object(module.subprocess, "run", fake_run),
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(stderr),
+        ):
+            self.assertEqual(module.main([]), 1)
+        self.assertEqual(len(ran), 2)
+        self.assertIn("FAILED (exit 3)", stderr.getvalue())
+
+    def test_verify_goldens_recipe_is_one_script_invocation(self) -> None:
+        rule = make_rule("verify-goldens")
+        recipe = [line for line in rule.splitlines()[1:] if line.strip()]
+        self.assertEqual(len(recipe), 1, rule)
+        self.assertIn("bash scripts/verify_goldens.sh $(VERIFY_PATHS)", recipe[0])
+        makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+        for classification in ("MISMATCH", "EXEC-ERROR", "⏱ TIMEOUT", "Results:", "::error"):
+            self.assertNotIn(classification, makefile)
+
+    def test_check_runs_no_tests(self) -> None:
+        self.assertTrue(
+            make_rule("check").startswith("check: lint format-check check-docs check-coverage ##"),
+            make_rule("check"),
+        )
+        lines = make_dry_run("check", "PYTHON=python3")
+        joined = "\n".join(lines)
+        self.assertNotIn("run_offline_tests.py", joined)
+        self.assertNotIn("test_normalize_output.sh", joined)
+        self.assertNotIn("-m pytest", joined)
+
+    def test_only_format_rewrites_files(self) -> None:
+        self.assertEqual(make_dry_run("lint", "RUFF=ruff"), ["ruff check ."])
+        self.assertEqual(make_dry_run("format-check", "RUFF=ruff"), ["ruff format --check ."])
+        self.assertEqual(
+            make_dry_run("format", "RUFF=ruff"), ["ruff check --fix .", "ruff format ."]
+        )
+        makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+        self.assertEqual(makefile.count("--fix"), 1)
+        self.assertEqual(makefile.count("$(RUFF) format .\n"), 1)
+
+    def test_focused_live_lanes_are_unchanged(self) -> None:
+        lanes = {
+            "verify-quickstart": "quickstart",
+            "verify-performance": "performance",
+            "verify-web": "web",
+            "verify-django-celery": "django-celery",
+            "verify-ai-agent": "ai-agent",
+            "verify-dashboard": "dashboard",
+            "verify-templates": "web django-celery dashboard",
+        }
+        for target, lane in lanes.items():
+            with self.subTest(target=target):
+                self.assertEqual(
+                    make_dry_run(target, "PYTHON=python3"),
+                    [f"CUBRID_LIVE_GATE=1 python3 scripts/live_gate.py {lane}"],
+                )
+
+    def test_help_groups_contributor_commands(self) -> None:
+        result = subprocess.run(
+            ["make", "--no-print-directory", "-f", str(ROOT / "Makefile"), "help"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        text = result.stdout
+        groups = [
+            "Database",
+            "Offline tests",
+            "Live verification",
+            "Quality checks",
+            "Documentation",
+        ]
+        positions = [text.index(group) for group in groups]
+        self.assertEqual(positions, sorted(positions))
+        for group, target in zip(
+            groups, ("docker-clean", "test-offline", "verify-goldens", "format-check", "docs-check")
+        ):
+            self.assertLess(text.index(group), text.index(target))
+
+
 class OfflineWorkflowTests(unittest.TestCase):
     def test_python_compatibility_is_a_small_classified_live_matrix(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
@@ -589,9 +802,15 @@ class OfflineWorkflowTests(unittest.TestCase):
                 )
                 self.assertEqual(check.returncode == 0, result == "success", check.stdout)
 
-    def test_ci_runs_the_contributor_aggregate(self) -> None:
+    def test_ci_runs_the_quality_gate_and_the_offline_tests(self) -> None:
+        # make check runs no tests (#437), so CI names make test as well.
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("run: make check", workflow)
+        self.assertIn("run: make check test\n", workflow)
+
+    def test_driver_main_runs_the_partial_golden_check_by_its_own_name(self) -> None:
+        workflow = (ROOT / ".github/workflows/driver-main.yml").read_text(encoding="utf-8")
+        self.assertIn('make verify-goldens VERIFY_PATHS="$RECIPES"', workflow)
+        self.assertNotIn("make verify VERIFY_PATHS", workflow)
 
     def test_required_smoke_runs_command_guards_before_dependency_selection(self) -> None:
         workflow = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
@@ -658,8 +877,8 @@ class OfflineWorkflowTests(unittest.TestCase):
         self.assertIn(
             "CUBRID_DASHBOARD_TEST_URL: cubrid+pycubrid://dba@localhost:33200/testdb", step
         )
-        # Naming VERIFY_PATHS (command line or environment) makes make verify the
-        # partial golden-only check, so the broad smoke never exports it.
+        # The broad smoke never names VERIFY_PATHS: on the command line make verify
+        # refuses it (#437), and the run must cover every golden.
         self.assertNotIn("VERIFY_PATHS=", workflow)
         self.assertNotIn("VERIFY_PATHS:", workflow)
         self.assertNotIn("continue-on-error", workflow[start:upload])

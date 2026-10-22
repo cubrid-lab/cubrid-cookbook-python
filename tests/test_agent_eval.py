@@ -475,6 +475,31 @@ def test_live_path_uses_make_and_always_cleans_up(
     )
 
 
+def test_live_cleanup_uses_docker_clean_when_the_worktree_has_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # #437: make clean no longer removes volumes; base SHAs before it have no
+    # docker-clean target, and there make clean still runs `down -v`.
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        ae, "_bounded", lambda argv, cwd, timeout, env=None: calls.append(list(argv)) or (0, "")
+    )
+    monkeypatch.setattr(
+        ae.subprocess, "run", lambda argv, **kw: subprocess.CompletedProcess(argv, 0, "", "")
+    )
+    task = ae.load_task(ISO)
+    (tmp_path / "Makefile").write_text("clean:\n\trm -rf .ruff_cache\n", encoding="utf-8")
+    info = ae._live(task, "", tmp_path, [], "11.4", 5)
+    assert calls[-1] == ["make", "clean"] and info["setup"][-1]["command"] == "make clean"
+    (tmp_path / "Makefile").write_text(
+        "clean:\n\trm -rf .ruff_cache\ndocker-clean: ## x\n\tdocker compose down -v\n",
+        encoding="utf-8",
+    )
+    info = ae._live(task, "", tmp_path, [], "11.4", 5)
+    assert calls[-1] == ["make", "docker-clean"]
+    assert info["setup"][-1]["command"] == "make docker-clean"
+
+
 def test_an_honestly_reported_live_failure_still_fails_behavior() -> None:
     result = _grade(ISO, "live_check_failed")
     statuses = _statuses(result)

@@ -3,7 +3,7 @@
 Opt-in, offline benchmark tasks for coding agents that change cookbook recipes
 (#352). They measure whether an agent fixes the right recipe, keeps its golden,
 requirements and documentation consistent, keeps the diff bounded, and reports
-honestly which live checks it did not run. They are not a recipe test: `make check`,
+honestly which live checks it did not run. They are not a recipe test: `make check test`,
 `make verify` and the CI lanes selected by `scripts/ci_scope.py` stay the code checks,
 and no score here gates a pull request.
 
@@ -46,7 +46,7 @@ merged fixes, never from invented reproductions.
 | `goldens` | `expected/*.expected` files the change must add or update |
 | `non_goals` | what the change must not do |
 | `validation.offline` | `python -m pytest` commands that need no database (may be empty) |
-| `validation.live` | the live checks: `make verify VERIFY_PATHS=...` or a recipe's pytest suite |
+| `validation.live` | the live checks: `make verify VERIFY_PATHS=...` (the golden check of the task's base SHA, see below) or a recipe's pytest suite |
 | `docs` | groups of globs; each group needs at least one changed file |
 | `changelog` | `{"section": "Fixed"}` (the entry citing the issue must sit under it) or `null` (not required) |
 | `evidence.live` | `absent` when the task has no recorded live run, `present` otherwise |
@@ -123,8 +123,13 @@ python scripts/agent_eval.py run --task ID --patch patch.diff --output results.j
 In the temporary worktree it runs `make up CUBRID_VERSION=<version>`, each
 `validation.live` command (`make verify VERIFY_PATHS=...` with this interpreter, or the
 recipe's pytest suite with `CUBRID_TEST_URL` always set to that lab, never an inherited
-URL, so the recorded server is the one tested), and always
-`make clean` last, which also removes the run's volumes. Each step has the time limit.
+URL, so the recorded server is the one tested), and always removes the run's containers
+and volumes last: `make docker-clean`, or `make clean` when the worktree's Makefile
+predates `docker-clean` (#437). Each step has the time limit. The commands run against
+the worktree's own Makefile at the task's base SHA, which is why the tasks record
+`make verify VERIFY_PATHS=...`: at those SHAs it was the golden-only check (and
+`make clean` removed the volumes). On the current `main`, that check is
+`make verify-goldens VERIFY_PATHS=...` and `make verify` refuses `VERIFY_PATHS`.
 `results.json` then holds a `live` object with:
 
 - the requested CUBRID version, the image the container really ran

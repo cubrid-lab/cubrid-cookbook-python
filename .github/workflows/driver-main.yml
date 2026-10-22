@@ -173,7 +173,7 @@ jobs:
         run: |
           set -euo pipefail
           printf '### Recipes run against driver main\n\n%s\n' "$RECIPES" >> "$GITHUB_STEP_SUMMARY"
-          make verify VERIFY_PATHS="$RECIPES"
+          make verify-goldens VERIFY_PATHS="$RECIPES"
 
       # Recorded even when an earlier step fails; with job-level
       # continue-on-error the report job cannot rely on needs.<job>.result.
