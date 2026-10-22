@@ -73,7 +73,9 @@ def main() -> int:
         cleaned_df["service_tier"] = priority_series.apply(priority_label)
 
         print("\n=== Cleaned and transformed data ===")
-        print(cleaned_df)
+        # to_string() prints every column; print(df) truncates wide frames to the
+        # display width, and that layout changes between pandas releases.
+        print(cleaned_df.to_string())
         return 0
     except SQLAlchemyError as exc:
         print(f"Database error: {exc}")
