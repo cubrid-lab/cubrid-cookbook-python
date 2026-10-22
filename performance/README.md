@@ -99,10 +99,14 @@ make spec-12   # JUnit report: .spec-evidence/spec-12.xml
 prints every comparison line with a finite, nonnegative time, ran its whole workload (10,000 fetched rows per
 strategy; 500, 5,000 and 5,000 stored rows; 50 connections without a pool and 1 to 5 with one) and printed no
 error. It also makes `fetch-optimization` and `bulk-insert` fail on purpose after they create their table and
-checks that the table is dropped anyway, and that an unrelated table survives every run unchanged. It never
+checks that the table is dropped anyway, and that an unrelated table is unchanged after each run. It never
 compares one strategy's time with another's, so a slow or noisy machine does not fail it. The report records
 the CUBRID server, Python, pytest and driver versions. `make spec-12` fails when the database is unreachable
 or any test is skipped; plain `pytest tests/test_performance_benchmarks.py` skips without a database.
+
+The benchmarks and the migration examples use fixed table names (`cookbook_fetch_test`, `cookbook_bulk_test`,
+`cookbook_jdbc_*`, `cookbook_sensors`). Do not run `make spec-12` at the same time as another `make spec-12`,
+`make verify` or a manual benchmark run against the same database: they would drop each other's tables.
 
 ## Key Takeaways
 

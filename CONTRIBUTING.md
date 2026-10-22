@@ -373,12 +373,16 @@ the examples hard-code (`localhost:33000`, `testdb`, `dba`; `make up` and
 its time limit, prints every comparison line with a finite, nonnegative time and
 the workload it was configured for, prints no error or traceback, and leaves no
 benchmark table behind, also when a failure is injected after the table is
-created; an unrelated sentinel table must be unchanged. Timings are never
+created; after each test that runs a script, an unrelated sentinel table must be
+unchanged (a failure names that test). Timings are never
 compared with each other or with a threshold, and never go into a golden. The
 report records the CUBRID server, Python, pytest and driver versions.
 `make spec-12` sets `CUBRID_SPEC_GATE=1`: an unreachable database or a missing
-driver fails every test, and the target also fails if the report counts a
-skipped test. Without the variable, `pytest tests/test_performance_benchmarks.py`
+driver fails every database test (the run fails), and the target also fails if
+the report counts a skipped test. The scripts use fixed table names
+(`cookbook_fetch_test`, `cookbook_bulk_test`, `cookbook_jdbc_*`,
+`cookbook_sensors`), so do not run `make spec-12` at the same time as another
+`make spec-12`, `make verify` or a manual benchmark run against the same database. Without the variable, `pytest tests/test_performance_benchmarks.py`
 skips when no database answers. A full run took about a minute on CUBRID 11.2
 (longer on slow machines; the `bulk-insert` per-row COMMIT dominates). When you
 change a benchmark, run it twice in a row to show that no stale table is left behind.

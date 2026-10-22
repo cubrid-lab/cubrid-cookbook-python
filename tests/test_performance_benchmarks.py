@@ -187,6 +187,20 @@ def sentinel_table(live_db: LiveDB) -> Iterator[tuple[str, list[tuple]]]:
         live_db.query(f"DROP TABLE IF EXISTS {table}")
 
 
+@pytest.fixture
+def sentinel_unchanged(
+    live_db: LiveDB, sentinel_table: tuple[str, list[tuple]], request: pytest.FixtureRequest
+) -> Iterator[None]:
+    """After each script-running test, check that the sentinel table is unchanged."""
+    yield
+    table, rows_before = sentinel_table
+    try:
+        rows_after = live_db.query(f"SELECT id, label FROM {table} ORDER BY id")
+    except Exception as exc:  # e.g. the script dropped it
+        pytest.fail(f"{request.node.name} broke unrelated table {table}: {exc}", pytrace=False)
+    assert rows_after == rows_before, f"{request.node.name} changed unrelated table {table}"
+
+
 def _run(command: list[str], timeout: int) -> subprocess.CompletedProcess[str]:
     """Run under scripts/run_example.py (process-group kill on timeout), stderr merged."""
     result = subprocess.run(
@@ -256,7 +270,7 @@ class TestSpec12Migration:
         ]
 
     @pytest.mark.parametrize("case", MIGRATION_CASES)
-    def test_migration_golden(self, case: str, live_db: LiveDB, sentinel_table: object) -> None:
+    def test_migration_golden(self, case: str, live_db: LiveDB, sentinel_unchanged: None) -> None:
         result = _run([sys.executable, str(MIGRATION_DIR / f"{case}.py")], MIGRATION_TIMEOUT)
         assert result.returncode == 0, f"{case} exited {result.returncode}:\n{_tail(result.stdout)}"
         normalized = subprocess.run(
@@ -274,7 +288,7 @@ class TestSpec12Migration:
 class TestSpec12Performance:
     """Benchmarks print a complete, parseable comparison and clean up after themselves."""
 
-    def test_fetch_optimization_benchmark(self, live_db: LiveDB, sentinel_table: object) -> None:
+    def test_fetch_optimization_benchmark(self, live_db: LiveDB, sentinel_unchanged: None) -> None:
         output = _run_benchmark("fetch-optimization", timeout=300)
         _match(output, r"^Seeding complete\.$")
         _match(output, r"^=== Fetch Optimization Benchmark ===$")
@@ -289,7 +303,7 @@ class TestSpec12Performance:
             assert int(match.group(2)) == FETCH_ROWS, match.group(0)
         _assert_cleaned_up(live_db, "cookbook_fetch_test")
 
-    def test_bulk_insert_benchmark(self, live_db: LiveDB, sentinel_table: object) -> None:
+    def test_bulk_insert_benchmark(self, live_db: LiveDB, sentinel_unchanged: None) -> None:
         output = _run_benchmark("bulk-insert", timeout=600)
         _match(output, r"^=== Bulk Insert Benchmark ===$")
         for strategy, rows in BULK_ROWS.items():
@@ -302,7 +316,7 @@ class TestSpec12Performance:
         _match(output, r"^Key insight: one INSERT plus its own COMMIT takes ~\d+ms per row")
         _assert_cleaned_up(live_db, "cookbook_bulk_test")
 
-    def test_connection_pooling_benchmark(self, live_db: LiveDB, sentinel_table: object) -> None:
+    def test_connection_pooling_benchmark(self, live_db: LiveDB, sentinel_unchanged: None) -> None:
         output = _run_benchmark("connection-pooling", timeout=120)
         _match(output, r"^=== Connection Pooling Benchmark ===$")
         for label in (r"No pooling \(NullPool\)", r"Pooled \(pool_size=5\)"):
@@ -320,17 +334,11 @@ class TestSpec12Performance:
         assert 1 <= pooled <= POOL_SIZE, "the pool must reuse its connections"
 
     def test_fetch_optimization_cleans_up_when_it_raises(
-        self, live_db: LiveDB, sentinel_table: object
+        self, live_db: LiveDB, sentinel_unchanged: None
     ) -> None:
         _run_with_fault(live_db, "fetch-optimization", "INSERT", "cookbook_fetch_test")
 
     def test_bulk_insert_cleans_up_when_it_raises(
-        self, live_db: LiveDB, sentinel_table: object
+        self, live_db: LiveDB, sentinel_unchanged: None
     ) -> None:
         _run_with_fault(live_db, "bulk-insert", "DELETE", "cookbook_bulk_test")
-
-    def test_unrelated_table_is_untouched(
-        self, live_db: LiveDB, sentinel_table: tuple[str, list[tuple]]
-    ) -> None:
-        table, rows_before = sentinel_table
-        assert live_db.query(f"SELECT id, label FROM {table} ORDER BY id") == rows_before
