@@ -204,7 +204,10 @@ the gate a lane fails, with a nonzero exit, when:
 The gate also drops `PYTEST_ADDOPTS` and `PYTEST_PLUGINS` from the suites'
 environment. Only a gated run can PASS: `CUBRID_LIVE_GATE=0 make verify-django-celery` keeps the
 suites' own skips and SQLite fallbacks for exploration, and its summary says
-INCOMPLETE at best. After an interrupted run, drop the leftover `cookbook_*` tables
+INCOMPLETE at best. The full `make verify` always runs gated, whatever
+`CUBRID_LIVE_GATE` says; run directly without the gate, `scripts/live_gate.py all`
+exits 3 for INCOMPLETE, never 0. The summaries count the root FastAPI template's
+SQLite startup test apart from the live totals (`non_live_totals`). After an interrupted run, drop the leftover `cookbook_*` tables
 in the dedicated databases or use fresh containers.
 
 Each lane replaces only `.live-evidence/<lane>/` (ignored by version control; other
@@ -216,7 +219,8 @@ selected/passed/failed/skipped counts and case outcomes per suite. `make verify`
 writes `.live-evidence/verify-summary.json` and `verify-summary.txt`, which report the
 golden comparisons and the pytest lanes separately and name every failed golden.
 
-`make verify VERIFY_PATHS=<dirs>` is not the full verification: it runs only the
+`make verify VERIFY_PATHS=<dirs>` (on the command line; an exported `VERIFY_PATHS`
+does not change a bare `make verify`) is not the full verification: it runs only the
 goldens under those roots (as CI does, see [CI tiers](#ci-tiers)) and says so with a
 `PARTIAL verification` line. The full `make verify` and the `verify-*` lanes are local
 and manual; CI keeps its existing live jobs.
@@ -232,8 +236,8 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 | Tier | When | What runs |
 |------|------|-----------|
 | 1 — cheap checks | every pull request | Ruff, `make check`, docs-sync, docs-check, doc-lint, classification and the gate; the strict docs-site build |
-| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples; AI-agent code or other files in example trees → the same lane with a full `make verify` |
-| 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with full `make verify`, Python 3.11 + 3.14 compatibility |
+| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with the golden check (`make verify VERIFY_PATHS=...`) scoped to the touched examples; AI-agent code or other files in example trees → the same lane with every golden (`VERIFY_PATHS=.`) |
+| 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with every golden (`make verify VERIFY_PATHS=.`), Python 3.11 + 3.14 compatibility |
 | 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
 | 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | every golden plus all Flask/FastAPI, async-worker, Django and dashboard suites on CUBRID 11.2 + 11.4 (Python 3.12); a release verification adds one CUBRID 11.4 cell on Python 3.11, the supported minimum |
 
@@ -247,7 +251,8 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   weekly `ci.yml` schedule and on manual `ci.yml` runs — not on pushes to `main`,
   since the floors are fixed releases; edits to a lane directory's code do not select it, the weekly schedule covers them. One job, about 3 minutes.
   Unknown paths fail closed to every recipe family lane and the 11.4 smoke lane
-  with a full `make verify`.
+  with every golden (`make verify VERIFY_PATHS=.`). CI's golden check is always the
+  partial, golden-only verification; no CI lane runs the full `make verify` yet.
 - CUBRID 11.2 runs on a pull request only for version-sensitive changes:
   `smoke-test.yml`, `scripts/release_smoke.py`, `scripts/mcp_smoke.py`, the
   fan-out paths, or recipe 10's `requirements.txt` (CQRS job only).

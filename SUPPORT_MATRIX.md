@@ -202,7 +202,8 @@ The table below is the source of truth for recipe counts;
 when a row no longer matches the repository. Verification is split:
 
 - **Golden-backed recipes** carry stdout goldens (`expected/*.expected`) and are
-  checked by `make verify` on **CUBRID 11.2 and 11.4 / Python 3.12** on `main`,
+  checked by the golden check (`make verify VERIFY_PATHS=...`, golden-only) on
+  **CUBRID 11.2 and 11.4 / Python 3.12** on `main`,
   nightly and release verification, and on 11.4 for pull requests that touch them
   (fundamentals, migration, the SQLAlchemy quickstart, the first CUBRID tutorial, the batch-etl template, and
   the reserved-word DDL check behind `pitfalls/`).

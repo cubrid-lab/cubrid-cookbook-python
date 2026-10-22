@@ -229,26 +229,28 @@ class VerifyCommandTests(OrphanChecks):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("1 passed, 0 failed, 0 skipped", result.stdout)
         self.assertIn("PARTIAL verification: golden outputs under 'first' only", result.stdout)
-        env = {**os.environ, "VERIFY_PATHS": "first"}
-        result = self.verify(env=env, target="verify")
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("PARTIAL verification", result.stdout)
 
     def test_verify_without_paths_runs_the_full_live_gate(self) -> None:
         recorder = self.root / "python"
         recorder.write_text('#!/bin/sh\necho "ARGS $* GATE=$CUBRID_LIVE_GATE"\n', encoding="utf-8")
         recorder.chmod(0o755)
-        env = {k: v for k, v in os.environ.items() if k not in {"VERIFY_PATHS", "CUBRID_LIVE_GATE"}}
-        result = self.verify(env=env, target="verify", python=str(recorder))
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("ARGS scripts/live_gate.py all GATE=1", result.stdout)
-        self.assertNotIn("PARTIAL", result.stdout)
+        base = {
+            k: v for k, v in os.environ.items() if k not in {"VERIFY_PATHS", "CUBRID_LIVE_GATE"}
+        }
+        # An exported VERIFY_PATHS (CI writes VERIFY_PATHS=. to GITHUB_ENV) and an
+        # ambient CUBRID_LIVE_GATE=0 must neither downgrade nor ungate a bare make verify.
+        for extra in ({}, {"VERIFY_PATHS": "first"}, {"CUBRID_LIVE_GATE": "0"}):
+            with self.subTest(env=extra):
+                result = self.verify(env={**base, **extra}, target="verify", python=str(recorder))
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("ARGS scripts/live_gate.py --gate all GATE=1", result.stdout)
+                self.assertNotIn("PARTIAL", result.stdout)
 
     def test_golden_results_are_recorded_for_the_live_gate(self) -> None:
         self.example("first")
         self.example("second", code="print('different')")
         results = self.root / "results.tsv"
-        result = self.verify(extra=(f"VERIFY_RESULTS={results}",))
+        result = self.verify(env={**os.environ, "VERIFY_RESULTS": str(results)})
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(
             results.read_text(encoding="utf-8").splitlines(),

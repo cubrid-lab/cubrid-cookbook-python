@@ -391,7 +391,8 @@ class RunnerTests(StubRunner):
 FAKE_MAKE = textwrap.dedent(
     """
     import os, sys
-    results = next(a.split("=", 1)[1] for a in sys.argv if a.startswith("VERIFY_RESULTS="))
+    assert not any(a.startswith("VERIFY_RESULTS=") for a in sys.argv)  # env, not a make var
+    results = os.environ["VERIFY_RESULTS"]
     with open(results, "a") as out:
         out.write(os.environ.get("STUB_GOLDENS", ""))
     print("Results: stub")
@@ -437,6 +438,41 @@ class FullVerifyTests(StubRunner):
         self.assertIn("sha", summary["git"])
         cases = self.summary("goldens")["suites"][0]["cases"]
         self.assertEqual(cases[0], {"id": "fundamentals/a.py", "outcome": "PASS"})
+        # The root FastAPI SQLite startup suite is not counted as live evidence.
+        self.assertEqual(summary["pytest"]["non_live_totals"]["tests"], 1)
+        live_suites = sum(
+            1
+            for lane in live_gate.FULL_ORDER[1:]
+            for suite in self.summary(lane)["suites"]
+            if suite["database"] != "sqlite"
+        )
+        self.assertEqual(summary["pytest"]["totals"]["tests"], live_suites)
+
+    def test_ungated_full_run_is_incomplete_and_never_succeeds(self) -> None:
+        env = {
+            "STUB_JUNIT": junit(1),
+            "STUB_GOLDENS": "PASS\ta.py\n",
+            "CUBRID_TEST_URL": LIVE,
+            "CUBRID_DASHBOARD_TEST_URL": DASHBOARD,
+        }
+        with mock.patch.object(live_gate.shutil, "which", return_value=str(self.make)):
+            code = self.run_gate(env, "all", gate=False)
+        self.assertEqual(code, live_gate.EXIT_INCOMPLETE)
+        self.assertNotEqual(code, 0)
+        self.assertEqual(self.verify_summary()["status"], "INCOMPLETE")
+
+    def test_stale_summary_is_removed_before_the_run(self) -> None:
+        evidence = self.tmp / "evidence"
+        evidence.mkdir()
+        for name in ("verify-summary.json", "verify-summary.txt"):
+            (evidence / name).write_text("stale PASS", encoding="utf-8")
+        with (
+            mock.patch.object(live_gate, "missing_dependencies", side_effect=RuntimeError("x")),
+            self.assertRaises(RuntimeError),
+        ):
+            self.run_all({})
+        self.assertFalse((evidence / "verify-summary.json").exists())
+        self.assertFalse((evidence / "verify-summary.txt").exists())
 
     def test_a_failed_golden_fails_the_run_and_is_named(self) -> None:
         env = {"STUB_GOLDENS": "PASS\ta.py\nMISMATCH\tb.py\n", "STUB_MAKE_EXIT": "2"}
@@ -511,7 +547,7 @@ class WiringTests(unittest.TestCase):
             "verify-goldens",
         ):
             self.assertIn(f"\n{target}:", makefile)
-        self.assertIn("$(LIVE_GATE) all", makefile)
+        self.assertIn("CUBRID_LIVE_GATE=1 $(PYTHON) scripts/live_gate.py --gate all", makefile)
         self.assertIn("test_live_gate.py", makefile.split("\ntest:", 1)[1].split("\n\n")[0])
         self.assertIn(".live-evidence/", (ROOT / ".gitignore").read_text(encoding="utf-8"))
 

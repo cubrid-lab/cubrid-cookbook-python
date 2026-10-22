@@ -10,6 +10,7 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 
 ### Upgrade notes
 
+- **`make verify` is now the full live verification (#416)** — the golden-only check that `make verify` ran before is now `make verify-goldens` (`make verify VERIFY_PATHS=<dirs>` on the command line still runs only those goldens, as CI does). A bare `make verify` also runs every live pytest suite and needs two dedicated, empty CUBRID databases in `CUBRID_TEST_URL` and `CUBRID_DASHBOARD_TEST_URL` besides the `make up` database; `CONTRIBUTING.md` ("Live verification") shows how to start them. Run `make deps` again first: it now installs every example's requirements and `pytest-asyncio`.
 - **A local lab started from the earlier `docker-compose.yml` needs a one-time recovery (#385)** — the new lab file recreates the `cubrid-cookbook` container with a fixed host name and named volumes, and an existing database then fails to open with `-353`, because CUBRID recorded the old host name. The data is kept: `GETTING_STARTED.md` ("A lab created before the October 2026 lab fix") gives the tested recovery for a default 11.2 lab (rewrite the host in `databases.txt`, then restart) and for an 11.4 lab (copy the database from its unnamed volume into the new named volume first). Do not use `docker compose down -v` to recover; it deletes the data.
 
 ### Added

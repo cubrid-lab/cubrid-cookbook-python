@@ -71,12 +71,17 @@ LIVE_HEADER = re.compile(r"^database: live CUBRID \(", re.MULTILINE)
 GATE_ON = {"1", "true", "yes", "on"}
 GATE_OFF = {"", "0", "false", "no", "off"}
 SUITE_TIMEOUT = 900
+EXIT_INCOMPLETE = 3  # `all` without the gate: never a success
 PACKAGES = (
     "pycubrid",
     "sqlalchemy",
     "sqlalchemy-cubrid",
     "cubrid-mcp-server",
     "pytest",
+    "pytest-asyncio",
+    "httpx",
+    "uvicorn",
+    "pydantic",
     "flask",
     "flask-sqlalchemy",
     "fastapi",
@@ -513,8 +518,13 @@ GOLDEN_SKIP = "SKIP"
 def run_goldens(
     suite: dict[str, Any], out_dir: Path, python: str, env: dict[str, str]
 ) -> tuple[SuiteResult, str]:
-    """Run `make verify-goldens` and read its per-golden result lines (VERIFY_RESULTS)."""
+    """Run `make verify-goldens` and read its per-golden result lines.
+
+    The recipe appends one ``STATUS<TAB>target`` line per golden to the file named
+    by the ``VERIFY_RESULTS`` environment variable.
+    """
     results_file = out_dir / "results.tsv"
+    env = {**env, "VERIFY_RESULTS": str(results_file)}
     command = [
         shutil.which("make") or "make",
         "--no-print-directory",
@@ -522,7 +532,6 @@ def run_goldens(
         str(ROOT / "Makefile"),
         "verify-goldens",
         f"VERIFY_PATHS={suite['path']}",
-        f"VERIFY_RESULTS={results_file}",
         f"PYTHON={python}",
     ]
     result = SuiteResult("golden outputs", suite["database"], command, note=suite.get("note", ""))
@@ -752,6 +761,9 @@ def missing_dependencies(python: str) -> list[str]:
 
 def run_all(evidence_dir: Path, gate: bool, python: str, timeout: int) -> dict[str, Any]:
     """Full verification: check every database and dependency first, then run every lane."""
+    for name in ("verify-summary.json", "verify-summary.txt"):
+        # A stale summary must never stand in for this run's result.
+        (evidence_dir / name).unlink(missing_ok=True)
     live_url = os.environ.get(LIVE_URL_ENV) or None
     dashboard_url = os.environ.get(DASHBOARD_URL_ENV) or None
     needs = {suite["database"] for lane in FULL_ORDER for suite in expand_suites(lane)}
@@ -764,14 +776,26 @@ def run_all(evidence_dir: Path, gate: bool, python: str, timeout: int) -> dict[s
         for lane in FULL_ORDER:
             lanes[lane] = run_lane(lane, evidence_dir, gate, python, timeout)
 
+    def totals(names: list[str], live: bool) -> dict[str, int]:
+        # By-design SQLite suites (startup-only) are counted apart from live evidence.
+        suites = [
+            suite
+            for name in names
+            if name in lanes
+            for suite in lanes[name]["suites"]
+            if (suite["database"] != "sqlite") == live
+        ]
+        return {
+            key: sum(suite[key] for suite in suites)
+            for key in ("tests", "passed", "failed", "errors", "skipped")
+        }
+
     def section(names: list[str]) -> dict[str, Any]:
         statuses = [lanes[name]["status"] for name in names if name in lanes]
         return {
             "status": lane_status_of(statuses, len(names)),
-            "totals": {
-                key: sum(lanes[name]["totals"][key] for name in names if name in lanes)
-                for key in ("tests", "passed", "failed", "errors", "skipped")
-            },
+            "totals": totals(names, live=True),
+            "non_live_totals": totals(names, live=False),
             "lanes": {
                 name: {
                     "status": lanes[name]["status"],
@@ -856,6 +880,12 @@ def render_verify_text(summary: dict[str, Any]) -> str:
             f"{title}: {part['status']} ({totals['tests']} run, {totals['passed']} passed, "
             f"{totals['failed']} failed, {totals['errors']} errors, {totals['skipped']} skipped)"
         )
+        other = part["non_live_totals"]
+        if other["tests"]:
+            lines.append(
+                f"  plus {other['tests']} non-live (by-design SQLite, startup-only) tests: "
+                f"{other['passed']} passed, {other['failed']} failed, {other['errors']} errors"
+            )
         for name, lane in part["lanes"].items():
             lines.append(f"  [{lane['status']}] {name} -> {lane['summary']}")
     for case in summary["goldens"].get("failures", []):
@@ -893,7 +923,8 @@ def main(argv: list[str] | None = None) -> int:
         if len(args.lanes) > 1:
             parser.error("'all' runs every lane; do not combine it with other lanes")
         summary = run_all(evidence_dir, gate, args.python, args.timeout)
-        return 0 if summary["status"] != "FAIL" else 1
+        # Full verification succeeds only on PASS; INCOMPLETE (ungated) gets its own code.
+        return {"PASS": 0, "FAIL": 1}.get(summary["status"], EXIT_INCOMPLETE)
     statuses = {}
     for lane in dict.fromkeys(args.lanes):
         statuses[lane] = run_lane(lane, evidence_dir, gate, args.python, args.timeout)["status"]

@@ -18,9 +18,6 @@ VERIFY_PATHS ?= .
 # The slowest golden took 7.2s on CUBRID 11.4 (2026-10-09); 60s leaves room for
 # slower CI runners without letting a hang consume the job timeout.
 VERIFY_TIMEOUT ?= 60
-# Golden results file (one "STATUS<TAB>target" line per golden) that
-# scripts/live_gate.py asks verify-goldens to append; empty means none.
-VERIFY_RESULTS ?=
 # make verify and the verify-* lanes (scripts/live_gate.py) fail closed by default:
 # CUBRID_TEST_URL and CUBRID_DASHBOARD_TEST_URL must name dedicated, empty
 # cubrid+pycubrid databases. CUBRID_LIVE_GATE=0 restores the suites' own skips
@@ -59,16 +56,17 @@ deps: ## Install the drivers, pytest, pytest-asyncio and every example's require
 	echo "$(PIP) install pytest pytest-asyncio 'sqlalchemy-cubrid[pycubrid]' $$*"; \
 	$(PIP) install pytest pytest-asyncio 'sqlalchemy-cubrid[pycubrid]' "$$@"
 
-# `make verify` alone is the full live verification (scripts/live_gate.py all).
-# Naming VERIFY_PATHS (command line or environment, as CI does) asks for the
-# partial, golden-output-only check of those roots instead.
-ifneq ($(filter command line environment environment override,$(origin VERIFY_PATHS)),)
+# `make verify` alone is the full live verification (scripts/live_gate.py all),
+# always gated: an ambient CUBRID_LIVE_GATE=0 cannot turn it into a skip-tolerant
+# run. Naming VERIFY_PATHS on the command line (as CI does) asks for the partial,
+# golden-output-only check of those roots instead; an exported VERIFY_PATHS does not.
+ifeq ($(origin VERIFY_PATHS),command line)
 verify: verify-goldens
 	@echo "PARTIAL verification: golden outputs under '$(VERIFY_PATHS)' only; no live pytest suite ran."
 	@echo "Run make verify without VERIFY_PATHS for the full verification."
 else
 verify: ## Full live verification: every golden plus every live pytest suite, fail-closed (VERIFY_PATHS=<dirs> runs only those goldens, a partial check)
-	$(LIVE_GATE) all
+	CUBRID_LIVE_GATE=1 $(PYTHON) scripts/live_gate.py --gate all
 endif
 
 verify-goldens: check-coverage ## Compare example outputs with their goldens (VERIFY_PATHS scopes the search roots, VERIFY_TIMEOUT limits each script)
@@ -89,9 +87,8 @@ verify-goldens: check-coverage ## Compare example outputs with their goldens (VE
 	annotate() { \
 		if [ -n "$$GITHUB_ACTIONS" ]; then echo "::error file=$${2#./},title=make verify $$1::$$3"; fi; \
 	}; \
-	results='$(VERIFY_RESULTS)'; \
 	record() { \
-		if [ -n "$$results" ]; then printf '%s\t%s\n' "$$1" "$$2" >> "$$results"; fi; \
+		if [ -n "$${VERIFY_RESULTS:-}" ]; then printf '%s\t%s\n' "$$1" "$$2" >> "$$VERIFY_RESULTS"; fi; \
 	}; \
 	PASS=0; MISMATCH=0; EXEC=0; TIMEOUT=0; NORMALIZE=0; READ=0; SKIP=0; \
 	while IFS= read -r expected; do \
