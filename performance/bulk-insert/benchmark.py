@@ -4,6 +4,12 @@ import time
 import pycubrid
 
 
+def count_rows(cursor) -> int:
+    """Return how many rows a strategy actually stored (checked after its timer stops)."""
+    cursor.execute("SELECT COUNT(*) FROM cookbook_bulk_test")
+    return cursor.fetchone()[0]
+
+
 def main() -> None:
     """Benchmark three bulk insert strategies against CUBRID."""
     conn = None
@@ -46,6 +52,7 @@ def main() -> None:
             conn.commit()
         strategy1_time = time.time() - start
         strategy1_rows_sec = per_row_count / strategy1_time
+        strategy1_rows = count_rows(cursor)
 
         # Strategy 2: Batch COMMIT (every 500 rows)
         cursor.execute("DELETE FROM cookbook_bulk_test")
@@ -61,6 +68,7 @@ def main() -> None:
         conn.commit()
         strategy2_time = time.time() - start
         strategy2_rows_sec = num_rows / strategy2_time
+        strategy2_rows = count_rows(cursor)
 
         # Strategy 3: Single COMMIT at end
         cursor.execute("DELETE FROM cookbook_bulk_test")
@@ -74,17 +82,18 @@ def main() -> None:
         conn.commit()
         strategy3_time = time.time() - start
         strategy3_rows_sec = num_rows / strategy3_time
+        strategy3_rows = count_rows(cursor)
 
         # Print results
         print("\n=== Bulk Insert Benchmark ===")
         print(
-            f"Strategy 1 (per-row COMMIT):     {strategy1_time:.3f}s  {per_row_count} rows  ({strategy1_rows_sec:.0f} rows/sec)"
+            f"Strategy 1 (per-row COMMIT):     {strategy1_time:.3f}s  {strategy1_rows} rows  ({strategy1_rows_sec:.0f} rows/sec)"
         )
         print(
-            f"Strategy 2 (batch COMMIT 500):   {strategy2_time:.3f}s  {num_rows} rows  ({strategy2_rows_sec:.0f} rows/sec)"
+            f"Strategy 2 (batch COMMIT 500):   {strategy2_time:.3f}s  {strategy2_rows} rows  ({strategy2_rows_sec:.0f} rows/sec)"
         )
         print(
-            f"Strategy 3 (single COMMIT):      {strategy3_time:.3f}s  {num_rows} rows  ({strategy3_rows_sec:.0f} rows/sec)"
+            f"Strategy 3 (single COMMIT):      {strategy3_time:.3f}s  {strategy3_rows} rows  ({strategy3_rows_sec:.0f} rows/sec)"
         )
         print(
             f"\nKey insight: one INSERT plus its own COMMIT takes ~{strategy1_time / per_row_count * 1000:.0f}ms"

@@ -47,46 +47,46 @@ def main() -> None:
         # Benchmark 1: fetchone() loop
         start = time.time()
         cursor.execute("SELECT id, name, val, description, is_active FROM cookbook_fetch_test")
-        rows_count = 0
+        fetchone_rows = 0
         while True:
             row = cursor.fetchone()
             if row is None:
                 break
-            rows_count += 1
+            fetchone_rows += 1
         fetchone_time = time.time() - start
 
         # Benchmark 2: fetchall()
         start = time.time()
         cursor.execute("SELECT id, name, val, description, is_active FROM cookbook_fetch_test")
-        rows = cursor.fetchall()
-        rows_count = len(rows)
+        fetchall_rows = len(cursor.fetchall())
         fetchall_time = time.time() - start
 
         # Benchmark 3: SELECT specific columns only
         start = time.time()
         cursor.execute("SELECT id, name FROM cookbook_fetch_test")
-        rows = cursor.fetchall()
-        rows_count = len(rows)
+        specific_cols_rows = len(cursor.fetchall())
         specific_cols_time = time.time() - start
 
         # Benchmark 4: fetchmany() batches (all columns). SELECT * would be the
         # same query as benchmark 2, because the table has only these 5 columns.
         start = time.time()
         cursor.execute("SELECT id, name, val, description, is_active FROM cookbook_fetch_test")
-        rows_count = 0
+        fetchmany_rows = 0
         while True:
             batch = cursor.fetchmany(500)
             if not batch:
                 break
-            rows_count += len(batch)
+            fetchmany_rows += len(batch)
         fetchmany_time = time.time() - start
 
         # Print results
         print("=== Fetch Optimization Benchmark ===")
-        print(f"fetchone() loop:                 {fetchone_time:.3f}s")
-        print(f"fetchall() (all columns):        {fetchall_time:.3f}s")
-        print(f"fetchall() (specific columns):   {specific_cols_time:.3f}s")
-        print(f"fetchmany(500) loop:             {fetchmany_time:.3f}s")
+        print(f"fetchone() loop:                 {fetchone_time:.3f}s  {fetchone_rows} rows")
+        print(f"fetchall() (all columns):        {fetchall_time:.3f}s  {fetchall_rows} rows")
+        print(
+            f"fetchall() (specific columns):   {specific_cols_time:.3f}s  {specific_cols_rows} rows"
+        )
+        print(f"fetchmany(500) loop:             {fetchmany_time:.3f}s  {fetchmany_rows} rows")
         print()
 
     finally:

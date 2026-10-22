@@ -85,6 +85,25 @@ docker compose down                    # stop the database when finished
 Expect about 15 seconds for `fetch-optimization`, about 45 seconds for `bulk-insert` and a few seconds for
 `connection-pooling`. Absolute numbers depend on your hardware and CUBRID version.
 
+## Testing the benchmarks
+
+The benchmarks print timings, so they have no golden file for `make verify`. `make spec-12` (with the
+database above running and `make deps` installed) checks them instead, together with the five
+[Java → Python migration](../migration/java-to-python/) golden cases:
+
+```bash
+make spec-12   # JUnit report: .spec-evidence/spec-12.xml
+```
+
+`tests/test_performance_benchmarks.py` runs each `benchmark.py` with a time limit and checks that it exits 0,
+prints every comparison line with a finite, nonnegative time, ran its whole workload (10,000 fetched rows per
+strategy; 500, 5,000 and 5,000 stored rows; 50 connections without a pool and 1 to 5 with one) and printed no
+error. It also makes `fetch-optimization` and `bulk-insert` fail on purpose after they create their table and
+checks that the table is dropped anyway, and that an unrelated table survives every run unchanged. It never
+compares one strategy's time with another's, so a slow or noisy machine does not fail it. The report records
+the CUBRID server, Python, pytest and driver versions. `make spec-12` fails when the database is unreachable
+or any test is skipped; plain `pytest tests/test_performance_benchmarks.py` skips without a database.
+
 ## Key Takeaways
 
 1. **≤ 500 rows** (historical, pycubrid 0.5.0): Network + server time dominates — client-side optimization has minimal effect

@@ -208,3 +208,18 @@ spec-03: ## Spec 03 evidence: FastAPI quickstart /health and CRUD on live CUBRID
 	CUBRID_SPEC_GATE=1 CUBRID_TEST_URL="$${CUBRID_TEST_URL:-cubrid+pycubrid://dba@localhost:33000/testdb}" \
 		$(PYTHON) -m pytest quickstart/5min-fastapi/tests/test_live.py -v -rs \
 		--junitxml=.spec-evidence/spec-03.xml
+
+.PHONY: spec-12
+SPEC_EVIDENCE_DIR ?= .spec-evidence
+
+spec-12: ## Spec 12 live evidence: 5 migration goldens + 3 benchmarks, fail-closed (JUnit XML in .spec-evidence/)
+	@mkdir -p $(SPEC_EVIDENCE_DIR)
+	CUBRID_SPEC_GATE=1 $(PYTHON) -m pytest tests/test_performance_benchmarks.py -v -p no:cacheprovider \
+		-o junit_suite_name=spec-12 --junitxml=$(SPEC_EVIDENCE_DIR)/spec-12.xml
+	@$(PYTHON) -c 'import sys, xml.etree.ElementTree as ET; \
+		root = ET.parse(sys.argv[1]).getroot(); \
+		suites = [root] if root.tag == "testsuite" else list(root); \
+		total = sum(int(s.get("tests", 0)) for s in suites); \
+		skipped = sum(int(s.get("skipped", 0)) for s in suites); \
+		print(f"spec-12 evidence: {total} tests, {skipped} skipped -> {sys.argv[1]}"); \
+		sys.exit(1 if skipped or not total else 0)' $(SPEC_EVIDENCE_DIR)/spec-12.xml

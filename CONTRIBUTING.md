@@ -172,7 +172,8 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   fan-out paths, or recipe 10's `requirements.txt` (CQRS job only).
 - Example directories with no live consumer (`performance/`, the FastAPI
   quickstart, `fundamentals/parameterized-queries`) are covered by the offline
-  checks only, on every event.
+  checks only, on every event. `performance/` has a local live check,
+  `make spec-12` (see [Spec 12 evidence](#spec-12-evidence)), that no CI lane runs.
 - The Flask/FastAPI lane (#227) runs the `tests/` suite of each changed recipe
   root (`ci_scope.web_suites`: a `templates/flask/` or
   `templates/api-service-fastapi/recipes/` recipe, or the root FastAPI app), each
@@ -358,6 +359,29 @@ is an `EXEC-ERROR`),
 `✗ NORMALIZE-ERROR`, `✗ READ-ERROR` (golden read error) or `? SKIP`, and the
 summary counts each class. Under GitHub Actions each failure also emits an
 `::error file=...::` annotation.
+
+### Spec 12 evidence
+
+`make spec-12` runs `tests/test_performance_benchmarks.py` against the database
+the examples hard-code (`localhost:33000`, `testdb`, `dba`; `make up` and
+`make deps` first) and writes a JUnit report to `.spec-evidence/spec-12.xml`
+(ignored by git). It has two groups, reported as separate JUnit classes:
+`TestSpec12Migration` runs the five `migration/java-to-python` goldens with the
+`make verify` comparison (`scripts/run_example.py`, `scripts/normalize_output.sh`,
+`expected/*.expected`), and `TestSpec12Performance` runs the three
+`performance/*/benchmark.py` scripts. A benchmark passes when it exits 0 within
+its time limit, prints every comparison line with a finite, nonnegative time and
+the workload it was configured for, prints no error or traceback, and leaves no
+benchmark table behind, also when a failure is injected after the table is
+created; an unrelated sentinel table must be unchanged. Timings are never
+compared with each other or with a threshold, and never go into a golden. The
+report records the CUBRID server, Python, pytest and driver versions.
+`make spec-12` sets `CUBRID_SPEC_GATE=1`: an unreachable database or a missing
+driver fails every test, and the target also fails if the report counts a
+skipped test. Without the variable, `pytest tests/test_performance_benchmarks.py`
+skips when no database answers. A full run took about a minute on CUBRID 11.2
+(longer on slow machines; the `bulk-insert` per-row COMMIT dominates). When you
+change a benchmark, run it twice in a row to show that no stale table is left behind.
 
 This is enforced: `scripts/check_expected_coverage.py` (run by `make verify` and
 the smoke-test workflow) fails if any runnable `<dir>/*.py` inside a directory
@@ -674,6 +698,10 @@ and not missing coverage:
 | `performance/bulk-insert/benchmark.py` | Throughput benchmark — prints wall-clock timings and rows/sec that vary run-to-run. |
 | `performance/connection-pooling/benchmark.py` | Throughput benchmark — timings and speedup factors are nondeterministic. |
 | `performance/fetch-optimization/benchmark.py` | Throughput benchmark — per-strategy timings are nondeterministic. |
+
+The three benchmarks are checked live by `make spec-12` instead (see
+[Spec 12 evidence](#spec-12-evidence)), which parses their output without
+comparing timings.
 
 Where output is dynamic only in *presentation* (timings, absolute paths, peak
 memory), prefer adding a presentation-only rule to `scripts/normalize_output.sh`

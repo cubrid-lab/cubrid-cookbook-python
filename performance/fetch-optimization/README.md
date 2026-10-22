@@ -97,7 +97,7 @@ python performance/fetch-optimization/benchmark.py
 docker compose down                    # stop the database when finished
 ```
 
-The script creates and fills `cookbook_fetch_test` (10,000 rows), prints the time of each fetch strategy and takes about 15 seconds.
+The script creates and fills `cookbook_fetch_test` (10,000 rows), prints the time of each fetch strategy and the number of rows it fetched (10,000 each), and takes about 15 seconds. It drops `cookbook_fetch_test` when it finishes, also when a step fails. `make spec-12` runs it as a live test (see [Testing the benchmarks](../README.md#testing-the-benchmarks)).
 
 ## Benchmark Reference
 
