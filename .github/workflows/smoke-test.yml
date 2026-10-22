@@ -219,8 +219,8 @@ jobs:
           # Every event this workflow runs on (push to main, cron, upstream
           # release, manual dispatch, workflow call) runs the full make verify:
           # a dependency bump or scheduled run must exercise every example and
-          # every live suite. VERIFY_PATHS is deliberately never exported here:
-          # naming it would turn make verify into the partial golden-only check.
+          # every live suite. The partial golden-only check is the separate
+          # make verify-goldens target, which this workflow never runs.
           # Pull-request scoping lives in scripts/ci_scope.py (ci.yml).
           echo "Full verify (event=$EVENT_NAME)"
 
