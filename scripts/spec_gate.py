@@ -16,10 +16,11 @@ per spec into ``.spec-evidence/<spec>/``:
 
 With ``CUBRID_SPEC_GATE=1`` (or ``--gate``) the lane is fail-closed: a missing,
 non-``cubrid+pycubrid`` or unreachable URL, a dashboard URL equal to the main
-one, a suite that collected no test, skipped any test, did not report live
-CUBRID, or left new tables behind all fail with a nonzero exit. Without the
-gate the suites keep their existing behavior (skips, SQLite fallbacks), and
-the summary marks such a spec INCOMPLETE rather than PASS.
+one, a database that already holds ``cookbook_*`` tables, a suite that
+collected no test, skipped any test, printed a database header other than
+live CUBRID, or left behind or dropped tables all fail with a nonzero exit.
+Without the gate the suites keep their existing behavior (skips, SQLite
+fallbacks), and a spec is at best INCOMPLETE, never PASS.
 
     CUBRID_SPEC_GATE=1 CUBRID_TEST_URL=cubrid+pycubrid://dba@localhost:33000/testdb \\
         python scripts/spec_gate.py spec-08 spec-09
@@ -30,7 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -38,7 +39,6 @@ import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -48,7 +48,9 @@ GATE_ENV = "CUBRID_SPEC_GATE"
 LIVE_URL_ENV = "CUBRID_TEST_URL"
 DASHBOARD_URL_ENV = "CUBRID_DASHBOARD_TEST_URL"
 REQUIRED_DRIVER = "cubrid+pycubrid"
-LIVE_HEADER = "database: live CUBRID"
+LIVE_HEADER = re.compile(r"^database: live CUBRID \(", re.MULTILINE)
+GATE_ON = {"1", "true", "yes", "on"}
+GATE_OFF = {"", "0", "false", "no", "off"}
 SUITE_TIMEOUT = 900
 PACKAGES = (
     "pycubrid",
@@ -136,7 +138,15 @@ class SuiteResult:
 
 
 def gate_enabled(flag: bool, environ: dict[str, str] | os._Environ[str] = os.environ) -> bool:
-    return flag or environ.get(GATE_ENV, "").strip() == "1"
+    """--gate or a recognised on value enables the gate; an unrecognised value is an error."""
+    value = environ.get(GATE_ENV, "").strip().lower()
+    if value in GATE_ON:
+        return True
+    if value in GATE_OFF:
+        return flag
+    raise ValueError(
+        f"{GATE_ENV}={value!r} is not one of {sorted(GATE_ON)} (on) or {sorted(GATE_OFF)} (off)"
+    )
 
 
 def expand_suites(spec: str, root: Path = ROOT) -> list[dict[str, Any]]:
@@ -209,6 +219,27 @@ def preflight(
     return reasons
 
 
+def baseline_reasons(env_name: str, tables: set[str]) -> list[str]:
+    """Refuse a database that already holds cookbook tables: suites may drop them."""
+    existing = sorted(name for name in tables if name.startswith("cookbook_"))
+    if not existing:
+        return []
+    return [
+        f"{env_name} already contains cookbook_* tables {existing}; the suites drop and "
+        "recreate their own tables, so use a dedicated, empty database"
+    ]
+
+
+def table_change_reasons(before: set[str], after: set[str]) -> list[str]:
+    """Tables a suite left behind or dropped, compared with its own pre-run snapshot."""
+    reasons = []
+    if created := sorted(after - before):
+        reasons.append(f"left new tables behind: {created}")
+    if dropped := sorted(before - after):
+        reasons.append(f"dropped pre-existing tables: {dropped}")
+    return reasons
+
+
 def probe(url: str) -> tuple[str | None, set[str] | None, str | None]:
     """Return (server version, table names, error) for a live CUBRID URL."""
     try:
@@ -266,8 +297,8 @@ def judge(result: SuiteResult, gate: bool, output: str, live_header: bool) -> No
         reasons.append(f"{result.failed} failed, {result.errors} errors")
     if result.skipped and gate:
         reasons.append(f"{result.skipped} skipped; the spec gate accepts no skipped test")
-    if gate and live_header and LIVE_HEADER not in output:
-        reasons.append(f"pytest did not report '{LIVE_HEADER}'")
+    if gate and live_header and not LIVE_HEADER.search(output):
+        reasons.append("pytest did not report the 'database: live CUBRID (...)' header")
     if reasons:
         result.status = "failed"
     elif result.skipped:
@@ -277,10 +308,11 @@ def judge(result: SuiteResult, gate: bool, output: str, live_header: bool) -> No
         result.status = "passed"
 
 
-def spec_status(results: list[SuiteResult], reasons: list[str]) -> str:
+def spec_status(results: list[SuiteResult], reasons: list[str], gate: bool) -> str:
+    """Only a gated run can PASS; an ungated one may have used skips or SQLite fallbacks."""
     if reasons or not results or any(r.status == "failed" for r in results):
         return "FAIL"
-    if any(r.status != "passed" for r in results):
+    if not gate or any(r.status != "passed" for r in results):
         return "INCOMPLETE"
     return "PASS"
 
@@ -294,17 +326,36 @@ def git_state() -> dict[str, Any]:
         except (OSError, subprocess.CalledProcessError):
             return ""
 
-    return {"sha": run("rev-parse", "HEAD") or None, "dirty": bool(run("status", "--porcelain"))}
+    dirty = run("status", "--porcelain", "--untracked-files=no")
+    return {"sha": run("rev-parse", "HEAD") or None, "dirty": bool(dirty)}
 
 
-def package_versions() -> dict[str, str | None]:
-    versions: dict[str, str | None] = {}
-    for name in PACKAGES:
-        try:
-            versions[name] = metadata.version(name)
-        except metadata.PackageNotFoundError:
-            versions[name] = None
-    return versions
+VERSIONS_CODE = """
+import json, platform
+from importlib import metadata
+packages = {}
+for name in %r:
+    try:
+        packages[name] = metadata.version(name)
+    except metadata.PackageNotFoundError:
+        packages[name] = None
+print(json.dumps({"version": platform.python_version(), "packages": packages}))
+"""
+
+
+def interpreter_versions(python: str) -> dict[str, Any]:
+    """Python and package versions of the interpreter that runs pytest."""
+    try:
+        completed = subprocess.run(
+            [python, "-c", VERSIONS_CODE % (PACKAGES,)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=True,
+        )
+        return json.loads(completed.stdout.strip().splitlines()[-1])
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError) as error:
+        return {"version": None, "packages": {}, "error": f"{type(error).__name__}: {error}"}
 
 
 def run_suite(
@@ -350,9 +401,15 @@ def run_suite(
     return result, output
 
 
-def suite_env(database: str, live_url: str | None, dashboard_url: str | None) -> dict[str, str]:
+def suite_env(
+    database: str, live_url: str | None, dashboard_url: str | None, gate: bool
+) -> dict[str, str]:
     env = dict(os.environ)
     env.pop(LIVE_URL_ENV, None)
+    if gate:
+        # Ambient pytest options or plugins could deselect or skip tests unseen.
+        env.pop("PYTEST_ADDOPTS", None)
+        env.pop("PYTEST_PLUGINS", None)
     url = {"live": live_url, "dashboard": dashboard_url}.get(database)
     if url:
         env[LIVE_URL_ENV] = url
@@ -381,42 +438,50 @@ def run_spec(
             continue
         version, tables, error = probe(url)
         servers[mode] = {"env": env_name, "url": shown_url(url), "version": version, "error": error}
-        servers[mode]["_tables"] = tables
-        if error and gate:
-            reasons.append(f"{env_name} is unreachable: {error}")
+        if gate:
+            reasons += (
+                [f"{env_name} is unreachable: {error}"]
+                if error
+                else baseline_reasons(env_name, tables or set())
+            )
 
     results: list[SuiteResult] = []
     if not reasons:
         for suite in suites:
             print(f"[{spec}] pytest {suite['path']} ({suite['database']})", flush=True)
-            env = suite_env(suite["database"], live_url, dashboard_url)
+            env = suite_env(suite["database"], live_url, dashboard_url, gate)
+            check_tables = gate and suite["database"] in servers
+            if check_tables:
+                _, before, before_error = probe(env[LIVE_URL_ENV])
             result, output = run_suite(suite, out_dir, python, env, timeout)
             judge(result, gate, output, suite.get("live_header", False))
-            server = servers.get(suite["database"])
-            if gate and server and server["_tables"] is not None:
+            if check_tables:
                 _, after, error = probe(env[LIVE_URL_ENV])
-                leftover = sorted((after or set()) - server["_tables"])
-                if error or leftover:
+                changes = (
+                    [f"table snapshot failed: {before_error or error}"]
+                    if before_error or error
+                    else table_change_reasons(before or set(), after or set())
+                )
+                if changes:
                     result.status = "failed"
-                    result.reasons.append(
-                        f"post-run table check failed: {error}"
-                        if error
-                        else f"left new tables behind: {leftover}"
-                    )
+                    result.reasons += changes
             print(f"[{spec}]   -> {result.status}: {_counts(result)}", flush=True)
             results.append(result)
 
-    for server in servers.values():
-        server.pop("_tables", None)
+    versions = interpreter_versions(python)
     summary = {
         "spec": spec,
         "title": MANIFEST[spec]["title"],
-        "status": spec_status(results, reasons),
+        "status": spec_status(results, reasons, gate),
         "gate": gate,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git": git_state(),
-        "python": {"version": platform.python_version(), "executable": python},
-        "packages": package_versions(),
+        "python": {
+            "version": versions["version"],
+            "executable": python,
+            **({"error": versions["error"]} if "error" in versions else {}),
+        },
+        "packages": versions["packages"],
         "servers": servers,
         "preflight_failures": reasons,
         "totals": {
@@ -500,7 +565,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=int, default=SUITE_TIMEOUT, help="seconds per suite")
     args = parser.parse_args(argv)
 
-    gate = gate_enabled(args.gate)
+    try:
+        gate = gate_enabled(args.gate)
+    except ValueError as error:
+        parser.error(str(error))
     evidence_dir = Path(args.evidence_dir)
     if not evidence_dir.is_absolute():
         evidence_dir = ROOT / evidence_dir
