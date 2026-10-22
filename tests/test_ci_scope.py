@@ -132,10 +132,22 @@ class ClassifierTests(unittest.TestCase):
                 self.assertEqual(selected(result), {"smoke_114"})
                 self.assertEqual(result["verify_paths"], ".")
 
+    def test_fastapi_quickstart_change_runs_the_smoke_lane(self) -> None:
+        # make spec-03 runs the quickstart live suite inside the smoke lane (#425).
+        for path in (
+            "quickstart/5min-fastapi/app.py",
+            "quickstart/5min-fastapi/tests/test_live.py",
+        ):
+            with self.subTest(path=path):
+                result = scope(path)
+                self.assertEqual(selected(result), {"smoke_114"})
+                self.assertEqual(result["verify_paths"], ".")
+        result = scope("quickstart/5min-fastapi/README.md")
+        self.assertEqual(selected(result), set())
+
     def test_example_files_without_live_consumer_stay_offline(self) -> None:
         result = scope(
             "performance/bulk-insert/bench.py",
-            "quickstart/5min-fastapi/main.py",
             "fundamentals/parameterized-queries/04_parameterized.py",
         )
         self.assertEqual(selected(result), set())
@@ -561,6 +573,10 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn('make verify VERIFY_PATHS="$VERIFY_PATHS"', action)
         self.assertIn("VERIFY_PATHS: ${{ inputs.verify-paths }}", action)
         self.assertIn("tests/test_ai_agent.py", action)
+        # The quickstart live lane runs fail-closed in both smoke lanes (#425).
+        for text in (action, SMOKE):
+            self.assertIn("make spec-03\n", text)
+            self.assertIn("-r quickstart/5min-fastapi/requirements.txt", text)
         self.assertIn("python scripts/mcp_smoke.py", action)
         self.assertIn("release_smoke.py freeze", action)
         self.assertNotIn("uses:", action)  # no unpinned/unmanaged actions

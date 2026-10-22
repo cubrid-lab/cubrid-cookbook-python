@@ -402,7 +402,7 @@ jobs:
         if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
         # One explicit list avoids conflicting pins in individual recipe files.
         # PIP_CONSTRAINT also covers these packages' transitive driver requirements.
-        run: pip install flask flask-sqlalchemy fastapi email-validator httpx pytest pytest-asyncio streamlit pandas -r templates/async-worker/requirements.txt -r templates/django/requirements.txt -r templates/api-service-fastapi/requirements.txt
+        run: pip install flask flask-sqlalchemy fastapi email-validator httpx pytest pytest-asyncio streamlit pandas -r templates/async-worker/requirements.txt -r templates/django/requirements.txt -r templates/api-service-fastapi/requirements.txt -r quickstart/5min-fastapi/requirements.txt
 
       - name: Record tested versions
         run: |
@@ -487,6 +487,14 @@ jobs:
           if [ "${#failed[@]}" -ne 0 ]; then
             exit 1
           fi
+
+      - name: Run spec 03 lane (FastAPI quickstart)
+        # app.py hard-codes localhost:33000/testdb; the URL must name the same.
+        # Fails closed (CUBRID_SPEC_GATE=1); JUnit in .spec-evidence/.
+        timeout-minutes: 5
+        env:
+          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
+        run: make spec-03
 
       - name: Run async-worker database tasks (non-PR runs only)
         if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
@@ -615,6 +623,19 @@ jobs:
             exit 1
           fi
           docker rm -f "$dashboard_id"
+
+      - name: Upload spec evidence
+        # JUnit reports of the make spec-* lanes. A release workflow call skips
+        # it, so no artifact is written into the calling repository's run.
+        if: always() && env.RELEASE_WORKFLOW_CALL != 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spec-evidence-cubrid-${{ matrix.cubrid }}${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}
+          path: .spec-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: true
 
       - name: Report release smoke result
         if: always()

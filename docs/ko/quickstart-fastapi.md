@@ -269,7 +269,9 @@ CUBRID_TEST_URL=cubrid+pycubrid://dba@localhost:33000/testdb python -m pytest te
 있습니다. `CUBRID_TEST_URL`이 없으면 이 테스트는 건너뛰고, 설정했는데 데이터베이스가
 응답하지 않으면 실패합니다. 저장소 루트에서 `make spec-03`을 실행하면
 `CUBRID_SPEC_GATE=1`로 실행해 URL이 없는 경우도 실패로 처리하고, JUnit 보고서를
-`.spec-evidence/spec-03.xml`에 씁니다.
+`.spec-evidence/spec-03.xml`에 씁니다. CI의 smoke 레인은 `main` 푸시와 야간 실행 때
+CUBRID 11.2와 11.4에서, 이 퀵스타트를 바꾸는 풀 리퀘스트에서는 CUBRID 11.4에서
+`make spec-03`을 실행합니다.
 
 ## 다음 단계
 

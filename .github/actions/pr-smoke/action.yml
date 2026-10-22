@@ -53,6 +53,8 @@ runs:
         set -euo pipefail
         # PIP_CONSTRAINT keeps the selected drivers fixed during every install.
         pip install pandas matplotlib pytest
+        # The FastAPI quickstart live lane (make spec-03) drives app.py with TestClient.
+        pip install httpx -r quickstart/5min-fastapi/requirements.txt
         python scripts/release_smoke.py install-mcp --state "$RUNNER_TEMP/release-drivers.json"
         python scripts/release_smoke.py install-examples --constraints "$PIP_CONSTRAINT"
 
@@ -141,3 +143,13 @@ runs:
     - name: Smoke test cubrid-mcp-server
       shell: bash
       run: python scripts/mcp_smoke.py
+
+    - name: Run spec 03 lane (FastAPI quickstart)
+      shell: bash
+      env:
+        # app.py hard-codes localhost:33000/testdb; the URL must name the same.
+        CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
+      run: |
+        set -euo pipefail
+        # Fails closed (CUBRID_SPEC_GATE=1); JUnit in .spec-evidence/.
+        timeout 5m make spec-03

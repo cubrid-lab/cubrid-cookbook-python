@@ -212,7 +212,7 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 | Tier | When | What runs |
 |------|------|-----------|
 | 1 — cheap checks | every pull request | Ruff, `make check`, docs-sync, docs-check, doc-lint, classification and the gate; the strict docs-site build |
-| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples; AI-agent code or other files in example trees → the same lane with a full `make verify` |
+| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples; AI-agent code, the FastAPI quickstart or other files in example trees → the same lane with a full `make verify` |
 | 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with full `make verify`, Python 3.11 + 3.14 compatibility |
 | 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
 | 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | every golden plus all Flask/FastAPI, async-worker, Django and dashboard suites on CUBRID 11.2 + 11.4 (Python 3.12); a release verification adds one CUBRID 11.4 cell on Python 3.11, the supported minimum |
@@ -231,9 +231,9 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 - CUBRID 11.2 runs on a pull request only for version-sensitive changes:
   `smoke-test.yml`, `scripts/release_smoke.py`, `scripts/mcp_smoke.py`, the
   fan-out paths, or recipe 10's `requirements.txt` (CQRS job only).
-- Example directories with no live consumer (`performance/`, the FastAPI
-  quickstart, `fundamentals/parameterized-queries`) are covered by the offline
-  checks only, on every event. `performance/` has a local live check,
+- Example directories with no live consumer (`performance/`,
+  `fundamentals/parameterized-queries`) are covered by the offline checks only,
+  on every event. `performance/` has a local live check,
   `make spec-12` (see [Spec 12 evidence](#spec-12-evidence)), that no CI lane runs.
 - The Flask/FastAPI lane (#227) runs the `tests/` suite of each changed recipe
   root (`ci_scope.web_suites`: a `templates/flask/` or
@@ -260,6 +260,13 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   only in its CQRS job. Every selected suite must pass at least one test
   (checked on pytest's final summary line) within 10 minutes, or the lane and
   `CI Gate` fail.
+- Both smoke lanes (`.github/actions/pr-smoke` and `smoke-test.yml`) run the
+  FastAPI quickstart live suite with `make spec-03` (`CUBRID_SPEC_GATE=1`; the
+  app hard-codes `localhost:33000/testdb`, the smoke container). A pull request
+  that changes `quickstart/5min-fastapi/` (other than Markdown) selects
+  `Smoke Tests (CUBRID 11.4)`; `smoke-test.yml` runs it on CUBRID 11.2 and 11.4.
+  The JUnit report is uploaded with the job's `spec-evidence-cubrid-<version>`
+  artifact.
 - `smoke-test.yml` does not run on pull requests, so no pull request repeats the
   broad 11.2/11.4 matrix. Its exact release verification inputs, outputs and
   fail-closed reporting are unchanged. To test a change to it before merging, run

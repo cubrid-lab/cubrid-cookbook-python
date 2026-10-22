@@ -278,6 +278,9 @@ change only the host. Without `CUBRID_TEST_URL` these tests skip; with it set
 and no database answering, they fail. From the repository root,
 `make spec-03` runs them with `CUBRID_SPEC_GATE=1`, which also turns a missing
 URL into a failure, and writes a JUnit report to `.spec-evidence/spec-03.xml`.
+CI runs `make spec-03` in the smoke lanes on CUBRID 11.2 and 11.4 after every
+push to `main` and nightly, and on CUBRID 11.4 for pull requests that change
+this quickstart.
 
 ## What next?
 
