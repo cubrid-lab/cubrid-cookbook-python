@@ -620,7 +620,10 @@ jobs:
       - name: Upload spec evidence
         # JUnit reports of the make spec-* lanes. A release workflow call skips
         # it, so no artifact is written into the calling repository's run.
+        # continue-on-error: an artifact-service failure must not change the
+        # job status that the release smoke result below reports.
         if: always() && env.RELEASE_WORKFLOW_CALL != 'true'
+        continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: spec-evidence-cubrid-${{ matrix.cubrid }}${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}

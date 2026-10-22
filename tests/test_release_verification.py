@@ -479,8 +479,19 @@ class ReleaseVerificationTests(unittest.TestCase):
         self.assertIn("name: ${{ steps.report.outputs.artifact }}", report)
         self.assertIn("if-no-files-found: error", report)
         # Re-running failed jobs must be able to replace both release artifacts
-        # and the spec evidence (#426).
-        self.assertEqual(WORKFLOW.count("overwrite: true"), 3)
+        # and the spec evidence (#426), each in its own named upload step.
+        steps = {step.split("\n", 1)[0]: step for step in WORKFLOW.split("      - name: ")[1:]}
+        for name in (
+            "Upload release verification result",
+            "Upload release verification report",
+            "Upload spec evidence",
+        ):
+            with self.subTest(step=name):
+                self.assertIn("overwrite: true", steps[name])
+        # The spec evidence never decides the release smoke result (#426).
+        evidence = steps["Upload spec evidence"]
+        self.assertIn("continue-on-error: true", evidence)
+        self.assertIn("env.RELEASE_WORKFLOW_CALL != 'true'", evidence)
         self.assertNotIn("pypi", report.lower())
 
     def test_report_lists_a_python_311_cell_and_names_its_failure(self) -> None:
