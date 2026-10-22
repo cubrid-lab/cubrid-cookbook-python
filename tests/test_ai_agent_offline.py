@@ -236,3 +236,99 @@ def test_live_timeout_terminates_owned_process_group(monkeypatch):
     kill_group.assert_called_once_with(12345, signal.SIGKILL)
     assert popen.call_args.kwargs["start_new_session"] is True
     assert process.communicate.call_count == 2
+
+
+STATE_RECIPES = [
+    "01_agent_state.py",
+    "03_rag_metadata.py",
+    "04_agent_loop.py",
+    "05_chatbot_backend.py",
+]
+# One intentionally wrong expectation per recipe: (state key, wrong value).
+WRONG_EXPECTATIONS = {
+    "01_agent_state.py": ("tags", ["demo"]),
+    "03_rag_metadata.py": ("latest_retrieval", None),
+    "04_agent_loop.py": ("products", []),
+    "05_chatbot_backend.py": ("conversations", [("CUBRID + AI Demo", "closed")]),
+}
+
+
+@pytest.mark.parametrize("recipe", STATE_RECIPES)
+def test_live_state_assertion_rejects_a_wrong_expectation(recipe):
+    module = load_live_suite()
+    expected = module.expected_state(recipe)
+    module.assert_state(dict(expected), expected, recipe)
+
+    key, wrong = WRONG_EXPECTATIONS[recipe]
+    with pytest.raises(AssertionError, match=f"{key}: expected"):
+        module.assert_state(expected, {**expected, key: wrong}, recipe)
+    with pytest.raises(AssertionError, match="unexpected_key"):
+        module.assert_state({**expected, "unexpected_key": 1}, expected, recipe)
+
+
+def test_live_rag_expectation_counts_one_log_row_per_run():
+    module = load_live_suite()
+    first = module.expected_state("03_rag_metadata.py")
+    second = module.expected_state("03_rag_metadata.py", runs=2)
+    assert first["table_rows"]["cookbook_rag_retrieval_log"] == 1
+    assert second["table_rows"]["cookbook_rag_retrieval_log"] == 2
+    with pytest.raises(AssertionError, match="table_rows"):
+        module.assert_state(first, second, "03_rag_metadata.py")
+
+
+def test_live_agent_loop_masks_only_the_database_dependent_table_list():
+    module = load_live_suite()
+    assert module.mask_tables("Based on the data: Found 7 tables: a, b") == (
+        "Based on the data: Found <n> tables: <names>"
+    )
+    assert module.mask_tables("Connection OK") == "Connection OK"
+
+
+def run_live_suite(extra_env):
+    """Run the live module in a child pytest with a controlled spec-gate environment."""
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in {"CUBRID_TEST_URL", "CUBRID_SPEC_GATE"}
+    }
+    env.update(extra_env)
+    return subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/test_ai_agent.py",
+            "-x",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+        ],
+        cwd=RECIPE_ROOT.parents[1],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+
+def test_live_suite_skips_without_url_outside_the_spec_gate():
+    result = run_live_suite({})
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert " skipped" in result.stdout and "passed" not in result.stdout
+
+
+def test_spec_gate_fails_closed_without_url():
+    result = run_live_suite({"CUBRID_SPEC_GATE": "1"})
+    assert result.returncode != 0, result.stdout
+    assert "CUBRID_SPEC_GATE=1 requires CUBRID_TEST_URL" in result.stdout
+    assert "skipped" not in result.stdout
+
+
+def test_spec_gate_fails_closed_on_unreachable_database():
+    # Port 1 on the loopback interface refuses connections immediately.
+    result = run_live_suite(
+        {"CUBRID_SPEC_GATE": "1", "CUBRID_TEST_URL": "cubrid+pycubrid://dba@127.0.0.1:1/testdb"}
+    )
+    assert result.returncode != 0, result.stdout
+    assert "OperationalError" in result.stdout
+    assert "passed" not in result.stdout and "skipped" not in result.stdout

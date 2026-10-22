@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: help up down status clean deps verify demo lint test-offline check check-docs test-normalize check-coverage docs docs-check agent-eval-check
+.PHONY: help up down status clean deps verify demo lint test-offline check check-docs test-normalize check-coverage docs docs-check agent-eval-check spec-11
 
 DOCKER_COMPOSE := docker compose
 NORMALIZE := bash scripts/normalize_output.sh
@@ -185,6 +185,18 @@ demo: up verify ## Full demo: start DB, verify all examples
 docs-check: ## Check Markdown links, anchors, fences and recipe commands (needs .github/requirements-docs-check.txt)
 	$(PYTHON) -m pytest tests/test_check_docs_links.py -q
 	$(PYTHON) scripts/check_docs_links.py
+
+spec-11: ## Spec 11 AI-agent lane: fail-closed live state/MCP/RAG checks (needs CUBRID_TEST_URL), JUnit in .spec-evidence/
+	@mkdir -p .spec-evidence
+	CUBRID_SPEC_GATE=1 $(PYTHON) -m pytest tests/test_ai_agent_offline.py tests/test_ai_agent.py \
+		-v --tb=short -rs -p no:cacheprovider --junitxml=.spec-evidence/spec-11.xml
+	@$(PYTHON) -c 'import sys, xml.etree.ElementTree as ET; \
+		root = ET.parse(sys.argv[1]).getroot(); \
+		suite = root if root.tag == "testsuite" else root.find("testsuite"); \
+		tests, skipped = int(suite.get("tests")), int(suite.get("skipped")); \
+		print(f"spec-11 evidence: {tests} tests, {skipped} skipped -> {sys.argv[1]}"); \
+		sys.exit(0 if tests and not skipped else "spec-11: a skipped or empty lane is a failure")' \
+		.spec-evidence/spec-11.xml
 
 docs: ## Stage repo docs into docs/ and build the site locally (strict)
 	bash scripts/stage_docs.sh

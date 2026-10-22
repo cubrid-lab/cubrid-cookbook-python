@@ -238,6 +238,12 @@ when a row no longer matches the repository. Verification is split:
   that touch them or golden examples.
   Each script runs with a 60-second limit; the suite drops its own example
   tables before and after each case and runs twice to verify repeatability.
+  Independent database reads compare the persisted sessions, messages, tool
+  calls, RAG documents, chunks, retrieval log and chat rows with explicit
+  expectations after one and two runs, and the MCP case checks the protocol
+  handshake, the structured table list and that the rejected `DROP TABLE`
+  leaves the table and its rows intact. `make spec-11` runs both suites
+  fail-closed (no URL, an unreachable database or a skip fails).
   `tests/test_ai_agent_offline.py` checks ID handling, MCP errors and cleanup.
 - The **Celery async-worker** database tasks run through
   `templates/async-worker/tests` without a Redis broker or worker. A dedicated
