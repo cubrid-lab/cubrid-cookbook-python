@@ -426,8 +426,11 @@ jobs:
       - name: Run make test
         # The unit and mocked suites (including the AI agent offline checks)
         # against the selected release drivers, before the live verification.
+        # make test installs nothing; PIP_CONSTRAINT is dropped only because the
+        # release-smoke unit tests run their own pip resolutions and expect a
+        # clean pip environment.
         timeout-minutes: 10
-        run: make test
+        run: env -u PIP_CONSTRAINT make test
 
       - name: Run make verify
         # The full live verification (scripts/live_gate.py all, fail-closed):
