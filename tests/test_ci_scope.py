@@ -561,6 +561,13 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn('make verify VERIFY_PATHS="$VERIFY_PATHS"', action)
         self.assertIn("VERIFY_PATHS: ${{ inputs.verify-paths }}", action)
         self.assertIn("tests/test_ai_agent.py", action)
+        # The AI-agent lane is fail-closed (#426): no live suite run without the gate.
+        for text in (action, SMOKE):
+            self.assertIn("make spec-11\n", text)
+            runs = [ln.strip() for ln in text.splitlines() if "pytest tests/test_ai_agent.py" in ln]
+            self.assertTrue(runs)
+            for line in runs:
+                self.assertTrue(line.startswith("CUBRID_SPEC_GATE=1 "), line)
         self.assertIn("python scripts/mcp_smoke.py", action)
         self.assertIn("release_smoke.py freeze", action)
         self.assertNotIn("uses:", action)  # no unpinned/unmanaged actions

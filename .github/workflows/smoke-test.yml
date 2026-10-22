@@ -419,11 +419,12 @@ jobs:
           CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
         run: |
           # Every dependency is installed and final driver provenance verified.
-          python -m pytest tests/test_ai_agent_offline.py -q
+          # make spec-11 runs the offline and live suites with CUBRID_SPEC_GATE=1:
+          # a missing URL or any skipped case fails (JUnit in .spec-evidence/).
+          make spec-11
           # Each example has dedicated table cleanup. Repeat to catch stale
           # fixed demonstration keys and incomplete teardown on the same server.
-          python -m pytest tests/test_ai_agent.py -v --tb=short
-          python -m pytest tests/test_ai_agent.py -v --tb=short
+          CUBRID_SPEC_GATE=1 python -m pytest tests/test_ai_agent.py -v --tb=short
 
       - name: Run make verify
         run: make verify VERIFY_PATHS="${VERIFY_PATHS:-.}"
@@ -615,6 +616,19 @@ jobs:
             exit 1
           fi
           docker rm -f "$dashboard_id"
+
+      - name: Upload spec evidence
+        # JUnit reports of the make spec-* lanes. A release workflow call skips
+        # it, so no artifact is written into the calling repository's run.
+        if: always() && env.RELEASE_WORKFLOW_CALL != 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spec-evidence-cubrid-${{ matrix.cubrid }}${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}
+          path: .spec-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: true
 
       - name: Report release smoke result
         if: always()

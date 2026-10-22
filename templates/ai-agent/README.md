@@ -121,6 +121,10 @@ any skipped case fails, and the JUnit report is written to
 CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" make spec-11
 ```
 
+The smoke lanes above run the suite this way (the second run also with
+`CUBRID_SPEC_GATE=1`) and upload `.spec-evidence/` as the
+`spec-evidence-cubrid-<version>` workflow artifact.
+
 ## Architecture
 
 ```

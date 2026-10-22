@@ -260,6 +260,12 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   only in its CQRS job. Every selected suite must pass at least one test
   (checked on pytest's final summary line) within 10 minutes, or the lane and
   `CI Gate` fail.
+- Both smoke lanes (`.github/actions/pr-smoke` and `smoke-test.yml`) run the
+  AI-agent suites through `make spec-11` (`CUBRID_SPEC_GATE=1`, so a missing
+  `CUBRID_TEST_URL` or a skipped case fails) and then repeat the live suite with
+  the gate. Each smoke job uploads `.spec-evidence/` as the
+  `spec-evidence-cubrid-<version>` artifact, also when it fails; a release
+  workflow call uploads none.
 - `smoke-test.yml` does not run on pull requests, so no pull request repeats the
   broad 11.2/11.4 matrix. Its exact release verification inputs, outputs and
   fail-closed reporting are unchanged. To test a change to it before merging, run

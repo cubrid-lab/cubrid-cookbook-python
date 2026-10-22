@@ -121,9 +121,11 @@ runs:
         CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
       run: |
         set -euo pipefail
+        # make spec-11: offline + live suites with CUBRID_SPEC_GATE=1, so a missing
+        # URL or any skipped case fails (JUnit in .spec-evidence/, uploaded by ci.yml).
+        timeout 5m make spec-11
         # Repeat to catch stale fixed demonstration keys and incomplete teardown.
-        timeout 5m python -m pytest tests/test_ai_agent.py -v --tb=short
-        timeout 5m python -m pytest tests/test_ai_agent.py -v --tb=short
+        CUBRID_SPEC_GATE=1 timeout 5m python -m pytest tests/test_ai_agent.py -v --tb=short
 
     - name: Run make verify
       shell: bash
