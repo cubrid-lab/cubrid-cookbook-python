@@ -189,3 +189,10 @@ docs-check: ## Check Markdown links, anchors, fences and recipe commands (needs 
 docs: ## Stage repo docs into docs/ and build the site locally (strict)
 	bash scripts/stage_docs.sh
 	mkdocs build --strict
+
+.PHONY: spec-03
+spec-03: ## Spec 03 evidence: FastAPI quickstart /health and CRUD on live CUBRID (fails closed; JUnit in .spec-evidence/)
+	@mkdir -p .spec-evidence
+	CUBRID_SPEC_GATE=1 CUBRID_TEST_URL="$${CUBRID_TEST_URL:-cubrid+pycubrid://dba@localhost:33000/testdb}" \
+		$(PYTHON) -m pytest quickstart/5min-fastapi/tests/test_live.py -v -rs \
+		--junitxml=.spec-evidence/spec-03.xml

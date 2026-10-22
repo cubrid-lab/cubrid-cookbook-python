@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, closing, contextmanager
 import os
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 import pycubrid
 from pycubrid.connection import Connection
@@ -62,6 +62,19 @@ def create_table() -> None:
         )
             """
         )
+
+
+@app.get("/health")
+def health(response: Response) -> dict[str, str]:
+    # A real round trip, so a running API with an unreachable database reports 503.
+    try:
+        with database_cursor() as cursor:
+            cursor.execute("SELECT 1 FROM db_root")
+            cursor.fetchone()
+    except Exception:
+        response.status_code = 503
+        return {"status": "error", "database": "unavailable"}
+    return {"status": "ok", "database": "ok"}
 
 
 @app.get("/items", response_model=list[ItemOut])

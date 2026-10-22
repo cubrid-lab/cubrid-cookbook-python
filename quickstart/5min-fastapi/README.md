@@ -113,7 +113,23 @@ The API stores items in its own table, `cookbook_quickstart_items`, which it
 creates at startup if it does not exist. An item has a text `val`; the
 database assigns its `id`.
 
-Create one:
+First ask the API whether it can reach the database. `GET /health` runs
+`SELECT 1 FROM db_root` on a new connection:
+
+```bash
+curl -sS localhost:8000/health
+```
+
+**Checkpoint.**
+
+```text
+{"status":"ok","database":"ok"}
+```
+
+If the database does not answer, the same request returns HTTP status `503`
+with `{"status":"error","database":"unavailable"}`, and no error details.
+
+Create one item:
 
 ```bash
 curl -sS -X POST localhost:8000/items -H 'Content-Type: application/json' -d '{"val": "hello from the quickstart"}'
@@ -238,7 +254,30 @@ python -m pytest tests -q
 ```
 
 The tests replace the DB-API connection and cover host configuration, startup,
-CRUD responses, and resource cleanup after database failures.
+CRUD and `/health` responses, and resource cleanup after database failures.
+`tests/test_live.py` is skipped here: it needs a database (next section).
+
+## Test against the database
+
+`tests/test_live.py` runs the same app against a running CUBRID and checks each
+answer against the table through a separate connection: `/health` (`200`, and
+`503` when the database cannot be reached), creating an item, reading it by
+`id` and in the list, `404` for a missing `id`, `422` for an invalid body with
+no row written, and a rejected insert that leaves no row. Each test writes only
+rows whose `val` starts with its own random `spec03-` marker and deletes them
+afterwards, so it never touches your items and can run again.
+
+With the database of step 2 running and the venv active:
+
+```bash
+CUBRID_TEST_URL=cubrid+pycubrid://dba@localhost:33000/testdb python -m pytest tests/test_live.py -v
+```
+
+The app always connects to port `33000` and database `testdb`, so the URL may
+change only the host. Without `CUBRID_TEST_URL` these tests skip; with it set
+and no database answering, they fail. From the repository root,
+`make spec-03` runs them with `CUBRID_SPEC_GATE=1`, which also turns a missing
+URL into a failure, and writes a JUnit report to `.spec-evidence/spec-03.xml`.
 
 ## What next?
 

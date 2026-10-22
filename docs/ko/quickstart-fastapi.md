@@ -111,6 +111,22 @@ INFO:     Application startup complete.
 API는 항목을 자기 전용 테이블 `cookbook_quickstart_items`에 저장하며, 이 테이블이
 없으면 시작할 때 만듭니다. 항목에는 텍스트 `val`이 있고, `id`는 데이터베이스가 정합니다.
 
+먼저 API가 데이터베이스에 닿는지 물어봅니다. `GET /health`는 새 연결에서
+`SELECT 1 FROM db_root`를 실행합니다.
+
+```bash
+curl -sS localhost:8000/health
+```
+
+**확인.**
+
+```text
+{"status":"ok","database":"ok"}
+```
+
+데이터베이스가 응답하지 않으면 같은 요청이 HTTP 상태 `503`과
+`{"status":"error","database":"unavailable"}`를 돌려주며, 오류 세부 내용은 보내지 않습니다.
+
 항목 하나를 만듭니다.
 
 ```bash
@@ -230,8 +246,30 @@ python -m pip install -r requirements.txt pytest httpx
 python -m pytest tests -q
 ```
 
-테스트는 DB-API 연결을 가짜로 바꾸고, 호스트 설정, 시작, CRUD 응답, 데이터베이스
-오류 뒤의 자원 정리를 확인합니다.
+테스트는 DB-API 연결을 가짜로 바꾸고, 호스트 설정, 시작, CRUD와 `/health` 응답,
+데이터베이스 오류 뒤의 자원 정리를 확인합니다. `tests/test_live.py`는 데이터베이스가
+필요하므로 여기서는 건너뜁니다(다음 절).
+
+## 데이터베이스로 테스트하기
+
+`tests/test_live.py`는 같은 앱을 실행 중인 CUBRID에 연결해 돌리고, 각 응답을 별도
+연결로 읽은 테이블 내용과 비교합니다. `/health`(`200`, 데이터베이스에 닿지 않으면
+`503`), 항목 만들기, `id`와 목록으로 읽기, 없는 `id`의 `404`, 잘못된 본문의 `422`와
+행이 쓰이지 않았는지, 거부된 INSERT가 행을 남기지 않는지를 확인합니다. 각 테스트는
+자기만의 무작위 `spec03-` 표식으로 시작하는 `val`의 행만 쓰고 끝나면 그 행을 지우므로,
+내 항목은 건드리지 않고 다시 실행할 수 있습니다.
+
+2단계의 데이터베이스가 실행 중이고 venv가 활성화된 상태에서:
+
+```bash
+CUBRID_TEST_URL=cubrid+pycubrid://dba@localhost:33000/testdb python -m pytest tests/test_live.py -v
+```
+
+앱은 항상 포트 `33000`의 데이터베이스 `testdb`에 접속하므로 URL에서는 호스트만 바꿀 수
+있습니다. `CUBRID_TEST_URL`이 없으면 이 테스트는 건너뛰고, 설정했는데 데이터베이스가
+응답하지 않으면 실패합니다. 저장소 루트에서 `make spec-03`을 실행하면
+`CUBRID_SPEC_GATE=1`로 실행해 URL이 없는 경우도 실패로 처리하고, JUnit 보고서를
+`.spec-evidence/spec-03.xml`에 씁니다.
 
 ## 다음 단계
 

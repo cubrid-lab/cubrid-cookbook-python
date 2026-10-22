@@ -141,3 +141,45 @@ def test_rollback_failure_still_closes_resources(app_module, monkeypatch):
     assert response.status_code == 500
     cursor.close.assert_called_once()
     conn.close.assert_called_once()
+
+
+def test_health_checks_the_database(app_module, monkeypatch):
+    conn = MagicMock()
+    cursor = conn.cursor.return_value
+    cursor.fetchone.return_value = (1,)
+    monkeypatch.setattr(app_module, "get_conn", lambda: conn)
+
+    with TestClient(app_module.app) as client:
+        conn.reset_mock()
+        response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "database": "ok"}
+    cursor.execute.assert_called_once_with("SELECT 1 FROM db_root")
+    conn.commit.assert_called_once()
+    conn.close.assert_called_once()
+
+
+@pytest.mark.parametrize("failure", ["connect", "execute"])
+def test_health_reports_database_failure(app_module, monkeypatch, failure):
+    conn = MagicMock()
+    cursor = conn.cursor.return_value
+    monkeypatch.setattr(app_module, "get_conn", lambda: conn)
+
+    with TestClient(app_module.app, raise_server_exceptions=False) as client:
+        conn.reset_mock()
+        if failure == "connect":
+            connect = MagicMock(side_effect=OSError("secret detail"))
+            monkeypatch.setattr(app_module, "get_conn", connect)
+        else:
+            cursor.execute.side_effect = RuntimeError("secret detail")
+        response = client.get("/health")
+
+    # A controlled body: no exception text or traceback reaches the client.
+    assert response.status_code == 503
+    assert response.json() == {"status": "error", "database": "unavailable"}
+    assert "secret detail" not in response.text
+    if failure == "execute":
+        conn.rollback.assert_called_once()
+        cursor.close.assert_called_once()
+        conn.close.assert_called_once()

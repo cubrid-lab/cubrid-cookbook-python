@@ -227,8 +227,12 @@ when a row no longer matches the repository. Verification is split:
   cross-recipe deletion—keeps that fixture away from other suites' tables (#142).
   The dashboard tables no longer share a name with Flask recipe 01 (#327).
 - The **FastAPI quickstart** has an offline pytest suite in PR CI for host and
-  Compose configuration, startup, HTTP responses, and database failure cleanup.
-  It uses mocked DB-API connections rather than a live server.
+  Compose configuration, startup, HTTP responses, `/health`, and database failure
+  cleanup. It uses mocked DB-API connections rather than a live server.
+  Its live suite (`tests/test_live.py`, specification 03) checks `/health` and
+  CRUD responses against the stored rows through a separate connection; it
+  runs only by hand with `make spec-03` against the local lab (11.2 was used
+  for the recorded runs), not in CI.
 - The **five AI agent scripts** run via `tests/test_ai_agent.py` against live
   **11.2 and 11.4** on every smoke-test trigger, and on 11.4 for pull requests
   that touch them or golden examples.
@@ -266,7 +270,7 @@ when a row no longer matches the repository. Verification is split:
 | Pitfalls: reserved-word DDL | 1 | `make verify` (CI, 11.2 + 11.4) |
 | Flask templates | 11 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
 | FastAPI templates | 12 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
-| FastAPI quickstart | 1 | offline pytest (PR CI, mocked DB-API) |
+| FastAPI quickstart | 1 | offline pytest (PR CI, mocked DB-API); live pytest by hand (`make spec-03`) |
 | AI agent template | 5 | pytest (smoke CI on `main` + nightly, 11.2 + 11.4; PR CI 11.4 when touched) |
 | Streamlit templates | 5 | pytest (CI on `main` + nightly, 11.2 + 11.4; PR CI 11.4 when touched) |
 | Django template | 1 | Django HTTP + SQLAlchemy bridge: live pytest (PR CI 11.4 when touched; `main` + nightly 11.2 + 11.4); no native Django ORM |
