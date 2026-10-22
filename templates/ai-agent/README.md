@@ -85,7 +85,7 @@ auto-increment IDs and timestamps and resolving foreign keys through joins:
   (with the assistant's JSON metadata) and its tool call, and the table row counts.
 - **02** — an in-process MCP session checks the `initialize`
   handshake, that `tools/list` exposes the tools in `scripts/mcp_smoke.py`, that
-  `all_table_names` returns exactly the database's user tables (structured
+  `all_table_names` returns the same owner-qualified list of user tables as `db_class` (structured
   result) and that `SELECT COUNT(*)` works; the rejected `DROP TABLE` leaves the
   target table and its sentinel row in place, checked without the MCP server.
 - **03** — each sample document's source, metadata, tags and chunk count, each

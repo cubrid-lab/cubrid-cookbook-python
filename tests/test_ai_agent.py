@@ -452,7 +452,9 @@ def expected_state(recipe, runs=1):
             ],
             "latest_retrieval": {
                 "query_text": "How do I connect Python to CUBRID?",
-                # Only this document's content contains "Python" (LIKE is case-sensitive).
+                # Only this document's content contains "Python". LIKE follows the
+                # column collation (case-sensitive under CUBRID's default utf8_bin);
+                # no other sample content contains "python" in any case either.
                 "retrieved": [pycubrid_doc],
                 "llm_response": (
                     "Based on the retrieved documents, pycubrid is the pure Python "
@@ -477,6 +479,8 @@ def expected_state(recipe, runs=1):
                 ("assistant", f"Based on the data: {answer}", None),
             ]
 
+        # The recipe stores repr() of the driver's rows: this text depends on pycubrid
+        # returning tuples and NUMERIC(10, 2) as Decimal with scale 2 (e.g. '45.00').
         top_products = (
             "Query returned 3 rows\n  ('Keyboard', Decimal('45.00'))"
             "\n  ('Notebook', Decimal('12.50'))\n  ('Pen', Decimal('2.00'))"
@@ -520,6 +524,7 @@ def expected_state(recipe, runs=1):
                 ),
                 ("health_check", {}, {"summary": "Connection OK"}, "completed", True),
             ],
+            # str() of the driver's Decimal values, which keep NUMERIC(10, 2)'s scale.
             "products": [(1, "Notebook", "12.50"), (2, "Pen", "2.00"), (3, "Keyboard", "45.00")],
             "table_rows": {
                 "cookbook_agent_tool_calls": 3,
@@ -654,7 +659,10 @@ def mcp_tool_result(mcp, proc, request_id, name, arguments):
 
 
 def structured(result):
-    """A tool's structured payload; older servers send it only as JSON text."""
+    """A tool's structured payload; older servers send it only as JSON text.
+
+    The text form of a list result is the bare JSON list, not {"result": [...]}.
+    """
     if "structuredContent" in result:
         return result["structuredContent"]
     return json.loads(result["content"][0]["text"])
@@ -681,16 +689,16 @@ def test_mcp_toolchain_protocol_and_read_only_state(app_path):
     assert mcp_target_state() == before
 
     with live_connection() as conn, conn.cursor() as cursor:
-        user_tables = {
-            name.lower()
-            for (name,) in fetch(
-                cursor,
-                "SELECT class_name FROM db_class "
-                "WHERE class_type = 'CLASS' AND is_system_class = 'NO'",
-            )
-        }
+        user_tables = fetch(
+            cursor,
+            "SELECT owner_name, class_name FROM db_class "
+            "WHERE class_type = 'CLASS' AND is_system_class = 'NO'",
+        )
+    # cubrid_mcp_server.server._user_tables / _Table.display: "owner.table" with the
+    # owner lowercased on 11.2+ (two owners may share a table name), else "table".
+    qualified_tables = sorted(f"{owner.lower()}.{name}" for owner, name in user_tables)
     reported = re.search(r"Tables in database \((\d+)\)", output)
-    assert reported and int(reported.group(1)) == len(user_tables), output
+    assert reported and int(reported.group(1)) == len(qualified_tables), output
 
     smoke = load_recipe(REPO_ROOT / "scripts/mcp_smoke.py")
     mcp = load_recipe(app_path)
@@ -721,10 +729,19 @@ def test_mcp_toolchain_protocol_and_read_only_state(app_path):
 
         tables = mcp_tool_result(mcp, proc, 3, "all_table_names", {})
         assert not tables.get("isError"), tables
-        names = structured(tables)["result"]
+        payload = structured(tables)
+        # structuredContent wraps the list in {"result": [...]}; the text form is the bare list.
+        names = payload["result"] if isinstance(payload, dict) else payload
         assert isinstance(names, list) and all(isinstance(name, str) for name in names)
-        # Names may be owner-qualified ("dba.cookbook_agent_sessions") on CUBRID 11.2+.
-        assert {name.rsplit(".", 1)[-1].lower() for name in names} == user_tables
+        # A server release without owner qualification lists bare names; a list (not a
+        # set) still keeps same-named tables of different owners apart.
+        expected_names = (
+            qualified_tables
+            if any("." in name for name in names)
+            else sorted(name for _, name in user_tables)
+        )
+        assert sorted(names) == expected_names
+        assert len(names) == len(qualified_tables)
 
         count = mcp_tool_result(
             mcp, proc, 4, "execute_query", {"sql": "SELECT COUNT(*) FROM cookbook_agent_sessions"}
