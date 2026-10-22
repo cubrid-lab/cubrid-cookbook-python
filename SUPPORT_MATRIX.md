@@ -5,20 +5,21 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 > **What "tested" / "CI-verified" means here**: evidence comes from a specific CI
 > tier and event, not from every pull request (see
 > [CI tiers](CONTRIBUTING.md#ci-tiers)). On every push to `main`, the nightly
-> schedule and manual runs, `smoke-test.yml` runs the golden check
-> (`make verify VERIFY_PATHS=.`) on **CUBRID 11.2
-> and 11.4 / Python 3.12**, comparing stdout against every recipe that ships a
-> golden (`expected/*.expected`; counts in [Recipe Coverage](#recipe-coverage)),
-> then the **Flask and FastAPI pytest suites**, the async-worker database tasks
-> and the **Django SQLAlchemy bridge** on the same container, and finally the
-> **Streamlit dashboard pytest suite** on a separate, disposable CUBRID
-> container of the same version. Pull requests run only the live lanes their
-> changed paths select (`scripts/ci_scope.py`), on CUBRID 11.4 / Python 3.12:
-> the touched golden examples, the touched recipe family's suite, and CUBRID
-> 11.2 or Python endpoints only for version-sensitive or shared-infrastructure
-> changes. A docs-only pull request starts no live CUBRID. Locally, the full
-> `make verify` runs every golden and every live suite below, including the ones
-> no CI lane runs yet (see [Live verification](CONTRIBUTING.md#live-verification)).
+> schedule, manual runs and release verification, `smoke-test.yml` runs the full,
+> fail-closed `make verify` on **CUBRID 11.2 and 11.4 / Python 3.12**: every golden
+> (`expected/*.expected`; counts in [Recipe Coverage](#recipe-coverage)), then the
+> FastAPI quickstart, migration and performance, **Flask and FastAPI**,
+> **Django/Celery**, **AI agent** and **Streamlit dashboard** live suites, each
+> on job-owned CUBRID containers of the same version (the examples database plus
+> two dedicated, empty databases), then the AI agent lane a second time. Pull
+> requests run only the live lanes their changed paths select
+> (`scripts/ci_scope.py`), on CUBRID 11.4 / Python 3.12: the touched golden
+> examples (`make verify-goldens`), the touched recipe family's suite, the focused
+> `make verify-quickstart` / `verify-performance` / `verify-ai-agent` lanes for
+> those paths, and CUBRID 11.2 or Python endpoints only for version-sensitive or
+> shared-infrastructure changes. A docs-only pull request starts no live CUBRID.
+> Locally, the same full `make verify` runs everything below (see
+> [Live verification](CONTRIBUTING.md#live-verification)).
 
 ## CUBRID Server Versions
 
@@ -202,9 +203,9 @@ The table below is the source of truth for recipe counts;
 when a row no longer matches the repository. Verification is split:
 
 - **Golden-backed recipes** carry stdout goldens (`expected/*.expected`) and are
-  checked by the golden check (`make verify VERIFY_PATHS=...`, golden-only) on
-  **CUBRID 11.2 and 11.4 / Python 3.12** on `main`,
-  nightly and release verification, and on 11.4 for pull requests that touch them
+  checked by the full `make verify` on **CUBRID 11.2 and 11.4 / Python 3.12** on
+  `main`, nightly and release verification, and by `make verify-goldens` on 11.4
+  for pull requests that touch them
   (fundamentals, migration, the SQLAlchemy quickstart, the first CUBRID tutorial, the batch-etl template, and
   the reserved-word DDL check behind `pitfalls/`).
 - The **Flask and FastAPI** recipes are covered by pytest suites that the smoke
@@ -221,9 +222,9 @@ when a row no longer matches the repository. Verification is split:
 - The **Streamlit** recipes are covered by `templates/dashboard/tests/test_dashboard.py`
   (`AppTest`-based: seeded table viewer rows, non-empty KPI metrics, and a
   filter that changes the rendered row count). On pushes to `main`, nightly,
-  and manual runs, the smoke job runs it on a **separate disposable CUBRID
-  container** for each matrix version (**11.2 and 11.4**) after the shared
-  Flask/FastAPI container is stopped. A pull request that touches the dashboard
+  and manual runs, the smoke job's full `make verify` runs it on its own
+  **disposable CUBRID container** (`CUBRID_DASHBOARD_TEST_URL`) for each matrix
+  version (**11.2 and 11.4**). A pull request that touches the dashboard
   runs a separate `ci.yml` job against its own CUBRID **11.4** container.
   It falls back to a shared SQLite file when `CUBRID_TEST_URL` is unset.
   Its `conftest.py` drops its own `cookbook_dashboard_sales` and
@@ -234,12 +235,15 @@ when a row no longer matches the repository. Verification is split:
   Compose configuration, startup, HTTP responses, `/health`, and database failure
   cleanup. It uses mocked DB-API connections rather than a live server.
   Its live suite (`tests/test_live.py`) checks `/health` and
-  CRUD responses against the stored rows through a separate connection; it
-  runs only by hand with `make verify-quickstart` or the full `make verify` against
-  the local lab (11.2 was used for the recorded runs), not in CI.
+  CRUD responses against the stored rows through a separate connection. The
+  smoke job's full `make verify` runs it on **11.2 and 11.4** for every push to
+  `main`, nightly and release verification, and a pull request that changes the
+  quickstart (other than Markdown) runs `make verify-quickstart` in the CUBRID
+  11.4 smoke lane.
 - The **five AI agent scripts** run via `tests/test_ai_agent.py` against live
-  **11.2 and 11.4** on every smoke-test trigger, and on 11.4 for pull requests
-  that touch them or golden examples.
+  **11.2 and 11.4** on every smoke-test trigger (the full `make verify`, then
+  `make verify-ai-agent` again on the same database), and twice with
+  `make verify-ai-agent` on 11.4 for pull requests that touch them.
   Each script runs with a 60-second limit; the suite drops its own example
   tables before and after each case and runs twice to verify repeatability.
   Independent database reads compare the persisted sessions, messages, tool
@@ -252,17 +256,21 @@ when a row no longer matches the repository. Verification is split:
   `tests/test_ai_agent_offline.py` checks ID handling, MCP errors and cleanup.
 - The **Celery async-worker** database tasks run through
   `templates/async-worker/tests` without a Redis broker or worker. A dedicated
-  CUBRID 11.4 job gates pull requests that touch it; after `make verify`, the non-PR
-  smoke matrix runs the same tests on **11.2 and 11.4** before switching to
-  the dashboard container. The suite asserts persisted job state/result and
+  CUBRID 11.4 job gates pull requests that touch it; the non-PR smoke matrix
+  runs the same tests on **11.2 and 11.4** in its full `make verify`. The suite asserts persisted job state/result and
   report/email rows, refuses preexisting worker tables, and removes its own
   tables afterward. Broker delivery and Celery's result backend are not tested.
 - The **Django template** uses Django for HTTP requests and SQLAlchemy for
   CUBRID persistence; it has no native Django CUBRID backend or Django ORM
   model. `templates/django/tests` gates the existing `/health` and `/items`
-  bridge on a dedicated live **11.4** job for pull requests that touch it and on the **11.2/11.4** non-PR
-  smoke matrix after golden and FastAPI tests. The suite refuses a preexisting
+  bridge on a dedicated live **11.4** job for pull requests that touch it and in the full
+  `make verify` of the **11.2/11.4** non-PR smoke matrix. The suite refuses a preexisting
   `cookbook_django_items` table and removes only its own table.
+- The **migration and performance** suite (`tests/test_performance_benchmarks.py`:
+  the five migration goldens, the three benchmarks and their cleanup on failure;
+  timings are parsed, never compared) runs in the smoke job's full `make verify` on
+  **11.2 and 11.4**, and as `make verify-performance` in the CUBRID 11.4 smoke lane
+  of pull requests that change `performance/` or the test module.
 - **CUBRID 11.4** runs in the same CI smoke matrix as 11.2 (its `make verify` goldens
   are checked on both versions).
 
@@ -281,8 +289,8 @@ when a row no longer matches the repository. Verification is split:
 | Pitfalls: reserved-word DDL | 1 | `make verify` (CI, 11.2 + 11.4) |
 | Flask templates | 11 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
 | FastAPI templates | 12 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
-| FastAPI quickstart | 1 | offline pytest (PR CI, mocked DB-API); live pytest by hand (`make verify-quickstart`) |
-| AI agent template | 5 | pytest (smoke CI on `main` + nightly, 11.2 + 11.4; PR CI 11.4 when touched) |
+| FastAPI quickstart | 1 | offline pytest (`make test`, PR CI); live pytest (`make verify`: CI on `main` + nightly, 11.2 + 11.4; `make verify-quickstart`: PR CI 11.4 when touched) |
+| AI agent template | 5 | live pytest, two runs (`make verify`: CI on `main` + nightly, 11.2 + 11.4; `make verify-ai-agent`: PR CI 11.4 when touched) |
 | Streamlit templates | 5 | pytest (CI on `main` + nightly, 11.2 + 11.4; PR CI 11.4 when touched) |
 | Django template | 1 | Django HTTP + SQLAlchemy bridge: live pytest (PR CI 11.4 when touched; `main` + nightly 11.2 + 11.4); no native Django ORM |
 | Celery async-worker template | 1 | database tasks: live pytest (PR CI 11.4 when touched; `main` + nightly 11.2 + 11.4); broker/worker manual |

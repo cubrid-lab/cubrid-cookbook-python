@@ -279,6 +279,10 @@ and no database answering, they fail. From the repository root,
 `make verify-quickstart` (also part of the full `make verify`) runs them against
 `localhost:33000` with `CUBRID_LIVE_GATE=1`, which turns a skip into a failure, and
 writes a JUnit report and a summary to `.live-evidence/quickstart/`.
+CI runs the same commands: the full `make verify` on CUBRID 11.2 and 11.4 for
+every push to `main`, the nightly schedule and release verification, and
+`make verify-quickstart` on CUBRID 11.4 for pull requests that change this
+quickstart. `make test` runs the offline tests.
 
 ## What next?
 

@@ -125,19 +125,59 @@ class ClassifierTests(unittest.TestCase):
         self.assertEqual(result["python"], ["3.11", "3.14"])
         self.assertEqual(result["verify_paths"], "fundamentals/sqlalchemy")
 
-    def test_ai_agent_change_runs_smoke_with_full_verify(self) -> None:
-        for path in ("templates/ai-agent/03_rag_metadata.py", "tests/test_ai_agent.py"):
+    def test_live_lane_paths_run_their_focused_lane_with_full_verify(self) -> None:
+        # The AI agent (#426), performance (#428) and FastAPI quickstart (#425)
+        # live suites run as focused make verify-<lane> lanes in the 11.4 smoke lane.
+        cases = {
+            "templates/ai-agent/03_rag_metadata.py": "ai-agent",
+            "tests/test_ai_agent.py": "ai-agent",
+            "performance/bulk-insert/benchmark.py": "performance",
+            "tests/test_performance_benchmarks.py": "performance",
+            "quickstart/5min-fastapi/app.py": "quickstart",
+            "quickstart/5min-fastapi/tests/test_live.py": "quickstart",
+        }
+        for path, lane in cases.items():
             with self.subTest(path=path):
                 result = scope(path)
                 self.assertEqual(selected(result), {"smoke_114"})
                 self.assertEqual(result["verify_paths"], ".")
+                self.assertEqual(result["smoke_lanes"], lane)
+
+    def test_live_lane_path_beside_a_golden_root_keeps_full_verify(self) -> None:
+        # Copilot finding on #432: a golden root changed alongside must not narrow
+        # the golden run to that root.
+        for path, lane in (
+            ("performance/bulk-insert/benchmark.py", "performance"),
+            ("quickstart/5min-fastapi/app.py", "quickstart"),
+            ("templates/ai-agent/01_agent_state.py", "ai-agent"),
+        ):
+            with self.subTest(path=path):
+                result = scope(path, "migration/java-to-python/01_connection.py")
+                self.assertEqual(selected(result), {"smoke_114"})
+                self.assertEqual(result["verify_paths"], ".")
+                self.assertEqual(result["smoke_lanes"], lane)
+        result = scope(
+            "quickstart/5min-fastapi/app.py",
+            "performance/fetch-optimization/benchmark.py",
+            "templates/ai-agent/04_agent_loop.py",
+        )
+        self.assertEqual(result["smoke_lanes"], "quickstart performance ai-agent")
+
+    def test_golden_root_alone_runs_no_focused_lane(self) -> None:
+        result = scope("migration/java-to-python/01_connection.py")
+        self.assertEqual(result["verify_paths"], "migration/java-to-python")
+        self.assertEqual(result["smoke_lanes"], "")
+
+    def test_live_lane_markdown_stays_docs_only(self) -> None:
+        for path in ("performance/README.md", "quickstart/5min-fastapi/README.md"):
+            with self.subTest(path=path):
+                result = scope(path)
+                self.assertEqual(selected(result), set())
+                self.assertEqual(result["smoke_lanes"], "")
 
     def test_example_files_without_live_consumer_stay_offline(self) -> None:
-        result = scope(
-            "performance/bulk-insert/bench.py",
-            "quickstart/5min-fastapi/main.py",
-            "fundamentals/parameterized-queries/04_parameterized.py",
-        )
+        self.assertEqual(ci_scope.NO_LIVE_CONSUMER, ("fundamentals/parameterized-queries/*",))
+        result = scope("fundamentals/parameterized-queries/04_parameterized.py")
         self.assertEqual(selected(result), set())
 
     def test_example_tree_file_outside_golden_roots_fails_closed(self) -> None:
@@ -146,6 +186,7 @@ class ClassifierTests(unittest.TestCase):
                 result = scope(path)
                 self.assertEqual(selected(result), {"smoke_114"})
                 self.assertEqual(result["verify_paths"], ".")
+                self.assertEqual(result["smoke_lanes"], "quickstart performance ai-agent")
 
     def test_grouped_dependabot_recipe_bump_selects_only_touched_suites(self) -> None:
         flask = [f"templates/flask/{n:02d}-x/requirements.txt" for n in range(1, 12)]
@@ -163,6 +204,7 @@ class ClassifierTests(unittest.TestCase):
                 result = scope(path)
                 self.assertEqual(selected(result), {"smoke_114", "smoke_112"})
                 self.assertEqual(result["verify_paths"], ".")
+                self.assertEqual(result["smoke_lanes"], "quickstart performance ai-agent")
 
     def test_shared_live_infrastructure_fans_out(self) -> None:
         for path in ("Makefile", "scripts/normalize_output.sh", "docker-compose.yml"):
@@ -173,6 +215,7 @@ class ClassifierTests(unittest.TestCase):
                 self.assertEqual(result["cqrs_cubrid"], ["11.2", "11.4"])
                 self.assertEqual(result["python"], ["3.11", "3.14"])
                 self.assertEqual(result["verify_paths"], ".")
+                self.assertEqual(result["smoke_lanes"], "quickstart performance ai-agent")
 
     def test_ci_policy_change_runs_every_lane(self) -> None:
         for path in ci_scope.SELF[:1] + (
@@ -213,6 +256,7 @@ class ClassifierTests(unittest.TestCase):
                 self.assertEqual(result["cqrs_cubrid"], ["11.2", "11.4"])
                 floors = {"floors"} if event != "push" else set()
                 self.assertEqual(selected(result), {"compat", "cqrs"} | floors)
+                self.assertEqual(result["smoke_lanes"], "")
 
     def test_render_is_github_output_lines(self) -> None:
         text = ci_scope.render(scope("templates/django/app/views.py"))
@@ -506,9 +550,23 @@ class GateTests(unittest.TestCase):
 class WorkflowWiringTests(unittest.TestCase):
     def test_root_fastapi_app_smoke_test_is_wired_with_its_own_requirements(self) -> None:
         # The root app has its own requirements (pydantic-settings is not in the
-        # shared lists), so both live lanes must install them and run its suite.
-        self.assertIn("templates/api-service-fastapi/tests", SMOKE)
-        self.assertIn("-r templates/api-service-fastapi/requirements.txt", SMOKE)
+        # shared lists). The broad smoke installs them with make deps and runs its
+        # suite through the full make verify (live_gate web lane).
+        import example_requirements
+        import live_gate
+
+        self.assertIn("run: make deps\n", SMOKE)
+        self.assertIn(
+            "templates/api-service-fastapi/requirements.txt",
+            [
+                p.relative_to(ROOT).as_posix()
+                for p in example_requirements.requirement_files(ROOT, every=True)
+            ],
+        )
+        self.assertIn(
+            "templates/api-service-fastapi/tests",
+            [suite["glob"] for suite in live_gate.MANIFEST["web"]["suites"]],
+        )
         # ci.yml installs each selected suite root's own requirements (#227).
         self.assertIn("templates/api-service-fastapi", ci_scope.REPRESENTATIVE_WEB_SUITES)
         self.assertTrue(
@@ -556,14 +614,41 @@ class WorkflowWiringTests(unittest.TestCase):
                 self.assertIn(f'cubrid-version: "{version}"', body)
                 self.assertIn("persist-credentials: false", body)
 
-    def test_pr_smoke_action_runs_goldens_agents_and_mcp(self) -> None:
+    def test_pr_smoke_action_runs_goldens_selected_lanes_and_mcp(self) -> None:
         action = (ROOT / ".github/actions/pr-smoke/action.yml").read_text(encoding="utf-8")
-        self.assertIn('make verify VERIFY_PATHS="$VERIFY_PATHS"', action)
+        # Scoped goldens by name: make verify with VERIFY_PATHS is only a partial check.
+        self.assertIn('make verify-goldens VERIFY_PATHS="$VERIFY_PATHS"', action)
         self.assertIn("VERIFY_PATHS: ${{ inputs.verify-paths }}", action)
-        self.assertIn("tests/test_ai_agent.py", action)
+        self.assertNotIn("make verify VERIFY_PATHS", action)
+        self.assertNotIn("-m pytest", action)  # suites run only through make verify-*
+        for lane in ci_scope.SMOKE_LANE_ORDER:
+            self.assertIn(f"make verify-{lane}", action)
+        self.assertIn("LIVE_LANES: ${{ inputs.live-lanes }}", action)
+        # verify-ai-agent runs twice on a dedicated database, both runs kept (#426).
+        self.assertEqual(action.count("make verify-ai-agent"), 2)
+        self.assertIn(".live-evidence/ai-agent-run-1", action)
+        self.assertIn(".live-evidence/ai-agent-run-2", action)
+        self.assertIn("CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33100/testdb", action)
+        self.assertIn("make deps", action)
         self.assertIn("python scripts/mcp_smoke.py", action)
         self.assertIn("release_smoke.py freeze", action)
         self.assertNotIn("uses:", action)  # no unpinned/unmanaged actions
+
+    def test_pr_smoke_jobs_pass_lanes_and_upload_evidence_once(self) -> None:
+        jobs = parse_jobs(CI)
+        for job, version in (("smoke-114", "11.4"), ("smoke-112", "11.2")):
+            body = "\n".join(jobs[job])
+            with self.subTest(job=job):
+                self.assertIn("live-lanes: ${{ needs.classify.outputs.smoke_lanes }}", body)
+                self.assertEqual(body.count("actions/upload-artifact@"), 1)
+                upload = body[body.index("- name: Upload live evidence") :]
+                self.assertIn("if: always()", upload)
+                self.assertIn("continue-on-error: true", upload)
+                self.assertIn("path: .live-evidence/", upload)
+                self.assertIn("include-hidden-files: true", upload)
+                self.assertIn(f"name: live-evidence-pr-cubrid-{version}", upload)
+        self.assertEqual(CI.count("actions/upload-artifact@"), 2)
+        self.assertEqual(SMOKE.count("path: .live-evidence/"), 1)
 
     def test_smoke_workflow_dropped_only_the_pull_request_trigger(self) -> None:
         triggers = "\n" + SMOKE.split("\non:\n", 1)[1].split("\n# Release verifications", 1)[0]

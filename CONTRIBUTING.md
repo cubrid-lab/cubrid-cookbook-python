@@ -221,9 +221,12 @@ golden comparisons and the pytest lanes separately and name every failed golden.
 
 `make verify VERIFY_PATHS=<dirs>` (on the command line; an exported `VERIFY_PATHS`
 does not change a bare `make verify`) is not the full verification: it runs only the
-goldens under those roots (as CI does, see [CI tiers](#ci-tiers)) and says so with a
-`PARTIAL verification` line. The full `make verify` and the `verify-*` lanes are local
-and manual; CI keeps its existing live jobs.
+goldens under those roots and says so with a
+`PARTIAL verification` line. CI calls the same targets: `smoke-test.yml` runs the
+full `make verify` on CUBRID 11.2 and 11.4, and the pull-request smoke lanes run
+`make verify-goldens VERIFY_PATHS=<roots>` and the focused `verify-*` lanes their
+changed paths select (see [CI tiers](#ci-tiers)). The other pull-request recipe
+jobs keep their own per-recipe environments.
 
 ### CI tiers
 
@@ -236,10 +239,10 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 | Tier | When | What runs |
 |------|------|-----------|
 | 1 — cheap checks | every pull request | Ruff, `make check`, docs-sync, docs-check, doc-lint, classification and the gate; the strict docs-site build |
-| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with the golden check (`make verify VERIFY_PATHS=...`) scoped to the touched examples; AI-agent code or other files in example trees → the same lane with every golden (`VERIFY_PATHS=.`) |
-| 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with every golden (`make verify VERIFY_PATHS=.`), Python 3.11 + 3.14 compatibility |
+| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify-goldens` scoped to the touched examples; the FastAPI quickstart, `performance/` (and `tests/test_performance_benchmarks.py`) or AI-agent code (and `tests/test_ai_agent.py`) → the same lane with every golden and the focused `make verify-quickstart` / `verify-performance` / `verify-ai-agent` lane; other files in example trees → the same lane with every golden and all three focused lanes |
+| 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with every golden (`make verify-goldens VERIFY_PATHS=.`) and all three focused lanes, Python 3.11 + 3.14 compatibility |
 | 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
-| 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | every golden plus all Flask/FastAPI, async-worker, Django and dashboard suites on CUBRID 11.2 + 11.4 (Python 3.12); a release verification adds one CUBRID 11.4 cell on Python 3.11, the supported minimum |
+| 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | the full, fail-closed `make verify` (every golden and every live suite: quickstart, migration and performance, Flask/FastAPI, Django/Celery, AI agent, dashboard), then `make verify-ai-agent` again, on job-owned CUBRID 11.2 + 11.4 containers (Python 3.12); a release verification adds one CUBRID 11.4 cell on Python 3.11, the supported minimum |
 
 - Docs-only pull requests (`*.md`, `docs/`, `mkdocs.yml`, …) start no live CUBRID,
   except `SUPPORT_MATRIX.md`, which documents the driver floors.
@@ -251,15 +254,28 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   weekly `ci.yml` schedule and on manual `ci.yml` runs — not on pushes to `main`,
   since the floors are fixed releases; edits to a lane directory's code do not select it, the weekly schedule covers them. One job, about 3 minutes.
   Unknown paths fail closed to every recipe family lane and the 11.4 smoke lane
-  with every golden (`make verify VERIFY_PATHS=.`). CI's golden check is always the
-  partial, golden-only verification; no CI lane runs the full `make verify` yet.
+  with every golden (`make verify-goldens VERIFY_PATHS=.`) and all three focused
+  lanes.
 - CUBRID 11.2 runs on a pull request only for version-sensitive changes:
   `smoke-test.yml`, `scripts/release_smoke.py`, `scripts/mcp_smoke.py`, the
   fan-out paths, or recipe 10's `requirements.txt` (CQRS job only).
-- Example directories with no live consumer (`performance/`, the FastAPI
-  quickstart, `fundamentals/parameterized-queries`) are covered by the offline
-  checks only, on every event. `performance/` has a local live check,
-  `make verify-performance` (see [Performance and migration lane](#performance-and-migration-lane)), that no CI lane runs.
+- `fundamentals/parameterized-queries`, the only example directory with no live
+  consumer, is covered by the offline checks only, on every event.
+- The PR smoke lanes (`.github/actions/pr-smoke`) use the same commands as a
+  local run: `make deps` under the selected driver constraints,
+  `make verify-goldens VERIFY_PATHS=<roots>` for the scoped goldens, then the
+  focused lanes `scripts/ci_scope.py` names in `smoke_lanes`, one at a time on the
+  examples database: `make verify-quickstart` (about 1 s) for
+  `quickstart/5min-fastapi/` (other than Markdown), `make verify-performance` (about a
+  minute, bounded at 10 minutes) for `performance/` and
+  `tests/test_performance_benchmarks.py`, and `make verify-ai-agent` twice on a
+  second, dedicated CUBRID container (`CUBRID_TEST_URL`; about 20 s each) for
+  `templates/ai-agent/` and `tests/test_ai_agent.py` (#425, #426, #428). Each of
+  these paths runs every golden, even beside a changed golden root. Fan-out, CI
+  policy, release smoke, unknown paths and example-tree files outside a golden root
+  select all three lanes. Each smoke job uploads `.live-evidence/` once, as the
+  `live-evidence-pr-cubrid-<version>` artifact (also when it fails; an upload
+  failure never fails the lane).
 - The Flask/FastAPI lane (#227) runs the `tests/` suite of each changed recipe
   root (`ci_scope.web_suites`: a `templates/flask/` or
   `templates/api-service-fastapi/recipes/` recipe, or the root FastAPI app), each
@@ -285,6 +301,16 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   only in its CQRS job. Every selected suite must pass at least one test
   (checked on pytest's final summary line) within 10 minutes, or the lane and
   `CI Gate` fail.
+- `smoke-test.yml` runs the full `make verify` on three job-owned CUBRID
+  containers of the matrix version: the examples database (`localhost:33000`,
+  goldens, quickstart and performance), `CUBRID_TEST_URL` (`:33100`; web,
+  Django/Celery, AI agent) and `CUBRID_DASHBOARD_TEST_URL` (`:33200`). It never
+  passes `VERIFY_PATHS`, which on the command line would make `make verify` the
+  partial golden-only check. `make verify-ai-agent` then runs a second time on the same database, and
+  both runs keep their evidence (`ai-agent-run-1/`, `ai-agent-run-2/`). The job
+  uploads `.live-evidence/` once as `live-evidence-cubrid-<version>` (also when it
+  fails, with `continue-on-error` so the upload can never change the release
+  smoke result; a release workflow call uploads none into the caller's run).
 - `smoke-test.yml` does not run on pull requests, so no pull request repeats the
   broad 11.2/11.4 matrix. Its exact release verification inputs, outputs and
   fail-closed reporting are unchanged. To test a change to it before merging, run
@@ -414,7 +440,8 @@ result against that golden file. When you add a one-shot example, capture its
 golden output so CI can guard it.
 
 `make verify-goldens` checks all goldens by default; use `VERIFY_PATHS=<directory>` to
-select example roots. `make verify VERIFY_PATHS=<directory>`, as CI calls it, runs the
+select example roots (the pull-request smoke lanes call it this way).
+`make verify VERIFY_PATHS=<directory>` on the command line runs the
 same golden-only check and then reports it as a partial verification. Empty/missing roots, zero golden targets, a missing script
 for an expected file, discovery/read errors, and failed scripts or normalizers
 all fail the command. A successful summary has at least one pass and no failures

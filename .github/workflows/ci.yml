@@ -46,6 +46,7 @@ jobs:
       smoke_114: ${{ steps.scope.outputs.smoke_114 }}
       smoke_112: ${{ steps.scope.outputs.smoke_112 }}
       verify_paths: ${{ steps.scope.outputs.verify_paths }}
+      smoke_lanes: ${{ steps.scope.outputs.smoke_lanes }}
       floors: ${{ steps.scope.outputs.floors }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -525,6 +526,20 @@ jobs:
         with:
           cubrid-version: "11.4"
           verify-paths: ${{ needs.classify.outputs.verify_paths }}
+          live-lanes: ${{ needs.classify.outputs.smoke_lanes }}
+      - name: Upload live evidence
+        # JUnit XML, logs and summaries of the make verify-* lanes the smoke
+        # action ran; evidence only, so an upload failure never fails the lane.
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: live-evidence-pr-cubrid-11.4
+          path: .live-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: true
 
   smoke-112:
     name: Smoke Tests (CUBRID 11.2)
@@ -545,6 +560,20 @@ jobs:
         with:
           cubrid-version: "11.2"
           verify-paths: ${{ needs.classify.outputs.verify_paths }}
+          live-lanes: ${{ needs.classify.outputs.smoke_lanes }}
+      - name: Upload live evidence
+        # JUnit XML, logs and summaries of the make verify-* lanes the smoke
+        # action ran; evidence only, so an upload failure never fails the lane.
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: live-evidence-pr-cubrid-11.2
+          path: .live-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: true
 
   # Advisory only (#239), never part of ci-gate: the weekly schedule also runs
   # representative goldens against pycubrid and sqlalchemy-cubrid `main`

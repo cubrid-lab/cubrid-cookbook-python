@@ -217,23 +217,36 @@ jobs:
           EVENT_NAME: ${{ env.RELEASE_WORKFLOW_CALL == 'true' && 'workflow_call' || github.event_name }}
         run: |
           # Every event this workflow runs on (push to main, cron, upstream
-          # release, manual dispatch, workflow call) verifies the full suite: a
-          # dependency bump or scheduled run must exercise every example.
+          # release, manual dispatch, workflow call) runs the full make verify:
+          # a dependency bump or scheduled run must exercise every example and
+          # every live suite. VERIFY_PATHS is deliberately never exported here:
+          # naming it would turn make verify into the partial golden-only check.
           # Pull-request scoping lives in scripts/ci_scope.py (ci.yml).
-          echo "VERIFY_PATHS=." >> "$GITHUB_ENV"
           echo "Full verify (event=$EVENT_NAME)"
 
-      - name: Start CUBRID container
+      - name: Start CUBRID containers
         run: |
-          # Started before dependency install so the image pull and engine
-          # initialization overlap with pip install instead of running serially;
-          # the readiness gate below then usually finds the engine already up.
-          original_id=$(docker run -d --name cubrid --shm-size 512m \
-            --label cookbook.smoke.role=original \
-            -e CUBRID_DB=testdb \
-            -p 33000:33000 -p 1523:1523 \
-            cubrid/cubrid:${{ matrix.cubrid }})
-          printf '%s\n' "$original_id" > "$RUNNER_TEMP/cubrid-original-id"
+          set -euo pipefail
+          # Started before dependency install so the image pulls and engine
+          # initialization overlap with pip install; the readiness gate below
+          # then usually finds the engines already up. Three disposable,
+          # job-owned databases on this cell's image (#416):
+          #   cubrid           :33000  examples database the goldens, the quickstart
+          #                            app and the benchmarks hard-code
+          #   cubrid-live      :33100  CUBRID_TEST_URL (web, Django/Celery, AI agent)
+          #   cubrid-dashboard :33200  CUBRID_DASHBOARD_TEST_URL (the dashboard suite
+          #                            drops and recreates its FK-linked tables)
+          for spec in cubrid:33000 cubrid-live:33100 cubrid-dashboard:33200; do
+            name=${spec%%:*}
+            port=${spec##*:}
+            extra=()
+            if [ "$name" = cubrid ]; then extra=(-p 1523:1523); fi
+            docker run -d --name "$name" --shm-size 512m \
+              --label cookbook.smoke.role="$name" \
+              -e CUBRID_DB=testdb \
+              -p "$port:33000" "${extra[@]}" \
+              cubrid/cubrid:${{ matrix.cubrid }}
+          done
 
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -320,33 +333,40 @@ jobs:
       - name: Install dependencies
         run: |
           # PIP_CONSTRAINT keeps the selected drivers fixed during every install.
-          pip install pandas matplotlib
           # Requested MCP was selected exactly; fallback is only for non-requested MCP.
           python scripts/release_smoke.py install-mcp --state "$RUNNER_TEMP/release-drivers.json"
 
       - name: Wait for CUBRID readiness
+        timeout-minutes: 15
         run: |
+          set -euo pipefail
           # Use the in-container csql check (same as docker-compose healthcheck)
           # rather than a client connect; the broker accepts external TCP
           # connections slightly after the engine itself is ready.
-          for i in $(seq 1 60); do
-            if docker exec cubrid bash -lc "csql -u dba testdb -c 'SELECT 1;'" >/dev/null 2>&1; then
-              echo "CUBRID testdb is ready (attempt $i)"
-              exit 0
+          for name in cubrid cubrid-live cubrid-dashboard; do
+            ready=0
+            for i in $(seq 1 60); do
+              if docker exec "$name" bash -lc "csql -u dba testdb -c 'SELECT 1;'" >/dev/null 2>&1; then
+                echo "$name testdb is ready (attempt $i)"
+                ready=1
+                break
+              fi
+              echo "Waiting for $name testdb... attempt $i/60"
+              sleep 5
+            done
+            if [ "$ready" -ne 1 ]; then
+              echo "::error::$name testdb did not become ready in time"
+              docker logs "$name" || true
+              exit 1
             fi
-            echo "Waiting for CUBRID testdb... attempt $i/60"
-            sleep 5
           done
-          echo "CUBRID testdb did not become ready in time"
-          docker logs cubrid || true
-          exit 1
 
       - name: Verify external client connectivity
         run: |
           # The csql check only proves the in-container engine is up; the broker
           # accepts external TCP on the mapped port slightly later. Confirm a real
-          # pycubrid client (the same path the examples use) can connect before
-          # running make verify, otherwise the first example races the broker.
+          # pycubrid client (the same path the examples use) can connect to every
+          # database before make verify, otherwise the first example races the broker.
           python - <<'PY'
           import sys
           import time
@@ -354,55 +374,45 @@ jobs:
 
           import pycubrid
 
-          last_error = None
-          for attempt in range(1, 31):
-              try:
-                  conn = pycubrid.connect(
-                      host="localhost",
-                      port=33000,
-                      database="testdb",
-                      user="dba",
-                      password="",
-                  )
-                  cursor = conn.cursor()
-                  cursor.execute("SELECT 1")
-                  cursor.fetchone()
-                  cursor.close()
-                  server_version = conn.get_server_version().replace("\n", " ").replace("\r", " ")
-                  conn.close()
-                  with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
-                      output.write(f"CUBRID_SERVER_VERSION={server_version}\n")
-                  print(f"External pycubrid connection OK (attempt {attempt})")
-                  sys.exit(0)
-              except Exception as error:
-                  last_error = error
-                  print(f"Waiting for external broker... attempt {attempt}/30: {error}")
-                  time.sleep(3)
-
-          print(f"External broker not reachable in time: {last_error}")
-          sys.exit(1)
+          for port in (33000, 33100, 33200):
+              last_error = None
+              for attempt in range(1, 31):
+                  try:
+                      conn = pycubrid.connect(
+                          host="localhost",
+                          port=port,
+                          database="testdb",
+                          user="dba",
+                          password="",
+                      )
+                      cursor = conn.cursor()
+                      cursor.execute("SELECT 1")
+                      cursor.fetchone()
+                      cursor.close()
+                      server_version = conn.get_server_version().replace("\n", " ").replace("\r", " ")
+                      conn.close()
+                      if port == 33000:
+                          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
+                              output.write(f"CUBRID_SERVER_VERSION={server_version}\n")
+                      print(f"External pycubrid connection to {port} OK (attempt {attempt})")
+                      break
+                  except Exception as error:
+                      last_error = error
+                      print(f"Waiting for external broker {port}... attempt {attempt}/30: {error}")
+                      time.sleep(3)
+              else:
+                  print(f"External broker {port} not reachable in time: {last_error}")
+                  sys.exit(1)
           PY
 
-      - name: Install AI agent test dependencies
-        # PIP_CONSTRAINT preserves the selected released drivers on PRs too.
-        run: pip install pytest
-
-      - name: Install per-example dependencies
-        # Golden-verified examples may declare their own requirements.txt (e.g.
-        # fundamentals/alembic needs alembic). Install the requirements of every
-        # example root that owns an expected/ folder so `make verify` can import
-        # them. Every install uses the exact selected driver-release constraints;
-        # incompatible requirements fail rather than replacing a tested release.
-        run: |
-          python scripts/release_smoke.py install-examples --constraints "$PIP_CONSTRAINT"
-
-      - name: Install pytest suite dependencies (non-PR runs only)
-        # Pull requests skip the full pytest suites; ci.yml exercises representative
-        # recipes. Install all dependencies before recording the tested versions.
-        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
-        # One explicit list avoids conflicting pins in individual recipe files.
-        # PIP_CONSTRAINT also covers these packages' transitive driver requirements.
-        run: pip install flask flask-sqlalchemy fastapi email-validator httpx pytest pytest-asyncio streamlit pandas -r templates/async-worker/requirements.txt -r templates/django/requirements.txt -r templates/api-service-fastapi/requirements.txt
+      - name: Install verification dependencies
+        # make deps: every example requirements.txt plus pytest and pytest-asyncio
+        # in one pip call, everything the full make verify checks for. Every
+        # install keeps the exact selected driver-release constraints
+        # (PIP_CONSTRAINT); incompatible requirements fail rather than replacing
+        # a tested release.
+        timeout-minutes: 15
+        run: make deps
 
       - name: Record tested versions
         run: |
@@ -413,208 +423,58 @@ jobs:
             --state "$RUNNER_TEMP/release-drivers.json" --report \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Test AI agent examples against live CUBRID
-        timeout-minutes: 5
-        env:
-          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
-        run: |
-          # Every dependency is installed and final driver provenance verified.
-          python -m pytest tests/test_ai_agent_offline.py -q
-          # Each example has dedicated table cleanup. Repeat to catch stale
-          # fixed demonstration keys and incomplete teardown on the same server.
-          python -m pytest tests/test_ai_agent.py -v --tb=short
-          python -m pytest tests/test_ai_agent.py -v --tb=short
-
       - name: Run make verify
-        run: make verify VERIFY_PATHS="${VERIFY_PATHS:-.}"
+        # The full live verification (scripts/live_gate.py all, fail-closed):
+        # every golden, then the quickstart, performance (migration goldens and
+        # benchmarks), Flask/FastAPI, Django/Celery, AI agent and dashboard
+        # suites one lane at a time. A missing or unreachable database, a
+        # skipped or empty suite, or a table left behind fails it. JUnit XML,
+        # logs and summaries go to .live-evidence/.
+        timeout-minutes: 30
+        env:
+          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33100/testdb
+          CUBRID_DASHBOARD_TEST_URL: cubrid+pycubrid://dba@localhost:33200/testdb
+        run: |
+          status=0
+          make verify || status=$?
+          if [ -f .live-evidence/verify-summary.txt ]; then
+            { echo '```'; cat .live-evidence/verify-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
+
+      - name: Repeat the AI agent lane
+        # Second sequential run on the same dedicated database (#426): stale
+        # demonstration keys or incomplete teardown fail it. Both runs keep
+        # their evidence (ai-agent-run-1/, ai-agent-run-2/).
+        timeout-minutes: 8
+        env:
+          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33100/testdb
+        run: |
+          set -euo pipefail
+          cp -a .live-evidence/ai-agent .live-evidence/ai-agent-run-1
+          make verify-ai-agent
+          cp -a .live-evidence/ai-agent .live-evidence/ai-agent-run-2
 
       - name: Smoke test cubrid-mcp-server
         # Real-usage tool-surface smoke; the contract lives in scripts/mcp_smoke.py
         # and is shared with the ci.yml pull-request smoke lanes.
         run: python scripts/mcp_smoke.py
 
-      - name: Run Flask and FastAPI pytest suites (non-PR runs only)
-        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
-        # Each suite's tests/conftest.py switches to live CUBRID when
-        # CUBRID_TEST_URL is set, so these run against the container started above.
-        # Every recipe imports its own app/database/main/models modules, so each
-        # suite needs a separate pytest process. All suites run even after a
-        # failure, then the step fails if any did; pytest exits non-zero when a
-        # suite collects no tests, so an empty suite cannot pass silently. The
-        # glob skips the nested templates/flask/*/01-basic-crud copies. pytest
-        # runs without -q so each log shows the conftest's "database: live
-        # CUBRID" header.
-        #
-        # The dashboard suite drops and recreates its own FK-linked
-        # cookbook_dashboard_products and cookbook_dashboard_sales. It runs only
-        # after this original database is stopped and a separate container is
-        # ready below (#142).
-        timeout-minutes: 15
-        env:
-          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
-          CUBRID_VERSION: ${{ matrix.cubrid }}
-        run: |
-          shopt -s nullglob
-          suites=(templates/flask/*/tests templates/api-service-fastapi/tests templates/api-service-fastapi/recipes/*/tests)
-          if [ "${#suites[@]}" -eq 0 ]; then
-            echo "::error::No pytest suites found"
-            exit 1
-          fi
-
-          log=$(mktemp)
-          failed=()
-          {
-            printf '### pytest suites against CUBRID %s\n\n' "$CUBRID_VERSION"
-            printf '| Suite | Result |\n| --- | --- |\n'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          for suite in "${suites[@]}"; do
-            echo "::group::pytest $suite"
-            status=0
-            python -m pytest "$suite" > "$log" 2>&1 || status=$?
-            cat "$log"
-            echo "::endgroup::"
-            result=$(tail -n 1 "$log" | sed -E 's/=+//g; s/ in [0-9.]+s//; s/^ +| +$//g')
-            if [ "$status" -ne 0 ]; then
-              failed+=("$suite")
-              echo "::error::pytest failed in $suite (exit $status): $result"
-              result="FAILED: $result"
-            fi
-            printf '| %s | %s |\n' "$suite" "$result" >> "$GITHUB_STEP_SUMMARY"
-          done
-
-          echo "Ran ${#suites[@]} pytest suites; ${#failed[@]} failed."
-          if [ "${#failed[@]}" -ne 0 ]; then
-            exit 1
-          fi
-
-      - name: Run async-worker database tasks (non-PR runs only)
-        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
-        # make verify has finished. Every example owns distinct table names
-        # (#327), and the worker suite still refuses to delete a preexisting
-        # worker table and cleans up only its own four.
-        timeout-minutes: 5
-        env:
-          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
-        run: python -m pytest templates/async-worker/tests -v --tb=short
-
-      - name: Run Django SQLAlchemy bridge (non-PR runs only)
-        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
-        # cookbook_django_items belongs to this template alone (#327). make
-        # verify and the Flask/FastAPI suites still finish first; this suite
-        # refuses to delete a preexisting table.
-        timeout-minutes: 5
-        env:
-          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
-        run: python -m pytest templates/django/tests -v --tb=short
-
-      - name: Start isolated dashboard CUBRID (non-PR runs only)
-        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
-        timeout-minutes: 2
-        run: |
-          set -euo pipefail
-          original_id=$(< "$RUNNER_TEMP/cubrid-original-id")
-          if [[ ! "$original_id" =~ ^[0-9a-f]{64}$ ]] \
-            || [ "$(docker inspect -f '{{.Name}}' "$original_id")" != /cubrid ] \
-            || [ "$(docker inspect -f '{{index .Config.Labels "cookbook.smoke.role"}}' "$original_id")" != original ]; then
-            echo "::error::Refusing to stop a container not owned by this smoke job"
-            exit 1
-          fi
-          docker stop --timeout 10 "$original_id"
-
-          # Reuse this matrix cell's image and host ports, but never its schema.
-          # No volume is attached; this container belongs only to this run.
-          dashboard_id=$(docker run -d --name cubrid-dashboard --shm-size 512m \
-            --label cookbook.smoke.role=dashboard \
-            -e CUBRID_DB=testdb \
-            -p 33000:33000 -p 1523:1523 \
-            cubrid/cubrid:${{ matrix.cubrid }})
-          printf '%s\n' "$dashboard_id" > "$RUNNER_TEMP/cubrid-dashboard-id"
-
-      - name: Wait for isolated dashboard CUBRID
-        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
-        timeout-minutes: 8
-        run: |
-          set -euo pipefail
-          dashboard_id=$(< "$RUNNER_TEMP/cubrid-dashboard-id")
-          if [[ ! "$dashboard_id" =~ ^[0-9a-f]{64}$ ]] \
-            || [ "$(docker inspect -f '{{.Name}}' "$dashboard_id")" != /cubrid-dashboard ] \
-            || [ "$(docker inspect -f '{{index .Config.Labels "cookbook.smoke.role"}}' "$dashboard_id")" != dashboard ]; then
-            echo "::error::Dashboard readiness target is not this job's container"
-            exit 1
-          fi
-
-          ready=0
-          for attempt in {1..30}; do
-            if timeout 5s docker exec "$dashboard_id" bash -lc "csql -u dba testdb -c 'SELECT 1;'" >/dev/null 2>&1; then
-              echo "Dashboard CUBRID engine ready (attempt $attempt)"
-              ready=1
-              break
-            fi
-            sleep 2
-          done
-          if [ "$ready" -ne 1 ]; then
-            echo "::error::Dashboard CUBRID csql readiness exhausted"
-            docker logs --tail 50 "$dashboard_id" || true
-            exit 1
-          fi
-
-          # csql can succeed before the mapped broker accepts real clients.
-          python - <<'PY'
-          import sys
-          import time
-
-          import pycubrid
-
-          last_error = None
-          for attempt in range(1, 31):
-              connection = None
-              try:
-                  connection = pycubrid.connect(
-                      host="localhost", port=33000, database="testdb",
-                      user="dba", password="", connect_timeout=5, read_timeout=5,
-                  )
-                  cursor = connection.cursor()
-                  cursor.execute("SELECT 1")
-                  if cursor.fetchone() != (1,):
-                      raise RuntimeError("dashboard broker SELECT 1 returned an unexpected row")
-                  cursor.close()
-                  print(f"Dashboard external broker ready (attempt {attempt})")
-                  sys.exit(0)
-              except Exception as error:
-                  last_error = error
-                  print(f"Waiting for dashboard broker {attempt}/30: {error}")
-                  time.sleep(2)
-              finally:
-                  if connection is not None:
-                      connection.close()
-          print(f"Dashboard external broker did not become ready: {last_error}")
-          sys.exit(1)
-          PY
-
-      - name: Run isolated Streamlit dashboard pytest suite
-        if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'
-        timeout-minutes: 5
-        env:
-          CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33000/testdb
-        run: python -m pytest templates/dashboard/tests -v --tb=short
-
-      - name: Remove owned dashboard CUBRID container
-        if: always()
-        timeout-minutes: 2
-        run: |
-          set -euo pipefail
-          if [ ! -f "$RUNNER_TEMP/cubrid-dashboard-id" ]; then
-            exit 0
-          fi
-          dashboard_id=$(< "$RUNNER_TEMP/cubrid-dashboard-id")
-          if [[ ! "$dashboard_id" =~ ^[0-9a-f]{64}$ ]] \
-            || [ "$(docker inspect -f '{{.Name}}' "$dashboard_id")" != /cubrid-dashboard ] \
-            || [ "$(docker inspect -f '{{index .Config.Labels "cookbook.smoke.role"}}' "$dashboard_id")" != dashboard ]; then
-            echo "::error::Refusing to remove a container not owned by this smoke job"
-            exit 1
-          fi
-          docker rm -f "$dashboard_id"
+      - name: Upload live evidence
+        # JUnit XML, logs and summaries of make verify. Evidence only:
+        # continue-on-error keeps an artifact-service failure from changing the
+        # job status the release smoke result below reports, and a release
+        # workflow call uploads none into the calling repository's run.
+        if: always() && env.RELEASE_WORKFLOW_CALL != 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: live-evidence-cubrid-${{ matrix.cubrid }}${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}
+          path: .live-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: true
 
       - name: Report release smoke result
         if: always()

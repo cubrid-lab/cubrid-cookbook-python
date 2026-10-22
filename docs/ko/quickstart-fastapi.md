@@ -270,6 +270,9 @@ CUBRID_TEST_URL=cubrid+pycubrid://dba@localhost:33000/testdb python -m pytest te
 응답하지 않으면 실패합니다. 저장소 루트의 `make verify-quickstart`(전체 `make verify`에도 포함)는
 `localhost:33000`에 대해 `CUBRID_LIVE_GATE=1`로 실행해 건너뜀도 실패로 처리하고, JUnit
 보고서와 요약을 `.live-evidence/quickstart/`에 씁니다.
+CI도 같은 명령을 실행합니다. `main` 푸시, 야간 실행과 릴리스 검증 때는 CUBRID 11.2와
+11.4에서 전체 `make verify`를, 이 퀵스타트를 바꾸는 풀 리퀘스트에서는 CUBRID 11.4에서
+`make verify-quickstart`를 실행합니다. 오프라인 테스트는 `make test`로 실행합니다.
 
 ## 다음 단계
 

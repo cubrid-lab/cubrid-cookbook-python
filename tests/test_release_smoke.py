@@ -126,23 +126,21 @@ class ReleaseSmokeTests(unittest.TestCase):
     def test_workflow_constrains_all_later_installs_and_reports_last(self) -> None:
         workflow = (ROOT / ".github/workflows/smoke-test.yml").read_text()
         freeze = workflow.index("name: Freeze selected driver releases")
-        dependencies = workflow.index("name: Install per-example dependencies")
-        suites = workflow.index("name: Install pytest suite dependencies")
-        ai_dependencies = workflow.index("name: Install AI agent test dependencies")
-        ai_tests = workflow.index("name: Test AI agent examples against live CUBRID")
+        mcp = workflow.index("name: Install dependencies")
+        deps = workflow.index("name: Install verification dependencies")
         report = workflow.index("name: Record tested versions")
         verify = workflow.index("name: Run make verify")
-        self.assertLess(freeze, dependencies)
-        self.assertLess(dependencies, report)
-        self.assertLess(suites, report)
-        self.assertLess(freeze, ai_dependencies)
-        self.assertLess(ai_dependencies, report)
-        self.assertLess(report, ai_tests)
-        self.assertLess(ai_tests, verify)
+        self.assertLess(freeze, mcp)
+        self.assertLess(mcp, deps)
+        self.assertLess(deps, report)
+        self.assertLess(report, verify)
         self.assertIn("PIP_CONSTRAINT=$RUNNER_TEMP/release-constraints.txt", workflow)
-        self.assertIn('install-examples --constraints "$PIP_CONSTRAINT"', workflow)
+        self.assertIn('install-mcp --state "$RUNNER_TEMP/release-drivers.json"', workflow)
+        # make deps honours PIP_CONSTRAINT: every example keeps the selected drivers.
+        self.assertIn("run: make deps\n", workflow[deps:report])
         self.assertIn("set -o pipefail", workflow[report:verify])
         self.assertNotIn("pip install", workflow[report:])
+        self.assertNotIn("make deps", workflow[report:])
 
 
 if __name__ == "__main__":

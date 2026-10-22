@@ -108,6 +108,12 @@ The benchmarks and the migration examples use fixed table names (`cookbook_fetch
 `cookbook_jdbc_*`, `cookbook_sensors`). Do not run `make verify-performance` at the same time as another `make verify-performance`,
 `make verify` or a manual benchmark run against the same database: they would drop each other's tables.
 
+CI runs the same commands, one lane at a time on job-owned CUBRID containers: the full `make verify` on
+CUBRID 11.2 and 11.4 for every push to `main`, the nightly schedule and release verification, and
+`make verify-performance` on CUBRID 11.4 for pull requests that change `performance/` or
+`tests/test_performance_benchmarks.py`. The lane took about a minute locally and is bounded at 10 minutes in
+the pull-request lane; its JUnit report and summary are in the `live-evidence-*` workflow artifact.
+
 ## Key Takeaways
 
 1. **≤ 500 rows** (historical, pycubrid 0.5.0): Network + server time dominates — client-side optimization has minimal effect

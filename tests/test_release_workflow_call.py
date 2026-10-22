@@ -412,23 +412,18 @@ class WorkflowCallStaticTests(unittest.TestCase):
             "|| github.event_name }}",
             VERIFY,
         )
-        self.assertNotIn("if: github.event_name != 'pull_request'\n", VERIFY)
-        call_guard = (
-            "if: github.event_name != 'pull_request' || env.RELEASE_WORKFLOW_CALL == 'true'"
-        )
+        self.assertNotIn("if: github.event_name != 'pull_request'", VERIFY)
+        # The full make verify and its dependencies run on every event, including a
+        # call from a caller's pull request: no step guard can skip them.
         for step_name in (
-            "Install pytest suite dependencies (non-PR runs only)",
-            "Run Flask and FastAPI pytest suites (non-PR runs only)",
-            "Run async-worker database tasks (non-PR runs only)",
-            "Run Django SQLAlchemy bridge (non-PR runs only)",
-            "Start isolated dashboard CUBRID (non-PR runs only)",
-            "Wait for isolated dashboard CUBRID",
-            "Run isolated Streamlit dashboard pytest suite",
+            "Install verification dependencies",
+            "Run make verify",
+            "Repeat the AI agent lane",
         ):
-            start = VERIFY.index(f"- name: {step_name}")
+            start = VERIFY.index(f"- name: {step_name}\n")
             end = VERIFY.find("\n      - name:", start + 1)
             block = VERIFY[start : end if end != -1 else None]
-            self.assertIn(call_guard, block, step_name)
+            self.assertNotIn("\n        if:", block, step_name)
 
     def test_report_job_runs_for_calls(self) -> None:
         self.assertIn("|| inputs.package != '') }}", REPORT[: REPORT.index("\n    steps:")])

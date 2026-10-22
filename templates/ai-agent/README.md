@@ -106,11 +106,15 @@ fixed-key rows were deleted, not reused); the retrieval log of recipe 03 is
 append-only and gains one row per run.
 Without `CUBRID_TEST_URL`, the eleven live cases skip; offline tests still run.
 Each script runs in its own process with a 60-second limit; cleanup connections
-have a 10-second connect timeout and a 15-second read timeout. The smoke-test
-matrix runs the suite twice on both CUBRID 11.2 and 11.4 for every `main` push,
-the nightly schedule and release verification, and the CUBRID 11.4 pull-request
-smoke lane runs it twice when a pull request touches this template or golden
-examples, to catch stale demonstration keys after teardown.
+have a 10-second connect timeout and a 15-second read timeout. CI runs the
+live suite through the same commands, twice on the same dedicated database to
+catch stale demonstration keys after teardown: the smoke-test matrix runs the
+full `make verify` and then `make verify-ai-agent` on both CUBRID 11.2 and 11.4
+for every `main` push, the nightly schedule and release verification, and the
+CUBRID 11.4 pull-request smoke lane runs `make verify-ai-agent` twice when a pull
+request touches this template or its tests. Both runs keep their evidence
+(`.live-evidence/ai-agent-run-1/` and `-run-2/` in the `live-evidence-*` workflow
+artifact).
 
 `make verify-ai-agent` (also part of the full `make verify`) runs the live suite
 fail-closed (`CUBRID_LIVE_GATE=1`): a missing `CUBRID_TEST_URL`, an unreachable

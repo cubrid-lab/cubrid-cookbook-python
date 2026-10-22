@@ -26,6 +26,14 @@ Tiers:
   install the documented driver floors (``floors``, #241). ``smoke-test.yml`` owns the broad 11.2/11.4
   goldens and recipe suites on these events, so ``ci.yml`` does not repeat them.
 
+The PR smoke lanes also run the focused ``make verify-<lane>`` lanes named in
+``smoke_lanes`` (``SMOKE_LANE_ORDER``): ``quickstart`` for the FastAPI quickstart,
+``performance`` for the benchmarks and their test module, ``ai-agent`` for the AI
+agent template and its live suite (#425, #426, #428). Each of these paths selects
+the CUBRID 11.4 smoke lane with a full golden run (``verify_paths`` ``.``), and
+every wider reason to run the smoke lane (fan-out, CI policy, release smoke,
+unknown or helper paths) selects all three.
+
 Pull requests that change a documented driver floor (``FLOORS``) also run the
 exact-floor lane (``scripts/driver_floors.py``) on CUBRID 11.4, even when the
 change is otherwise docs-only (``SUPPORT_MATRIX.md``).
@@ -151,16 +159,19 @@ FAMILIES = (
     ("async_worker", ("templates/async-worker/*",)),
     ("django", ("templates/django/*",)),
 )
-# AI-agent examples run inside the smoke lane (no expected/ goldens).
-AI_AGENT = ("templates/ai-agent/*", "tests/test_ai_agent.py")
+# Live suites without goldens that the smoke lane runs as focused
+# `make verify-<lane>` lanes (#425, #426, #428), in this order. Each selects the
+# 11.4 smoke lane with a full golden run, like any example code outside a root.
+SMOKE_LANE_ORDER = ("quickstart", "performance", "ai-agent")
+SMOKE_LANES = (
+    ("quickstart", ("quickstart/5min-fastapi/*",)),
+    ("performance", ("performance/*", "tests/test_performance_benchmarks.py")),
+    ("ai-agent", ("templates/ai-agent/*", "tests/test_ai_agent.py")),
+)
 # Example directories with no live consumer (no goldens, no live suite); the
 # offline checks cover them. Other files in example trees outside a golden root
 # (e.g. a shared helper) fail closed to a full 11.4 verify.
-NO_LIVE_CONSUMER = (
-    "performance/*",
-    "quickstart/5min-fastapi/*",
-    "fundamentals/parameterized-queries/*",
-)
+NO_LIVE_CONSUMER = ("fundamentals/parameterized-queries/*",)
 EXAMPLE_TREES = (
     "fundamentals/*",
     "migration/*",
@@ -235,8 +246,9 @@ def classify(
         ("web", "dashboard", "async_worker", "django", "cqrs", "compat", "smoke_114", "floors"),
         False,
     )
-    full = broad = cqrs_dual = smoke_112 = full_verify = False
+    full = broad = cqrs_dual = smoke_112 = full_verify = all_smoke_lanes = False
     verify = set()
+    smoke_lanes: set[str] = set()
 
     if event in MAIN_EVENTS:
         return {
@@ -254,6 +266,7 @@ def classify(
             "smoke_114": False,
             "smoke_112": False,
             "verify_paths": "",
+            "smoke_lanes": "",
             "floors": event in FLOOR_EVENTS,
         }
     if event not in PR_EVENTS or not files:
@@ -268,7 +281,7 @@ def classify(
             full = True
             continue
         if _match(path, RELEASE_SMOKE):
-            lanes["smoke_114"] = smoke_112 = full_verify = True
+            lanes["smoke_114"] = smoke_112 = full_verify = all_smoke_lanes = True
             continue
         if _match(path, SHARED_LIVE):
             broad = True
@@ -283,6 +296,7 @@ def classify(
             else:
                 full_verify = True
         family = next((name for name, pats in FAMILIES if _match(path, pats)), None)
+        smoke_lane = next((name for name, pats in SMOKE_LANES if _match(path, pats)), None)
         if family is not None:
             lanes[family] = True
             if family == "web":
@@ -293,22 +307,26 @@ def classify(
                     web_suites.add(suite)
             if path == f"{CQRS_ROOT}/requirements.txt":
                 cqrs_dual = True
-        elif _match(path, AI_AGENT):
+        elif smoke_lane is not None:
+            # A changed golden root beside it must not narrow make verify-goldens.
             lanes["smoke_114"] = full_verify = True
+            smoke_lanes.add(smoke_lane)
         elif root is not None or _match(path, COMPAT + NO_LIVE_CONSUMER + TOOLING):
             pass
         elif _match(path, EXAMPLE_TREES):
             # Outside every golden root, e.g. a helper goldens may import.
-            lanes["smoke_114"] = full_verify = True
+            lanes["smoke_114"] = full_verify = all_smoke_lanes = True
         else:
             # Unknown path: every PR lane on the representative versions.
             for name in ("web", "dashboard", "async_worker", "django", "cqrs", "smoke_114"):
                 lanes[name] = True
-            full_verify = web_shared = True
+            full_verify = web_shared = all_smoke_lanes = True
 
     if broad or full:
         lanes = dict.fromkeys(lanes, True)
-        cqrs_dual = smoke_112 = full_verify = web_shared = True
+        cqrs_dual = smoke_112 = full_verify = web_shared = all_smoke_lanes = True
+    if all_smoke_lanes:
+        smoke_lanes = set(SMOKE_LANE_ORDER)
     if not lanes["web"]:
         web_suites = set()
     changed = sorted(web_suites)
@@ -354,6 +372,9 @@ def classify(
         "smoke_114": lanes["smoke_114"],
         "smoke_112": smoke_112,
         "verify_paths": verify_paths,
+        "smoke_lanes": " ".join(lane for lane in SMOKE_LANE_ORDER if lane in smoke_lanes)
+        if lanes["smoke_114"]
+        else "",
         "floors": lanes["floors"],
     }
 

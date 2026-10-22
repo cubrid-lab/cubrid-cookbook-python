@@ -623,24 +623,6 @@ class OfflineWorkflowTests(unittest.TestCase):
         self.assertIn("templates/async-worker/tests", workflow[worker:gate])
         self.assertIn("async-worker-pytest", workflow[gate:])
 
-    def test_async_worker_smoke_runs_after_verify_under_frozen_driver_constraints(self) -> None:
-        workflow = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
-        freeze = workflow.index("name: Freeze selected driver releases")
-        install = workflow.index("name: Install pytest suite dependencies")
-        verify_drivers = workflow.index("name: Record tested versions")
-        verify_examples = workflow.index("name: Run make verify")
-        worker = workflow.index("name: Run async-worker database tasks")
-        dashboard_switch = workflow.index("name: Start isolated dashboard CUBRID")
-        self.assertLess(freeze, install)
-        self.assertLess(install, verify_drivers)
-        self.assertLess(verify_drivers, verify_examples)
-        self.assertLess(verify_examples, worker)
-        self.assertLess(worker, dashboard_switch)
-        self.assertIn("templates/async-worker/requirements.txt", workflow[install:verify_drivers])
-        self.assertIn("templates/async-worker/tests", workflow[worker:dashboard_switch])
-        self.assertIn("CUBRID_TEST_URL:", workflow[worker:dashboard_switch])
-        self.assertNotIn("continue-on-error", workflow[worker:dashboard_switch])
-
     def test_django_bridge_has_its_own_required_live_cubrid_job(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         django = workflow.index("  django-bridge-pytest:")
@@ -650,42 +632,44 @@ class OfflineWorkflowTests(unittest.TestCase):
         self.assertIn("templates/django/tests", workflow[django:gate])
         self.assertIn("django-bridge-pytest", workflow[gate:])
 
-    def test_django_smoke_runs_after_colliding_recipes_under_frozen_constraints(self) -> None:
+    def test_broad_smoke_runs_full_verify_on_job_owned_databases(self) -> None:
+        # smoke-test.yml runs the full, fail-closed make verify (scripts/live_gate.py
+        # all): goldens, quickstart, performance, web, Django/Celery, AI agent and
+        # the dashboard, each live suite on its own job-owned CUBRID (#416).
         workflow = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
-        install = workflow.index("name: Install pytest suite dependencies")
-        verify_drivers = workflow.index("name: Record tested versions")
-        verify_examples = workflow.index("name: Run make verify")
-        framework_suites = workflow.index("name: Run Flask and FastAPI pytest suites")
-        django = workflow.index("name: Run Django SQLAlchemy bridge")
-        dashboard_switch = workflow.index("name: Start isolated dashboard CUBRID")
-        self.assertLess(install, verify_drivers)
-        self.assertLess(verify_examples, framework_suites)
-        self.assertLess(framework_suites, django)
-        self.assertLess(django, dashboard_switch)
-        self.assertIn("templates/django/requirements.txt", workflow[install:verify_drivers])
-        self.assertIn("templates/django/tests", workflow[django:dashboard_switch])
-        self.assertIn("CUBRID_TEST_URL:", workflow[django:dashboard_switch])
-        self.assertNotIn("continue-on-error", workflow[django:dashboard_switch])
-
-    def test_dashboard_smoke_uses_separate_owned_container_after_other_suites(self) -> None:
-        workflow = (ROOT / ".github/workflows/smoke-test.yml").read_text(encoding="utf-8")
-        suites = workflow.index("name: Run Flask and FastAPI pytest suites")
-        start = workflow.index("name: Start isolated dashboard CUBRID")
-        readiness = workflow.index("name: Wait for isolated dashboard CUBRID")
-        dashboard = workflow.index("name: Run isolated Streamlit dashboard pytest suite")
-        cleanup = workflow.index("name: Remove owned dashboard CUBRID container")
+        start = workflow.index("name: Start CUBRID containers")
+        deps = workflow.index("name: Install verification dependencies")
+        recorded = workflow.index("name: Record tested versions")
+        verify = workflow.index("name: Run make verify")
+        repeat = workflow.index("name: Repeat the AI agent lane")
+        upload = workflow.index("name: Upload live evidence")
         report = workflow.index("name: Report release smoke result")
-        self.assertLess(suites, start)
-        self.assertLess(start, readiness)
-        self.assertLess(readiness, dashboard)
-        self.assertLess(dashboard, cleanup)
-        self.assertLess(cleanup, report)
-        self.assertNotIn("templates/dashboard/tests", workflow[suites:start])
-        self.assertIn("templates/dashboard/tests", workflow[dashboard:cleanup])
-        self.assertIn("timeout 5s docker exec", workflow[readiness:dashboard])
-        self.assertIn("pycubrid.connect(", workflow[readiness:dashboard])
-        self.assertIn("if: always()", workflow[cleanup:report])
-        self.assertIn('docker rm -f "$dashboard_id"', workflow[cleanup:report])
+        self.assertLess(start, deps)
+        self.assertLess(deps, recorded)
+        self.assertLess(recorded, verify)
+        self.assertLess(verify, repeat)
+        self.assertLess(repeat, upload)
+        self.assertLess(upload, report)
+        for spec in ("cubrid:33000", "cubrid-live:33100", "cubrid-dashboard:33200"):
+            self.assertIn(spec, workflow[start:deps])
+        step = workflow[verify:repeat]
+        self.assertIn("\n          make verify || status=$?\n", step)
+        self.assertIn("CUBRID_TEST_URL: cubrid+pycubrid://dba@localhost:33100/testdb", step)
+        self.assertIn(
+            "CUBRID_DASHBOARD_TEST_URL: cubrid+pycubrid://dba@localhost:33200/testdb", step
+        )
+        # Naming VERIFY_PATHS (command line or environment) makes make verify the
+        # partial golden-only check, so the broad smoke never exports it.
+        self.assertNotIn("VERIFY_PATHS=", workflow)
+        self.assertNotIn("VERIFY_PATHS:", workflow)
+        self.assertNotIn("continue-on-error", workflow[start:upload])
+        # Two sequential AI agent runs on the same database, both kept (#426).
+        self.assertIn("make verify-ai-agent", workflow[repeat:upload])
+        self.assertIn(".live-evidence/ai-agent-run-1", workflow[repeat:upload])
+        self.assertIn(".live-evidence/ai-agent-run-2", workflow[repeat:upload])
+        # The dashboard gets its own database instead of replacing the examples one.
+        self.assertNotIn("docker stop", workflow)
+        self.assertNotIn("templates/dashboard/tests", workflow)
         self.assertIn("if: always()", workflow[report:])
         self.assertIn("SMOKE_RESULT: ${{ job.status }}", workflow[report:])
 
