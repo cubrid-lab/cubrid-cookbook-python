@@ -108,6 +108,11 @@ The benchmarks and the migration examples use fixed table names (`cookbook_fetch
 `cookbook_jdbc_*`, `cookbook_sensors`). Do not run `make spec-12` at the same time as another `make spec-12`,
 `make verify` or a manual benchmark run against the same database: they would drop each other's tables.
 
+CI runs `make spec-12` in the smoke lanes, after `make verify` in the same job: on CUBRID 11.2 and 11.4 for
+every push to `main`, the nightly schedule and release verification, and on CUBRID 11.4 for pull requests that
+change `performance/` or the test module. The JUnit report is uploaded as part of the job's
+`spec-evidence-cubrid-<version>` artifact.
+
 ## Key Takeaways
 
 1. **≤ 500 rows** (historical, pycubrid 0.5.0): Network + server time dominates — client-side optimization has minimal effect

@@ -525,6 +525,18 @@ jobs:
         with:
           cubrid-version: "11.4"
           verify-paths: ${{ needs.classify.outputs.verify_paths }}
+      - name: Upload spec evidence
+        # JUnit reports of the make spec-* lanes the smoke action ran.
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spec-evidence-cubrid-11.4
+          path: .spec-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+          # A re-run of a failed job replaces its earlier evidence.
+          overwrite: true
 
   smoke-112:
     name: Smoke Tests (CUBRID 11.2)
@@ -545,6 +557,18 @@ jobs:
         with:
           cubrid-version: "11.2"
           verify-paths: ${{ needs.classify.outputs.verify_paths }}
+      - name: Upload spec evidence
+        # JUnit reports of the make spec-* lanes the smoke action ran.
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spec-evidence-cubrid-11.2
+          path: .spec-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+          # A re-run of a failed job replaces its earlier evidence.
+          overwrite: true
 
   # Advisory only (#239), never part of ci-gate: the weekly schedule also runs
   # representative goldens against pycubrid and sqlalchemy-cubrid `main`

@@ -138,6 +138,14 @@ runs:
         printf '### PR smoke verify scope: `%s`\n' "$VERIFY_PATHS" >> "$GITHUB_STEP_SUMMARY"
         make verify VERIFY_PATHS="$VERIFY_PATHS"
 
+    - name: Run spec 12 lane (migration goldens and benchmarks)
+      shell: bash
+      run: |
+        set -euo pipefail
+        # After make verify, never beside it: both use fixed table names on this
+        # testdb. Fails closed (CUBRID_SPEC_GATE=1); JUnit in .spec-evidence/.
+        timeout 10m make spec-12
+
     - name: Smoke test cubrid-mcp-server
       shell: bash
       run: python scripts/mcp_smoke.py

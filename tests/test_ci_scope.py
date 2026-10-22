@@ -132,9 +132,21 @@ class ClassifierTests(unittest.TestCase):
                 self.assertEqual(selected(result), {"smoke_114"})
                 self.assertEqual(result["verify_paths"], ".")
 
+    def test_performance_change_runs_the_smoke_lane(self) -> None:
+        # make spec-12 runs the benchmarks inside the smoke lane (#428).
+        for path in (
+            "performance/bulk-insert/benchmark.py",
+            "tests/test_performance_benchmarks.py",
+        ):
+            with self.subTest(path=path):
+                result = scope(path)
+                self.assertEqual(selected(result), {"smoke_114"})
+                self.assertEqual(result["verify_paths"], ".")
+        result = scope("performance/README.md")
+        self.assertEqual(selected(result), set())
+
     def test_example_files_without_live_consumer_stay_offline(self) -> None:
         result = scope(
-            "performance/bulk-insert/bench.py",
             "quickstart/5min-fastapi/main.py",
             "fundamentals/parameterized-queries/04_parameterized.py",
         )
@@ -561,6 +573,10 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn('make verify VERIFY_PATHS="$VERIFY_PATHS"', action)
         self.assertIn("VERIFY_PATHS: ${{ inputs.verify-paths }}", action)
         self.assertIn("tests/test_ai_agent.py", action)
+        # spec 12 runs after make verify, never beside it (#428).
+        for text in (action, SMOKE):
+            verify = text.index('make verify VERIFY_PATHS="')
+            self.assertGreater(text.index("make spec-12\n"), verify)
         self.assertIn("python scripts/mcp_smoke.py", action)
         self.assertIn("release_smoke.py freeze", action)
         self.assertNotIn("uses:", action)  # no unpinned/unmanaged actions

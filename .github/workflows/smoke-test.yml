@@ -428,6 +428,13 @@ jobs:
       - name: Run make verify
         run: make verify VERIFY_PATHS="${VERIFY_PATHS:-.}"
 
+      - name: Run spec 12 lane (migration goldens and benchmarks)
+        # After make verify, never beside it: the migration goldens and the
+        # benchmarks use fixed table names on this testdb. CUBRID_SPEC_GATE=1
+        # fails an unreachable database or any skipped test (JUnit in .spec-evidence/).
+        timeout-minutes: 10
+        run: make spec-12
+
       - name: Smoke test cubrid-mcp-server
         # Real-usage tool-surface smoke; the contract lives in scripts/mcp_smoke.py
         # and is shared with the ci.yml pull-request smoke lanes.
@@ -615,6 +622,19 @@ jobs:
             exit 1
           fi
           docker rm -f "$dashboard_id"
+
+      - name: Upload spec evidence
+        # JUnit reports of the make spec-* lanes. A release workflow call skips
+        # it, so no artifact is written into the calling repository's run.
+        if: always() && env.RELEASE_WORKFLOW_CALL != 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spec-evidence-cubrid-${{ matrix.cubrid }}${{ matrix.python != '3.12' && format('-py{0}', matrix.python) || '' }}
+          path: .spec-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: true
 
       - name: Report release smoke result
         if: always()

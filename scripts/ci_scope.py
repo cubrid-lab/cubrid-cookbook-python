@@ -153,11 +153,13 @@ FAMILIES = (
 )
 # AI-agent examples run inside the smoke lane (no expected/ goldens).
 AI_AGENT = ("templates/ai-agent/*", "tests/test_ai_agent.py")
+# The benchmarks run inside the smoke lane through `make spec-12` (#428), which
+# also re-runs the migration goldens; no expected/ goldens of their own.
+PERFORMANCE = ("performance/*", "tests/test_performance_benchmarks.py")
 # Example directories with no live consumer (no goldens, no live suite); the
 # offline checks cover them. Other files in example trees outside a golden root
 # (e.g. a shared helper) fail closed to a full 11.4 verify.
 NO_LIVE_CONSUMER = (
-    "performance/*",
     "quickstart/5min-fastapi/*",
     "fundamentals/parameterized-queries/*",
 )
@@ -295,6 +297,8 @@ def classify(
                 cqrs_dual = True
         elif _match(path, AI_AGENT):
             lanes["smoke_114"] = full_verify = True
+        elif _match(path, PERFORMANCE):
+            lanes["smoke_114"] = True
         elif root is not None or _match(path, COMPAT + NO_LIVE_CONSUMER + TOOLING):
             pass
         elif _match(path, EXAMPLE_TREES):

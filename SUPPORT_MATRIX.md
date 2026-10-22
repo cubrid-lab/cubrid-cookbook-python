@@ -245,6 +245,12 @@ when a row no longer matches the repository. Verification is split:
   leaves the table and its rows intact. `make spec-11` runs both suites
   fail-closed (no URL, an unreachable database or a skip fails).
   `tests/test_ai_agent_offline.py` checks ID handling, MCP errors and cleanup.
+- The **performance benchmarks** (`performance/*/benchmark.py`, not counted
+  below) have no goldens; `make spec-12` checks that each one finishes, prints
+  its full workload with finite timings and drops its tables, and re-runs the
+  five migration goldens. The smoke lanes run it after `make verify` on **11.2
+  and 11.4** for every push to `main`, nightly and release verification, and on
+  11.4 for pull requests that change `performance/`.
 - The **Celery async-worker** database tasks run through
   `templates/async-worker/tests` without a Redis broker or worker. A dedicated
   CUBRID 11.4 job gates pull requests that touch it; after `make verify`, the non-PR

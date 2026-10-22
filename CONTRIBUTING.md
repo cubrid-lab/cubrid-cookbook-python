@@ -212,7 +212,7 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 | Tier | When | What runs |
 |------|------|-----------|
 | 1 — cheap checks | every pull request | Ruff, `make check`, docs-sync, docs-check, doc-lint, classification and the gate; the strict docs-site build |
-| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples; AI-agent code or other files in example trees → the same lane with a full `make verify` |
+| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify` scoped to the touched examples; AI-agent code, `performance/` or other files in example trees → the same lane with a full `make verify` |
 | 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with full `make verify`, Python 3.11 + 3.14 compatibility |
 | 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
 | 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | every golden plus all Flask/FastAPI, async-worker, Django and dashboard suites on CUBRID 11.2 + 11.4 (Python 3.12); a release verification adds one CUBRID 11.4 cell on Python 3.11, the supported minimum |
@@ -231,10 +231,16 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 - CUBRID 11.2 runs on a pull request only for version-sensitive changes:
   `smoke-test.yml`, `scripts/release_smoke.py`, `scripts/mcp_smoke.py`, the
   fan-out paths, or recipe 10's `requirements.txt` (CQRS job only).
-- Example directories with no live consumer (`performance/`, the FastAPI
-  quickstart, `fundamentals/parameterized-queries`) are covered by the offline
-  checks only, on every event. `performance/` has a local live check,
-  `make spec-12` (see [Spec 12 evidence](#spec-12-evidence)), that no CI lane runs.
+- Example directories with no live consumer (the FastAPI quickstart,
+  `fundamentals/parameterized-queries`) are covered by the offline checks only,
+  on every event.
+- Both smoke lanes (`.github/actions/pr-smoke` and `smoke-test.yml`) run
+  `make spec-12` (see [Spec 12 evidence](#spec-12-evidence)) after `make verify`
+  in the same job, never at the same time, on the same database. A pull request
+  that changes `performance/` or `tests/test_performance_benchmarks.py` selects
+  `Smoke Tests (CUBRID 11.4)`; `smoke-test.yml` runs it on CUBRID 11.2 and 11.4.
+  The JUnit report is uploaded with the job's `spec-evidence-cubrid-<version>`
+  artifact.
 - The Flask/FastAPI lane (#227) runs the `tests/` suite of each changed recipe
   root (`ci_scope.web_suites`: a `templates/flask/` or
   `templates/api-service-fastapi/recipes/` recipe, or the root FastAPI app), each
@@ -445,7 +451,8 @@ the report counts a skipped test. The scripts use fixed table names
 `cookbook_sensors`), so do not run `make spec-12` at the same time as another
 `make spec-12`, `make verify` or a manual benchmark run against the same database. Without the variable, `pytest tests/test_performance_benchmarks.py`
 skips when no database answers. A full run took about a minute on CUBRID 11.2
-(longer on slow machines; the `bulk-insert` per-row COMMIT dominates). When you
+(longer on slow machines; the `bulk-insert` per-row COMMIT dominates). CI runs
+it in both smoke lanes after `make verify` (see [CI tiers](#ci-tiers)). When you
 change a benchmark, run it twice in a row to show that no stale table is left behind.
 
 This is enforced: `scripts/check_expected_coverage.py` (run by `make verify` and
