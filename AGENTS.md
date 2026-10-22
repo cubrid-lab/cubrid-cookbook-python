@@ -158,9 +158,25 @@ Issues and implementation acceptance are repository-local: file work in the
 repository whose code, workflow, or documentation must change. Each repository
 owns its scope, priority, assignee, validation, release decision and closure.
 Every issue must be understandable without opening another repository's issue.
-Cross-repository links are allowed as technical references (Refs owner/repo#N),
-but do not transfer work or require another repository to close its issue.
-For changes to several repositories, create independent local issues and PRs.
+When several repositories need changes, create a separate, self-contained issue
+and PR in each repository. Never use an issue here as an organization-wide
+tracker, a shared implementation contract or an approval gate for other projects.
+Link another repository's issue only when its concrete technical behavior is
+essential evidence for local reproduction or verification; do not cross-link
+implementation issues by default or inherit another repository's acceptance
+criteria, ownership or closure requirements.
+
+Before publishing or editing an issue, inspect its title and full body:
+- Describe this repository's problem, evidence, affected files and actual Make
+  targets, expected behavior and checkable completion criteria.
+- Exclude contest/judging, assessment, submission, presentation rehearsal,
+  evaluation-tag/SHA freezes and event-timed implementation gates. Commit or
+  release identifiers belong only where needed to reproduce technical behavior.
+- Do not invent `make spec-*` targets, assume a sibling project's commands apply
+  here or prescribe a universal command/report format without checking this
+  repository's Makefile and CI.
+- Search for duplicate issues and conflicting target semantics before posting;
+  reread the saved title/body and correct misplaced scope or references.
 Never use issue auto-closing keywords with another repository's issue; its
 maintainer controls closure. The existing required PR title check rejects
 direct foreign-repository closing references in the PR body, the PR title and
