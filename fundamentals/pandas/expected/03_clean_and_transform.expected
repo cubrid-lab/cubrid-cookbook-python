@@ -12,16 +12,14 @@
 9         10          Jade        west          4900              0
 
 === Cleaned and transformed data ===
-   order_id customer_name  ... order_total_dollars  service_tier
-0         1         Alice  ...                52.0      standard
-1         2           Bob  ...               154.0      priority
-2         3          Cara  ...                86.0      priority
-3         4          Dion  ...                43.0      standard
-4         5          Evan  ...               212.0      priority
-5         6          Faye  ...                94.0      standard
-6         7          Gina  ...               128.0      priority
-7         8          Hugo  ...                67.0      standard
-8         9          Iris  ...               111.0      priority
-9        10          Jade  ...                49.0      standard
-
-[10 rows x 7 columns]
+   order_id customer_name region_name  order_total_cents  is_priority  order_total_dollars service_tier
+0         1         Alice       north               5200        False                 52.0     standard
+1         2           Bob        west              15400         True                154.0     priority
+2         3          Cara       north               8600         True                 86.0     priority
+3         4          Dion       south               4300        False                 43.0     standard
+4         5          Evan        west              21200         True                212.0     priority
+5         6          Faye        east               9400        False                 94.0     standard
+6         7          Gina       north              12800         True                128.0     priority
+7         8          Hugo       south               6700        False                 67.0     standard
+8         9          Iris        east              11100         True                111.0     priority
+9        10          Jade        west               4900        False                 49.0     standard
