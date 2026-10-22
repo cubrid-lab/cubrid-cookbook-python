@@ -103,15 +103,19 @@ class VerifyCommandTests(OrphanChecks):
         normalize: str | None = None,
         timeout: int | None = None,
         stdin: str | None = None,
+        target: str = "verify-goldens",
+        python: str | None = None,
+        extra: tuple[str, ...] = (),
     ):
-        command = ["make", "--no-print-directory", "-f", str(ROOT / "Makefile"), "verify"]
-        command.append(f"PYTHON={sys.executable}")
+        command = ["make", "--no-print-directory", "-f", str(ROOT / "Makefile"), target]
+        command.append(f"PYTHON={python or sys.executable}")
         if paths is not None:
             command.append(f"VERIFY_PATHS={paths}")
         if normalize is not None:
             command.append(f"NORMALIZE={normalize}")
         if timeout is not None:
             command.append(f"VERIFY_TIMEOUT={timeout}")
+        command.extend(extra)
         return subprocess.run(
             command,
             cwd=self.root,
@@ -218,6 +222,38 @@ class VerifyCommandTests(OrphanChecks):
                 result = self.verify(paths)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn(f"{count} passed, 0 failed, 0 skipped", result.stdout)
+
+    def test_verify_with_paths_is_a_reported_partial_golden_check(self) -> None:
+        self.example("first")
+        result = self.verify("first", target="verify")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("1 passed, 0 failed, 0 skipped", result.stdout)
+        self.assertIn("PARTIAL verification: golden outputs under 'first' only", result.stdout)
+        env = {**os.environ, "VERIFY_PATHS": "first"}
+        result = self.verify(env=env, target="verify")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("PARTIAL verification", result.stdout)
+
+    def test_verify_without_paths_runs_the_full_live_gate(self) -> None:
+        recorder = self.root / "python"
+        recorder.write_text('#!/bin/sh\necho "ARGS $* GATE=$CUBRID_LIVE_GATE"\n', encoding="utf-8")
+        recorder.chmod(0o755)
+        env = {k: v for k, v in os.environ.items() if k not in {"VERIFY_PATHS", "CUBRID_LIVE_GATE"}}
+        result = self.verify(env=env, target="verify", python=str(recorder))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("ARGS scripts/live_gate.py all GATE=1", result.stdout)
+        self.assertNotIn("PARTIAL", result.stdout)
+
+    def test_golden_results_are_recorded_for_the_live_gate(self) -> None:
+        self.example("first")
+        self.example("second", code="print('different')")
+        results = self.root / "results.tsv"
+        result = self.verify(extra=(f"VERIFY_RESULTS={results}",))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(
+            results.read_text(encoding="utf-8").splitlines(),
+            ["PASS\t./first/ok.py", "MISMATCH\t./second/ok.py"],
+        )
 
     def test_expected_file_names_with_spaces(self) -> None:
         self.example(name="two words")
@@ -341,26 +377,30 @@ def run_deps(cwd: Path) -> subprocess.CompletedProcess[str]:
 
 
 class DepsCommandTests(unittest.TestCase):
-    def test_installs_every_golden_root_requirements_in_one_call(self) -> None:
+    def test_installs_every_example_requirements_in_one_call(self) -> None:
         result = run_deps(ROOT)
         self.assertEqual(result.returncode, 0, result.stderr)
         commands = [line for line in result.stdout.splitlines() if line.startswith("PIP-ARGS ")]
         self.assertEqual(len(commands), 1, result.stdout)
         command = commands[0] + " "
         self.assertIn(" sqlalchemy-cubrid[pycubrid] ", command)
-        self.assertIn("PIP-ARGS install pytest ", command)
-        roots = sorted(
-            {
-                path.parent.parent.relative_to(ROOT)
-                for path in ROOT.glob("**/expected/*.expected")
-                if not any(part.startswith(".") for part in path.relative_to(ROOT).parts)
-            }
+        self.assertIn("PIP-ARGS install pytest pytest-asyncio ", command)
+        requirements = sorted(
+            path.relative_to(ROOT)
+            for path in ROOT.glob("**/requirements.txt")
+            if not any(part.startswith(".") for part in path.relative_to(ROOT).parts)
         )
-        self.assertTrue(roots)
-        with_requirements = [root for root in roots if (ROOT / root / "requirements.txt").is_file()]
-        self.assertTrue(with_requirements)
-        for root in with_requirements:
-            self.assertIn(f" -r {(root / 'requirements.txt').as_posix()} ", command)
+        # Golden-backed examples and the live suites that make verify runs.
+        for expected in (
+            "fundamentals/pycubrid/requirements.txt",
+            "quickstart/5min-fastapi/requirements.txt",
+            "templates/ai-agent/requirements.txt",
+            "templates/dashboard/requirements.txt",
+            "templates/django/requirements.txt",
+        ):
+            self.assertIn(Path(expected), requirements)
+        for path in requirements:
+            self.assertIn(f" -r {path.as_posix()} ", command)
 
     def test_requirements_path_with_whitespace_fails_make_deps(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -400,17 +440,26 @@ class DepsCommandTests(unittest.TestCase):
                 (root / name / "requirements.txt").touch()
                 if golden:
                     (root / name / "expected").mkdir()
-            result = subprocess.run(
-                [sys.executable, str(ROOT / "scripts/example_requirements.py")],
-                cwd=root,
-                capture_output=True,
-                text=True,
-                timeout=10,
+            result, every = (
+                subprocess.run(
+                    [sys.executable, str(ROOT / "scripts/example_requirements.py"), *flags],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                for flags in ((), ("--all",))
             )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             result.stdout.splitlines(),
             ["golden/requirements.txt", "nested/golden/requirements.txt"],
+        )
+        # --all (make deps) adds non-golden examples but still skips hidden directories.
+        self.assertEqual(every.returncode, 0, every.stderr)
+        self.assertEqual(
+            every.stdout.splitlines(),
+            ["golden/requirements.txt", "nested/golden/requirements.txt", "plain/requirements.txt"],
         )
 
 

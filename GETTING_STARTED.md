@@ -100,12 +100,15 @@ Use a Python 3.11+ virtual environment:
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate   # Python 3.11 or later
+make deps                     # drivers, pytest and every example's requirements
+make test                     # unit and mocked tests: no database, no Docker
 make up                       # start CUBRID and wait until it is ready
-make deps                     # drivers, pytest and every golden-backed example's requirements
-make verify                   # runs every golden-backed example against your local CUBRID
+make verify-goldens           # runs every golden-backed example against your local CUBRID
 ```
 
-`make deps` installs everything in one pip call and honours `PIP_CONSTRAINT`. `make verify` stops early with "run `make deps` first" when an example requirement is missing, limits each script to `VERIFY_TIMEOUT` seconds (default 60), and reports each result as pass, mismatch, exec error, timeout, normalizer/read error or skip.
+`make deps` installs everything in one pip call and honours `PIP_CONSTRAINT`. `make verify-goldens` stops early with "run `make deps` first" when an example requirement is missing, limits each script to `VERIFY_TIMEOUT` seconds (default 60), and reports each result as pass, mismatch, exec error, timeout, normalizer/read error or skip.
+
+`make verify` is the full live verification: every golden plus the FastAPI quickstart, Flask/FastAPI, Django/Celery, Streamlit, AI agent/MCP/RAG, migration and performance suites. Besides the `make up` database it needs two dedicated, empty CUBRID databases in `CUBRID_TEST_URL` and `CUBRID_DASHBOARD_TEST_URL`, fails if anything is unreachable, skipped or missing, and writes its results to `.live-evidence/`. [CONTRIBUTING.md](CONTRIBUTING.md#live-verification) shows how to start them and how to run a single suite (`make verify-web`, `make verify-ai-agent`, …).
 
 ## Where to go next
 

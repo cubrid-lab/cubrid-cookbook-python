@@ -112,13 +112,15 @@ the nightly schedule and release verification, and the CUBRID 11.4 pull-request
 smoke lane runs it twice when a pull request touches this template or golden
 examples, to catch stale demonstration keys after teardown.
 
-`make spec-11` runs the offline and live suites fail-closed
-(`CUBRID_SPEC_GATE=1`): a missing `CUBRID_TEST_URL`, an unreachable database or
-any skipped case fails, and the JUnit report is written to
-`.spec-evidence/spec-11.xml`:
+`make verify-ai-agent` (also part of the full `make verify`) runs the live suite
+fail-closed (`CUBRID_LIVE_GATE=1`): a missing `CUBRID_TEST_URL`, an unreachable
+database, a database that already holds `cookbook_*` tables, a table left behind or
+any skipped case fails, and the JUnit report and a summary are written to
+`.live-evidence/ai-agent/`. Point it at a dedicated, empty database, not the
+`make up` database the golden examples use; `make test` runs the offline suite:
 
 ```bash
-CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" make spec-11
+CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33005/testdb" make verify-ai-agent
 ```
 
 ## Architecture

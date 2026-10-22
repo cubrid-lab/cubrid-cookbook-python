@@ -1,5 +1,6 @@
 SHELL := /bin/bash
-.PHONY: help up down status clean deps verify demo lint test-offline check check-docs test-normalize check-coverage docs docs-check agent-eval-check spec-11 spec-08 spec-09 spec-10 spec-08-10
+.PHONY: help up down status clean deps verify verify-goldens demo lint test test-offline check check-docs test-normalize check-coverage docs docs-check agent-eval-check \
+	verify-quickstart verify-performance verify-web verify-django-celery verify-ai-agent verify-dashboard verify-templates
 
 DOCKER_COMPOSE := docker compose
 NORMALIZE := bash scripts/normalize_output.sh
@@ -17,15 +18,19 @@ VERIFY_PATHS ?= .
 # The slowest golden took 7.2s on CUBRID 11.4 (2026-10-09); 60s leaves room for
 # slower CI runners without letting a hang consume the job timeout.
 VERIFY_TIMEOUT ?= 60
-# Spec 08-10 evidence lanes (scripts/spec_gate.py) fail closed by default:
-# CUBRID_TEST_URL (and CUBRID_DASHBOARD_TEST_URL for spec-10) must name live
-# cubrid+pycubrid databases. CUBRID_SPEC_GATE=0 restores the suites' own skips
+# Golden results file (one "STATUS<TAB>target" line per golden) that
+# scripts/live_gate.py asks verify-goldens to append; empty means none.
+VERIFY_RESULTS ?=
+# make verify and the verify-* lanes (scripts/live_gate.py) fail closed by default:
+# CUBRID_TEST_URL and CUBRID_DASHBOARD_TEST_URL must name dedicated, empty
+# cubrid+pycubrid databases. CUBRID_LIVE_GATE=0 restores the suites' own skips
 # and SQLite fallbacks for local exploration (never a PASS).
-CUBRID_SPEC_GATE ?= 1
+CUBRID_LIVE_GATE ?= 1
+LIVE_GATE = CUBRID_LIVE_GATE=$(CUBRID_LIVE_GATE) $(PYTHON) scripts/live_gate.py
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
 up: ## Start CUBRID database
 	$(DOCKER_COMPOSE) up -d
@@ -43,18 +48,30 @@ clean: ## Stop and remove all data
 	$(DOCKER_COMPOSE) down -v
 	@echo "✓ Cleaned up all containers and volumes"
 
-deps: ## Install the drivers, pytest and every golden-backed example's requirements (one pip call; honours PIP_CONSTRAINT)
+deps: ## Install the drivers, pytest, pytest-asyncio and every example's requirements, all that make verify needs (one pip call; honours PIP_CONSTRAINT)
 	@set -f; \
-	files=$$($(PYTHON) scripts/example_requirements.py) || exit 1; \
+	files=$$($(PYTHON) scripts/example_requirements.py --all) || exit 1; \
 	if [ -z "$$files" ]; then \
-		echo "ERROR: No golden-backed requirements.txt found; run make deps from the repository root" >&2; \
+		echo "ERROR: No example requirements.txt found; run make deps from the repository root" >&2; \
 		exit 1; \
 	fi; \
 	set --; for file in $$files; do set -- "$$@" -r "$$file"; done; \
-	echo "$(PIP) install pytest 'sqlalchemy-cubrid[pycubrid]' $$*"; \
-	$(PIP) install pytest 'sqlalchemy-cubrid[pycubrid]' "$$@"
+	echo "$(PIP) install pytest pytest-asyncio 'sqlalchemy-cubrid[pycubrid]' $$*"; \
+	$(PIP) install pytest pytest-asyncio 'sqlalchemy-cubrid[pycubrid]' "$$@"
 
-verify: check-coverage ## Verify example outputs against expected results (VERIFY_PATHS scopes the search roots, VERIFY_TIMEOUT limits each script)
+# `make verify` alone is the full live verification (scripts/live_gate.py all).
+# Naming VERIFY_PATHS (command line or environment, as CI does) asks for the
+# partial, golden-output-only check of those roots instead.
+ifneq ($(filter command line environment environment override,$(origin VERIFY_PATHS)),)
+verify: verify-goldens
+	@echo "PARTIAL verification: golden outputs under '$(VERIFY_PATHS)' only; no live pytest suite ran."
+	@echo "Run make verify without VERIFY_PATHS for the full verification."
+else
+verify: ## Full live verification: every golden plus every live pytest suite, fail-closed (VERIFY_PATHS=<dirs> runs only those goldens, a partial check)
+	$(LIVE_GATE) all
+endif
+
+verify-goldens: check-coverage ## Compare example outputs with their goldens (VERIFY_PATHS scopes the search roots, VERIFY_TIMEOUT limits each script)
 	@echo "Verifying example outputs in: $(VERIFY_PATHS) (timeout $(VERIFY_TIMEOUT)s per script)"
 	@set -o pipefail; \
 	roots=( $(VERIFY_PATHS) ); \
@@ -72,6 +89,10 @@ verify: check-coverage ## Verify example outputs against expected results (VERIF
 	annotate() { \
 		if [ -n "$$GITHUB_ACTIONS" ]; then echo "::error file=$${2#./},title=make verify $$1::$$3"; fi; \
 	}; \
+	results='$(VERIFY_RESULTS)'; \
+	record() { \
+		if [ -n "$$results" ]; then printf '%s\t%s\n' "$$1" "$$2" >> "$$results"; fi; \
+	}; \
 	PASS=0; MISMATCH=0; EXEC=0; TIMEOUT=0; NORMALIZE=0; READ=0; SKIP=0; \
 	while IFS= read -r expected; do \
 		dir=$$(dirname "$$(dirname "$$expected")"); \
@@ -79,6 +100,7 @@ verify: check-coverage ## Verify example outputs against expected results (VERIF
 		script="$$dir/$$base.py"; \
 		if [ ! -f "$$script" ]; then \
 			echo "  ? SKIP $$expected (no matching script)"; \
+			record SKIP "$$expected"; \
 			SKIP=$$((SKIP + 1)); \
 			continue; \
 		fi; \
@@ -89,6 +111,7 @@ verify: check-coverage ## Verify example outputs against expected results (VERIF
 			echo "  ⏱ TIMEOUT $$script (over $(VERIFY_TIMEOUT)s); last 20 lines:"; \
 			tail -n 20 "$$raw" | sed 's/^/      /'; \
 			annotate TIMEOUT "$$script" "exceeded VERIFY_TIMEOUT=$(VERIFY_TIMEOUT)s"; \
+			record TIMEOUT "$$script"; \
 			TIMEOUT=$$((TIMEOUT + 1)); \
 			continue; \
 		fi; \
@@ -96,28 +119,33 @@ verify: check-coverage ## Verify example outputs against expected results (VERIF
 			echo "  ✗ EXEC-ERROR $$script (exit $$status); last 20 lines:"; \
 			tail -n 20 "$$raw" | sed 's/^/      /'; \
 			annotate EXEC-ERROR "$$script" "script exited with status $$status"; \
+			record EXEC-ERROR "$$script"; \
 			EXEC=$$((EXEC + 1)); \
 			continue; \
 		fi; \
 		if ! actual=$$($(NORMALIZE) < "$$raw"); then \
 			echo "  ✗ NORMALIZE-ERROR $$script (output normalizer failed)"; \
 			annotate NORMALIZE-ERROR "$$script" "output normalizer failed"; \
+			record NORMALIZE-ERROR "$$script"; \
 			NORMALIZE=$$((NORMALIZE + 1)); \
 			continue; \
 		fi; \
 		if ! expected_content=$$(cat "$$expected"); then \
 			echo "  ✗ READ-ERROR $$expected (golden read error)"; \
 			annotate READ-ERROR "$$expected" "golden read error"; \
+			record READ-ERROR "$$expected"; \
 			READ=$$((READ + 1)); \
 			continue; \
 		fi; \
 		if [ "$$actual" = "$$expected_content" ]; then \
 			echo "  ✓ PASS $$script"; \
+			record PASS "$$script"; \
 			PASS=$$((PASS + 1)); \
 		else \
 			echo "  ✗ MISMATCH $$script"; \
 			diff <(echo "$$actual") <(echo "$$expected_content") || true; \
 			annotate MISMATCH "$$script" "output differs from $$expected"; \
+			record MISMATCH "$$script"; \
 			MISMATCH=$$((MISMATCH + 1)); \
 		fi; \
 	done <<< "$$expected_files"; \
@@ -132,7 +160,7 @@ lint: ## Check Python lint and formatting
 	$(RUFF) check .
 	$(RUFF) format --check .
 
-test-offline: ## Run mocked/offline suites in separate processes (no database required)
+test: ## Run the unit and mocked suites in separate processes (no database, no Docker)
 	$(PYTHON) -m unittest discover -s tests -p 'test_mcp_smoke.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_check_expected_coverage.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_example_requirements.py' -v
@@ -156,19 +184,28 @@ test-offline: ## Run mocked/offline suites in separate processes (no database re
 	$(PYTHON) -m unittest discover -s tests -p 'test_table_prefix.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_quickstart_config.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_quickstart_cleanup.py' -v
-	$(PYTHON) -m unittest discover -s tests -p 'test_spec_gate.py' -v
+	$(PYTHON) -m unittest discover -s tests -p 'test_live_gate.py' -v
 
-spec-08: ## Spec 08 evidence: Flask/FastAPI suites on live CUBRID (JUnit + summary in .spec-evidence/)
-	CUBRID_SPEC_GATE=$(CUBRID_SPEC_GATE) $(PYTHON) scripts/spec_gate.py spec-08
+verify-quickstart: ## Live lane: FastAPI quickstart /health and CRUD on the make up database
+	$(LIVE_GATE) quickstart
 
-spec-09: ## Spec 09 evidence: Django bridge and direct Celery task suites on live CUBRID
-	CUBRID_SPEC_GATE=$(CUBRID_SPEC_GATE) $(PYTHON) scripts/spec_gate.py spec-09
+verify-performance: ## Live lane: 5 migration goldens + 3 benchmarks on the make up database
+	$(LIVE_GATE) performance
 
-spec-10: ## Spec 10 evidence: dashboard AppTest suite on an isolated CUBRID (CUBRID_DASHBOARD_TEST_URL)
-	CUBRID_SPEC_GATE=$(CUBRID_SPEC_GATE) $(PYTHON) scripts/spec_gate.py spec-10
+verify-web: ## Live lane: Flask/FastAPI template suites on CUBRID_TEST_URL
+	$(LIVE_GATE) web
 
-spec-08-10: ## Run the spec 08, 09 and 10 evidence lanes in order
-	CUBRID_SPEC_GATE=$(CUBRID_SPEC_GATE) $(PYTHON) scripts/spec_gate.py spec-08 spec-09 spec-10
+verify-django-celery: ## Live lane: Django bridge and direct Celery task suites on CUBRID_TEST_URL
+	$(LIVE_GATE) django-celery
+
+verify-ai-agent: ## Live lane: AI agent state, MCP and RAG suite on CUBRID_TEST_URL
+	$(LIVE_GATE) ai-agent
+
+verify-dashboard: ## Live lane: dashboard AppTest suite on an isolated CUBRID_DASHBOARD_TEST_URL
+	$(LIVE_GATE) dashboard
+
+verify-templates: ## Live lanes: verify-web, verify-django-celery and verify-dashboard in order
+	$(LIVE_GATE) web django-celery dashboard
 
 agent-eval-check: ## Validate the agent-evals tasks and re-grade their fixtures (offline; no model, no DB)
 	$(PYTHON) scripts/agent_eval.py validate
@@ -188,7 +225,9 @@ check-docs: ## Check documentation coverage and its doctests
 	$(PYTHON) -m unittest discover -s tests -p 'test_lint_changelog.py' -v
 	$(PYTHON) scripts/lint_changelog.py
 
-check: lint test-offline check-docs check-coverage test-normalize ## Run offline contributor checks
+test-offline: test ## Alias of make test
+
+check: lint test check-docs check-coverage test-normalize ## Run offline contributor checks
 
 test-normalize: ## Run before/after unit checks for scripts/normalize_output.sh
 	bash scripts/test_normalize_output.sh
@@ -196,7 +235,7 @@ test-normalize: ## Run before/after unit checks for scripts/normalize_output.sh
 check-coverage: ## Fail if any opted-in example script lacks an .expected golden
 	$(PYTHON) scripts/check_expected_coverage.py
 
-demo: up verify ## Full demo: start DB, verify all examples
+demo: up verify-goldens ## Demo: start DB, compare every example with its golden
 	@echo ""
 	@echo "✓ Demo complete — all examples verified against CUBRID"
 
@@ -204,40 +243,6 @@ docs-check: ## Check Markdown links, anchors, fences and recipe commands (needs 
 	$(PYTHON) -m pytest tests/test_check_docs_links.py -q
 	$(PYTHON) scripts/check_docs_links.py
 
-spec-11: ## Spec 11 AI-agent lane: fail-closed live state/MCP/RAG checks (needs CUBRID_TEST_URL), JUnit in .spec-evidence/
-	@mkdir -p .spec-evidence
-	CUBRID_SPEC_GATE=1 $(PYTHON) -m pytest tests/test_ai_agent_offline.py tests/test_ai_agent.py \
-		-v --tb=short -rs -p no:cacheprovider --junitxml=.spec-evidence/spec-11.xml
-	@$(PYTHON) -c 'import sys, xml.etree.ElementTree as ET; \
-		root = ET.parse(sys.argv[1]).getroot(); \
-		suite = root if root.tag == "testsuite" else root.find("testsuite"); \
-		tests, skipped = int(suite.get("tests")), int(suite.get("skipped")); \
-		print(f"spec-11 evidence: {tests} tests, {skipped} skipped -> {sys.argv[1]}"); \
-		sys.exit(0 if tests and not skipped else "spec-11: a skipped or empty lane is a failure")' \
-		.spec-evidence/spec-11.xml
-
 docs: ## Stage repo docs into docs/ and build the site locally (strict)
 	bash scripts/stage_docs.sh
 	mkdocs build --strict
-
-.PHONY: spec-03
-spec-03: ## Spec 03 evidence: FastAPI quickstart /health and CRUD on live CUBRID (fails closed; JUnit in .spec-evidence/)
-	@mkdir -p .spec-evidence
-	CUBRID_SPEC_GATE=1 CUBRID_TEST_URL="$${CUBRID_TEST_URL:-cubrid+pycubrid://dba@localhost:33000/testdb}" \
-		$(PYTHON) -m pytest quickstart/5min-fastapi/tests/test_live.py -v -rs \
-		--junitxml=.spec-evidence/spec-03.xml
-
-.PHONY: spec-12
-SPEC_EVIDENCE_DIR ?= .spec-evidence
-
-spec-12: ## Spec 12 live evidence: 5 migration goldens + 3 benchmarks, fail-closed (JUnit XML in .spec-evidence/)
-	@mkdir -p $(SPEC_EVIDENCE_DIR)
-	CUBRID_SPEC_GATE=1 $(PYTHON) -m pytest tests/test_performance_benchmarks.py -v -p no:cacheprovider \
-		-o junit_suite_name=spec-12 --junitxml=$(SPEC_EVIDENCE_DIR)/spec-12.xml
-	@$(PYTHON) -c 'import sys, xml.etree.ElementTree as ET; \
-		root = ET.parse(sys.argv[1]).getroot(); \
-		suites = [root] if root.tag == "testsuite" else list(root); \
-		total = sum(int(s.get("tests", 0)) for s in suites); \
-		skipped = sum(int(s.get("skipped", 0)) for s in suites); \
-		print(f"spec-12 evidence: {total} tests, {skipped} skipped -> {sys.argv[1]}"); \
-		sys.exit(1 if skipped or not total else 0)' $(SPEC_EVIDENCE_DIR)/spec-12.xml

@@ -14,10 +14,10 @@ import pytest
 from sqlalchemy.engine import make_url
 
 CUBRID_TEST_URL = os.getenv("CUBRID_TEST_URL")
-# Spec 11 lane (`make spec-11`): a missing live URL fails instead of skipping.
-SPEC_GATE = os.getenv("CUBRID_SPEC_GATE") == "1"
+# Under the live gate (`make verify-ai-agent`, `make verify`) a missing URL fails instead of skipping.
+LIVE_GATE = os.getenv("CUBRID_LIVE_GATE") == "1"
 pytestmark = pytest.mark.skipif(
-    not CUBRID_TEST_URL and not SPEC_GATE,
+    not CUBRID_TEST_URL and not LIVE_GATE,
     reason="CUBRID_live instance URL (CUBRID_TEST_URL) not provided. Skipping live DB tests.",
 )
 
@@ -36,8 +36,8 @@ def setup_database_url(monkeypatch, app_path):
     both shapes so a single env var still drives every recipe.
     """
     if not CUBRID_TEST_URL:
-        if SPEC_GATE:
-            pytest.fail("CUBRID_SPEC_GATE=1 requires CUBRID_TEST_URL; live tests must not skip")
+        if LIVE_GATE:
+            pytest.fail("CUBRID_LIVE_GATE=1 requires CUBRID_TEST_URL; live tests must not skip")
         return
 
     parsed = urlparse(CUBRID_TEST_URL)
@@ -713,7 +713,7 @@ def test_mcp_toolchain_protocol_and_read_only_state(app_path):
                 "params": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {},
-                    "clientInfo": {"name": "spec-11", "version": "1.0.0"},
+                    "clientInfo": {"name": "cookbook-ai-agent-test", "version": "1.0.0"},
                 },
             },
         )["result"]

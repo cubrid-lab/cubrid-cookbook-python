@@ -264,7 +264,7 @@ answer against the table through a separate connection: `/health` (`200`, and
 `503` when the database cannot be reached), creating an item, reading it by
 `id` and in the list, `404` for a missing `id`, `422` for an invalid body with
 no row written, and a rejected insert that leaves no row. Each test writes only
-rows whose `val` starts with its own random `spec03-` marker and deletes them
+rows whose `val` starts with its own random `live-qs-` marker and deletes them
 afterwards, so it never touches your items and can run again.
 
 With the database of step 2 running and the venv active:
@@ -276,8 +276,9 @@ CUBRID_TEST_URL=cubrid+pycubrid://dba@localhost:33000/testdb python -m pytest te
 The app always connects to port `33000` and database `testdb`, so the URL may
 change only the host. Without `CUBRID_TEST_URL` these tests skip; with it set
 and no database answering, they fail. From the repository root,
-`make spec-03` runs them with `CUBRID_SPEC_GATE=1`, which also turns a missing
-URL into a failure, and writes a JUnit report to `.spec-evidence/spec-03.xml`.
+`make verify-quickstart` (also part of the full `make verify`) runs them against
+`localhost:33000` with `CUBRID_LIVE_GATE=1`, which turns a skip into a failure, and
+writes a JUnit report and a summary to `.live-evidence/quickstart/`.
 
 ## What next?
 

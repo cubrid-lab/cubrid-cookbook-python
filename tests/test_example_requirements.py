@@ -84,6 +84,31 @@ class MissingDistributionsTests(unittest.TestCase):
             self.assertEqual(len(missing), 1)
             self.assertEqual(missing, [f"pkg ({req_file.as_posix()})"])
 
+    def test_all_examples_also_require_the_suite_test_tools(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            suite = root / "templates" / "app"
+            suite.mkdir(parents=True)
+            req_file = suite / "requirements.txt"
+            req_file.write_text("framework\n", encoding="utf-8")
+
+            def fake_distribution(name: str):
+                if name == "pytest":
+                    return mock.MagicMock()
+                raise metadata.PackageNotFoundError(name)
+
+            with mock.patch.object(
+                example_requirements.metadata, "distribution", side_effect=fake_distribution
+            ):
+                golden_only = example_requirements.missing_distributions([root])
+                every = example_requirements.missing_distributions([root], every=True)
+
+            self.assertEqual(golden_only, [])
+            self.assertEqual(
+                every,
+                [f"framework ({req_file.as_posix()})", "pytest-asyncio (live pytest suites)"],
+            )
+
 
 class MainCheckTests(unittest.TestCase):
     def test_main_check_returns_one_and_reports_missing_dependencies(self):

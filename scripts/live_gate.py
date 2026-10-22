@@ -1,29 +1,45 @@
 #!/usr/bin/env python3
-"""Rerunnable evidence lane for feature specs 08-10 (#421).
+"""Live CUBRID verification runner behind ``make verify`` and the ``make verify-*`` lanes (#416).
 
-Runs the existing template pytest suites -- it adds no test of its own -- one
-pytest process per suite (recipes share module names such as ``app``,
-``database`` and ``models``), and writes JUnit XML, logs and a grouped summary
-per spec into ``.spec-evidence/<spec>/``:
+It adds no test of its own: it reruns the golden-output comparison
+(``make verify-goldens``) and the existing pytest suites, one pytest process per
+suite (recipes share module names such as ``app``, ``database`` and
+``models``), and writes JUnit XML, logs and a grouped summary per lane into
+``.live-evidence/<lane>/``. Lanes, in the order ``all`` runs them:
 
-- spec-08: Flask recipe suites, FastAPI recipe suites and the root FastAPI
+- goldens: every ``expected/*.expected`` golden, compared by ``make verify-goldens``.
+- quickstart: FastAPI quickstart ``/health`` and CRUD (#420).
+- performance: Java -> Python migration goldens and the fetch/bulk/pooling
+  benchmarks (#423).
+- web: Flask recipe suites, FastAPI recipe suites and the root FastAPI
   template's SQLite startup test (``/health``; startup only, not live evidence).
-- spec-09: Django/SQLAlchemy bridge and async-worker suites. Celery tasks run
-  directly (``.run()`` / eager ``.apply()``) without Redis or a worker.
-- spec-10: Streamlit dashboard AppTest suite on an isolated database
+- django-celery: Django/SQLAlchemy bridge and async-worker suites. Celery tasks
+  run directly (``.run()`` / eager ``.apply()``) without Redis or a worker.
+- ai-agent: AI agent state, MCP and RAG scripts, run twice (#422).
+- dashboard: Streamlit dashboard AppTest suite on an isolated database
   (``CUBRID_DASHBOARD_TEST_URL``), because the suite drops and recreates its
   own FK-linked tables.
 
-With ``CUBRID_SPEC_GATE=1`` (or ``--gate``) the lane is fail-closed: a missing,
-non-``cubrid+pycubrid`` or unreachable URL, a dashboard URL equal to the main
-one, a database that already holds ``cookbook_*`` tables, a suite that
+Databases: the goldens, quickstart and performance lanes use the database the
+examples hard-code (``localhost:33000/testdb``, started by ``make up``);
+web, django-celery and ai-agent use ``CUBRID_TEST_URL``; dashboard uses
+``CUBRID_DASHBOARD_TEST_URL``. Both URLs must name dedicated, empty databases,
+distinct from each other and from the examples database.
+
+With ``CUBRID_LIVE_GATE=1`` (or ``--gate``) a lane is fail-closed: a missing,
+non-``cubrid+pycubrid`` or unreachable URL, URLs that share a database, a
+dedicated database that already holds ``cookbook_*`` tables, a suite that
 collected no test, skipped any test, printed a database header other than
 live CUBRID, or left behind or dropped tables all fail with a nonzero exit.
 Without the gate the suites keep their existing behavior (skips, SQLite
-fallbacks), and a spec is at best INCOMPLETE, never PASS.
+fallbacks), and a lane is at best INCOMPLETE, never PASS. ``all`` also checks
+every URL, server and example dependency before it runs anything, and writes
+``verify-summary.json``/``verify-summary.txt`` with golden and pytest results
+reported separately.
 
-    CUBRID_SPEC_GATE=1 CUBRID_TEST_URL=cubrid+pycubrid://dba@localhost:33000/testdb \\
-        python scripts/spec_gate.py spec-08 spec-09
+    CUBRID_TEST_URL=cubrid+pycubrid://dba@localhost:33005/testdb \\
+    CUBRID_DASHBOARD_TEST_URL=cubrid+pycubrid://dba@localhost:33006/testdb \\
+        python scripts/live_gate.py --gate all
 """
 
 from __future__ import annotations
@@ -43,10 +59,13 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_EVIDENCE_DIR = ".spec-evidence"
-GATE_ENV = "CUBRID_SPEC_GATE"
+DEFAULT_EVIDENCE_DIR = ".live-evidence"
+GATE_ENV = "CUBRID_LIVE_GATE"
 LIVE_URL_ENV = "CUBRID_TEST_URL"
 DASHBOARD_URL_ENV = "CUBRID_DASHBOARD_TEST_URL"
+# The database every golden example, the quickstart app and the benchmarks
+# hard-code: the docker-compose.yml service that `make up` starts.
+EXAMPLES_URL = "cubrid+pycubrid://dba@localhost:33000/testdb"
 REQUIRED_DRIVER = "cubrid+pycubrid"
 LIVE_HEADER = re.compile(r"^database: live CUBRID \(", re.MULTILINE)
 GATE_ON = {"1", "true", "yes", "on"}
@@ -56,6 +75,7 @@ PACKAGES = (
     "pycubrid",
     "sqlalchemy",
     "sqlalchemy-cubrid",
+    "cubrid-mcp-server",
     "pytest",
     "flask",
     "flask-sqlalchemy",
@@ -63,12 +83,43 @@ PACKAGES = (
     "django",
     "celery",
     "streamlit",
+    "pandas",
+    "alembic",
 )
 
-# Database modes: "live" runs on CUBRID_TEST_URL, "dashboard" on
-# CUBRID_DASHBOARD_TEST_URL, "sqlite" is a by-design SQLite test (no URL).
+# Database modes: "examples" runs on EXAMPLES_URL (shared with the goldens by
+# design, so it gets no empty-database check), "live" on CUBRID_TEST_URL,
+# "dashboard" on CUBRID_DASHBOARD_TEST_URL, "sqlite" is a by-design SQLite test.
+# "keeps_tables" names tables a suite may create and keep (its app's own table).
 MANIFEST: dict[str, dict[str, Any]] = {
-    "spec-08": {
+    "goldens": {
+        "title": "Golden output comparisons (make verify-goldens) on the examples database",
+        "suites": [{"goldens": ".", "database": "examples"}],
+    },
+    "quickstart": {
+        "title": "FastAPI quickstart /health and CRUD on live CUBRID",
+        "suites": [
+            {
+                "glob": "quickstart/5min-fastapi/tests/test_live.py",
+                "database": "examples",
+                "keeps_tables": ["cookbook_quickstart_items"],
+                "note": "app.py connects to port 33000 and database testdb only, so the "
+                "suite runs on the examples database; the app keeps its own table.",
+            },
+        ],
+    },
+    "performance": {
+        "title": "Java -> Python migration goldens and performance benchmarks on live CUBRID",
+        "suites": [
+            {
+                "glob": "tests/test_performance_benchmarks.py",
+                "database": "examples",
+                "note": "The scripts hard-code localhost:33000/testdb; timings are parsed, "
+                "never compared.",
+            },
+        ],
+    },
+    "web": {
         "title": "Flask and FastAPI templates on live CUBRID",
         "suites": [
             {"glob": "templates/flask/*/tests", "database": "live", "live_header": True},
@@ -82,11 +133,11 @@ MANIFEST: dict[str, dict[str, Any]] = {
                 "database": "sqlite",
                 "note": "Root FastAPI template startup and /health on a throwaway SQLite "
                 "file by design; startup evidence only, not live CUBRID evidence and "
-                "not quickstart health coverage (spec 03).",
+                "not quickstart health coverage (quickstart lane).",
             },
         ],
     },
-    "spec-09": {
+    "django-celery": {
         "title": "Django bridge and Celery worker tasks on live CUBRID",
         "suites": [
             {
@@ -104,7 +155,18 @@ MANIFEST: dict[str, dict[str, Any]] = {
             },
         ],
     },
-    "spec-10": {
+    "ai-agent": {
+        "title": "AI agent state, MCP tools and RAG on live CUBRID",
+        "suites": [
+            {
+                "glob": "tests/test_ai_agent.py",
+                "database": "live",
+                "note": "Each script runs twice for repeatability; the suite drops only "
+                "its scripts' own tables before and after each case.",
+            },
+        ],
+    },
+    "dashboard": {
         "title": "Streamlit dashboard on an isolated live CUBRID database",
         "suites": [
             {
@@ -117,6 +179,17 @@ MANIFEST: dict[str, dict[str, Any]] = {
         ],
     },
 }
+# `all` (make verify): goldens and the examples-database suites first, then the
+# dedicated databases. Lanes run one at a time, so fixed-table suites never overlap.
+FULL_ORDER = (
+    "goldens",
+    "quickstart",
+    "performance",
+    "web",
+    "django-celery",
+    "ai-agent",
+    "dashboard",
+)
 
 
 @dataclass
@@ -149,13 +222,16 @@ def gate_enabled(flag: bool, environ: dict[str, str] | os._Environ[str] = os.env
     )
 
 
-def expand_suites(spec: str, root: Path = ROOT) -> list[dict[str, Any]]:
-    """Expand a spec's manifest globs into sorted suite directories (relative paths)."""
+def expand_suites(lane: str, root: Path = ROOT) -> list[dict[str, Any]]:
+    """Expand a lane's manifest globs into sorted suite paths (relative; directories or files)."""
     suites = []
-    for entry in MANIFEST[spec]["suites"]:
-        matches = sorted(p for p in root.glob(entry["glob"]) if p.is_dir())
+    for entry in MANIFEST[lane]["suites"]:
+        if "goldens" in entry:
+            suites.append({**entry, "path": entry["goldens"]})
+            continue
+        matches = sorted(p for p in root.glob(entry["glob"]) if p.is_dir() or p.is_file())
         if not matches:
-            raise SystemExit(f"{spec}: manifest glob {entry['glob']!r} matched no suite")
+            raise SystemExit(f"{lane}: manifest glob {entry['glob']!r} matched no suite")
         for match in matches:
             suites.append({**entry, "path": match.relative_to(root).as_posix()})
     return suites
@@ -173,7 +249,7 @@ def shown_url(url: str) -> str:
 def check_url(name: str, url: str | None) -> list[str]:
     """Reasons a URL cannot serve as gate evidence (empty when it is acceptable)."""
     if not url:
-        return [f"{name} is not set; the spec gate needs a live CUBRID database"]
+        return [f"{name} is not set; the live gate needs a live CUBRID database"]
     from sqlalchemy.engine import make_url
 
     try:
@@ -182,7 +258,7 @@ def check_url(name: str, url: str | None) -> list[str]:
         return [f"{name} is not a valid SQLAlchemy URL: {error}"]
     if parsed.drivername != REQUIRED_DRIVER:
         return [
-            f"{name} uses {parsed.drivername!r}; the spec gate requires a "
+            f"{name} uses {parsed.drivername!r}; the live gate requires a "
             f"{REQUIRED_DRIVER}:// URL (no SQLite or other fallback)"
         ]
     return []
@@ -201,16 +277,26 @@ def database_identity(url: str) -> tuple[str, int, str]:
 def preflight(
     needs: set[str], live_url: str | None, dashboard_url: str | None, gate: bool
 ) -> list[str]:
-    """Static gate checks for the URLs a spec needs (no connection is opened)."""
+    """Static gate checks for the URLs a lane needs (no connection is opened)."""
     if not gate:
         return []
     reasons: list[str] = []
-    if "live" in needs:
-        reasons += check_url(LIVE_URL_ENV, live_url)
-    if "dashboard" in needs:
-        problems = check_url(DASHBOARD_URL_ENV, dashboard_url)
+    examples = database_identity(EXAMPLES_URL)
+    for mode, name, url in (
+        ("live", LIVE_URL_ENV, live_url),
+        ("dashboard", DASHBOARD_URL_ENV, dashboard_url),
+    ):
+        if mode not in needs:
+            continue
+        problems = check_url(name, url)
         reasons += problems
-        if not problems and live_url and not check_url(LIVE_URL_ENV, live_url):
+        if not problems and database_identity(url or "") == examples:
+            reasons.append(
+                f"{name} points at the examples database ({shown_url(EXAMPLES_URL)}) that "
+                "make up starts and the goldens share; use a dedicated, empty database"
+            )
+    if "dashboard" in needs and not check_url(DASHBOARD_URL_ENV, dashboard_url):
+        if live_url and not check_url(LIVE_URL_ENV, live_url):
             if database_identity(live_url) == database_identity(dashboard_url or ""):
                 reasons.append(
                     f"{DASHBOARD_URL_ENV} points at the same database as {LIVE_URL_ENV}; "
@@ -230,10 +316,12 @@ def baseline_reasons(env_name: str, tables: set[str]) -> list[str]:
     ]
 
 
-def table_change_reasons(before: set[str], after: set[str]) -> list[str]:
+def table_change_reasons(
+    before: set[str], after: set[str], keeps: tuple[str, ...] | list[str] = ()
+) -> list[str]:
     """Tables a suite left behind or dropped, compared with its own pre-run snapshot."""
     reasons = []
-    if created := sorted(after - before):
+    if created := sorted(after - before - set(keeps)):
         reasons.append(f"left new tables behind: {created}")
     if dropped := sorted(before - after):
         reasons.append(f"dropped pre-existing tables: {dropped}")
@@ -296,7 +384,7 @@ def judge(result: SuiteResult, gate: bool, output: str, live_header: bool) -> No
     if result.failed or result.errors:
         reasons.append(f"{result.failed} failed, {result.errors} errors")
     if result.skipped and gate:
-        reasons.append(f"{result.skipped} skipped; the spec gate accepts no skipped test")
+        reasons.append(f"{result.skipped} skipped; the live gate accepts no skipped test")
     if gate and live_header and not LIVE_HEADER.search(output):
         reasons.append("pytest did not report the 'database: live CUBRID (...)' header")
     if reasons:
@@ -308,7 +396,7 @@ def judge(result: SuiteResult, gate: bool, output: str, live_header: bool) -> No
         result.status = "passed"
 
 
-def spec_status(results: list[SuiteResult], reasons: list[str], gate: bool) -> str:
+def lane_status(results: list[SuiteResult], reasons: list[str], gate: bool) -> str:
     """Only a gated run can PASS; an ungated one may have used skips or SQLite fallbacks."""
     if reasons or not results or any(r.status == "failed" for r in results):
         return "FAIL"
@@ -406,49 +494,135 @@ def suite_env(
 ) -> dict[str, str]:
     env = dict(os.environ)
     env.pop(LIVE_URL_ENV, None)
+    # The suites read the gate as exactly "1"; normalise any accepted spelling.
+    env[GATE_ENV] = "1" if gate else "0"
     if gate:
         # Ambient pytest options or plugins could deselect or skip tests unseen.
         env.pop("PYTEST_ADDOPTS", None)
         env.pop("PYTEST_PLUGINS", None)
-    url = {"live": live_url, "dashboard": dashboard_url}.get(database)
+    url = {"live": live_url, "dashboard": dashboard_url, "examples": EXAMPLES_URL}.get(database)
     if url:
         env[LIVE_URL_ENV] = url
     return env
 
 
-def run_spec(
-    spec: str, evidence_dir: Path, gate: bool, python: str, timeout: int
+GOLDEN_PASS = "PASS"
+GOLDEN_SKIP = "SKIP"
+
+
+def run_goldens(
+    suite: dict[str, Any], out_dir: Path, python: str, env: dict[str, str]
+) -> tuple[SuiteResult, str]:
+    """Run `make verify-goldens` and read its per-golden result lines (VERIFY_RESULTS)."""
+    results_file = out_dir / "results.tsv"
+    command = [
+        shutil.which("make") or "make",
+        "--no-print-directory",
+        "-f",
+        str(ROOT / "Makefile"),
+        "verify-goldens",
+        f"VERIFY_PATHS={suite['path']}",
+        f"VERIFY_RESULTS={results_file}",
+        f"PYTHON={python}",
+    ]
+    result = SuiteResult("golden outputs", suite["database"], command, note=suite.get("note", ""))
+    started = time.monotonic()
+    lines: list[str] = []
+    try:
+        # Stream: a full golden run takes minutes, and its PASS/MISMATCH lines are the log.
+        with subprocess.Popen(
+            command,
+            cwd=ROOT,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        ) as process:
+            assert process.stdout is not None
+            for line in process.stdout:
+                print(line, end="", flush=True)
+                lines.append(line)
+        result.returncode = process.returncode
+    except OSError as error:
+        result.reasons.append(f"could not run make verify-goldens: {error}")
+    result.duration = round(time.monotonic() - started, 2)
+    output = "".join(lines)
+    (out_dir / "goldens.log").write_text(output, encoding="utf-8")
+    rows = []
+    if results_file.is_file():
+        for row in results_file.read_text(encoding="utf-8").splitlines():
+            status, _, target = row.partition("\t")
+            rows.append({"id": target, "outcome": status})
+    result.cases = rows
+    result.tests = len(rows)
+    result.passed = sum(row["outcome"] == GOLDEN_PASS for row in rows)
+    result.skipped = sum(row["outcome"] == GOLDEN_SKIP for row in rows)
+    result.failed = result.tests - result.passed - result.skipped
+    if result.returncode not in (0, None):
+        result.reasons.append(f"make verify-goldens exited {result.returncode}")
+    if result.tests == 0:
+        result.reasons.append("no golden was compared")
+    if result.failed or result.skipped:
+        result.reasons.append(f"{result.failed} failed, {result.skipped} skipped goldens")
+    result.status = "failed" if result.reasons else "passed"
+    return result, output
+
+
+def probe_servers(
+    needs: set[str], live_url: str | None, dashboard_url: str | None, gate: bool
+) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """Probe each database a lane needs: version, reachability and (dedicated ones) emptiness."""
+    servers: dict[str, dict[str, Any]] = {}
+    reasons: list[str] = []
+    for mode, env_name, url in (
+        ("examples", "make up", EXAMPLES_URL),
+        ("live", LIVE_URL_ENV, live_url),
+        ("dashboard", DASHBOARD_URL_ENV, dashboard_url),
+    ):
+        if mode not in needs or not url or (mode != "examples" and check_url(env_name, url)):
+            continue
+        version, tables, error = probe(url)
+        servers[mode] = {"env": env_name, "url": shown_url(url), "version": version, "error": error}
+        if gate and error and mode == "examples":
+            reasons.append(
+                f"the examples database ({shown_url(url)}) is unreachable: {error}; run make up"
+            )
+        elif gate and error:
+            reasons.append(f"{env_name} is unreachable: {error}")
+        elif gate and mode != "examples":
+            # The examples database keeps the goldens' fixed tables by design.
+            reasons += baseline_reasons(env_name, tables or set())
+    return servers, reasons
+
+
+def run_lane(
+    lane: str, evidence_dir: Path, gate: bool, python: str, timeout: int
 ) -> dict[str, Any]:
     live_url = os.environ.get(LIVE_URL_ENV) or None
     dashboard_url = os.environ.get(DASHBOARD_URL_ENV) or None
-    suites = expand_suites(spec)
+    suites = expand_suites(lane)
     needs = {suite["database"] for suite in suites}
-    out_dir = evidence_dir / spec
+    out_dir = evidence_dir / lane
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
 
     reasons = preflight(needs, live_url, dashboard_url, gate)
-    servers: dict[str, dict[str, Any]] = {}
-    for mode, env_name, url in (
-        ("live", LIVE_URL_ENV, live_url),
-        ("dashboard", DASHBOARD_URL_ENV, dashboard_url),
-    ):
-        if mode not in needs or not url or check_url(env_name, url):
-            continue
-        version, tables, error = probe(url)
-        servers[mode] = {"env": env_name, "url": shown_url(url), "version": version, "error": error}
-        if gate:
-            reasons += (
-                [f"{env_name} is unreachable: {error}"]
-                if error
-                else baseline_reasons(env_name, tables or set())
-            )
+    servers, probe_reasons = probe_servers(needs, live_url, dashboard_url, gate)
+    reasons += probe_reasons
 
     results: list[SuiteResult] = []
     if not reasons:
         for suite in suites:
-            print(f"[{spec}] pytest {suite['path']} ({suite['database']})", flush=True)
+            if "goldens" in suite:
+                print(f"[{lane}] make verify-goldens ({suite['database']})", flush=True)
+                env = suite_env("sqlite", live_url, dashboard_url, gate)
+                result, _ = run_goldens(suite, out_dir, python, env)
+                print(f"[{lane}]   -> {result.status}: {_counts(result)}", flush=True)
+                results.append(result)
+                continue
+            print(f"[{lane}] pytest {suite['path']} ({suite['database']})", flush=True)
             env = suite_env(suite["database"], live_url, dashboard_url, gate)
             check_tables = gate and suite["database"] in servers
             if check_tables:
@@ -460,19 +634,21 @@ def run_spec(
                 changes = (
                     [f"table snapshot failed: {before_error or error}"]
                     if before_error or error
-                    else table_change_reasons(before or set(), after or set())
+                    else table_change_reasons(
+                        before or set(), after or set(), suite.get("keeps_tables", ())
+                    )
                 )
                 if changes:
                     result.status = "failed"
                     result.reasons += changes
-            print(f"[{spec}]   -> {result.status}: {_counts(result)}", flush=True)
+            print(f"[{lane}]   -> {result.status}: {_counts(result)}", flush=True)
             results.append(result)
 
     versions = interpreter_versions(python)
     summary = {
-        "spec": spec,
-        "title": MANIFEST[spec]["title"],
-        "status": spec_status(results, reasons, gate),
+        "lane": lane,
+        "title": MANIFEST[lane]["title"],
+        "status": lane_status(results, reasons, gate),
         "gate": gate,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git": git_state(),
@@ -524,7 +700,7 @@ def _counts(result: SuiteResult) -> str:
 
 def render_text(summary: dict[str, Any]) -> str:
     lines = [
-        f"== {summary['spec']}: {summary['title']} -> {summary['status']}",
+        f"== {summary['lane']}: {summary['title']} -> {summary['status']}",
         f"gate: {'on' if summary['gate'] else 'off'}   generated: {summary['generated_at']}",
         f"git: {summary['git']['sha']}{' (dirty)' if summary['git']['dirty'] else ''}",
         f"python: {summary['python']['version']}   "
@@ -556,9 +732,145 @@ def render_text(summary: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def missing_dependencies(python: str) -> list[str]:
+    """Run the example dependency check (every example requirements.txt) under `python`."""
+    try:
+        completed = subprocess.run(
+            [python, str(ROOT / "scripts" / "example_requirements.py"), "--check", "--all"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        return [f"dependency check failed: {type(error).__name__}: {error}"]
+    if completed.returncode == 0:
+        return []
+    detail = (completed.stderr or completed.stdout).strip()
+    return [f"missing example dependencies (run make deps):\n{detail}"]
+
+
+def run_all(evidence_dir: Path, gate: bool, python: str, timeout: int) -> dict[str, Any]:
+    """Full verification: check every database and dependency first, then run every lane."""
+    live_url = os.environ.get(LIVE_URL_ENV) or None
+    dashboard_url = os.environ.get(DASHBOARD_URL_ENV) or None
+    needs = {suite["database"] for lane in FULL_ORDER for suite in expand_suites(lane)}
+    reasons = preflight(needs, live_url, dashboard_url, gate)
+    servers, probe_reasons = probe_servers(needs, live_url, dashboard_url, gate)
+    reasons += probe_reasons + missing_dependencies(python)
+
+    lanes: dict[str, dict[str, Any]] = {}
+    if not reasons:
+        for lane in FULL_ORDER:
+            lanes[lane] = run_lane(lane, evidence_dir, gate, python, timeout)
+
+    def section(names: list[str]) -> dict[str, Any]:
+        statuses = [lanes[name]["status"] for name in names if name in lanes]
+        return {
+            "status": lane_status_of(statuses, len(names)),
+            "totals": {
+                key: sum(lanes[name]["totals"][key] for name in names if name in lanes)
+                for key in ("tests", "passed", "failed", "errors", "skipped")
+            },
+            "lanes": {
+                name: {
+                    "status": lanes[name]["status"],
+                    "totals": lanes[name]["totals"],
+                    "summary": shown_path(evidence_dir / name / "summary.json"),
+                }
+                for name in names
+                if name in lanes
+            },
+        }
+
+    goldens = section(["goldens"])
+    failed_goldens = [
+        case
+        for suite in lanes.get("goldens", {}).get("suites", [])
+        for case in suite["cases"]
+        if case["outcome"] != GOLDEN_PASS
+    ]
+    goldens["failures"] = failed_goldens
+    pytest_lanes = section([lane for lane in FULL_ORDER if lane != "goldens"])
+    versions = interpreter_versions(python)
+    summary = {
+        "scope": "full",
+        "status": "FAIL"
+        if reasons
+        else lane_status_of([goldens["status"], pytest_lanes["status"]], 2),
+        "gate": gate,
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "git": git_state(),
+        "python": {
+            "version": versions["version"],
+            "executable": python,
+            **({"error": versions["error"]} if "error" in versions else {}),
+        },
+        "packages": versions["packages"],
+        "servers": servers,
+        "preflight_failures": reasons,
+        "goldens": goldens,
+        "pytest": pytest_lanes,
+    }
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    (evidence_dir / "verify-summary.json").write_text(
+        json.dumps(summary, indent=2) + "\n", encoding="utf-8"
+    )
+    text = render_verify_text(summary)
+    (evidence_dir / "verify-summary.txt").write_text(text, encoding="utf-8")
+    print(text, flush=True)
+    return summary
+
+
+def shown_path(path: Path) -> str:
+    """A repository-relative path when possible, so summaries do not leak home directories."""
+    return (path.relative_to(ROOT) if path.is_relative_to(ROOT) else path).as_posix()
+
+
+def lane_status_of(statuses: list[str], expected: int) -> str:
+    """Combine lane statuses: any FAIL, or a lane that never ran, fails the whole."""
+    if len(statuses) < expected or "FAIL" in statuses:
+        return "FAIL"
+    return "PASS" if all(status == "PASS" for status in statuses) else "INCOMPLETE"
+
+
+def render_verify_text(summary: dict[str, Any]) -> str:
+    lines = [
+        f"== make verify (full): {summary['status']}",
+        f"gate: {'on' if summary['gate'] else 'off'}   generated: {summary['generated_at']}",
+        f"git: {summary['git']['sha']}{' (dirty)' if summary['git']['dirty'] else ''}",
+        f"python: {summary['python']['version']}   "
+        + ", ".join(f"{k} {v}" for k, v in summary["packages"].items() if v),
+    ]
+    for mode, server in summary["servers"].items():
+        lines.append(
+            f"{mode} server ({server['env']}={server['url']}): "
+            + (server["version"] or f"unreachable: {server['error']}")
+        )
+    for reason in summary["preflight_failures"]:
+        lines.append(f"PREFLIGHT FAIL: {reason}")
+    for title, key in (("golden outputs", "goldens"), ("pytest suites", "pytest")):
+        part = summary[key]
+        totals = part["totals"]
+        lines.append(
+            f"{title}: {part['status']} ({totals['tests']} run, {totals['passed']} passed, "
+            f"{totals['failed']} failed, {totals['errors']} errors, {totals['skipped']} skipped)"
+        )
+        for name, lane in part["lanes"].items():
+            lines.append(f"  [{lane['status']}] {name} -> {lane['summary']}")
+    for case in summary["goldens"].get("failures", []):
+        lines.append(f"  golden {case['outcome']}: {case['id']}")
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
-    parser.add_argument("specs", nargs="+", choices=sorted(MANIFEST))
+    parser.add_argument(
+        "lanes",
+        nargs="+",
+        choices=[*sorted(MANIFEST), "all"],
+        help="lanes to run in order; 'all' is the full make verify run",
+    )
     parser.add_argument("--gate", action="store_true", help=f"fail closed (same as {GATE_ENV}=1)")
     parser.add_argument("--evidence-dir", default=DEFAULT_EVIDENCE_DIR)
     parser.add_argument("--python", default=sys.executable, help="interpreter that runs pytest")
@@ -569,13 +881,23 @@ def main(argv: list[str] | None = None) -> int:
         gate = gate_enabled(args.gate)
     except ValueError as error:
         parser.error(str(error))
+    try:
+        import sqlalchemy  # noqa: F401  (URL checks and database probes)
+    except ImportError:
+        print("live_gate.py needs SQLAlchemy and the CUBRID drivers: run `make deps` first.")
+        return 1
     evidence_dir = Path(args.evidence_dir)
     if not evidence_dir.is_absolute():
         evidence_dir = ROOT / evidence_dir
+    if "all" in args.lanes:
+        if len(args.lanes) > 1:
+            parser.error("'all' runs every lane; do not combine it with other lanes")
+        summary = run_all(evidence_dir, gate, args.python, args.timeout)
+        return 0 if summary["status"] != "FAIL" else 1
     statuses = {}
-    for spec in dict.fromkeys(args.specs):
-        statuses[spec] = run_spec(spec, evidence_dir, gate, args.python, args.timeout)["status"]
-    print("spec gate: " + ", ".join(f"{spec} {status}" for spec, status in statuses.items()))
+    for lane in dict.fromkeys(args.lanes):
+        statuses[lane] = run_lane(lane, evidence_dir, gate, args.python, args.timeout)["status"]
+    print("live gate: " + ", ".join(f"{lane} {status}" for lane, status in statuses.items()))
     return 0 if all(status != "FAIL" for status in statuses.values()) else 1
 
 

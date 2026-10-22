@@ -21,7 +21,7 @@ fundamentals/      → Step-by-step reference for core operations
 demos/             → Recording scripts and provenance for the README demo media
 docs/              → MkDocs site sources, translations and internal design notes
 scripts/           → CI, docs, golden-output and release-verification helpers
-tests/             → Offline repository checks (`make test-offline`)
+tests/             → Offline repository checks (`make test`) and live suites (`make verify`)
 ```
 
 Example counts and tested versions change often; `README.md` and
@@ -183,11 +183,16 @@ not checked, so do not add foreign closing keywords there.
 
 ## Validation
 
-- `make check` from the repository root (offline contributor checks)
+- `make check` from the repository root (offline contributor checks; includes `make test`)
+- `make test` (unit and mocked suites, no database or Docker; `make test-offline` is an alias)
 - `make up` (starts CUBRID 11.2 by default, `CUBRID_VERSION=11.4` to override, with bounded readiness checking)
-- `make deps` (installs the drivers, pytest and the golden-backed examples' requirements)
+- `make deps` (installs the drivers, pytest and every example's requirements)
 - Run the relevant example: `python <file>.py`
-- `make verify VERIFY_PATHS=<example-directory>` for matching live goldens
+- `make verify VERIFY_PATHS=<example-directory>` for matching live goldens (a partial check)
+- A focused live lane (`make verify-quickstart`, `verify-performance`, `verify-web`,
+  `verify-django-celery`, `verify-ai-agent`, `verify-dashboard`) or the full `make verify`
+  (every golden and live suite; needs dedicated `CUBRID_TEST_URL` and
+  `CUBRID_DASHBOARD_TEST_URL` databases, see CONTRIBUTING.md "Live verification")
 - `make docs` for staged docs and strict MkDocs validation
 - `make docs-check` for links, anchors and recipe commands in every Markdown file (pinned tools: `.github/requirements-docs-check.txt`)
 - `make down` after live checks

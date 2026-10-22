@@ -1,4 +1,4 @@
-"""Live checks of the quickstart API against a real CUBRID (specification 03).
+"""Live checks of the quickstart API against a real CUBRID (#420; ``make verify-quickstart``).
 
 Each test drives ``app.py`` through FastAPI's ``TestClient`` and then reads the
 database through a separate pycubrid connection, so a passing run proves both
@@ -6,7 +6,7 @@ the HTTP response and the stored row.
 
 Set ``CUBRID_TEST_URL`` (for example
 ``cubrid+pycubrid://dba@localhost:33000/testdb``) to run them. Without it they
-skip, so the offline lane stays green. With ``CUBRID_SPEC_GATE=1`` a missing URL
+skip, so the offline lane stays green. With ``CUBRID_LIVE_GATE=1`` a missing URL
 fails instead of skipping, and a configured but unreachable database always
 fails. Tests write only rows whose ``val`` starts with their own random marker
 and delete exactly those rows afterwards.
@@ -37,8 +37,8 @@ TABLE = "cookbook_quickstart_items"
 def target() -> dict[str, Any]:
     url = os.environ.get("CUBRID_TEST_URL")
     if not url:
-        if os.environ.get("CUBRID_SPEC_GATE") == "1":
-            pytest.fail("CUBRID_SPEC_GATE=1 requires CUBRID_TEST_URL", pytrace=False)
+        if os.environ.get("CUBRID_LIVE_GATE") == "1":
+            pytest.fail("CUBRID_LIVE_GATE=1 requires CUBRID_TEST_URL", pytrace=False)
         pytest.skip("CUBRID_TEST_URL is not set; live quickstart tests skipped")
     parts = urlsplit(url)
     database = parts.path.lstrip("/")
@@ -96,7 +96,7 @@ def client(app_module: ModuleType) -> Iterator[TestClient]:
 
 @pytest.fixture
 def marker(target: dict[str, Any]) -> Iterator[str]:
-    value = f"spec03-{uuid.uuid4().hex}"
+    value = f"live-qs-{uuid.uuid4().hex}"
     try:
         yield value
     finally:

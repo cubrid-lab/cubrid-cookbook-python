@@ -2,16 +2,19 @@
 """example_requirements.py - Find the requirements of golden-backed examples.
 
 A golden-backed example is a directory that owns an ``expected/`` folder (the
-same opt-in that ``make verify`` and ``scripts/check_expected_coverage.py``
+same opt-in that ``make verify-goldens`` and ``scripts/check_expected_coverage.py``
 use). Hidden directories such as ``.git`` or ``.venv`` are never searched.
+``--all`` selects every example ``requirements.txt`` instead: the golden-backed
+ones plus those of the pytest suites that a full ``make verify`` runs.
 
-Shared by ``make deps`` (one pip resolver call over every file) and
-``scripts/release_smoke.py install-examples`` (CI).
+Shared by ``make deps`` (``--all``; one pip resolver call over every file),
+``make verify`` (``--check``) and ``scripts/release_smoke.py install-examples`` (CI,
+golden-backed only).
 
 Usage:
-    python scripts/example_requirements.py [ROOT ...]          # print the files
-                                                              # (fails on a path with whitespace)
-    python scripts/example_requirements.py --check [ROOT ...]  # verify pre-flight
+    python scripts/example_requirements.py [--all] [ROOT ...]          # print the files
+                                                                      # (fails on a path with whitespace)
+    python scripts/example_requirements.py --check [--all] [ROOT ...]  # verify pre-flight
 
 ``--check`` fails once, listing every requirement whose distribution is not
 installed, with a hint to run ``make deps``. It checks presence only, not
@@ -29,12 +32,12 @@ from pathlib import Path
 REQUIREMENT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
-def requirement_files(root: Path) -> list[Path]:
-    """Return ``requirements.txt`` of every golden-backed example under ``root``."""
+def requirement_files(root: Path, every: bool = False) -> list[Path]:
+    """Return ``requirements.txt`` of every golden-backed (or, with ``every``, any) example."""
     found = []
     for directory, subdirectories, files in os.walk(root):
         subdirectories[:] = sorted(d for d in subdirectories if not d.startswith("."))
-        if "expected" in subdirectories and "requirements.txt" in files:
+        if (every or "expected" in subdirectories) and "requirements.txt" in files:
             found.append(Path(directory) / "requirements.txt")
     return sorted(found)
 
@@ -50,10 +53,20 @@ def requirement_names(requirements: Path) -> list[str]:
     return names
 
 
-def missing_distributions(roots: list[Path]) -> list[str]:
+# Test tools the live suites import but no example requirements.txt lists;
+# `make deps` installs them next to the requirement files.
+SUITE_TOOLS = ("pytest", "pytest-asyncio")
+
+
+def missing_distributions(roots: list[Path], every: bool = False) -> list[str]:
     missing = []
+    for name in SUITE_TOOLS if every else ():
+        try:
+            metadata.distribution(name)
+        except metadata.PackageNotFoundError:
+            missing.append(f"{name} (live pytest suites)")
     for root in roots:
-        for requirements in requirement_files(root):
+        for requirements in requirement_files(root, every):
             for name in requirement_names(requirements):
                 try:
                     metadata.distribution(name)
@@ -63,17 +76,18 @@ def missing_distributions(roots: list[Path]) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    check = argv[:1] == ["--check"]
-    roots = [Path(arg) for arg in (argv[1:] if check else argv)] or [Path(".")]
+    check = "--check" in argv
+    every = "--all" in argv
+    roots = [Path(arg) for arg in argv if arg not in ("--check", "--all")] or [Path(".")]
     if check:
-        missing = missing_distributions(roots)
+        missing = missing_distributions(roots, every)
         if missing:
             print("Missing example dependencies: run `make deps` first.", file=sys.stderr)
             for entry in missing:
                 print(f"  ✗ {entry}", file=sys.stderr)
             return 1
         return 0
-    files = [path.as_posix() for root in roots for path in requirement_files(root)]
+    files = [path.as_posix() for root in roots for path in requirement_files(root, every)]
     # `make deps` splits this output on whitespace, so reject such a path
     # before printing anything rather than emit a partial list.
     spaced = [path for path in files if any(character.isspace() for character in path)]

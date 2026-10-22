@@ -5,7 +5,8 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 > **What "tested" / "CI-verified" means here**: evidence comes from a specific CI
 > tier and event, not from every pull request (see
 > [CI tiers](CONTRIBUTING.md#ci-tiers)). On every push to `main`, the nightly
-> schedule and manual runs, `smoke-test.yml` runs `make verify` on **CUBRID 11.2
+> schedule and manual runs, `smoke-test.yml` runs the golden check
+> (`make verify VERIFY_PATHS=.`) on **CUBRID 11.2
 > and 11.4 / Python 3.12**, comparing stdout against every recipe that ships a
 > golden (`expected/*.expected`; counts in [Recipe Coverage](#recipe-coverage)),
 > then the **Flask and FastAPI pytest suites**, the async-worker database tasks
@@ -15,7 +16,9 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 > changed paths select (`scripts/ci_scope.py`), on CUBRID 11.4 / Python 3.12:
 > the touched golden examples, the touched recipe family's suite, and CUBRID
 > 11.2 or Python endpoints only for version-sensitive or shared-infrastructure
-> changes. A docs-only pull request starts no live CUBRID.
+> changes. A docs-only pull request starts no live CUBRID. Locally, the full
+> `make verify` runs every golden and every live suite below, including the ones
+> no CI lane runs yet (see [Live verification](CONTRIBUTING.md#live-verification)).
 
 ## CUBRID Server Versions
 
@@ -229,10 +232,10 @@ when a row no longer matches the repository. Verification is split:
 - The **FastAPI quickstart** has an offline pytest suite in PR CI for host and
   Compose configuration, startup, HTTP responses, `/health`, and database failure
   cleanup. It uses mocked DB-API connections rather than a live server.
-  Its live suite (`tests/test_live.py`, specification 03) checks `/health` and
+  Its live suite (`tests/test_live.py`) checks `/health` and
   CRUD responses against the stored rows through a separate connection; it
-  runs only by hand with `make spec-03` against the local lab (11.2 was used
-  for the recorded runs), not in CI.
+  runs only by hand with `make verify-quickstart` or the full `make verify` against
+  the local lab (11.2 was used for the recorded runs), not in CI.
 - The **five AI agent scripts** run via `tests/test_ai_agent.py` against live
   **11.2 and 11.4** on every smoke-test trigger, and on 11.4 for pull requests
   that touch them or golden examples.
@@ -242,8 +245,9 @@ when a row no longer matches the repository. Verification is split:
   calls, RAG documents, chunks, retrieval log and chat rows with explicit
   expectations after one and two runs, and the MCP case checks the protocol
   handshake, the structured table list and that the rejected `DROP TABLE`
-  leaves the table and its rows intact. `make spec-11` runs both suites
-  fail-closed (no URL, an unreachable database or a skip fails).
+  leaves the table and its rows intact. `make verify-ai-agent` (and the full
+  `make verify`) runs the live suite fail-closed (no URL, an unreachable database
+  or a skip fails).
   `tests/test_ai_agent_offline.py` checks ID handling, MCP errors and cleanup.
 - The **Celery async-worker** database tasks run through
   `templates/async-worker/tests` without a Redis broker or worker. A dedicated
@@ -276,7 +280,7 @@ when a row no longer matches the repository. Verification is split:
 | Pitfalls: reserved-word DDL | 1 | `make verify` (CI, 11.2 + 11.4) |
 | Flask templates | 11 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
 | FastAPI templates | 12 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
-| FastAPI quickstart | 1 | offline pytest (PR CI, mocked DB-API); live pytest by hand (`make spec-03`) |
+| FastAPI quickstart | 1 | offline pytest (PR CI, mocked DB-API); live pytest by hand (`make verify-quickstart`) |
 | AI agent template | 5 | pytest (smoke CI on `main` + nightly, 11.2 + 11.4; PR CI 11.4 when touched) |
 | Streamlit templates | 5 | pytest (CI on `main` + nightly, 11.2 + 11.4; PR CI 11.4 when touched) |
 | Django template | 1 | Django HTTP + SQLAlchemy bridge: live pytest (PR CI 11.4 when touched; `main` + nightly 11.2 + 11.4); no native Django ORM |

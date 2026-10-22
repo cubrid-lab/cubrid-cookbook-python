@@ -1,11 +1,11 @@
-"""Spec 12 live evidence: Java -> Python migration goldens and performance benchmarks.
+"""Live evidence (#423): Java -> Python migration goldens and performance benchmarks.
 
 Two groups, reported as separate JUnit classes:
 
-* ``TestSpec12Migration`` re-runs the five ``migration/java-to-python`` golden cases
+* ``TestMigrationGoldens`` re-runs the five ``migration/java-to-python`` golden cases
   with the same comparison as ``make verify`` (run the script with stderr merged,
   pipe it through ``scripts/normalize_output.sh``, compare with ``expected/*.expected``).
-* ``TestSpec12Performance`` runs the three ``performance/*/benchmark.py`` scripts and
+* ``TestPerformanceBenchmarks`` runs the three ``performance/*/benchmark.py`` scripts and
   checks that they finish, print every comparison line with a finite, nonnegative
   time, really run their configured workload, and drop their benchmark tables, also
   when the benchmark raises. Elapsed times are only parsed, never compared with
@@ -13,7 +13,7 @@ Two groups, reported as separate JUnit classes:
 
 The scripts hard-code ``localhost:33000``, database ``testdb``, user ``dba`` (the
 repository's ``docker-compose.yml``), so the tests probe that endpoint. Without a
-reachable database they skip. With ``CUBRID_SPEC_GATE=1`` (``make spec-12``) an
+reachable database they skip. With ``CUBRID_LIVE_GATE=1`` (``make verify-performance``, ``make verify``) an
 unreachable database or a missing driver fails the run instead.
 """
 
@@ -37,7 +37,7 @@ NORMALIZE = ROOT / "scripts" / "normalize_output.sh"
 MIGRATION_DIR = ROOT / "migration" / "java-to-python"
 PERFORMANCE_DIR = ROOT / "performance"
 
-GATE = os.environ.get("CUBRID_SPEC_GATE") == "1"
+GATE = os.environ.get("CUBRID_LIVE_GATE") == "1"
 # The endpoint every script under test hard-codes.
 DB_CONFIG = {
     "host": "localhost",
@@ -81,8 +81,8 @@ class FaultyCursor:
             self._cursor.execute(
                 "SELECT COUNT(*) FROM db_class WHERE class_name = ?", (table,)
             )
-            print(f"spec12: {table} present at failure: {self._cursor.fetchone()[0]}")
-            raise RuntimeError(f"spec12 injected failure before {fail_prefix}")
+            print(f"perf-fault: {table} present at failure: {self._cursor.fetchone()[0]}")
+            raise RuntimeError(f"perf-fault injected failure before {fail_prefix}")
         return self._cursor.execute(sql, *args, **kwargs)
 
     def __getattr__(self, name):
@@ -108,7 +108,7 @@ runpy.run_path(script, run_name="__main__")
 
 def _unavailable(reason: str) -> None:
     if GATE:
-        pytest.fail(f"CUBRID_SPEC_GATE=1: {reason}", pytrace=False)
+        pytest.fail(f"CUBRID_LIVE_GATE=1: {reason}", pytrace=False)
     pytest.skip(reason)
 
 
@@ -147,7 +147,9 @@ def live_db(record_testsuite_property, pytestconfig) -> LiveDB:
         import pycubrid
         import sqlalchemy_cubrid  # noqa: F401  (connection-pooling benchmark dialect)
     except ImportError as exc:
-        _unavailable(f"spec 12 needs pycubrid and sqlalchemy-cubrid ({exc}); run make deps")
+        _unavailable(
+            f"the performance lane needs pycubrid and sqlalchemy-cubrid ({exc}); run make deps"
+        )
     db = LiveDB(pycubrid)
     endpoint = "{host}:{port}/{database}".format(**DB_CONFIG)
     try:
@@ -168,16 +170,16 @@ def live_db(record_testsuite_property, pytestconfig) -> LiveDB:
     reporter = pytestconfig.pluginmanager.get_plugin("terminalreporter")
     if reporter is not None:
         reporter.write_line(
-            "spec 12 environment: " + ", ".join(f"{k}={v}" for k, v in versions.items())
+            "performance lane environment: " + ", ".join(f"{k}={v}" for k, v in versions.items())
         )
     return db
 
 
 @pytest.fixture(scope="session")
 def sentinel_table(live_db: LiveDB) -> Iterator[tuple[str, list[tuple]]]:
-    """An unrelated table that must survive every spec 12 script unchanged."""
+    """An unrelated table that must survive every migration and benchmark script unchanged."""
     # A table name cannot be a `?` parameter; this one is generated here, never user input.
-    table = f"cookbook_spec12_sentinel_{uuid.uuid4().hex[:8]}"
+    table = f"cookbook_perf_sentinel_{uuid.uuid4().hex[:8]}"
     live_db.query(f"CREATE TABLE {table} (id INT PRIMARY KEY, label VARCHAR(40))")
     try:
         for row in [(1, "keep me"), (2, "untouched")]:
@@ -252,12 +254,12 @@ def _run_with_fault(live_db: LiveDB, name: str, fail_prefix: str, table: str) ->
     result = _run([sys.executable, "-c", FAULT_RUNNER, script, fail_prefix, table], 120)
     output = result.stdout
     assert result.returncode != 0, f"injected failure was swallowed:\n{_tail(output)}"
-    assert "RuntimeError: spec12 injected failure" in output, _tail(output)
-    assert f"spec12: {table} present at failure: 1" in output, _tail(output)
+    assert "RuntimeError: perf-fault injected failure" in output, _tail(output)
+    assert f"perf-fault: {table} present at failure: 1" in output, _tail(output)
     _assert_cleaned_up(live_db, table)
 
 
-class TestSpec12Migration:
+class TestMigrationGoldens:
     """Java -> Python migration examples reproduce their golden output."""
 
     def test_all_five_golden_cases_are_collected(self) -> None:
@@ -285,7 +287,7 @@ class TestSpec12Migration:
         assert normalized.rstrip("\n") == expected.rstrip("\n")
 
 
-class TestSpec12Performance:
+class TestPerformanceBenchmarks:
     """Benchmarks print a complete, parseable comparison and clean up after themselves."""
 
     def test_fetch_optimization_benchmark(self, live_db: LiveDB, sentinel_unchanged: None) -> None:

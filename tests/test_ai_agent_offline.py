@@ -289,7 +289,7 @@ def run_live_suite(extra_env):
     env = {
         key: value
         for key, value in os.environ.items()
-        if key not in {"CUBRID_TEST_URL", "CUBRID_SPEC_GATE"}
+        if key not in {"CUBRID_TEST_URL", "CUBRID_LIVE_GATE"}
     }
     env.update(extra_env)
     return subprocess.run(
@@ -311,23 +311,23 @@ def run_live_suite(extra_env):
     )
 
 
-def test_live_suite_skips_without_url_outside_the_spec_gate():
+def test_live_suite_skips_without_url_outside_the_live_gate():
     result = run_live_suite({})
     assert result.returncode == 0, result.stdout + result.stderr
     assert " skipped" in result.stdout and "passed" not in result.stdout
 
 
-def test_spec_gate_fails_closed_without_url():
-    result = run_live_suite({"CUBRID_SPEC_GATE": "1"})
+def test_live_gate_fails_closed_without_url():
+    result = run_live_suite({"CUBRID_LIVE_GATE": "1"})
     assert result.returncode != 0, result.stdout
-    assert "CUBRID_SPEC_GATE=1 requires CUBRID_TEST_URL" in result.stdout
+    assert "CUBRID_LIVE_GATE=1 requires CUBRID_TEST_URL" in result.stdout
     assert "skipped" not in result.stdout
 
 
-def test_spec_gate_fails_closed_on_unreachable_database():
+def test_live_gate_fails_closed_on_unreachable_database():
     # Port 1 on the loopback interface refuses connections immediately.
     result = run_live_suite(
-        {"CUBRID_SPEC_GATE": "1", "CUBRID_TEST_URL": "cubrid+pycubrid://dba@127.0.0.1:1/testdb"}
+        {"CUBRID_LIVE_GATE": "1", "CUBRID_TEST_URL": "cubrid+pycubrid://dba@127.0.0.1:1/testdb"}
     )
     assert result.returncode != 0, result.stdout
     assert "OperationalError" in result.stdout

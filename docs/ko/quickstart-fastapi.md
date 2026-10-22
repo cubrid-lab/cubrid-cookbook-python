@@ -256,7 +256,7 @@ python -m pytest tests -q
 연결로 읽은 테이블 내용과 비교합니다. `/health`(`200`, 데이터베이스에 닿지 않으면
 `503`), 항목 만들기, `id`와 목록으로 읽기, 없는 `id`의 `404`, 잘못된 본문의 `422`와
 행이 쓰이지 않았는지, 거부된 INSERT가 행을 남기지 않는지를 확인합니다. 각 테스트는
-자기만의 무작위 `spec03-` 표식으로 시작하는 `val`의 행만 쓰고 끝나면 그 행을 지우므로,
+자기만의 무작위 `live-qs-` 표식으로 시작하는 `val`의 행만 쓰고 끝나면 그 행을 지우므로,
 내 항목은 건드리지 않고 다시 실행할 수 있습니다.
 
 2단계의 데이터베이스가 실행 중이고 venv가 활성화된 상태에서:
@@ -267,9 +267,9 @@ CUBRID_TEST_URL=cubrid+pycubrid://dba@localhost:33000/testdb python -m pytest te
 
 앱은 항상 포트 `33000`의 데이터베이스 `testdb`에 접속하므로 URL에서는 호스트만 바꿀 수
 있습니다. `CUBRID_TEST_URL`이 없으면 이 테스트는 건너뛰고, 설정했는데 데이터베이스가
-응답하지 않으면 실패합니다. 저장소 루트에서 `make spec-03`을 실행하면
-`CUBRID_SPEC_GATE=1`로 실행해 URL이 없는 경우도 실패로 처리하고, JUnit 보고서를
-`.spec-evidence/spec-03.xml`에 씁니다.
+응답하지 않으면 실패합니다. 저장소 루트의 `make verify-quickstart`(전체 `make verify`에도 포함)는
+`localhost:33000`에 대해 `CUBRID_LIVE_GATE=1`로 실행해 건너뜀도 실패로 처리하고, JUnit
+보고서와 요약을 `.live-evidence/quickstart/`에 씁니다.
 
 ## 다음 단계
 

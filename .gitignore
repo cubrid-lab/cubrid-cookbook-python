@@ -81,5 +81,5 @@ docs/template-*.md
 # Demo recordings are staged here before review and promotion (demos/README.md)
 .demo-artifacts/
 
-# JUnit evidence written by the make spec-* live gates
-.spec-evidence/
+# Live verification evidence written by make verify and the make verify-* lanes
+.live-evidence/

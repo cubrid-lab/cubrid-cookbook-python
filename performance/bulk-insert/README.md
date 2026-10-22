@@ -120,7 +120,7 @@ python performance/bulk-insert/benchmark.py
 docker compose down                    # stop the database when finished
 ```
 
-The script creates `cookbook_bulk_test` and runs three strategies (500 rows with a COMMIT per row, then 5,000 rows twice); it takes about 45 seconds, most of it the per-row COMMIT run. The row count printed for each strategy is a `SELECT COUNT(*)` taken after its timer stops, so it shows what was actually stored. The script drops `cookbook_bulk_test` when it finishes, also when a step fails. `make spec-12` runs it as a live test (see [Testing the benchmarks](../README.md#testing-the-benchmarks)).
+The script creates `cookbook_bulk_test` and runs three strategies (500 rows with a COMMIT per row, then 5,000 rows twice); it takes about 45 seconds, most of it the per-row COMMIT run. The row count printed for each strategy is a `SELECT COUNT(*)` taken after its timer stops, so it shows what was actually stored. The script drops `cookbook_bulk_test` when it finishes, also when a step fails. `make verify-performance` runs it as a live test (see [Testing the benchmarks](../README.md#testing-the-benchmarks)).
 
 ## Benchmark Reference
 

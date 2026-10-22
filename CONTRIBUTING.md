@@ -69,10 +69,11 @@ make check
 
 `make check` runs Ruff, documentation and golden-coverage checks, output-normalizer
 tests, mocked quickstart and AI-agent tests, release dependency guards, and fake
-Make/Compose regression tests. `make test-offline` runs just the offline test
+Make/Compose regression tests. `make test` (alias `make test-offline`) runs just the offline test
 suites. Each suite uses its own process to avoid conflicting recipe module names.
 These checks require no database and do not prove live CUBRID compatibility;
-run the relevant example or `make verify` against CUBRID for that evidence.
+run the relevant example, a `make verify-*` lane or the full `make verify` against
+CUBRID for that evidence (see [Live verification](#live-verification)).
 CI runs the same `make check` command on every pull request (see
 [CI tiers](#ci-tiers) for which live lanes run on top of it). The blocking
 documentation check has its own pinned tools; run it with
@@ -85,7 +86,7 @@ The repository is an example collection, so `pip install -e .` is not supported.
 [`agent-evals/`](agent-evals/README.md) holds opt-in benchmark tasks for coding
 agents that change recipes (#352): frozen historical fixes with their base SHA,
 allowed files, goldens, documentation and the live checks they lack, graded offline
-by `scripts/agent_eval.py`. `make agent-eval-check` (part of `make test-offline`)
+by `scripts/agent_eval.py`. `make agent-eval-check` (part of `make test`)
 re-grades the recorded fixtures; it runs no model and needs no database. No
 contributor needs an AI tool, and no agent score gates a pull request. If you change
 the grader or a task, keep every fixture's `expected.json` truthful and rerun
@@ -140,66 +141,85 @@ When a new recipe adds a `requirements.txt` outside the configured
 `directories` globs, extend the globs in the same PR; the test above fails
 until you do.
 
-### Spec 08-10 evidence lanes
+### Live verification
 
-`make spec-08`, `make spec-09` and `make spec-10` (or `make spec-08-10`) rerun the
-existing template suites as one auditable lane per feature specification (#421).
-`scripts/spec_gate.py` holds the manifest and adds no test of its own; each suite
-runs in its own pytest process.
+`make test` needs no database. `make verify` is the full live verification: it
+runs `scripts/live_gate.py all`, which reruns every golden and every existing live
+pytest suite (it adds no test of its own; each suite runs in its own pytest
+process) against real CUBRID databases, fails closed, and records what ran (#416).
 
-| Target | Suites | Database |
-|--------|--------|----------|
-| `spec-08` | `templates/flask/*/tests`, `templates/api-service-fastapi/recipes/*/tests`; `templates/api-service-fastapi/tests` (root template startup and `/health`) | `CUBRID_TEST_URL`; the root template test uses SQLite by design and is reported as startup-only, not live evidence or quickstart coverage |
-| `spec-09` | `templates/django/tests`, `templates/async-worker/tests` | `CUBRID_TEST_URL`; Celery tasks run directly (`.run()` / eager `.apply()`), without Redis or a worker |
-| `spec-10` | `templates/dashboard/tests` | `CUBRID_DASHBOARD_TEST_URL`, a separate database: the suite drops and recreates its FK-linked tables |
+| Lane (`make` target) | What runs | Database |
+|----------------------|-----------|----------|
+| goldens (`verify-goldens`) | every `expected/*.expected` golden, see [Golden Verification](#golden-verification) | the `make up` database |
+| `verify-quickstart` | `quickstart/5min-fastapi/tests/test_live.py`: `/health` and CRUD (#420) | the `make up` database (the app connects to port 33000 and `testdb` only); it keeps its own `cookbook_quickstart_items` table |
+| `verify-performance` | `tests/test_performance_benchmarks.py`: the five migration goldens and the three benchmarks (#423), see [Performance and migration lane](#performance-and-migration-lane) | the `make up` database (the scripts hard-code it) |
+| `verify-web` | `templates/flask/*/tests`, `templates/api-service-fastapi/recipes/*/tests`; `templates/api-service-fastapi/tests` (root template startup and `/health`) | `CUBRID_TEST_URL`; the root template test uses SQLite by design and is reported as startup-only, not live evidence or quickstart coverage |
+| `verify-django-celery` | `templates/django/tests`, `templates/async-worker/tests` | `CUBRID_TEST_URL`; Celery tasks run directly (`.run()` / eager `.apply()`), without Redis or a worker |
+| `verify-ai-agent` | `tests/test_ai_agent.py`: agent state, MCP tools and RAG, each script run twice (#422) | `CUBRID_TEST_URL` |
+| `verify-dashboard` | `templates/dashboard/tests` | `CUBRID_DASHBOARD_TEST_URL`: the suite drops and recreates its FK-linked tables |
+
+`make verify` runs the lanes in this order, one at a time, so suites with fixed
+table names never overlap; `make verify-templates` runs `verify-web`,
+`verify-django-celery` and `verify-dashboard`. Each lane can also run on its own.
+The goldens leave their fixed tables in the `make up` database, so
+`CUBRID_TEST_URL` and `CUBRID_DASHBOARD_TEST_URL` must name two further dedicated,
+empty databases, distinct from each other and from the `make up` database:
 
 ```bash
-# Suite dependencies (the same set the broad smoke workflow installs)
-pip install pytest pytest-asyncio httpx flask flask-sqlalchemy fastapi email-validator \
-  streamlit pandas -r templates/async-worker/requirements.txt \
-  -r templates/django/requirements.txt -r templates/api-service-fastapi/requirements.txt \
-  -r templates/dashboard/requirements.txt
-make up
-# A disposable second CUBRID for the dashboard (never your lab container)
-docker run -d --name cubrid-spec-dashboard -p 127.0.0.1:33004:33000 \
-  -e CUBRID_DB=testdb cubrid/cubrid:11.2
-export CUBRID_TEST_URL=cubrid+pycubrid://dba@localhost:33000/testdb
-export CUBRID_DASHBOARD_TEST_URL=cubrid+pycubrid://dba@localhost:33004/testdb
-make spec-08-10
-docker rm -f cubrid-spec-dashboard
+python3 -m venv .venv && source .venv/bin/activate   # Python 3.11 or later
+make deps        # every example's requirements.txt, in one pip call
+make up          # the examples' database on localhost:33000
+# Two disposable CUBRID containers for the dedicated databases (never your lab container)
+docker run -d --name cubrid-verify -p 127.0.0.1:33005:33000 -e CUBRID_DB=testdb cubrid/cubrid:11.2
+docker run -d --name cubrid-verify-dashboard -p 127.0.0.1:33006:33000 -e CUBRID_DB=testdb cubrid/cubrid:11.2
+export CUBRID_TEST_URL=cubrid+pycubrid://dba@localhost:33005/testdb
+export CUBRID_DASHBOARD_TEST_URL=cubrid+pycubrid://dba@localhost:33006/testdb
+make verify
+docker rm -f cubrid-verify cubrid-verify-dashboard
 ```
 
-Wait until the dashboard container accepts connections before running `spec-10`
-(the gate reports it as unreachable otherwise). The targets fail closed
-(`CUBRID_SPEC_GATE=1` by default; `1`/`true`/`yes`/`on` enable it, empty/`0`/`false`/
-`no`/`off` disable it, any other value is a usage error). Under the gate a spec fails,
-with a nonzero exit, when:
+Wait until the containers accept connections before running a lane (the gate
+reports them as unreachable otherwise). A full run took about 6.5 minutes on
+CUBRID 11.2. `make verify` first checks every URL, every server and the installed
+example dependencies, and runs nothing if one of them fails. The lanes fail closed
+(`CUBRID_LIVE_GATE=1` by default; `1`/`true`/`yes`/`on` enable it,
+empty/`0`/`false`/`no`/`off` disable it, any other value is a usage error). Under
+the gate a lane fails, with a nonzero exit, when:
 
-- its URL is missing, unreachable or not `cubrid+pycubrid://` (no SQLite fallback),
-  or the dashboard URL names the same database as `CUBRID_TEST_URL`;
-- the database already holds any `cookbook_*` table before the run: the suites drop
-  and recreate their own tables, so use a dedicated, empty database;
+- a URL it needs is missing, unreachable or not `cubrid+pycubrid://` (no SQLite
+  fallback), names the `make up` database, or the dashboard URL names the same
+  database as `CUBRID_TEST_URL`; or the `make up` database is unreachable;
+- a dedicated database already holds any `cookbook_*` table before the lane: the
+  suites drop and recreate their own tables, so use a dedicated, empty database;
 - any suite fails, collects no test or skips a test, or a suite whose conftest prints a
   database header (the Flask, FastAPI recipe and dashboard suites) does not print
   `database: live CUBRID (...)`. The Django and async-worker suites print no header:
   they skip without `CUBRID_TEST_URL` (a gate failure) and fail on a
   non-`cubrid+pycubrid` URL;
 - a suite leaves new tables behind or drops a table that existed before it ran
-  (compared with a snapshot taken just before that suite).
+  (compared with a snapshot taken just before that suite; the quickstart may keep
+  its own table);
+- a golden fails, is skipped, or no golden ran.
 
 The gate also drops `PYTEST_ADDOPTS` and `PYTEST_PLUGINS` from the suites'
-environment. Only a gated run can PASS: `CUBRID_SPEC_GATE=0 make spec-09` keeps the
+environment. Only a gated run can PASS: `CUBRID_LIVE_GATE=0 make verify-django-celery` keeps the
 suites' own skips and SQLite fallbacks for exploration, and its summary says
 INCOMPLETE at best. After an interrupted run, drop the leftover `cookbook_*` tables
-or use a fresh container.
+in the dedicated databases or use fresh containers.
 
-Each run replaces only `.spec-evidence/<spec>/` (ignored by version control; other
-specs' files there are kept) with one
-JUnit XML file and log per suite plus `summary.json` and `summary.txt`: the pytest
-commands, commit SHA, the Python, driver and framework versions of the
-interpreter that runs pytest (`PYTHON`), the CUBRID server
-version and the selected/passed/failed/skipped counts per suite. These lanes are
-local and manual; CI keeps its existing live jobs (see [CI tiers](#ci-tiers)).
+Each lane replaces only `.live-evidence/<lane>/` (ignored by version control; other
+lanes' files there are kept) with one JUnit XML file and log per suite (the golden
+lane keeps its log and a `results.tsv` with one line per golden) plus `summary.json` and
+`summary.txt`: the commands, commit SHA, the Python, driver and framework versions of the
+interpreter that runs pytest (`PYTHON`), the CUBRID server versions and the
+selected/passed/failed/skipped counts and case outcomes per suite. `make verify` also
+writes `.live-evidence/verify-summary.json` and `verify-summary.txt`, which report the
+golden comparisons and the pytest lanes separately and name every failed golden.
+
+`make verify VERIFY_PATHS=<dirs>` is not the full verification: it runs only the
+goldens under those roots (as CI does, see [CI tiers](#ci-tiers)) and says so with a
+`PARTIAL verification` line. The full `make verify` and the `verify-*` lanes are local
+and manual; CI keeps its existing live jobs.
 
 ### CI tiers
 
@@ -234,7 +254,7 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 - Example directories with no live consumer (`performance/`, the FastAPI
   quickstart, `fundamentals/parameterized-queries`) are covered by the offline
   checks only, on every event. `performance/` has a local live check,
-  `make spec-12` (see [Spec 12 evidence](#spec-12-evidence)), that no CI lane runs.
+  `make verify-performance` (see [Performance and migration lane](#performance-and-migration-lane)), that no CI lane runs.
 - The Flask/FastAPI lane (#227) runs the `tests/` suite of each changed recipe
   root (`ci_scope.web_suites`: a `templates/flask/` or
   `templates/api-service-fastapi/recipes/` recipe, or the root FastAPI app), each
@@ -381,27 +401,30 @@ when switching incompatible versions, and never delete existing data implicitly.
 
 ### Golden Verification
 
-Runnable examples are checked against committed golden output with `make verify`,
+Runnable examples are checked against committed golden output with `make verify-goldens`
+(part of the full `make verify`),
 which discovers each committed `<dir>/expected/<name>.expected`, runs the matching
 `<dir>/<name>.py`, pipes it through `scripts/normalize_output.sh`, and diffs the
 result against that golden file. When you add a one-shot example, capture its
 golden output so CI can guard it.
 
-`make verify` checks all goldens by default; use `VERIFY_PATHS=<directory>` to
-select example roots. Empty/missing roots, zero golden targets, a missing script
+`make verify-goldens` checks all goldens by default; use `VERIFY_PATHS=<directory>` to
+select example roots. `make verify VERIFY_PATHS=<directory>`, as CI calls it, runs the
+same golden-only check and then reports it as a partial verification. Empty/missing roots, zero golden targets, a missing script
 for an expected file, discovery/read errors, and failed scripts or normalizers
 all fail the command. A successful summary has at least one pass and no failures
 or skips. Ordinary recipe failures are collected so the remaining selected
 recipes still produce diagnostics.
 
 To reproduce it from a clean checkout, use a Python 3.11+ virtual environment and
-run `make up`, `make deps`, `make verify`. `make deps` installs `pytest`,
-`sqlalchemy-cubrid[pycubrid]` and the `requirements.txt` of every golden-backed
-example (a directory that owns `expected/`) in one pip resolver call, so
-`PIP_CONSTRAINT` applies to all of them. The same discovery
-(`scripts/example_requirements.py`) backs `scripts/release_smoke.py
-install-examples` in CI; it fails, and so does `make deps`, if a
-golden-backed `requirements.txt` path contains whitespace. Before running anything, `make verify` checks that the
+run `make up`, `make deps`, `make verify-goldens`. `make deps` installs `pytest`,
+`pytest-asyncio`, `sqlalchemy-cubrid[pycubrid]` and the `requirements.txt` of every example (the
+golden-backed ones and those of the live suites, `scripts/example_requirements.py
+--all`) in one pip resolver call, so `PIP_CONSTRAINT` applies to all of them. The
+golden-backed discovery (a directory that owns `expected/`; the same script without
+`--all`) backs `scripts/release_smoke.py install-examples` in CI; it fails, and so
+does `make deps`, if a `requirements.txt` path contains whitespace. Before running
+anything, `make verify-goldens` checks that the
 selected examples' requirements are installed and stops once with "run
 `make deps` first" if not.
 
@@ -421,15 +444,16 @@ is an `EXEC-ERROR`),
 summary counts each class. Under GitHub Actions each failure also emits an
 `::error file=...::` annotation.
 
-### Spec 12 evidence
+### Performance and migration lane
 
-`make spec-12` runs `tests/test_performance_benchmarks.py` against the database
+`make verify-performance` (also part of `make verify`) runs
+`tests/test_performance_benchmarks.py` against the database
 the examples hard-code (`localhost:33000`, `testdb`, `dba`; `make up` and
-`make deps` first) and writes a JUnit report to `.spec-evidence/spec-12.xml`
+`make deps` first) and writes a JUnit report and a summary to `.live-evidence/performance/`
 (ignored by git). It has two groups, reported as separate JUnit classes:
-`TestSpec12Migration` runs the five `migration/java-to-python` goldens with the
+`TestMigrationGoldens` runs the five `migration/java-to-python` goldens with the
 `make verify` comparison (`scripts/run_example.py`, `scripts/normalize_output.sh`,
-`expected/*.expected`), and `TestSpec12Performance` runs the three
+`expected/*.expected`), and `TestPerformanceBenchmarks` runs the three
 `performance/*/benchmark.py` scripts. A benchmark passes when it exits 0 within
 its time limit, prints every comparison line with a finite, nonnegative time and
 the workload it was configured for, prints no error or traceback, and leaves no
@@ -438,12 +462,12 @@ created; after each test that runs a script, an unrelated sentinel table must be
 unchanged (a failure names that test). Timings are never
 compared with each other or with a threshold, and never go into a golden. The
 report records the CUBRID server, Python, pytest and driver versions.
-`make spec-12` sets `CUBRID_SPEC_GATE=1`: an unreachable database or a missing
-driver fails every database test (the run fails), and the target also fails if
-the report counts a skipped test. The scripts use fixed table names
+The lane runs with `CUBRID_LIVE_GATE=1`: an unreachable database or a missing
+driver fails every database test (the run fails), and the lane also fails if
+the report counts a skipped test or the scripts leave or drop a table. The scripts use fixed table names
 (`cookbook_fetch_test`, `cookbook_bulk_test`, `cookbook_jdbc_*`,
-`cookbook_sensors`), so do not run `make spec-12` at the same time as another
-`make spec-12`, `make verify` or a manual benchmark run against the same database. Without the variable, `pytest tests/test_performance_benchmarks.py`
+`cookbook_sensors`), so do not run `make verify-performance` at the same time as another
+`make verify-performance`, `make verify` or a manual benchmark run against the same database. Without the variable, `pytest tests/test_performance_benchmarks.py`
 skips when no database answers. A full run took about a minute on CUBRID 11.2
 (longer on slow machines; the `bulk-insert` per-row COMMIT dominates). When you
 change a benchmark, run it twice in a row to show that no stale table is left behind.
@@ -764,8 +788,8 @@ and not missing coverage:
 | `performance/connection-pooling/benchmark.py` | Throughput benchmark — timings and speedup factors are nondeterministic. |
 | `performance/fetch-optimization/benchmark.py` | Throughput benchmark — per-strategy timings are nondeterministic. |
 
-The three benchmarks are checked live by `make spec-12` instead (see
-[Spec 12 evidence](#spec-12-evidence)), which parses their output without
+The three benchmarks are checked live by `make verify-performance` instead (see
+[Performance and migration lane](#performance-and-migration-lane)), which parses their output without
 comparing timings.
 
 Where output is dynamic only in *presentation* (timings, absolute paths, peak

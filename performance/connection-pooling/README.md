@@ -113,7 +113,7 @@ python performance/connection-pooling/benchmark.py
 docker compose down                    # stop the database when finished
 ```
 
-The script runs 50 `SELECT 1` queries with `NullPool` and 50 with a pooled engine (`pool_size=5`, which only caps the pool; sequential queries reuse one connection), then prints both timings, the speedup and how many database connections each strategy opened (counted with SQLAlchemy's `connect` event: 50 for `NullPool`, 1 for the pool). It creates no tables. `make spec-12` runs it as a live test (see [Testing the benchmarks](../README.md#testing-the-benchmarks)). It uses SQLAlchemy, so install `sqlalchemy-cubrid[pycubrid]` rather than `pycubrid` alone, and takes a few seconds.
+The script runs 50 `SELECT 1` queries with `NullPool` and 50 with a pooled engine (`pool_size=5`, which only caps the pool; sequential queries reuse one connection), then prints both timings, the speedup and how many database connections each strategy opened (counted with SQLAlchemy's `connect` event: 50 for `NullPool`, 1 for the pool). It creates no tables. `make verify-performance` runs it as a live test (see [Testing the benchmarks](../README.md#testing-the-benchmarks)). It uses SQLAlchemy, so install `sqlalchemy-cubrid[pycubrid]` rather than `pycubrid` alone, and takes a few seconds.
 
 ## Benchmark Reference
 
