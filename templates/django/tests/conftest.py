@@ -65,5 +65,8 @@ def django_bridge(
             present = {name.casefold() for name in inspect(engine).get_table_names()}
             if "cookbook_django_items" in present:
                 db.Base.metadata.drop_all(bind=engine, tables=[db.CookbookItem.__table__])
+            # A rerun refuses a leftover table, so prove the cleanup here.
+            remaining = {name.casefold() for name in inspect(engine).get_table_names()}
+            assert "cookbook_django_items" not in remaining, "Django bridge cleanup left its table"
     finally:
         engine.dispose()

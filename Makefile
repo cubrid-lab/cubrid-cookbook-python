@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: help up down status clean deps verify demo lint test-offline check check-docs test-normalize check-coverage docs docs-check agent-eval-check spec-11
+.PHONY: help up down status clean deps verify demo lint test-offline check check-docs test-normalize check-coverage docs docs-check agent-eval-check spec-11 spec-08 spec-09 spec-10 spec-08-10
 
 DOCKER_COMPOSE := docker compose
 NORMALIZE := bash scripts/normalize_output.sh
@@ -17,6 +17,11 @@ VERIFY_PATHS ?= .
 # The slowest golden took 7.2s on CUBRID 11.4 (2026-10-09); 60s leaves room for
 # slower CI runners without letting a hang consume the job timeout.
 VERIFY_TIMEOUT ?= 60
+# Spec 08-10 evidence lanes (scripts/spec_gate.py) fail closed by default:
+# CUBRID_TEST_URL (and CUBRID_DASHBOARD_TEST_URL for spec-10) must name live
+# cubrid+pycubrid databases. CUBRID_SPEC_GATE=0 restores the suites' own skips
+# and SQLite fallbacks for local exploration (never a PASS).
+CUBRID_SPEC_GATE ?= 1
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -151,6 +156,19 @@ test-offline: ## Run mocked/offline suites in separate processes (no database re
 	$(PYTHON) -m unittest discover -s tests -p 'test_table_prefix.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_quickstart_config.py' -v
 	$(PYTHON) -m unittest discover -s tests -p 'test_quickstart_cleanup.py' -v
+	$(PYTHON) -m unittest discover -s tests -p 'test_spec_gate.py' -v
+
+spec-08: ## Spec 08 evidence: Flask/FastAPI suites on live CUBRID (JUnit + summary in .spec-evidence/)
+	CUBRID_SPEC_GATE=$(CUBRID_SPEC_GATE) $(PYTHON) scripts/spec_gate.py spec-08
+
+spec-09: ## Spec 09 evidence: Django bridge and direct Celery task suites on live CUBRID
+	CUBRID_SPEC_GATE=$(CUBRID_SPEC_GATE) $(PYTHON) scripts/spec_gate.py spec-09
+
+spec-10: ## Spec 10 evidence: dashboard AppTest suite on an isolated CUBRID (CUBRID_DASHBOARD_TEST_URL)
+	CUBRID_SPEC_GATE=$(CUBRID_SPEC_GATE) $(PYTHON) scripts/spec_gate.py spec-10
+
+spec-08-10: ## Run the spec 08, 09 and 10 evidence lanes in order
+	CUBRID_SPEC_GATE=$(CUBRID_SPEC_GATE) $(PYTHON) scripts/spec_gate.py spec-08 spec-09 spec-10
 
 agent-eval-check: ## Validate the agent-evals tasks and re-grade their fixtures (offline; no model, no DB)
 	$(PYTHON) scripts/agent_eval.py validate

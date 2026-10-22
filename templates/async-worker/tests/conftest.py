@@ -71,5 +71,9 @@ def worker_database(
                 if table.name.casefold() in present
             ]
             models.Base.metadata.drop_all(bind=engine, tables=created)
+            # A rerun refuses leftover worker tables, so prove the cleanup here.
+            remaining = {name.casefold() for name in inspect(engine).get_table_names()}
+            leftover = sorted(name for name in worker_tables if name.casefold() in remaining)
+            assert not leftover, f"async-worker cleanup left tables behind: {leftover}"
     finally:
         engine.dispose()
