@@ -47,6 +47,8 @@ def target() -> dict[str, Any]:
         pytest.fail("CUBRID_TEST_URL must be cubrid+pycubrid://...:33000/testdb", pytrace=False)
     if database != "testdb":
         pytest.fail("the quickstart app connects to database testdb only", pytrace=False)
+    if (parts.username or "dba") != "dba" or parts.password:
+        pytest.fail("the quickstart app connects as dba with no password", pytrace=False)
     settings = {
         "host": parts.hostname or "localhost",
         "port": 33000,
@@ -111,7 +113,7 @@ def closed_port() -> int:
         return sock.getsockname()[1]
 
 
-def test_startup_creates_table_and_health_is_ok(target, client):
+def test_startup_table_exists_and_health_is_ok(target, client):
     response = client.get("/health")
 
     assert response.status_code == 200
@@ -162,7 +164,7 @@ def test_invalid_payload_returns_422_and_writes_nothing(target, client, marker, 
     assert query(target, f"SELECT id FROM {TABLE} WHERE val LIKE ?", (f"%{marker}%",)) == []
 
 
-def test_failed_insert_is_rolled_back(target, client, marker):
+def test_rejected_insert_returns_500_and_writes_no_row(target, client, marker):
     # val is VARCHAR(255): CUBRID rejects the longer value and the app rolls back.
     response = client.post("/items", json={"val": marker + "x" * 300})
 

@@ -36,6 +36,8 @@ def get_conn() -> Connection:
         database="testdb",
         user="dba",
         password="",
+        # Bounded, so /health answers 503 instead of hanging on an unreachable host.
+        connect_timeout=10,
     )
 
 
