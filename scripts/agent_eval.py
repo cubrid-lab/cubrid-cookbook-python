@@ -97,7 +97,10 @@ TASK_KEYS = {
 PYTEST = "python -m pytest "
 # Live commands are the repository's own runners: ``make verify`` for goldens and
 # a recipe's pytest suite. The grader never runs them; ``run`` does not either.
-LIVE_PREFIXES = ("make verify ", PYTEST)
+# ``make verify-goldens`` is the golden check from #437 on (#440); older base SHAs
+# record ``make verify VERIFY_PATHS=...``. Both print the same golden summary.
+GOLDEN_TARGETS = ("verify", "verify-goldens")
+LIVE_PREFIXES = (*(f"make {target} " for target in GOLDEN_TARGETS), PYTEST)
 COMMAND_KINDS = ("offline", "hidden", "live")
 OUTCOMES = ("passed", "skipped", "failed")
 # Directories whose Python files are user-facing examples (tests/ excluded).
@@ -402,7 +405,10 @@ def validate_task(task: Any, where: str = "task") -> list[str]:
         if not isinstance(live, list) or not all(
             isinstance(c, str) and c.startswith(LIVE_PREFIXES) for c in live
         ):
-            errors.append(f"{where}: validation.live must list 'make verify'/pytest commands")
+            errors.append(
+                f"{where}: validation.live must list 'make verify'/'make verify-goldens'/"
+                "pytest commands"
+            )
     docs = task.get("docs")
     if not isinstance(docs, list) or not all(
         isinstance(group, list) and group and all(isinstance(g, str) and g for g in group)
@@ -1179,16 +1185,13 @@ def _live(
                 )
                 continue
             argv = shlex.split(command)
+            golden = len(argv) > 1 and argv[0] == "make" and argv[1] in GOLDEN_TARGETS
             if argv[:1] == ["python"]:
                 argv[0] = sys.executable
-            elif argv[:2] == ["make", "verify"]:
+            elif golden:
                 argv.append(f"PYTHON={sys.executable}")
             done, output = _bounded(argv, worktree, timeout, env)
-            outcome = (
-                verify_outcome(done, output)
-                if argv[:2] == ["make", "verify"]
-                else pytest_outcome(done, output)
-            )
+            outcome = verify_outcome(done, output) if golden else pytest_outcome(done, output)
             commands.append(
                 {
                     "command": command,
