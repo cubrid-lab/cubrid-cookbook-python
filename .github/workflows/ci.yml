@@ -230,8 +230,9 @@ jobs:
       exclude: "node_modules/,typescript/node_modules/,vendor/"
       fail-on-issue: false  # advisory mode during initial rollout
 
-  # `make verify` is golden-file only and never runs the pytest suites, so
-  # recipe-level CUBRID-only breakage ships undetected (#131/#127). This job
+  # The PR smoke lanes' `make verify-goldens` compares golden files only and
+  # never runs these pytest suites, so recipe-level CUBRID-only breakage would
+  # ship undetected (#131/#127). This job
   # runs the Flask/FastAPI suites ci_scope.py selects (web_suites, #227) against
   # one live CUBRID 11.4: the changed recipes (up to MAX_WEB_SUITES), plus the
   # representative suites for shared Flask/FastAPI files and wider tiers.

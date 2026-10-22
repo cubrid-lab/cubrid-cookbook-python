@@ -207,7 +207,13 @@ class ClassifierTests(unittest.TestCase):
                 self.assertEqual(result["smoke_lanes"], "quickstart performance ai-agent")
 
     def test_shared_live_infrastructure_fans_out(self) -> None:
-        for path in ("Makefile", "scripts/normalize_output.sh", "docker-compose.yml"):
+        for path in (
+            "Makefile",
+            "scripts/normalize_output.sh",
+            "docker-compose.yml",
+            "scripts/live_gate.py",
+            "scripts/example_requirements.py",
+        ):
             with self.subTest(path=path):
                 result = scope(path)
                 self.assertEqual(result["tier"], "pr")

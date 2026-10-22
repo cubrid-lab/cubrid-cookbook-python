@@ -337,7 +337,7 @@ jobs:
           python scripts/release_smoke.py install-mcp --state "$RUNNER_TEMP/release-drivers.json"
 
       - name: Wait for CUBRID readiness
-        timeout-minutes: 15
+        timeout-minutes: 17
         run: |
           set -euo pipefail
           # Use the in-container csql check (same as docker-compose healthcheck)
@@ -411,7 +411,7 @@ jobs:
         # install keeps the exact selected driver-release constraints
         # (PIP_CONSTRAINT); incompatible requirements fail rather than replacing
         # a tested release.
-        timeout-minutes: 15
+        timeout-minutes: 10
         run: make deps
 
       - name: Record tested versions
@@ -422,6 +422,12 @@ jobs:
           python scripts/release_smoke.py verify \
             --state "$RUNNER_TEMP/release-drivers.json" --report \
             | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Run make test
+        # The unit and mocked suites (including the AI agent offline checks)
+        # against the selected release drivers, before the live verification.
+        timeout-minutes: 10
+        run: make test
 
       - name: Run make verify
         # The full live verification (scripts/live_gate.py all, fail-closed):

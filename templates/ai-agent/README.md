@@ -114,7 +114,7 @@ for every `main` push, the nightly schedule and release verification, and the
 CUBRID 11.4 pull-request smoke lane runs `make verify-ai-agent` twice when a pull
 request touches this template or its tests. Both runs keep their evidence
 (`.live-evidence/ai-agent-run-1/` and `-run-2/` in the `live-evidence-*` workflow
-artifact).
+artifact; not for a release workflow call).
 
 `make verify-ai-agent` (also part of the full `make verify`) runs the live suite
 fail-closed (`CUBRID_LIVE_GATE=1`): a missing `CUBRID_TEST_URL`, an unreachable

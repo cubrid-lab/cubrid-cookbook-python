@@ -148,6 +148,9 @@ SHARED_LIVE = (
     "scripts/wait_for_cubrid.py",
     "scripts/check_expected_coverage.py",
     "scripts/verify_exclusions.txt",
+    # make verify / verify-* runner and the make deps / dependency check (#416).
+    "scripts/live_gate.py",
+    "scripts/example_requirements.py",
 )
 # Python compatibility surface: the two goldens the compatibility lane runs.
 COMPAT = ("fundamentals/pycubrid/*", "fundamentals/sqlalchemy/*")

@@ -75,7 +75,7 @@ runs:
         # PIP_CONSTRAINT keeps the selected drivers fixed during every install.
         python scripts/release_smoke.py install-mcp --state "$RUNNER_TEMP/release-drivers.json"
         # Every example requirements.txt, pytest and pytest-asyncio (one pip call).
-        timeout 15m make deps
+        timeout 10m make deps
 
     - name: Wait for CUBRID readiness
       shell: bash
@@ -161,7 +161,7 @@ runs:
           exit 1
         fi
         printf '### PR smoke golden scope: `%s`\n' "$VERIFY_PATHS" >> "$GITHUB_STEP_SUMMARY"
-        make verify-goldens VERIFY_PATHS="$VERIFY_PATHS"
+        timeout 15m make verify-goldens VERIFY_PATHS="$VERIFY_PATHS"
 
     - name: Run the selected live lanes
       shell: bash
@@ -176,12 +176,12 @@ runs:
         for lane in $LIVE_LANES; do
           case "$lane" in
             quickstart) timeout 5m make verify-quickstart ;;
-            performance) timeout 10m make verify-performance ;;
+            performance) timeout 5m make verify-performance ;;
             ai-agent)
               # Two sequential runs on the same database (#426); each keeps its evidence.
-              timeout 8m make verify-ai-agent
+              timeout 4m make verify-ai-agent
               cp -a .live-evidence/ai-agent .live-evidence/ai-agent-run-1
-              timeout 8m make verify-ai-agent
+              timeout 4m make verify-ai-agent
               cp -a .live-evidence/ai-agent .live-evidence/ai-agent-run-2
               ;;
           esac

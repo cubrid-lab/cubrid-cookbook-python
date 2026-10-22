@@ -267,7 +267,7 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   focused lanes `scripts/ci_scope.py` names in `smoke_lanes`, one at a time on the
   examples database: `make verify-quickstart` (about 1 s) for
   `quickstart/5min-fastapi/` (other than Markdown), `make verify-performance` (about a
-  minute, bounded at 10 minutes) for `performance/` and
+  minute, bounded at 5 minutes) for `performance/` and
   `tests/test_performance_benchmarks.py`, and `make verify-ai-agent` twice on a
   second, dedicated CUBRID container (`CUBRID_TEST_URL`; about 20 s each) for
   `templates/ai-agent/` and `tests/test_ai_agent.py` (#425, #426, #428). Each of
