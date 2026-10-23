@@ -1034,7 +1034,7 @@ pinning the caller alone does not freeze those resources.
 - Outside contributors do not need internal AI tooling, label rights
   or database access. Maintainers arrange applicable hosted CI/lab checks.
 
-### Agent-review evidence gate (advisory only)
+### Agent-review evidence gate
 
 `agent-review` is a non-blocking diagnostic of submitted review records.
 Its current script may describe legacy tool-dependent evidence; that
