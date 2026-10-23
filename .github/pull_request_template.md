@@ -19,21 +19,18 @@ Include a description of changes associated with your commit(s)
 - Checks not executed, reason, and remaining gaps:
 - Optional additional AI/tool review (separate from tests and not a replacement for the required review route):
 
-## Review Route and Final Disposition
+## Review and Final Disposition
 
-<!-- Record the route actually used; human contributors do not need a specific AI tool. -->
-- Development route: OpenCode + Oracle pre/post / trivial OpenCode with recorded Oracle skip / standalone Claude Code / standalone Codex / standalone ChatGPT or other agent (name it) / human (select one).
-- Trivial OpenCode exception, if used: skipped Oracle phases and reason, or not applicable.
-- Review evidence: actual Oracle review references, or the submitted Copilot review link or maintainer review link, reviewer and reviewed head SHA, or **pending**. For standalone agents only a Copilot or maintainer review qualifies.
-- Finding disposition: fixed commit + test / rejected with reason / deferred issue.
-- Unresolved review threads and reason, or "none" after verification.
-- Maintainer merge decision: **pending**; complete only after checking the applicable review, final code, required CI, applicable live validation and thread dispositions.
-<!-- A requested review, green CI or automated "approval recommended" text alone does not complete the review route.
-     The advisory `agent-review` check reads only GitHub's submitted reviews of the head commit;
-     this section and its checkboxes are records for maintainers, never evidence. Protected paths
-     (every workflow and action, dependabot.yml, release_smoke.py, mcp_smoke.py, ci_scope.py,
-     driver_floors.py, the gate) need a
-     maintainer's APPROVED review. See CONTRIBUTING.md#agent-review-evidence-gate. -->
+<!-- The same review criteria apply regardless of human/agent implementation. -->
+- Required GitHub CI at final head: **pending** (add runs/links once available).
+- Applicable live CUBRID test evidence: **pending** / N/A with reason.
+- Optional AI review (Oracle, Copilot, agent-review): link useful findings, or N/A.
+- Finding dispositions: fixed + test / rejected with reason / deferred issue.
+- Open threads and blocking defects: list, or "none" after checking.
+- Maintainer merge decision: **pending** (after source, security and required
+  CI checks are reviewed).
+<!-- AI reviews and agent-review are advisory, never a tool-dependent gate.
+     Keep independent scrutiny for protected security, workflow and release paths. -->
 
 ## Reviewers
 - Request reviewers through GitHub review requests; avoid repeated bot @mentions and review requests.
