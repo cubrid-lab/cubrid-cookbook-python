@@ -139,9 +139,7 @@ class ReadinessCommandTests(unittest.TestCase):
         self.assertIn("CUBRID readiness failed", result.stderr)
         self.assertIn("No such file", result.stderr)
         self.assertIn("Compose ps diagnostics failed", result.stderr)
-        self.assertIn(
-            "Compose logs --tail 50 cubrid diagnostics failed", result.stderr
-        )
+        self.assertIn("Compose logs --tail 50 cubrid diagnostics failed", result.stderr)
 
     def test_empty_compose_is_a_usage_error_and_runs_nothing(self) -> None:
         result = self.wait("success", compose="")
