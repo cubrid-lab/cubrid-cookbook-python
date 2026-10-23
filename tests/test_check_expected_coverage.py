@@ -151,7 +151,6 @@ class MissingGoldenTests(unittest.TestCase):
 
             self.assertEqual(result, [])
 
-
     def test_expected_as_a_regular_file_does_not_opt_the_folder_in(self):
         # Only an expected/ DIRECTORY opts in: a file literally named
         # `expected` beside a script must not make that script "missing".
@@ -257,6 +256,7 @@ class MissingGoldenTests(unittest.TestCase):
                 result = coverage.find_missing([root], set())
 
             self.assertEqual(result, ["b/three.py"])
+
 
 class MainTests(unittest.TestCase):
     def test_missing_golden_returns_exit_code_one(self):
