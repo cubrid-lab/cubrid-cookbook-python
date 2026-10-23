@@ -66,12 +66,14 @@ class ReadinessCommandTests(unittest.TestCase):
         )
         return shlex.join([sys.executable, str(self.compose)])
 
-    def wait(self, mode: str, *, timeout: str = str(WAIT_TIMEOUT)):
+    def wait(self, mode: str, *, timeout: str = str(WAIT_TIMEOUT), compose: str | None = None):
+        if compose is None:
+            compose = self.fake_compose(mode)
         command = [
             sys.executable,
             str(ROOT / "scripts/wait_for_cubrid.py"),
             "--compose",
-            self.fake_compose(mode),
+            compose,
             "--timeout",
             timeout,
             "--probe-timeout",
@@ -127,6 +129,29 @@ class ReadinessCommandTests(unittest.TestCase):
                 result = self.wait("success", timeout=value)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertFalse(self.log.exists())
+
+    def test_missing_compose_executable_fails_fast_without_retrying(self) -> None:
+        missing = str(self.root / "nonexistent-compose")
+        started = time.monotonic()
+        result = self.wait("success", compose=missing)
+        self.assertLess(time.monotonic() - started, WAIT_TIMEOUT)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("CUBRID readiness failed", result.stderr)
+        self.assertIn("No such file", result.stderr)
+        self.assertIn("Compose ps diagnostics failed", result.stderr)
+        self.assertIn("Compose logs --tail 50 cubrid diagnostics failed", result.stderr)
+
+    def test_empty_compose_is_a_usage_error_and_runs_nothing(self) -> None:
+        result = self.wait("success", compose="")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("--compose must name an executable", result.stderr)
+        self.assertFalse(self.log.exists())
+
+    def test_unparsable_compose_is_a_usage_error_and_runs_nothing(self) -> None:
+        result = self.wait("success", compose='"unbalanced')
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("No closing quotation", result.stderr)
+        self.assertFalse(self.log.exists())
 
     def test_make_up_uses_the_bounded_helper(self) -> None:
         result = subprocess.run(
