@@ -6,10 +6,12 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   intake:
+    permissions:
+      contents: read
+      issues: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
