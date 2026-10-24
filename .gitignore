@@ -84,3 +84,4 @@ docs/template-*.md
 
 # Live verification evidence written by make verify and the make verify-* lanes
 .live-evidence/
+test-results/

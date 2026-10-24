@@ -70,7 +70,7 @@ deps: ## Install the drivers, pytest, pytest-asyncio and every example's require
 
 clean: ## Remove generated files, caches and test results (never Docker containers, volumes or data)
 	$(PYTHON) -B -c 'import sys; sys.path.insert(0, "scripts"); from pathlib import Path; from stage_docs import STAGE; [Path(page).unlink(missing_ok=True) for _, page in STAGE]'
-	rm -rf .live-evidence site .pytest_cache .ruff_cache
+	rm -rf .live-evidence test-results site .pytest_cache .ruff_cache
 	find . \( -path ./.git -o -path ./.venv -o -path ./venv \) -prune -o \
 		-type d \( -name __pycache__ -o -name .pytest_cache -o -name .ruff_cache \) -prune \
 		-exec rm -rf {} +

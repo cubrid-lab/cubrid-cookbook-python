@@ -8,6 +8,14 @@ interpreter. ``python`` in a suite is replaced by the interpreter running this
 script (``make test PYTHON=...``). The run stops at the first failing suite and
 exits 1, as the former one-command-per-line Make recipe did.
 
+Each run also writes ``test-results/test/`` (gitignored, removed by ``make clean``, #461):
+one JUnit file per suite under ``junit/`` (pytest ``--junitxml``; the unittest suites run
+through ``scripts/unittest_junit.py``, which writes the same shape), and a versioned
+``summary.json`` aggregated by ``scripts/report_results.py``, with the same one-line
+summary printed at the end. A shell-script suite has no JUnit file and counts as one
+check. Coverage is not measured, so no ``coverage.xml`` is written. The suite commands
+shown by ``--list`` are the plain ones; the JUnit options are added when running.
+
 None of these suites needs a database or Docker. ``--list`` prints the commands
 without running them.
 """
@@ -15,12 +23,19 @@ without running them.
 from __future__ import annotations
 
 import argparse
+import re
 import shlex
 import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = Path(__file__).resolve().parent
+ROOT = SCRIPTS.parent
+DEFAULT_RESULTS = Path("test-results") / "test"
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
+
+import report_results  # noqa: E402
 
 
 def _unittest(pattern: str) -> tuple[str, ...]:
@@ -59,6 +74,7 @@ SUITES: tuple[tuple[str, ...], ...] = (
     _unittest("test_quickstart_config.py"),
     _unittest("test_quickstart_cleanup.py"),
     _unittest("test_live_gate.py"),
+    _unittest("test_report_results.py"),
     # Before/after checks for scripts/normalize_output.sh (also `make test-normalize`).
     ("bash", "scripts/test_normalize_output.sh"),
 )
@@ -69,19 +85,74 @@ def commands(python: str = sys.executable) -> list[list[str]]:
     return [[python if arg == "python" else arg for arg in suite] for suite in SUITES]
 
 
+def suite_name(suite: tuple[str, ...]) -> str:
+    """A short, stable name: ``unittest:<pattern>``, ``pytest:<first path>``, ``bash:<script>``."""
+    if suite[1:3] == ("-m", "unittest"):
+        return f"unittest:{suite[suite.index('-p') + 1]}"
+    if suite[1:3] == ("-m", "pytest"):
+        return f"pytest:{suite[3]}"
+    return f"{Path(suite[0]).name}:{suite[1]}"
+
+
+def with_junit(command: list[str], suite: tuple[str, ...], junit: Path) -> list[str] | None:
+    """The command with JUnit output added, or None for a suite that cannot write one."""
+    if suite[1:3] == ("-m", "unittest"):
+        return [command[0], str(SCRIPTS / "unittest_junit.py"), str(junit), *command[3:]]
+    if suite[1:3] == ("-m", "pytest"):
+        return [*command, f"--junitxml={junit}"]
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--list", action="store_true", help="print the commands, run nothing")
+    parser.add_argument(
+        "--results-dir",
+        type=Path,
+        default=ROOT / DEFAULT_RESULTS,
+        help=f"where JUnit files and summary.json go (default: {DEFAULT_RESULTS})",
+    )
     args = parser.parse_args(argv)
-    for command in commands():
-        print(shlex.join(command), flush=True)
-        if args.list:
-            continue
-        code = subprocess.run(command, cwd=ROOT).returncode
-        if code != 0:
-            print(f"make test: FAILED (exit {code}): {shlex.join(command)}", file=sys.stderr)
-            return 1
-    return 0
+    if not args.list:
+        report_results.reset_results_dir(args.results_dir, ROOT)
+    results = args.results_dir.resolve()
+    entries: list[dict] = []
+    not_run: list[str] = [suite_name(suite) for suite in SUITES]
+    failed = False
+
+    def finish() -> None:
+        summary = report_results.build_summary("test", entries, not_run)
+        path = report_results.write_summary(results, summary)
+        print(report_results.console_line(summary, path), flush=True)
+
+    try:
+        for number, (suite, command) in enumerate(zip(SUITES, commands()), start=1):
+            print(shlex.join(command), flush=True)
+            if args.list:
+                continue
+            name = suite_name(suite)
+            slug = re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip("-")
+            junit = results / "junit" / f"{number:02d}-{slug}.xml"
+            runnable = with_junit(command, suite, junit) or command
+            code = subprocess.run(runnable, cwd=ROOT).returncode
+            not_run.remove(name)
+            entries.append(
+                report_results.suite_entry(
+                    name, suite, code, junit if runnable is not command else None, results
+                )
+            )
+            if code != 0:
+                print(f"make test: FAILED (exit {code}): {shlex.join(command)}", file=sys.stderr)
+                failed = True
+                break
+    except BaseException:
+        if not args.list:
+            finish()
+        raise
+    if args.list:
+        return 0
+    finish()
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

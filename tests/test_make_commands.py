@@ -825,11 +825,12 @@ class MakeTargetSemanticsTests(unittest.TestCase):
 
         stderr = io.StringIO()
         with (
+            tempfile.TemporaryDirectory() as results,
             mock.patch.object(module.subprocess, "run", fake_run),
             contextlib.redirect_stdout(io.StringIO()),
             contextlib.redirect_stderr(stderr),
         ):
-            self.assertEqual(module.main([]), 1)
+            self.assertEqual(module.main(["--results-dir", str(Path(results) / "t")]), 1)
         self.assertEqual(len(ran), 2)
         self.assertIn("FAILED (exit 3)", stderr.getvalue())
 

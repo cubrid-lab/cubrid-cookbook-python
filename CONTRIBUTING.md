@@ -66,11 +66,17 @@ quickstart and AI-agent tests, release dependency guards, workflow guards and fa
 Make/Compose regression tests. The suite list lives in
 `scripts/run_offline_tests.py`, and each suite runs in its own process to avoid
 conflicting recipe module names.
+`make test` also writes `test-results/test/` (ignored by git, removed by `make clean`, #461):
+one JUnit file per suite in `junit/` and `summary.json` with the schema version, the
+overall status (`PASS`, `FAIL` or `INCOMPLETE`), per-suite and total counts and the
+suites not run after a failure; the last console line repeats the same status and
+counts. Coverage is not measured, so `summary.json` says `"coverage": {"measured": false}`
+and no `coverage.xml` is written. A failing suite still stops the run and exits 1.
 These checks require no database and do not prove live CUBRID compatibility;
 run the relevant example, a `make verify-*` lane or the full `make verify` against
 CUBRID for that evidence (see [Live verification](#live-verification)).
 `make clean` removes generated files, caches and test results (`.live-evidence/`,
-`__pycache__`, `.pytest_cache`, `.ruff_cache`, the staged docs pages and `site/`)
+`test-results/`, `__pycache__`, `.pytest_cache`, `.ruff_cache`, the staged docs pages and `site/`)
 and never touches Docker; `make docker-down` (alias `make down`) stops the lab and keeps
 its data, and only `make docker-clean` deletes the lab's containers and volumes, database
 data included (see [Running Examples](#running-examples)).
