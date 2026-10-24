@@ -212,6 +212,43 @@ class UnittestJunitTests(unittest.TestCase):
         )
         self.assertEqual((code, counts["passed"], counts["selected"]), (0, 1, 1))
 
+    def test_no_arguments_prints_usage_and_exits_two(self) -> None:
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/unittest_junit.py")],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("usage", proc.stderr.lower())
+        self.assertIn("JUNIT_XML", proc.stderr)
+
+    def test_unexpected_success_is_reported_as_a_failure(self) -> None:
+        # An @expectedFailure test that passes leaves the run unsuccessful and is
+        # written as <failure message="unexpected success">, which parse_junit
+        # counts as a failure (xpassed stays 0; see report_results docstring).
+        code, counts = self.run_runner(
+            """
+            import unittest
+            class T(unittest.TestCase):
+                @unittest.expectedFailure
+                def test_up(self): pass
+            """
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(
+            counts,
+            {
+                "selected": 1,
+                "passed": 0,
+                "failed": 1,
+                "errors": 0,
+                "skipped": 0,
+                "xfailed": 0,
+                "xpassed": 0,
+            },
+        )
+
 
 class RunnerAggregationTests(unittest.TestCase):
     """run_offline_tests.main with a faked subprocess: aggregation, status, exit code."""
