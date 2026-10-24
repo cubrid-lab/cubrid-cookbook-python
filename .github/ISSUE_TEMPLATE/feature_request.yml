@@ -1,7 +1,7 @@
 name: Example Request
 description: Suggest a new cookbook example
 title: "feat: "
-labels: ["enhancement"]
+labels: ["enhancement", "status: needs triage"]
 body:
   - type: markdown
     attributes:
