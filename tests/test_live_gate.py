@@ -197,6 +197,47 @@ class PreflightTests(unittest.TestCase):
         self.assertTrue(live_gate.table_change_reasons({"own"}, set(), ["own"]))
 
 
+class RedactionAndLaneStatusTests(unittest.TestCase):
+    def test_secret_replacements_cover_url_and_password_forms_longest_first(self) -> None:
+        password = "s3cr&t/Pw"
+        url = "cubrid+pycubrid://dba:s3cr%26t%2FPw@localhost:33005/testdb"
+        expected = [
+            (url, "cubrid+pycubrid://dba:***@localhost:33005/testdb"),
+            ("s3cr%26t%2FPw", "***"),
+            ("s3cr&amp;t/Pw", "***"),
+            (password, "***"),
+        ]
+
+        self.assertEqual(live_gate.secret_replacements(url), expected)
+        self.assertEqual(live_gate.secret_replacements(url, url), expected)
+
+    def test_secret_replacements_ignore_empty_and_passwordless_urls(self) -> None:
+        passwordless = "cubrid+pycubrid://dba@localhost:33005/testdb"
+        self.assertEqual(live_gate.secret_replacements(None, "", passwordless), [])
+        self.assertEqual(
+            live_gate.secret_replacements("not a url"),
+            [("not a url", "<unparseable URL>")],
+        )
+
+    def test_redact_applies_replacements_in_order(self) -> None:
+        url = "cubrid+pycubrid://dba:s3cr%26t%2FPw@localhost:33005/testdb"
+        replacements = live_gate.secret_replacements(url)
+        text = f"x {url} pw s3cr%26t%2FPw"
+        self.assertEqual(
+            live_gate.redact(text, replacements),
+            "x cubrid+pycubrid://dba:***@localhost:33005/testdb pw ***",
+        )
+        self.assertEqual(live_gate.redact("unchanged", replacements), "unchanged")
+        self.assertEqual(live_gate.redact("abc", [("abc", "x"), ("x", "y")]), "y")
+
+    def test_lane_status_fails_closed_and_passes_only_when_complete(self) -> None:
+        self.assertEqual(live_gate.lane_status_of([], 0), "PASS")
+        self.assertEqual(live_gate.lane_status_of(["PASS"], 2), "FAIL")
+        self.assertEqual(live_gate.lane_status_of(["PASS", "INCOMPLETE"], 2), "INCOMPLETE")
+        self.assertEqual(live_gate.lane_status_of(["INCOMPLETE", "FAIL"], 2), "FAIL")
+        self.assertEqual(live_gate.lane_status_of(["PASS", "PASS"], 2), "PASS")
+
+
 class ManifestTests(unittest.TestCase):
     def test_every_glob_matches_and_reuses_existing_suites_once(self) -> None:
         seen: list[str] = []
