@@ -283,6 +283,18 @@ class WorkflowPermissionsTest(unittest.TestCase):
             with self.subTest(where=where):
                 self.assertEqual(label_problems(command), [])
 
+    def test_automated_issue_creation_keeps_triage_pending(self) -> None:
+        """A GITHUB_TOKEN-generated issue does not trigger the intake workflow."""
+        created = [
+            command
+            for path in workflow_paths()
+            for command in issue_create_commands(path.read_text(encoding="utf-8"))
+        ]
+        self.assertTrue(created)
+        for command in created:
+            with self.subTest(command=command[:70]):
+                self.assertIn('--label "status: needs triage"', command)
+
     def test_issue_create_parser_follows_shell_continuations(self) -> None:
         split = 'run: |\n  gh issue \\\n    create --title "t" \\\n    --label ci\n'
         self.assertEqual(issue_create_commands(split), ['gh issue create --title "t" --label ci'])
