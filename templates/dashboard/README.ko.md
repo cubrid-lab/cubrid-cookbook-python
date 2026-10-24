@@ -31,6 +31,8 @@ docker compose up -d
 Compose 파일은 CUBRID 11.4와 Streamlit 서비스를 함께 띄웁니다. 첫 기동 시 고정된(pinned) requirements를 설치하므로 몇 분 걸릴 수 있고, 이후 실행은 pip 캐시를 재사용합니다. 레시피는 환경 변수 `DATABASE_URL`을 읽습니다(기본값 `cubrid+pycubrid://dba@localhost:33000/testdb`). Compose 서비스는 같은 스택 안의 CUBRID 컨테이너를 가리킵니다. `docker compose down`은 데이터베이스를 이름 있는 볼륨에 남기고,
 `docker compose down -v`로 볼륨까지 지우면 전체를 초기 상태로 돌릴 수 있습니다.
 
+Compose는 CUBRID 브로커(`127.0.0.1:33000`)와 대시보드(`127.0.0.1:8501`)를 이 호스트에만 게시합니다. 실습용 `dba` 계정에는 비밀번호가 없으므로 브로커는 다른 인터페이스에 게시하지 않습니다. 다른 머신에서 대시보드에 접근하게 하려면 의도적으로 `DASHBOARD_HOST_IP`를 지정하세요(예: `DASHBOARD_HOST_IP=0.0.0.0 docker compose up -d`).
+
 ### 이전 Compose 파일로 시작한 대시보드 업그레이드
 
 CUBRID는 데이터베이스를 만든 컨테이너의 호스트 이름을 기록합니다. 현재 파일은

@@ -25,6 +25,18 @@ It is intentionally lean: sync SQLAlchemy session lifecycle, clean repository pa
    - Swagger UI: `http://localhost:8000/docs`
    - Health: `http://localhost:8000/health`
 
+## What is published, and resetting the data
+
+Compose publishes the CUBRID broker (`127.0.0.1:33000`) and the API
+(`127.0.0.1:8000`) on this host only. The lab `dba` account has no password, so
+the broker is never published on other interfaces. To let other machines reach
+the API on purpose, set `API_HOST_IP` (for example
+`API_HOST_IP=0.0.0.0 docker compose up --build`, or a line in `.env`).
+
+The database lives in the named volumes `cubrid_data` and `cubrid_databases`.
+`docker compose down` keeps it; `docker compose down -v` deletes it, which resets
+the template to an empty database.
+
 ## Upgrading a stack started from an earlier compose file
 
 CUBRID records the host name of the container that created the database. Earlier

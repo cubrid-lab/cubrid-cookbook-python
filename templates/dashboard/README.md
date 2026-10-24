@@ -33,6 +33,12 @@ cache). Recipes read `DATABASE_URL` from the environment (default
 it at the co-located container. `docker compose down` keeps the database in named
 volumes; `docker compose down -v` resets everything.
 
+Compose publishes the CUBRID broker (`127.0.0.1:33000`) and the dashboard
+(`127.0.0.1:8501`) on this host only; the lab `dba` account has no password, so
+the broker is never published on other interfaces. To let other machines reach
+the dashboard on purpose, set `DASHBOARD_HOST_IP` (for example
+`DASHBOARD_HOST_IP=0.0.0.0 docker compose up -d`).
+
 ### Upgrading a dashboard started from an earlier compose file
 
 CUBRID records the host name of the container that created the database. The

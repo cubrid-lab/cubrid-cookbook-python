@@ -80,6 +80,39 @@ class RecipeComposeNamesTests(unittest.TestCase):
                     self.assertRegex(service, r"(?m)^      CUBRID_DB_HOST: localhost$")
 
 
+class RecipeComposeExposureTests(unittest.TestCase):
+    def test_no_recipe_compose_publishes_the_broker_beyond_localhost(self) -> None:
+        # #469: the lab `dba` account has no password, so the broker must name a
+        # 127.0.0.1 host IP, as the root lab and the quickstarts do.
+        files = sorted(
+            p
+            for pattern in ("quickstart/*/docker-compose.yml", "templates/*/docker-compose.yml")
+            for p in ROOT.glob(pattern)
+        )
+        self.assertGreaterEqual(len(files), 4)
+        for path in files:
+            with self.subTest(compose=str(path.relative_to(ROOT))):
+                compose = path.read_text(encoding="utf-8")
+                ports = re.findall(r'^\s*- "([^"]*33000)"', compose, re.MULTILINE)
+                self.assertTrue(ports, "expected a published broker port")
+                for port in ports:
+                    self.assertRegex(port, r"^127\.0\.0\.1:\d+:33000$")
+
+    def test_api_service_database_survives_down(self) -> None:
+        compose = (ROOT / "templates/api-service-fastapi/docker-compose.yml").read_text(
+            encoding="utf-8"
+        )
+        cubrid = compose.split("\n  cubrid:\n", 1)[1].split("\n  api:\n", 1)[0]
+        for mount in (
+            "cubrid_data:/var/lib/cubrid",
+            "cubrid_databases:/home/cubrid/CUBRID/databases",
+        ):
+            self.assertIn(f"      - {mount}", cubrid)
+        self.assertRegex(
+            compose, r"\nvolumes:\n(?:  \w+:\n)*  cubrid_data:\n(?:  \w+:\n)*  cubrid_databases:\n"
+        )
+
+
 class QuickstartDatabaseTests(unittest.TestCase):
     def quickstarts(self) -> list[Path]:
         found = sorted(p.parent for p in QUICKSTART.glob("*/docker-compose.yml"))
