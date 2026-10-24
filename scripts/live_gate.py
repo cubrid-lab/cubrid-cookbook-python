@@ -499,6 +499,7 @@ def suite_env(
 ) -> dict[str, str]:
     env = dict(os.environ)
     env.pop(LIVE_URL_ENV, None)
+    env.pop("VERIFY_SCOPE", None)  # only run_goldens may mark a run as the full verification
     # The suites read the gate as exactly "1"; normalise any accepted spelling.
     env[GATE_ENV] = "1" if gate else "0"
     if gate:
@@ -516,7 +517,7 @@ GOLDEN_SKIP = "SKIP"
 
 
 def run_goldens(
-    suite: dict[str, Any], out_dir: Path, python: str, env: dict[str, str]
+    suite: dict[str, Any], out_dir: Path, python: str, env: dict[str, str], partial: bool = True
 ) -> tuple[SuiteResult, str]:
     """Run `make verify-goldens` and read its per-golden result lines.
 
@@ -525,6 +526,8 @@ def run_goldens(
     """
     results_file = out_dir / "results.tsv"
     env = {**env, "VERIFY_RESULTS": str(results_file)}
+    if not partial:
+        env["VERIFY_SCOPE"] = "full"  # the goldens part of `make verify`: no PARTIAL line
     command = [
         shutil.which("make") or "make",
         "--no-print-directory",
@@ -606,8 +609,9 @@ def probe_servers(
 
 
 def run_lane(
-    lane: str, evidence_dir: Path, gate: bool, python: str, timeout: int
+    lane: str, evidence_dir: Path, gate: bool, python: str, timeout: int, partial: bool = True
 ) -> dict[str, Any]:
+    """Run one lane. ``partial`` is False only for the lanes of the full ``make verify``."""
     live_url = os.environ.get(LIVE_URL_ENV) or None
     dashboard_url = os.environ.get(DASHBOARD_URL_ENV) or None
     suites = expand_suites(lane)
@@ -627,7 +631,7 @@ def run_lane(
             if "goldens" in suite:
                 print(f"[{lane}] make verify-goldens ({suite['database']})", flush=True)
                 env = suite_env("sqlite", live_url, dashboard_url, gate)
-                result, _ = run_goldens(suite, out_dir, python, env)
+                result, _ = run_goldens(suite, out_dir, python, env, partial)
                 print(f"[{lane}]   -> {result.status}: {_counts(result)}", flush=True)
                 results.append(result)
                 continue
@@ -659,6 +663,7 @@ def run_lane(
         "title": MANIFEST[lane]["title"],
         "status": lane_status(results, reasons, gate),
         "gate": gate,
+        "partial": partial,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git": git_state(),
         "python": {
@@ -707,6 +712,14 @@ def _counts(result: SuiteResult) -> str:
     )
 
 
+def partial_line(lanes: list[str]) -> str:
+    """The console/summary line of a run that is not the full ``make verify``."""
+    return (
+        f"PARTIAL: checked only the {', '.join(lanes)} lane{'s' if len(lanes) > 1 else ''}; "
+        "this is not the full verification (only a passing `make verify` is)."
+    )
+
+
 def render_text(summary: dict[str, Any]) -> str:
     lines = [
         f"== {summary['lane']}: {summary['title']} -> {summary['status']}",
@@ -715,6 +728,8 @@ def render_text(summary: dict[str, Any]) -> str:
         f"python: {summary['python']['version']}   "
         + ", ".join(f"{k} {v}" for k, v in summary["packages"].items() if v),
     ]
+    if summary["partial"]:
+        lines.insert(1, partial_line([summary["lane"]]))
     for mode, server in summary["servers"].items():
         lines.append(
             f"{mode} server ({server['env']}={server['url']}): "
@@ -774,7 +789,7 @@ def run_all(evidence_dir: Path, gate: bool, python: str, timeout: int) -> dict[s
     lanes: dict[str, dict[str, Any]] = {}
     if not reasons:
         for lane in FULL_ORDER:
-            lanes[lane] = run_lane(lane, evidence_dir, gate, python, timeout)
+            lanes[lane] = run_lane(lane, evidence_dir, gate, python, timeout, partial=False)
 
     def totals(names: list[str], live: bool) -> dict[str, int]:
         # By-design SQLite suites (startup-only) are counted apart from live evidence.
@@ -819,6 +834,7 @@ def run_all(evidence_dir: Path, gate: bool, python: str, timeout: int) -> dict[s
     versions = interpreter_versions(python)
     summary = {
         "scope": "full",
+        "partial": False,
         "status": "FAIL"
         if reasons
         else lane_status_of([goldens["status"], pytest_lanes["status"]], 2),
@@ -928,6 +944,7 @@ def main(argv: list[str] | None = None) -> int:
     statuses = {}
     for lane in dict.fromkeys(args.lanes):
         statuses[lane] = run_lane(lane, evidence_dir, gate, args.python, args.timeout)["status"]
+    print(partial_line(list(statuses)))
     print("live gate: " + ", ".join(f"{lane} {status}" for lane, status in statuses.items()))
     return 0 if all(status != "FAIL" for status in statuses.values()) else 1
 

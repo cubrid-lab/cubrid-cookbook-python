@@ -219,6 +219,17 @@ selected/passed/failed/skipped counts and case outcomes per suite. `make verify`
 writes `.live-evidence/verify-summary.json` and `verify-summary.txt`, which report the
 golden comparisons and the pytest lanes separately and name every failed golden.
 
+Only a complete `make verify` run reports the full verification. Every other run is
+labeled `PARTIAL` (#460): `make verify-goldens` (whether scoped by `VERIFY_PATHS` or
+not) ends its output with a `PARTIAL: checked only the goldens under: <roots>` line,
+and a focused lane (`make verify-quickstart`, `verify-web`, ..., or
+`scripts/live_gate.py <lane>`) prints `PARTIAL: checked only the <lanes> lane(s)`,
+repeats it in that lane's `summary.txt` and records `"partial": true` in its
+`summary.json`. The lanes that `make verify` itself runs and its
+`verify-summary.json` record `"partial": false`. A `PASS` or `Results:` line from a
+partial run therefore never means the full verification passed; the label does not
+change which goldens or suites run.
+
 `make verify` is always the full verification: an exported `VERIFY_PATHS` does not
 narrow it, and `make verify VERIFY_PATHS=<dirs>` on the command line fails with a
 one-line message that names `make verify-goldens VERIFY_PATHS=<dirs>`, the partial

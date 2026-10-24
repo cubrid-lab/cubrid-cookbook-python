@@ -7,7 +7,9 @@ replaced by a stub `make`.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -264,7 +266,9 @@ class StubRunner(unittest.TestCase):
         )
         self.python.chmod(0o755)
 
-    def run_gate(self, env: dict[str, str], *lanes: str, gate: bool = True) -> int:
+    def run_gate(
+        self, env: dict[str, str], *lanes: str, gate: bool = True, stdout: bool = True
+    ) -> int:
         clean = {
             k: v
             for k, v in os.environ.items()
@@ -274,7 +278,7 @@ class StubRunner(unittest.TestCase):
         with (
             mock.patch.dict(os.environ, {**clean, **env}, clear=True),
             mock.patch.object(live_gate, "probe", return_value=("11.2.9.0866", set(), None)),
-            mock.patch("sys.stdout"),
+            mock.patch("sys.stdout") if stdout else contextlib.nullcontext(),
         ):
             return live_gate.main([*argv, *(["--gate"] if gate else [])])
 
@@ -311,6 +315,20 @@ class RunnerTests(StubRunner):
         summary = self.summary("django-celery")
         self.assertEqual(summary["status"], "INCOMPLETE")
         self.assertTrue(all(s["status"] == "passed" for s in summary["suites"]))
+
+    def test_focused_lane_run_is_labeled_partial(self) -> None:
+        # #460: a single lane is never reported as the full verification.
+        env = {"STUB_JUNIT": junit(1), "CUBRID_TEST_URL": LIVE}
+        with mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+            self.assertEqual(self.run_gate(env, "django-celery", "web", stdout=False), 0)
+        printed = out.getvalue()
+        self.assertIn("PARTIAL: checked only the django-celery, web lanes", printed)
+        for lane in ("django-celery", "web"):
+            summary = self.summary(lane)
+            self.assertIs(summary["partial"], True)
+            text = (self.tmp / "evidence" / lane / "summary.txt").read_text("utf-8")
+            self.assertIn("PARTIAL: checked only the " + lane + " lane;", text)
+        self.assertFalse((self.tmp / "evidence" / "verify-summary.json").exists())
 
     def test_invalid_gate_value_is_a_usage_error(self) -> None:
         with mock.patch("sys.stderr"), self.assertRaises(SystemExit) as raised:
@@ -395,6 +413,9 @@ FAKE_MAKE = textwrap.dedent(
     results = os.environ["VERIFY_RESULTS"]
     with open(results, "a") as out:
         out.write(os.environ.get("STUB_GOLDENS", ""))
+    open(os.path.join(os.path.dirname(results), "scope.txt"), "w").write(
+        os.environ.get("VERIFY_SCOPE", "")
+    )
     print("Results: stub")
     sys.exit(int(os.environ.get("STUB_MAKE_EXIT", "0")))
     """
@@ -447,6 +468,22 @@ class FullVerifyTests(StubRunner):
             if suite["database"] != "sqlite"
         )
         self.assertEqual(summary["pytest"]["totals"]["tests"], live_suites)
+
+    def test_full_run_is_not_partial_and_marks_only_its_goldens_part_full(self) -> None:
+        self.assertEqual(self.run_all({}), 0)
+        self.assertIs(self.verify_summary()["partial"], False)
+        text = (self.tmp / "evidence" / "verify-summary.txt").read_text("utf-8")
+        self.assertNotIn("PARTIAL", text)
+        for lane in live_gate.FULL_ORDER:
+            self.assertIs(self.summary(lane)["partial"], False)
+        self.assertEqual((self.tmp / "evidence/goldens/scope.txt").read_text("utf-8"), "full")
+
+    def test_the_goldens_lane_alone_runs_partial(self) -> None:
+        env = {"STUB_GOLDENS": "PASS\ta.py\n", "VERIFY_SCOPE": "full"}  # ambient value ignored
+        with mock.patch.object(live_gate.shutil, "which", return_value=str(self.make)):
+            self.assertEqual(self.run_gate(env, "goldens"), 0)
+        self.assertIs(self.summary("goldens")["partial"], True)
+        self.assertEqual((self.tmp / "evidence/goldens/scope.txt").read_text("utf-8"), "")
 
     def test_ungated_full_run_is_incomplete_and_never_succeeds(self) -> None:
         env = {

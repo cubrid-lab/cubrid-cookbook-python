@@ -12,6 +12,8 @@
 #   VERIFY_TIMEOUT  wall-clock limit in seconds per script (default: 60)
 #   VERIFY_RESULTS  optional file that receives one STATUS<TAB>target line per
 #                   golden; scripts/live_gate.py reads it
+#   VERIFY_SCOPE    "full" only when scripts/live_gate.py runs the goldens part of the
+#                   full `make verify`; any other run ends with a PARTIAL line
 #   GITHUB_ACTIONS  when set, failures are also printed as ::error annotations
 #
 # One line per golden (PASS, MISMATCH, EXEC-ERROR, TIMEOUT, NORMALIZE-ERROR,
@@ -108,4 +110,8 @@ echo ""
 echo "Results: $PASS passed, $FAIL failed, $SKIP skipped" \
 	"($MISMATCH mismatch, $EXEC exec-error, $TIMEOUT timeout," \
 	"$NORMALIZE_ERRORS normalize-error, $READ read-error)"
+if [ "${VERIFY_SCOPE:-}" != "full" ]; then
+	echo "PARTIAL: checked only the goldens under: ${roots[*]}; this is not the full" \
+		"verification (only a passing \`make verify\` is)."
+fi
 [ "$PASS" -gt 0 ] && [ "$FAIL" -eq 0 ] && [ "$SKIP" -eq 0 ]

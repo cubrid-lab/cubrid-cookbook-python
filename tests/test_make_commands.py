@@ -141,6 +141,35 @@ class VerifyCommandTests(OrphanChecks):
         for label, value in defaults.items():
             self.assertIn(f"{value} {label}", summary, result.stdout)
 
+    def test_scoped_run_ends_with_a_partial_line_naming_the_roots(self) -> None:
+        # #460: a passing scoped check must never read like the full verification.
+        self.example("first")
+        self.example("second")
+        for paths in ("first", "first second", None):
+            with self.subTest(paths=paths):
+                result = self.verify(paths)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                lines = [x for x in result.stdout.splitlines() if x.startswith("PARTIAL")]
+                self.assertEqual(len(lines), 1, result.stdout)
+                self.assertIn(f"under: {paths or '.'}", lines[0])
+                self.assertIn("not the full verification", lines[0])
+                self.assertEqual(result.stdout.splitlines()[-1], lines[0])
+
+    def test_partial_line_is_dropped_only_for_the_goldens_part_of_the_full_run(self) -> None:
+        self.example()
+        result = self.verify(env={**os.environ, "VERIFY_SCOPE": "full"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("PARTIAL", result.stdout)
+        # Any other value, including an ambient one, keeps the label.
+        result = self.verify(env={**os.environ, "VERIFY_SCOPE": "yes"})
+        self.assertIn("PARTIAL", result.stdout)
+
+    def test_partial_line_follows_a_failed_scoped_run_too(self) -> None:
+        self.example(code="print('different')")
+        result = self.verify("recipes")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("PARTIAL: checked only the goldens under: recipes", result.stdout)
+
     def test_missing_root_fails(self) -> None:
         self.assertNotEqual(self.verify("missing").returncode, 0)
 
