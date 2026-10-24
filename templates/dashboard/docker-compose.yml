@@ -1,14 +1,14 @@
 services:
   cubrid:
     image: cubrid/cubrid:11.4
-    container_name: cubrid-dashboard
-    # CUBRID records the host name in databases.txt: a fixed one lets a recreated
-    # container open the database it inherits (#413).
-    hostname: cubrid-dashboard
     ports:
       - "33000:33000"
     environment:
       CUBRID_DB: testdb
+      # The image registers the database for this host in databases.txt on the
+      # volume; without it the host is the container's random host name, which a
+      # recreated container no longer resolves (-353).
+      CUBRID_DB_HOST: localhost
     healthcheck:
       test: ["CMD", "csql", "-u", "dba", "testdb", "-c", "SELECT 1"]
       interval: 10s

@@ -1,11 +1,12 @@
 services:
   cubrid:
     image: cubrid/cubrid:11.2
-    # CUBRID records the host name in databases.txt: a fixed one lets a new
-    # container (after `docker compose down`) open the database kept in the volumes.
-    hostname: cubrid-sqlalchemy
     environment:
       CUBRID_DB: testdb
+      # The image registers the database for this host in databases.txt on the
+      # volume; without it the host is the container's random host name, which a
+      # recreated container (after `docker compose down`) no longer resolves (-353).
+      CUBRID_DB_HOST: localhost
     ports:
       - "127.0.0.1:33000:33000"  # local-only: the lab's dba account has no password
     healthcheck:

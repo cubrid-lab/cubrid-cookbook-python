@@ -153,6 +153,18 @@ folder of the one you are leaving.
 - **A database or login error**: the script connects to `testdb` as `dba` with
   an empty password, the settings this Compose file creates. Another CUBRID
   server on port 33000 has different ones; stop it as described above.
+- **`-353 Failed to connect to database server` after you update from an
+  earlier Compose file:** that file registered the database for the host
+  `cubrid-sqlalchemy`, and the database in your volumes still names it. The
+  data is kept; point it at `localhost` and restart. Do not run `docker compose down -v`, which
+  deletes it.
+
+  ```bash
+  docker compose up -d cubrid
+  docker compose exec -T -u cubrid cubrid sh -c 'sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1localhost/" "$CUBRID_DATABASES/databases.txt"'
+  docker compose restart cubrid
+  docker compose up -d --wait
+  ```
 
 More fixes: the [CUBRID quirks and pitfalls](../../pitfalls/README.md) and the
 [known issues](../../KNOWN_ISSUES.md).

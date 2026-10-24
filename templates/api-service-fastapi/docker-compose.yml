@@ -1,13 +1,13 @@
 services:
   cubrid:
     image: cubrid/cubrid:11.2
-    container_name: cubrid-db
-    # CUBRID records the host name in databases.txt: a fixed one lets a recreated
-    # container open the database it inherits (#413).
-    hostname: cubrid-api-service
     environment:
       # The database .env.example's DATABASE_URL names (#412).
       CUBRID_DB: testdb
+      # The image registers the database for this host in databases.txt on the
+      # volume; without it the host is the container's random host name, which a
+      # recreated container no longer resolves (-353).
+      CUBRID_DB_HOST: localhost
     ports:
       - "33000:33000"
     healthcheck:
@@ -20,7 +20,6 @@ services:
 
   api:
     build: .
-    container_name: fastapi-service
     env_file:
       - .env
     depends_on:

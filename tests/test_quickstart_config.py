@@ -46,13 +46,8 @@ class TemplateDatabaseTests(unittest.TestCase):
         self.assertEqual(used, set(created))
 
     def test_templates_survive_a_recreated_cubrid_container(self) -> None:
-        # #413: without a fixed host name, a recreated container cannot open the
-        # database its volumes keep (-353); 11.4 keeps it outside /var/lib/cubrid.
-        for name in ("api-service-fastapi", "dashboard"):
-            with self.subTest(template=name):
-                path = ROOT / "templates" / name / "docker-compose.yml"
-                compose = path.read_text(encoding="utf-8")
-                self.assertRegex(compose, r"\n    hostname: cubrid-[\w-]+\n")
+        # #413: a recreated container must open the database its volumes keep
+        # (-353); 11.4 keeps it outside /var/lib/cubrid.
         dashboard = (ROOT / "templates" / "dashboard" / "docker-compose.yml").read_text(
             encoding="utf-8"
         )
@@ -60,6 +55,29 @@ class TemplateDatabaseTests(unittest.TestCase):
             self.assertRegex(dashboard, rf"\n\s+- {volume}:/")
             self.assertRegex(dashboard, rf"\nvolumes:\n(?:  \w+:\n)*  {volume}:\n")
         self.assertIn("- cubrid_databases:/home/cubrid/CUBRID/databases", dashboard)
+
+
+class RecipeComposeNamesTests(unittest.TestCase):
+    def test_no_recipe_compose_fixes_a_host_or_container_name(self) -> None:
+        # #463: a fixed hostname/container_name blocks a second copy of a recipe
+        # on one host; CUBRID_DB_HOST: localhost keeps the database valid across
+        # recreation instead (#436).
+        files = sorted(
+            p
+            for pattern in ("quickstart/*/docker-compose.yml", "templates/*/docker-compose.yml")
+            for p in ROOT.glob(pattern)
+        )
+        self.assertGreaterEqual(len(files), 4)
+        for path in files:
+            with self.subTest(compose=str(path.relative_to(ROOT))):
+                compose = path.read_text(encoding="utf-8")
+                self.assertNotRegex(compose, r"(?m)^\s*hostname:")
+                self.assertNotRegex(compose, r"(?m)^\s*container_name:")
+                services = re.split(r"(?m)^  (?=\w+:$)", compose.split("\nvolumes:", 1)[0])[1:]
+                cubrid = [s for s in services if "image: cubrid/cubrid:" in s]
+                self.assertTrue(cubrid, "expected a CUBRID service")
+                for service in cubrid:
+                    self.assertRegex(service, r"(?m)^      CUBRID_DB_HOST: localhost$")
 
 
 class QuickstartDatabaseTests(unittest.TestCase):
@@ -87,7 +105,6 @@ class QuickstartDatabaseTests(unittest.TestCase):
                 self.assertTrue(ports)
                 for port in ports:
                     self.assertTrue(port.startswith("127.0.0.1:"), port)
-                self.assertRegex(compose, r"\n    hostname: cubrid-[\w-]+\n")
                 for volume in ("cubrid_data", "cubrid_databases"):
                     self.assertRegex(compose, rf"\n\s+- {volume}:/")
                     self.assertRegex(compose, rf"\nvolumes:\n(?:  \w+:\n)*  {volume}:\n")

@@ -33,9 +33,20 @@ Compose 파일은 CUBRID 11.4와 Streamlit 서비스를 함께 띄웁니다. 첫
 
 ### 이전 Compose 파일로 시작한 대시보드 업그레이드
 
-#413 이전에는 데이터베이스가 이름 없는 볼륨에 있었고 컨테이너의 호스트 이름도 고정되어
-있지 않았습니다. 새 파일은 비어 있는 새 이름 있는 볼륨을 마운트하므로, 이전 파일로 시작한
-스택은 빈 데이터베이스로 뜹니다. 데이터는 예전 볼륨에 그대로 있으니 이 폴더에서 한 번만
+CUBRID는 데이터베이스를 만든 컨테이너의 호스트 이름을 기록합니다. 현재 파일은
+`CUBRID_DB_HOST: localhost`를 설정하고 컨테이너 이름은 Compose에 맡깁니다. #413 이후의
+파일로 시작한 스택이라면 데이터베이스가 이미 이름 있는 볼륨에 있으니 `localhost`를
+가리키게 하고 다시 시작하세요.
+
+```bash
+docker compose up -d cubrid
+docker compose exec -T -u cubrid cubrid sh -c 'sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1localhost/" "$CUBRID_DATABASES/databases.txt"'
+docker compose restart cubrid
+docker compose up -d
+```
+
+#413 이전에는 데이터베이스가 이름 없는 볼륨에 있었습니다. 현재 파일은 비어 있는 새 이름
+있는 볼륨을 마운트하므로, 그 이전 파일로 시작한 스택은 빈 데이터베이스로 뜹니다. 데이터는 예전 볼륨에 그대로 있으니 이 폴더에서 한 번만
 옮기세요. **데이터를 삭제하는 `docker compose down -v`는 실행하지 마세요.** 템플릿을
 업데이트하기 전에 예전 볼륨을 기록하고 스택을 멈춥니다:
 
@@ -45,12 +56,12 @@ docker compose stop
 ```
 
 그다음 템플릿을 업데이트(`git pull`)하고, 데이터베이스를 새 이름 있는 볼륨으로 복사한 뒤
-새 호스트 이름을 가리키게 하고 스택을 시작합니다:
+`localhost`를 가리키게 하고 스택을 시작합니다:
 
 ```bash
 docker compose create cubrid
-NEW=$(docker inspect cubrid-dashboard --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
-docker run --rm -v "$OLD":/from:ro -v "$NEW":/to --entrypoint sh cubrid/cubrid:11.4 -c 'cp -a /from/. /to/ && sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1cubrid-dashboard/" /to/databases.txt && chown cubrid:cubrid /to/databases.txt'
+NEW=$(docker inspect "$(docker compose ps -aq cubrid)" --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
+docker run --rm -v "$OLD":/from:ro -v "$NEW":/to --entrypoint sh cubrid/cubrid:11.4 -c 'cp -a /from/. /to/ && sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1localhost/" /to/databases.txt && chown cubrid:cubrid /to/databases.txt'
 docker compose up -d
 ```
 

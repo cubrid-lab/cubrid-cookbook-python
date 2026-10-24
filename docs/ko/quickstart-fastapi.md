@@ -222,6 +222,17 @@ venv는 `.venv` 폴더이며, `rm -rf .venv`로 지웁니다.
 - **데이터베이스 오류나 로그인 오류**: 앱은 데이터베이스 `testdb`에 `dba`, 빈
   비밀번호로 접속하며, 이 Compose 파일이 만드는 설정과 같습니다. 포트 33000의 다른
   CUBRID 서버는 설정이 다릅니다. 위에서 설명한 대로 멈추세요.
+- **이전 Compose 파일에서 업데이트한 뒤 `-353 Failed to connect to database server`가
+  나오면:** 이전 파일은 데이터베이스를 호스트 `cubrid-fastapi`로 등록했고, 볼륨의 데이터베이스가
+  아직 그 이름을 기록하고 있습니다. 데이터는 그대로이니 `localhost`를 가리키게 하고
+  다시 시작하세요. 데이터를 지우는 `docker compose down -v`는 실행하지 마세요.
+
+  ```bash
+  docker compose up -d cubrid
+  docker compose exec -T -u cubrid cubrid sh -c 'sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1localhost/" "$CUBRID_DATABASES/databases.txt"'
+  docker compose restart cubrid
+  docker compose up -d --wait
+  ```
 
 더 많은 해결 방법: [CUBRID 특이점과 함정](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/pitfalls/README.md),
 [알려진 문제](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/KNOWN_ISSUES.md).

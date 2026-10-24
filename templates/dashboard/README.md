@@ -35,9 +35,21 @@ volumes; `docker compose down -v` resets everything.
 
 ### Upgrading a dashboard started from an earlier compose file
 
-Before #413 the database lived in a volume without a name, and the container had
-no fixed host name. The new file mounts a new, empty named volume, so a stack
-started from the earlier file would come up with an empty database. Your data is
+CUBRID records the host name of the container that created the database. The
+current file sets `CUBRID_DB_HOST: localhost` and leaves the container name to
+Compose. If your stack was started from a file after #413, its database is
+already in the named volumes: point it at `localhost` and restart.
+
+```bash
+docker compose up -d cubrid
+docker compose exec -T -u cubrid cubrid sh -c 'sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1localhost/" "$CUBRID_DATABASES/databases.txt"'
+docker compose restart cubrid
+docker compose up -d
+```
+
+Before #413 the database lived in a volume without a name. The current file
+mounts a new, empty named volume, so a stack started from that earlier file
+would come up with an empty database. Your data is
 still in the old volume; move it once, from this folder. **Do not run
 `docker compose down -v`, which deletes the data.** Before you update the
 template, note the old volume and stop the stack:
@@ -48,12 +60,12 @@ docker compose stop
 ```
 
 Then update the template (`git pull`), copy the database into the new named
-volume, point it at the new host name and start the stack:
+volume, point it at `localhost` and start the stack:
 
 ```bash
 docker compose create cubrid
-NEW=$(docker inspect cubrid-dashboard --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
-docker run --rm -v "$OLD":/from:ro -v "$NEW":/to --entrypoint sh cubrid/cubrid:11.4 -c 'cp -a /from/. /to/ && sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1cubrid-dashboard/" /to/databases.txt && chown cubrid:cubrid /to/databases.txt'
+NEW=$(docker inspect "$(docker compose ps -aq cubrid)" --format '{{range .Mounts}}{{if eq .Destination "/home/cubrid/CUBRID/databases"}}{{.Name}}{{end}}{{end}}')
+docker run --rm -v "$OLD":/from:ro -v "$NEW":/to --entrypoint sh cubrid/cubrid:11.4 -c 'cp -a /from/. /to/ && sed -i -E "s/^(testdb[[:space:]]+[^[:space:]]+[[:space:]]+)[^[:space:]]+/\1localhost/" /to/databases.txt && chown cubrid:cubrid /to/databases.txt'
 docker compose up -d
 ```
 
