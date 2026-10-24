@@ -35,6 +35,8 @@ WRITE_ALLOWLIST: dict[str, set[tuple[str, str]]] = {
     # The advisory driver-main lane (#239) reports to one tracking issue.
     "ci.yml": {("driver-main-advisory", "issues")},
     "driver-main.yml": {("report", "issues")},
+    # The issue-opened intake marks new reports pending; it does not triage them.
+    "issue-triage.yml": {("intake", "issues")},
     "dependabot-auto-merge.yml": {
         ("auto-merge", "contents"),
         ("auto-merge", "pull-requests"),
