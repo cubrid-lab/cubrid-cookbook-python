@@ -44,113 +44,50 @@ Example counts and tested versions change often; `README.md` and
 
 ## Development Workflow (cubrid-lab org standard)
 
-Select the review route by the tool that **actually developed** the change.
-Record that route in the PR; a pending review request, green CI, self-review
-or automated "approval recommended" summary is not a completed review.
+The same review and merge criteria apply to human-authored work and code
+produced with OpenCode, Codex, Claude Code, ChatGPT, Copilot or other tools.
+AI design/post reviews and specific Copilot approval routes are never required
+solely because of the tool used.
 
-**OpenCode with Oracle**, for non-trivial work:
-1. Obtain Oracle **design review** of scope and approach before implementation.
-2. Implement the agreed change with focused tests and live example evidence
-   where the existing policy requires it.
-3. Update only affected documentation under the existing documentation definition
-   of done, including README, SUPPORT_MATRIX, CHANGELOG and example docs when
-   applicable. Keep the existing docs-not-needed process for unaffected docs.
-4. Obtain Oracle **post-implementation review**, address material findings
-   and record both Oracle outcomes and test results.
+1. Keep the PR focused with tests and affected documentation. Explain when
+   documentation updates are unnecessary.
+2. Treat required GitHub Actions CI on the final head as the authoritative
+   result. Preserve `make check test`, docs, and applicable live CUBRID
+   verification. Local runs are encouraged but not a separate merge gate.
+3. Review correctness, test coverage, maintainability, regression impact
+   and security. Oracle, Copilot and `agent-review` are optional **advisory**
+   evidence, not GitHub approval or a mandatory review stage.
+4. Address or disposition findings and let the responsible maintainer make
+   the final merge decision after required CI. Retain independent review for
+   high-impact workflow permissions, protected release verification and
+   publishing paths.
 
-Trivial OpenCode typo/single-line work may omit Oracle phases 1 and 4 only with
-a recorded reason. Both Oracle reviews satisfy this tool-specific route;
-an additional GitHub Copilot review is not required. Existing CI,
-maintainer/repository checks and live-CUBRID rules still apply.
-
-**Standalone agents (Claude Code, Codex, ChatGPT, or other agent tools):**
-implement and test, open a PR, then **wait for a substantive submitted GitHub
-Copilot review or a review by a maintainer**, recorded on the PR, before
-merging (maintainer decision, 2026-10-15). A maintainer is a code owner in
-`.github/CODEOWNERS` other than the PR's author. Reviews by other people, and
-reviews by AI agents other than Copilot, are welcome but do not satisfy this
-route. A submitted Copilot COMMENTED review with an actual assessment counts as
-evidence but is not formal APPROVED status. Requested/pending review, a
-boilerplate approval suggestion, self-review or CI success does not qualify.
-Validate accepted fixes at the final relevant head; leave the PR unmerged if
-the required review has not arrived. No CI check enforces this today; whether
-to add one is pending a maintainer decision (#351).
-
-**Security-sensitive paths, under every route:** changes to workflows that hold
-write permissions or that sibling repositories call to verify a release
-(`smoke-test.yml`), and to the release smoke scripts they run
-(`scripts/release_smoke.py`, `scripts/mcp_smoke.py`), get stricter scrutiny.
-Their review must explicitly assess what they can write, publish or verify for
-other repositories, and a maintainer confirms that disposition before merge.
-
-**`agent-review` check (advisory only):** `.github/workflows/agent-review.yml`
-reports from GitHub's own review records whether this route is met (rules in
-[CONTRIBUTING.md](CONTRIBUTING.md#agent-review-evidence-gate); the gate is a copy
-of cubrid-mcp-server's, with only its constants block changed). It counts a
-substantive Copilot review of the head within the two-round budget, or a
-maintainer's `APPROVED` review, or `COMMENTED` review that opens an inline
-thread; never PR-body checkboxes, pending requests, self-review, other people's
-or other AI agents' reviews, summary-only bot text or a review of an older
-commit (unless the PR's change against `main` is identical at both commits).
-Protected paths (every workflow and composite action, `.github/dependabot.yml`,
-`scripts/release_smoke.py`, `scripts/mcp_smoke.py`, the lane selection in
-`scripts/ci_scope.py` and `scripts/driver_floors.py`, and the gate itself) need a
-maintainer's `APPROVED` review. A PR can publish a check with the same name, so
-the check is a reading aid and must not be made a required status check until it
-is posted from an identity a PR cannot impersonate (#378). A run triggered by
-Copilot's review waits as "action required": re-run it, or edit the PR body,
-after Copilot reviews.
-
-**Human contributions:** follow the normal PR and review process. This route
-is not a fallback for unnamed standalone agent tools, which use the route above.
-No OpenCode, Oracle, Copilot, Claude Code or Codex installation is a contribution
-prerequisite. Maintainers coordinate internal review tools, assignments,
-integration and release decisions. Preserve authorship and credit tools only
-when they actually produced the work.
+Do not relax code ownership routing, fork workflow safety, live validation
+or the repository's required GitHub branch checks.
 
 ## Agent PR scope and review guardrails
 
-- Before editing, record one acceptance contract, affected files, explicit non-goals
-  and the validation plan. Keep each PR to one independently reviewable change.
-  Separate contributor guidance, CI configuration and new validator behavior.
-- Triage AI findings against that contract, a supported-environment reproduction
-  and impact. AI severity is not authority to add capabilities or widen the contract;
-  obtain explicit maintainer direction or defer out-of-scope work to a separate issue.
-- Batch accepted fixes locally and run relevant checks before publishing a review
-  head. Deduplicate agent-initiated review requests by head SHA and review purpose.
-- Default to two published AI review rounds total per scoped PR/task: the initial
-  review and one corrective re-review. New commits do not reset this budget.
-  Further rounds or scope expansion require explicit maintainer direction.
-- If unresolved work needs another round at the limit, stop automatic revisions;
-  keep the PR Draft and report incomplete work, blockers and a proposed split.
-  Never merge with unresolved critical/security defects or failed required CI.
-- Maintain one editable, agent-owned English status comment. Avoid bot mentions in
-  routine updates, per-finding progress replies and repeated review requests.
-  Preserve contributor history; revisit external PRs only after an author-updated head SHA.
+Apply these guardrails to every implementation tool:
+- Define acceptance criteria, affected files, non-goals and validation before
+  substantial work. Preserve a focused, independently reviewable scope.
+- Triage AI findings against actual behavior and impact; never expand
+  requirements just because an AI report assigns a severity.
+- AI review rounds are optional. Avoid duplicate bot requests, preserve
+  contributor history, and seek re-review after relevant source updates.
+- Never merge with unresolved critical/security defects or failed required CI.
 
 ## Review disposition and merge evidence
 
-- Record the development route, the Oracle evidence or the Copilot or
-  maintainer review, the reviewer, the relevant reviewed head SHA and
-  pending/complete status in the PR.
-- Triage each actionable review finding as fixed (commit and focused tests),
-  rejected (specific contract/reproduction reason), or deferred (linked issue).
-  Do not expand a recipe's behavior merely because an AI suggested it.
-- Reply once with **final** disposition in each relevant inline review thread.
-  A reviewer or maintainer resolves a thread only after checking the updated
-  source and evidence. An outdated diff or reply is not an automatic resolution;
-  never bulk-resolve old threads without checking.
-- Maintain one editable agent-owned English PR status comment with the overall
-  state, required CI/live checks, checks not run, and outstanding findings.
-  Avoid repeating whole test logs and prompting the same bot on each thread.
-- Keep the existing two published AI-review rounds budget; further rounds need
-  maintainer direction. If no qualifying review arrives or a serious issue
-  remains, keep the PR Draft/unmerged and report the pending work.
-- Before merging check the applicable review route, final source, required CI
-  and live evidence where required by the existing validation policy. Never
-  merge unresolved critical/security issues or failed required checks.
-  Nonblocking open findings need explicit maintainer disposition. This does
-  not change bot automerge or GitHub protection settings.
+- Record the final reviewed head, required GitHub CI/live results, checks
+  not run, material risks, findings and responsible maintainer decision.
+- Fix and verify actionable defects, reject unsupported findings with
+  reasons, or track genuinely separate follow-ups as local issues.
+- Leave one final disposition reply per relevant thread; a reviewer or
+  maintainer verifies the updated source before resolving it.
+- If an agent contributes, keep concise status rather than repeated bot
+  rounds; Oracle/Copilot/`agent-review` are always advisory.
+- Before merging, verify final code, branch checks and independent approval
+  on protected/security-sensitive paths where the project requires it.
 
 ## Issue specification and ownership
 

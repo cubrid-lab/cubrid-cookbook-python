@@ -1,9 +1,9 @@
 name: agent-review
 
-# Agent-review evidence gate (#351): passes only when GitHub's own review records
-# show the review AGENTS.md requires at the PR head. The decision is made by
-# scripts/agent_review_gate.py; its docstring and CONTRIBUTING.md
-# ("Agent-review evidence gate") define the evidence rules.
+# Optional agent-review diagnostic: reports GitHub review records using a legacy
+# classifier; neither a Copilot/Oracle review nor this job's verdict is a
+# required PR merge gate. CONTRIBUTING.md describes the tool-neutral policy.
+# scripts/agent_review_gate.py retains its diagnostic detail for interested readers.
 #
 # Security: runs on `pull_request` and `pull_request_review` (never
 # `pull_request_target`), so a fork PR gets a read-only token and no secrets.
@@ -42,7 +42,11 @@ jobs:
       contents: read
       pull-requests: read
     steps:
+      # The evaluator's legacy eligibility verdict is diagnostic only.
+      # An unfavorable or unavailable review signal must not make PR CI red.
+      # Required CI, security and maintainer decisions remain independent.
       - name: Evaluate review evidence
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
