@@ -72,7 +72,7 @@ their version below and are not used by the recipes.
 | | CUBRIDdb (official) | pycubrid |
 |---|---|---|
 | What it is | C extension (`_cubrid`) over the bundled CCI library, plus the `CUBRIDdb` wrapper package | Pure Python; no compiler or CCI library |
-| Install | Build from a pinned source revision: `git clone --recursive`, check out the tag, then the build commands in its [README](https://github.com/CUBRID/cubrid-python/blob/c63ab9c51353e5c80e02dd2c1a19d4640acb29f5/README.md) (`python setup.py build`, or `python -m build -w` and install the wheel) | `pip install pycubrid` |
+| Install | Build from a pinned source revision: `git clone --recursive`, check out the tag, then the build commands in its [README](https://github.com/CUBRID/cubrid-python/blob/c63ab9c51353e5c80e02dd2c1a19d4640acb29f5/README.md) (a setuptools build, or a wheel built from the checkout and then installed) | `pip install pycubrid` |
 | Type hints | No `py.typed` or `.pyi` stubs in the source tree | Ships `py.typed` (pycubrid source) |
 | asyncio | No async API in the source tree | `pycubrid.aio` (since pycubrid 1.1.0) |
 

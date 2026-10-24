@@ -72,7 +72,7 @@ make verify-goldens VERIFY_PATHS=migration/cubriddb-to-pycubrid
 | | CUBRIDdb (공식) | pycubrid |
 |---|---|---|
 | 정체 | 번들된 CCI 라이브러리 위의 C 확장(`_cubrid`)과 `CUBRIDdb` 래퍼 패키지 | 순수 Python, 컴파일러나 CCI 라이브러리 불필요 |
-| 설치 | 고정한 소스 리비전에서 빌드: `git clone --recursive`, 태그 체크아웃, 그다음 [README](https://github.com/CUBRID/cubrid-python/blob/c63ab9c51353e5c80e02dd2c1a19d4640acb29f5/README.md)의 빌드 명령(`python setup.py build`, 또는 `python -m build -w` 후 휠 설치) | `pip install pycubrid` |
+| 설치 | 고정한 소스 리비전에서 빌드: `git clone --recursive`, 태그 체크아웃, 그다음 [README](https://github.com/CUBRID/cubrid-python/blob/c63ab9c51353e5c80e02dd2c1a19d4640acb29f5/README.md)의 빌드 명령(setuptools 빌드, 또는 체크아웃에서 휠을 만들어 설치) | `pip install pycubrid` |
 | 타입 힌트 | 소스 트리에 `py.typed`나 `.pyi` 스텁 없음 | `py.typed` 포함(pycubrid 소스) |
 | asyncio | 소스 트리에 비동기 API 없음 | `pycubrid.aio`(pycubrid 1.1.0부터) |
 
