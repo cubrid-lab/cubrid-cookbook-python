@@ -4,7 +4,7 @@
 ``make test`` (``scripts/run_offline_tests.py``) writes one JUnit file per suite under
 ``test-results/test/junit/`` and calls this module to aggregate them into
 ``test-results/test/summary.json`` and a one-line console summary generated from the
-same data. The functions are reusable by the live-verification side (a follow-up).
+same data. ``scripts/live_gate.py`` reuses them for ``test-results/verify/`` (#462).
 
 Status of a suite, and of the whole run:
 

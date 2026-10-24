@@ -5,7 +5,14 @@ It adds no test of its own: it reruns the golden-output comparison
 (``make verify-goldens``) and the existing pytest suites, one pytest process per
 suite (recipes share module names such as ``app``, ``database`` and
 ``models``), and writes JUnit XML, logs and a grouped summary per lane into
-``.live-evidence/<lane>/``. Lanes, in the order ``all`` runs them:
+``.live-evidence/<lane>/``. Every run also writes ``test-results/verify/`` (#462):
+``summary.json`` (schema version, overall and per-lane status, whether each lane
+executed, the ``partial`` flag), ``environment.json`` (Python, platform, packages,
+CUBRID server versions and the command; never a password), one merged JUnit file
+per pytest lane under ``junit/<lane>.xml``, the logs under ``logs/<lane>/`` and
+``summary.md``, a Markdown rendering of ``summary.json`` for a CI step summary.
+Database passwords are replaced with ``***`` in every file of both directories.
+Lanes, in the order ``all`` runs them:
 
 - goldens: every ``expected/*.expected`` golden, compared by ``make verify-goldens``.
 - quickstart: FastAPI quickstart ``/health`` and CRUD (#420).
@@ -47,6 +54,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -57,9 +65,18 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
+from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(ROOT / "scripts"))
+
+import report_results  # noqa: E402
+
 DEFAULT_EVIDENCE_DIR = ".live-evidence"
+# The results layout shared with `make test` (test-results/test/, #461).
+DEFAULT_RESULTS_DIR = "test-results/verify"
 GATE_ENV = "CUBRID_LIVE_GATE"
 LIVE_URL_ENV = "CUBRID_TEST_URL"
 DASHBOARD_URL_ENV = "CUBRID_DASHBOARD_TEST_URL"
@@ -249,6 +266,48 @@ def shown_url(url: str) -> str:
         return make_url(url).render_as_string(hide_password=True)
     except Exception:
         return "<unparseable URL>"
+
+
+def secret_replacements(*urls: str | None) -> list[tuple[str, str]]:
+    """(text, replacement) pairs that hide every password of ``urls`` in a result file.
+
+    A URL with a password becomes its ``shown_url`` form; the password alone, and its
+    percent-encoded and XML-escaped forms, become ``***``. Longest first, so a URL is
+    replaced whole before its password is.
+    """
+    from sqlalchemy.engine import make_url
+
+    pairs: dict[str, str] = {}
+    for url in urls:
+        if not url:
+            continue
+        try:
+            password = make_url(url).password
+        except Exception:
+            pairs[url] = shown_url(url)  # unparseable: hide all of it
+            continue
+        if password:
+            pairs[url] = shown_url(url)
+            for form in (str(password), quote(str(password), safe=""), escape(str(password))):
+                pairs.setdefault(form, "***")
+    return sorted(pairs.items(), key=lambda pair: len(pair[0]), reverse=True)
+
+
+def redact(text: str, replacements: list[tuple[str, str]]) -> str:
+    for secret, replacement in replacements:
+        text = text.replace(secret, replacement)
+    return text
+
+
+def scrub_tree(directory: Path, replacements: list[tuple[str, str]]) -> None:
+    """Rewrite every file under ``directory`` with its passwords replaced."""
+    if not replacements:
+        return
+    for path in directory.rglob("*"):
+        if path.is_file():
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if (clean := redact(text, replacements)) != text:
+                path.write_text(clean, encoding="utf-8")
 
 
 def check_url(name: str, url: str | None) -> list[str]:
@@ -701,6 +760,8 @@ def run_lane(
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     text = render_text(summary)
     (out_dir / "summary.txt").write_text(text, encoding="utf-8")
+    # A suite may print or fail with its raw URL: no password stays in the evidence.
+    scrub_tree(out_dir, secret_replacements(live_url, dashboard_url))
     print(text, flush=True)
     return summary
 
@@ -774,8 +835,12 @@ def missing_dependencies(python: str) -> list[str]:
     return [f"missing example dependencies (run make deps):\n{detail}"]
 
 
-def run_all(evidence_dir: Path, gate: bool, python: str, timeout: int) -> dict[str, Any]:
-    """Full verification: check every database and dependency first, then run every lane."""
+def run_all(
+    evidence_dir: Path, gate: bool, python: str, timeout: int
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    """Full verification: check every database and dependency first, then run every lane.
+
+    Returns the verify summary and the summaries of the lanes that ran."""
     for name in ("verify-summary.json", "verify-summary.txt"):
         # A stale summary must never stand in for this run's result.
         (evidence_dir / name).unlink(missing_ok=True)
@@ -853,13 +918,14 @@ def run_all(evidence_dir: Path, gate: bool, python: str, timeout: int) -> dict[s
         "pytest": pytest_lanes,
     }
     evidence_dir.mkdir(parents=True, exist_ok=True)
+    secrets = secret_replacements(live_url, dashboard_url)
     (evidence_dir / "verify-summary.json").write_text(
-        json.dumps(summary, indent=2) + "\n", encoding="utf-8"
+        redact(json.dumps(summary, indent=2) + "\n", secrets), encoding="utf-8"
     )
-    text = render_verify_text(summary)
+    text = redact(render_verify_text(summary), secrets)
     (evidence_dir / "verify-summary.txt").write_text(text, encoding="utf-8")
     print(text, flush=True)
-    return summary
+    return summary, lanes
 
 
 def shown_path(path: Path) -> str:
@@ -909,6 +975,249 @@ def render_verify_text(summary: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+_WORST = {"PASS": 0, "INCOMPLETE": 1, "FAIL": 2}
+
+
+def prepare_results(results_dir: Path, lanes: list[str], full: bool) -> None:
+    """Remove what this run replaces before it starts, so no stale file stands in for it.
+
+    The full run empties the directory. A focused run removes the run-level files and
+    only its own lanes' files, like ``.live-evidence/<lane>/``; records of other lanes
+    stay and are merged into the new ``summary.json``.
+    """
+    if full:
+        report_results.reset_results_dir(results_dir, ROOT)
+    for name in ("summary.json", "summary.md", "environment.json"):
+        (results_dir / name).unlink(missing_ok=True)
+    for lane in lanes:
+        _remove_lane_results(results_dir, lane)
+
+
+def _remove_lane_results(results_dir: Path, lane: str) -> None:
+    (results_dir / "junit" / f"{lane}.xml").unlink(missing_ok=True)
+    (results_dir / "lanes" / f"{lane}.json").unlink(missing_ok=True)
+    shutil.rmtree(results_dir / "logs" / lane, ignore_errors=True)
+
+
+def merge_junit(lane: str, lane_summary: dict[str, Any], lane_dir: Path) -> ET.Element | None:
+    """One ``testsuites`` document from the lane's per-suite pytest reports (None: no pytest)."""
+    merged = ET.Element("testsuites", name=lane)
+    for suite in lane_summary["suites"]:
+        report = lane_dir / f"{suite['path'].replace('/', '__')}.xml"
+        try:
+            root = ET.parse(report).getroot()
+        except (OSError, ET.ParseError):
+            continue
+        for element in [root] if root.tag == "testsuite" else root.findall("testsuite"):
+            element.set("name", suite["path"])
+            merged.append(element)
+    return merged if len(merged) else None
+
+
+def lane_record(
+    lane: str,
+    lane_summary: dict[str, Any] | None,
+    evidence_dir: Path,
+    results_dir: Path,
+    secrets: list[tuple[str, str]],
+) -> dict[str, Any]:
+    """Write a lane's JUnit file and logs into ``results_dir``; return its summary entry."""
+    counts = dict.fromkeys(report_results.COUNTS, 0)
+    record: dict[str, Any] = {
+        "name": lane,
+        "title": MANIFEST[lane]["title"],
+        "status": "INCOMPLETE",  # a lane that never ran is never PASS
+        "executed": False,
+        "partial": None,
+        "gate": None,
+        "generated_at": None,
+        "git_sha": git_state()["sha"],
+        "counts": counts,
+        "junit": None,
+        "logs": [],
+        "evidence": None,
+        "reasons": ["not run: the upfront checks failed"],
+    }
+    if lane_summary is None:
+        return record
+    lane_dir = evidence_dir / lane
+    record.update(
+        status=lane_summary["status"],
+        executed=bool(lane_summary["suites"]),
+        partial=lane_summary["partial"],
+        gate=lane_summary["gate"],
+        generated_at=lane_summary["generated_at"],
+        git_sha=lane_summary["git"]["sha"],
+        evidence=shown_path(lane_dir / "summary.json"),
+        reasons=list(lane_summary["preflight_failures"])
+        + [f"{s['path']}: {r}" for s in lane_summary["suites"] for r in s["reasons"]],
+    )
+    junit = merge_junit(lane, lane_summary, lane_dir)
+    if junit is not None:
+        path = results_dir / "junit" / f"{lane}.xml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        text = ET.tostring(junit, encoding="unicode")
+        path.write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n' + redact(text, secrets) + "\n",
+            encoding="utf-8",
+        )
+        record["junit"] = path.relative_to(results_dir).as_posix()
+        record["counts"] = report_results.parse_junit(path) or counts
+    else:  # the goldens lane: one result line per golden instead of pytest
+        totals = lane_summary["totals"]
+        record["counts"] = {
+            **counts,
+            "selected": totals["tests"],
+            "passed": totals["passed"],
+            "failed": totals["failed"],
+            "errors": totals["errors"],
+            "skipped": totals["skipped"],
+        }
+    logs = results_dir / "logs" / lane
+    for source in sorted(lane_dir.iterdir()) if lane_dir.is_dir() else []:
+        if source.suffix in {".log", ".txt", ".tsv"}:
+            logs.mkdir(parents=True, exist_ok=True)
+            text = source.read_text(encoding="utf-8", errors="replace")
+            (logs / source.name).write_text(redact(text, secrets), encoding="utf-8")
+            record["logs"].append((logs / source.name).relative_to(results_dir).as_posix())
+    return record
+
+
+def write_results(
+    results_dir: Path,
+    evidence_dir: Path,
+    lanes: list[str],
+    lane_summaries: dict[str, dict[str, Any]],
+    *,
+    full: bool,
+    full_summary: dict[str, Any] | None,
+    gate: bool,
+    python: str,
+    command: list[str],
+) -> dict[str, Any]:
+    """Write ``summary.json``, ``summary.md``, ``environment.json``, JUnit and logs."""
+    secrets = secret_replacements(
+        os.environ.get(LIVE_URL_ENV) or None, os.environ.get(DASHBOARD_URL_ENV) or None
+    )
+    records_dir = results_dir / "lanes"
+    records_dir.mkdir(parents=True, exist_ok=True)
+    for lane in lanes:
+        record = lane_record(lane, lane_summaries.get(lane), evidence_dir, results_dir, secrets)
+        (records_dir / f"{lane}.json").write_text(
+            redact(json.dumps(record, indent=2) + "\n", secrets), encoding="utf-8"
+        )
+    sha = git_state()["sha"]
+    records = []
+    for path in records_dir.glob("*.json"):
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError:
+            record = {}
+        if record.get("name") not in MANIFEST or record.get("git_sha") != sha:
+            # Another commit's lane result is not evidence for this one.
+            _remove_lane_results(results_dir, path.stem)
+            continue
+        records.append(record)
+    records.sort(key=lambda record: FULL_ORDER.index(record["name"]))
+    not_run = [record["name"] for record in records if not record["executed"]]
+    summary = report_results.build_summary("verify", records, not_run)
+    lane_entries = summary.pop("suites")
+    status = summary["status"]
+    if full_summary is not None:  # the run's own verdict wins when it is stricter
+        status = max(status, full_summary["status"], key=_WORST.__getitem__)
+    partial = not full
+    summary.update(
+        {
+            "status": status,
+            "scope": "partial" if partial else "full",
+            "partial": partial,
+            "gate": bool(records) and all(record["gate"] for record in records),
+            "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "git": git_state(),
+            "lanes_this_run": lanes,
+            "lanes": lane_entries,
+            "preflight_failures": (full_summary or {}).get("preflight_failures", []),
+            "environment": "environment.json",
+            "evidence_dir": shown_path(evidence_dir),
+        }
+    )
+    sources = [full_summary] if full_summary else [lane_summaries[n] for n in lane_summaries]
+    servers: dict[str, Any] = {}
+    for source in sources:
+        servers.update(source["servers"])
+    versions = sources[-1] if sources else {"python": {"version": None}, "packages": {}}
+    environment = {
+        "schema_version": report_results.SCHEMA_VERSION,
+        "generated_at": summary["generated_at"],
+        "command": command,
+        "gate": gate,
+        "git": summary["git"],
+        "python": {
+            "version": versions["python"]["version"],
+            "executable": shown_path(Path(python)),
+            "runner_version": platform.python_version(),
+            "implementation": platform.python_implementation(),
+        },
+        "platform": {
+            "system": platform.system(),
+            "release": platform.release(),
+            "machine": platform.machine(),
+        },
+        "packages": versions["packages"],
+        "cubrid": servers,
+        "ci": {
+            "github_actions": os.environ.get("GITHUB_ACTIONS") == "true",
+            **{
+                key.lower(): os.environ[key]
+                for key in ("GITHUB_WORKFLOW", "GITHUB_JOB", "GITHUB_RUN_ID", "RUNNER_OS")
+                if os.environ.get(key)
+            },
+        },
+    }
+    for name, data in (("summary.json", summary), ("environment.json", environment)):
+        (results_dir / name).write_text(
+            redact(json.dumps(data, indent=2) + "\n", secrets), encoding="utf-8"
+        )
+    (results_dir / "summary.md").write_text(
+        redact(render_results_markdown(summary, environment), secrets), encoding="utf-8"
+    )
+    return summary
+
+
+def results_line(summary: dict[str, Any], path: Path) -> str:
+    """The console line for ``summary.json``, built only from it."""
+    lanes = ", ".join(f"{lane['name']} {lane['status']}" for lane in summary["lanes"])
+    return f"verify results: {summary['status']} ({summary['scope']}) {lanes} -> {path}"
+
+
+def render_results_markdown(summary: dict[str, Any], environment: dict[str, Any]) -> str:
+    """``summary.md``: the same data as ``summary.json``, for a CI step summary."""
+    lines = [f"### Live verification: {summary['status']} ({summary['scope']})", ""]
+    if summary["partial"]:
+        lines += [partial_line([lane["name"] for lane in summary["lanes"]]), ""]
+    lines += [
+        "| Lane | Status | Executed | Selected | Passed | Failed | Errors | Skipped |",
+        "|------|--------|----------|----------|--------|--------|--------|---------|",
+    ]
+    for lane in summary["lanes"]:
+        c = lane["counts"]
+        lines.append(
+            f"| {lane['name']} | {lane['status']} | {'yes' if lane['executed'] else 'no'} | "
+            f"{c['selected']} | {c['passed']} | {c['failed']} | {c['errors']} | {c['skipped']} |"
+        )
+    lines.append("")
+    for name, server in environment["cubrid"].items():
+        lines.append(f"- CUBRID {name}: {server['version'] or 'unreachable'}")
+    lines.append(f"- Python: {environment['python']['version']}; git: {summary['git']['sha']}")
+    for reason in summary["preflight_failures"]:
+        lines.append(f"- preflight: {reason}")
+    for lane in summary["lanes"]:
+        if lane["status"] != "PASS":
+            for reason in lane["reasons"]:
+                lines.append(f"- {lane['name']}: {reason}")
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     parser.add_argument(
@@ -919,6 +1228,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--gate", action="store_true", help=f"fail closed (same as {GATE_ENV}=1)")
     parser.add_argument("--evidence-dir", default=DEFAULT_EVIDENCE_DIR)
+    parser.add_argument(
+        "--results-dir",
+        default=DEFAULT_RESULTS_DIR,
+        help=f"summary.json, environment.json, JUnit and logs (default: {DEFAULT_RESULTS_DIR})",
+    )
     parser.add_argument("--python", default=sys.executable, help="interpreter that runs pytest")
     parser.add_argument("--timeout", type=int, default=SUITE_TIMEOUT, help="seconds per suite")
     args = parser.parse_args(argv)
@@ -932,21 +1246,43 @@ def main(argv: list[str] | None = None) -> int:
     except ImportError:
         print("live_gate.py needs SQLAlchemy and the CUBRID drivers: run `make deps` first.")
         return 1
-    evidence_dir = Path(args.evidence_dir)
-    if not evidence_dir.is_absolute():
-        evidence_dir = ROOT / evidence_dir
-    if "all" in args.lanes:
-        if len(args.lanes) > 1:
-            parser.error("'all' runs every lane; do not combine it with other lanes")
-        summary = run_all(evidence_dir, gate, args.python, args.timeout)
+    evidence_dir, results_dir = (
+        path if path.is_absolute() else ROOT / path
+        for path in (Path(args.evidence_dir), Path(args.results_dir))
+    )
+    command = ["scripts/live_gate.py", *(sys.argv[1:] if argv is None else argv)]
+    full = "all" in args.lanes
+    if full and len(args.lanes) > 1:
+        parser.error("'all' runs every lane; do not combine it with other lanes")
+    lanes = list(FULL_ORDER) if full else list(dict.fromkeys(args.lanes))
+    prepare_results(results_dir, lanes, full)
+    if full:
+        summary, lane_summaries = run_all(evidence_dir, gate, args.python, args.timeout)
+    else:
+        summary = None
+        lane_summaries = {
+            lane: run_lane(lane, evidence_dir, gate, args.python, args.timeout) for lane in lanes
+        }
+        print(partial_line(lanes))
+        print(
+            "live gate: " + ", ".join(f"{lane} {lane_summaries[lane]['status']}" for lane in lanes)
+        )
+    results = write_results(
+        results_dir,
+        evidence_dir,
+        lanes,
+        lane_summaries,
+        full=full,
+        full_summary=summary,
+        gate=gate,
+        python=args.python,
+        command=command,
+    )
+    print(results_line(results, shown_path(results_dir / "summary.json")), flush=True)
+    if full:
         # Full verification succeeds only on PASS; INCOMPLETE (ungated) gets its own code.
         return {"PASS": 0, "FAIL": 1}.get(summary["status"], EXIT_INCOMPLETE)
-    statuses = {}
-    for lane in dict.fromkeys(args.lanes):
-        statuses[lane] = run_lane(lane, evidence_dir, gate, args.python, args.timeout)["status"]
-    print(partial_line(list(statuses)))
-    print("live gate: " + ", ".join(f"{lane} {status}" for lane, status in statuses.items()))
-    return 0 if all(status != "FAIL" for status in statuses.values()) else 1
+    return 0 if all(lane_summaries[lane]["status"] != "FAIL" for lane in lanes) else 1
 
 
 if __name__ == "__main__":

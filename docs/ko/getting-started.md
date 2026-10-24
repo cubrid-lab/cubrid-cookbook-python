@@ -125,7 +125,7 @@ make verify                   # 2. 전체 라이브 검증 (데이터베이스 �
 
 표준 순서는 `make test` 다음 `make verify`입니다. `make deps`는 한 번의 pip 호출로 모두 설치하며 `PIP_CONSTRAINT`를 따릅니다. `make test`는 결과를 `test-results/test/`(`summary.json`과 묶음별 JUnit 파일)에 기록합니다.
 
-`make verify`는 전체 라이브 검증입니다. 모든 골든에 더해 FastAPI 퀵스타트, Flask/FastAPI, Django/Celery, Streamlit, AI 에이전트/MCP/RAG, 마이그레이션, 성능 테스트 묶음을 실행합니다. `make docker-up` 데이터베이스 외에 `CUBRID_TEST_URL`과 `CUBRID_DASHBOARD_TEST_URL`에 전용 빈 CUBRID 데이터베이스 두 개가 필요하며, 연결할 수 없거나 건너뛴 테스트·빠진 패키지가 있으면 실패하고, 결과를 `.live-evidence/`에 기록합니다. 데이터베이스를 띄우는 방법은 [CONTRIBUTING.md](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/CONTRIBUTING.md#live-verification)를 참고하세요.
+`make verify`는 전체 라이브 검증입니다. 모든 골든에 더해 FastAPI 퀵스타트, Flask/FastAPI, Django/Celery, Streamlit, AI 에이전트/MCP/RAG, 마이그레이션, 성능 테스트 묶음을 실행합니다. `make docker-up` 데이터베이스 외에 `CUBRID_TEST_URL`과 `CUBRID_DASHBOARD_TEST_URL`에 전용 빈 CUBRID 데이터베이스 두 개가 필요하며, 연결할 수 없거나 건너뛴 테스트·빠진 패키지가 있으면 실패하고, 결과를 `test-results/verify/`(`summary.json`, `environment.json`, JUnit, 로그)에 기록합니다(레인별 증거는 계속 `.live-evidence/`에 남습니다). 데이터베이스를 띄우는 방법은 [CONTRIBUTING.md](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/CONTRIBUTING.md#live-verification)를 참고하세요.
 
 ### 고급: 디버깅용 레인
 

@@ -215,6 +215,36 @@ selected/passed/failed/skipped counts and case outcomes per suite. `make verify`
 writes `.live-evidence/verify-summary.json` and `verify-summary.txt`, which report the
 golden comparisons and the pytest lanes separately and name every failed golden.
 
+Every live run also writes `test-results/verify/` (#462; ignored by version control,
+removed by `make clean`), next to `make test`'s `test-results/test/` and built with the
+same `scripts/report_results.py` helpers:
+
+- `summary.json`: `schema_version`, the overall `status` (`PASS`, `FAIL` or
+  `INCOMPLETE`), `scope` (`full` or `partial`) and `partial`, total counts, and one
+  `lanes` entry per lane with its status, whether it `executed`, its counts, JUnit file,
+  logs and failure reasons. A lane that never ran is `INCOMPLETE` with
+  `"executed": false` and is listed in `not_run`, so a summary never reads `PASS` without
+  every listed lane having run; the full `make verify` lists all seven lanes.
+- `environment.json`: the command, the Python version and platform, the package versions
+  of the interpreter that runs pytest, the CUBRID server versions with their URLs
+  (password hidden), the commit, and the GitHub Actions workflow, job and run id when set.
+- `junit/<lane>.xml`: one JUnit file per pytest lane (the goldens lane has none; its
+  `results.tsv` is under `logs/goldens/`), and `logs/<lane>/`: the lane's logs and
+  `summary.txt`.
+- `summary.md`: `summary.json` rendered as a Markdown table, for a CI step summary.
+
+The last console line, `verify results: <STATUS> (<scope>) <lane> <STATUS>, ... ->
+test-results/verify/summary.json`, is built from `summary.json` alone. `make verify`
+empties the directory first. A focused lane replaces only its own lane's files, and its
+`summary.json` merges the other lanes recorded there for the same commit (records of
+another commit are deleted), so consecutive `make verify-*` runs, as in the pull-request
+smoke lanes, end with one summary of all of them; it stays `partial`. Database passwords
+from `CUBRID_TEST_URL` and `CUBRID_DASHBOARD_TEST_URL`, as given, percent-encoded or
+XML-escaped, are replaced with `***` in every file of `test-results/verify/` and
+`.live-evidence/`. `.live-evidence/` keeps its layout for at least one release, because
+`smoke-test.yml` and the pull-request smoke jobs read and upload it; new tooling should
+read `test-results/verify/`.
+
 Only a complete `make verify` run reports the full verification. Every other run is
 labeled `PARTIAL` (#460): `make verify-goldens` (whether scoped by `VERIFY_PATHS` or
 not) ends its output with a `PARTIAL: checked only the goldens under: <roots>` line,

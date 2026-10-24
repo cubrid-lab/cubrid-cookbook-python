@@ -127,7 +127,7 @@ make verify                   # 2. full live verification (needs two more databa
 
 The standard sequence is `make test`, then `make verify`. `make deps` installs everything in one pip call and honours `PIP_CONSTRAINT`. `make test` writes its results to `test-results/test/` (`summary.json` and one JUnit file per suite).
 
-`make verify` is the full live verification: every golden plus the FastAPI quickstart, Flask/FastAPI, Django/Celery, Streamlit, AI agent/MCP/RAG, migration and performance suites. Besides the `make docker-up` database it needs two dedicated, empty CUBRID databases in `CUBRID_TEST_URL` and `CUBRID_DASHBOARD_TEST_URL`, fails if anything is unreachable, skipped or missing, and writes its results to `.live-evidence/`. [CONTRIBUTING.md](CONTRIBUTING.md#live-verification) shows how to start them.
+`make verify` is the full live verification: every golden plus the FastAPI quickstart, Flask/FastAPI, Django/Celery, Streamlit, AI agent/MCP/RAG, migration and performance suites. Besides the `make docker-up` database it needs two dedicated, empty CUBRID databases in `CUBRID_TEST_URL` and `CUBRID_DASHBOARD_TEST_URL`, fails if anything is unreachable, skipped or missing, and writes its results to `test-results/verify/` (`summary.json`, `environment.json`, JUnit and logs; the per-lane evidence stays in `.live-evidence/`). [CONTRIBUTING.md](CONTRIBUTING.md#live-verification) shows how to start them.
 
 ### Advanced: debugging lanes
 

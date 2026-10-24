@@ -18,6 +18,8 @@ import tempfile
 import textwrap
 import unittest
 from unittest import mock
+from urllib.parse import quote
+from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("live_gate", ROOT / "scripts" / "live_gate.py")
@@ -247,6 +249,8 @@ STUB = textwrap.dedent(
     os.makedirs(os.path.dirname(os.path.abspath(report)), exist_ok=True)
     open(report, "w").write(os.environ["STUB_JUNIT"])
     print("database: live CUBRID (stub)")
+    if os.environ.get("STUB_ECHO_URL"):  # a suite that prints its raw URL
+        print("connecting to", os.environ.get("CUBRID_TEST_URL"))
     sys.exit(int(os.environ.get("STUB_EXIT", "0")))
     """
 )
@@ -265,6 +269,7 @@ class StubRunner(unittest.TestCase):
             f'#!/bin/sh\nexec "{sys.executable}" "{self.stub}" "$@"\n', encoding="utf-8"
         )
         self.python.chmod(0o755)
+        self.results = self.tmp / "results"
 
     def run_gate(
         self, env: dict[str, str], *lanes: str, gate: bool = True, stdout: bool = True
@@ -275,6 +280,7 @@ class StubRunner(unittest.TestCase):
             if k not in {"CUBRID_TEST_URL", "CUBRID_DASHBOARD_TEST_URL", "CUBRID_LIVE_GATE"}
         }
         argv = [*lanes, "--evidence-dir", str(self.tmp / "evidence"), "--python", str(self.python)]
+        argv += ["--results-dir", str(self.results)]
         with (
             mock.patch.dict(os.environ, {**clean, **env}, clear=True),
             mock.patch.object(live_gate, "probe", return_value=("11.2.9.0866", set(), None)),
@@ -378,6 +384,7 @@ class RunnerTests(StubRunner):
         probes = iter([("11.2", tables, None) for tables in snapshots])
         env = {"STUB_JUNIT": junit(1), "CUBRID_TEST_URL": LIVE}
         argv = ["django-celery", "--gate", "--evidence-dir", str(self.tmp / "evidence")]
+        argv += ["--results-dir", str(self.results)]
         with (
             mock.patch.object(live_gate, "probe", side_effect=lambda _url: next(probes)),
             mock.patch.dict(os.environ, env),
@@ -422,8 +429,8 @@ FAKE_MAKE = textwrap.dedent(
 )
 
 
-class FullVerifyTests(StubRunner):
-    """`all` (make verify): upfront checks, every lane, separate golden/pytest results."""
+class MakeStubRunner(StubRunner):
+    """A StubRunner whose `make verify-goldens` is the fake make above."""
 
     def setUp(self) -> None:
         super().setUp()
@@ -444,6 +451,10 @@ class FullVerifyTests(StubRunner):
         }
         with mock.patch.object(live_gate.shutil, "which", return_value=str(self.make)):
             return self.run_gate({**base, **env}, "all")
+
+
+class FullVerifyTests(MakeStubRunner):
+    """`all` (make verify): upfront checks, every lane, separate golden/pytest results."""
 
     def verify_summary(self) -> dict:
         return json.loads((self.tmp / "evidence" / "verify-summary.json").read_text("utf-8"))
@@ -558,6 +569,8 @@ class FullVerifyTests(StubRunner):
                         str(self.tmp / "evidence"),
                         "--python",
                         str(self.python),
+                        "--results-dir",
+                        str(self.results),
                     ]
                 )
         self.assertEqual(code, 1)
@@ -567,6 +580,157 @@ class FullVerifyTests(StubRunner):
         with mock.patch("sys.stderr"), self.assertRaises(SystemExit) as raised:
             live_gate.main(["all", "web"])
         self.assertEqual(raised.exception.code, 2)
+
+
+class ResultsTests(MakeStubRunner):
+    """test-results/verify/ (#462): one versioned summary, environment, JUnit and logs."""
+
+    def read(self, name: str) -> dict:
+        return json.loads((self.results / name).read_text("utf-8"))
+
+    def test_full_run_writes_summary_environment_junit_and_logs(self) -> None:
+        with mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+            with mock.patch.object(live_gate.shutil, "which", return_value=str(self.make)):
+                base = {
+                    "STUB_JUNIT": junit(1),
+                    "STUB_GOLDENS": "PASS\tfundamentals/a.py\n",
+                    "CUBRID_TEST_URL": LIVE,
+                    "CUBRID_DASHBOARD_TEST_URL": DASHBOARD,
+                }
+                self.assertEqual(self.run_gate(base, "all", stdout=False), 0)
+        summary = self.read("summary.json")
+        self.assertEqual(summary["schema_version"], 1)
+        self.assertEqual((summary["status"], summary["scope"]), ("PASS", "full"))
+        self.assertIs(summary["partial"], False)
+        self.assertEqual([lane["name"] for lane in summary["lanes"]], list(live_gate.FULL_ORDER))
+        self.assertTrue(all(lane["executed"] for lane in summary["lanes"]))
+        self.assertEqual(summary["not_run"], [])
+        goldens, *pytest_lanes = summary["lanes"]
+        self.assertIsNone(goldens["junit"])
+        self.assertEqual(goldens["counts"]["passed"], 1)
+        self.assertIn("logs/goldens/results.tsv", goldens["logs"])
+        for lane in pytest_lanes:
+            self.assertEqual(lane["junit"], f"junit/{lane['name']}.xml")
+            counts = live_gate.report_results.parse_junit(self.results / lane["junit"])
+            self.assertEqual(counts, lane["counts"])
+            self.assertTrue(lane["logs"])
+            for log in lane["logs"]:
+                self.assertTrue((self.results / log).is_file(), log)
+        self.assertEqual(
+            summary["counts"]["selected"],
+            sum(lane["counts"]["selected"] for lane in summary["lanes"]),
+        )
+        environment = self.read("environment.json")
+        self.assertEqual(environment["command"][:2], ["scripts/live_gate.py", "all"])
+        self.assertEqual(environment["cubrid"]["live"]["version"], "11.2.9.0866")
+        self.assertTrue(environment["python"]["version"])
+        self.assertTrue(environment["platform"]["system"])
+        # The console line and summary.md are built from summary.json alone.
+        line = live_gate.results_line(summary, live_gate.shown_path(self.results / "summary.json"))
+        self.assertIn(line, out.getvalue())
+        self.assertIn("verify results: PASS (full) goldens PASS, quickstart PASS", line)
+        markdown = (self.results / "summary.md").read_text("utf-8")
+        self.assertIn("### Live verification: PASS (full)", markdown)
+        self.assertIn("| dashboard | PASS | yes |", markdown)
+
+    def test_upfront_failure_records_every_lane_as_not_executed(self) -> None:
+        self.assertEqual(self.run_all({"CUBRID_TEST_URL": ""}), 1)
+        summary = self.read("summary.json")
+        self.assertEqual(summary["status"], "FAIL")
+        self.assertEqual(summary["not_run"], list(live_gate.FULL_ORDER))
+        for lane in summary["lanes"]:
+            self.assertEqual((lane["status"], lane["executed"]), ("INCOMPLETE", False))
+        self.assertTrue(summary["preflight_failures"])
+        self.assertFalse((self.results / "junit").exists())
+
+    def test_ungated_full_run_is_never_pass(self) -> None:
+        env = {
+            "STUB_JUNIT": junit(1),
+            "STUB_GOLDENS": "PASS\ta.py\n",
+            "CUBRID_TEST_URL": LIVE,
+            "CUBRID_DASHBOARD_TEST_URL": DASHBOARD,
+        }
+        with mock.patch.object(live_gate.shutil, "which", return_value=str(self.make)):
+            self.run_gate(env, "all", gate=False)
+        self.assertEqual(self.read("summary.json")["status"], "INCOMPLETE")
+
+    def test_full_run_starts_from_an_empty_directory(self) -> None:
+        self.results.mkdir()
+        (self.results / "summary.json").write_text('{"status": "PASS"}', encoding="utf-8")
+        (self.results / "stale.txt").write_text("old", encoding="utf-8")
+        with (
+            mock.patch.object(live_gate, "missing_dependencies", side_effect=RuntimeError("x")),
+            self.assertRaises(RuntimeError),
+        ):
+            self.run_all({})
+        self.assertEqual(list(self.results.iterdir()), [])
+
+    def test_focused_runs_merge_by_lane_and_stay_partial(self) -> None:
+        env = {"STUB_JUNIT": junit(1), "CUBRID_TEST_URL": LIVE}
+        self.assertEqual(self.run_gate(env, "django-celery"), 0)
+        (self.results / "lanes" / "web.json").write_text(
+            json.dumps({"name": "web", "git_sha": "another-commit"}), encoding="utf-8"
+        )
+        (self.results / "junit" / "web.xml").write_text("old", encoding="utf-8")
+        self.assertEqual(self.run_gate({**env, "STUB_JUNIT": junit(2)}, "ai-agent"), 0)
+        summary = self.read("summary.json")
+        self.assertEqual((summary["scope"], summary["partial"]), ("partial", True))
+        self.assertEqual([lane["name"] for lane in summary["lanes"]], ["django-celery", "ai-agent"])
+        self.assertEqual(summary["lanes_this_run"], ["ai-agent"])
+        self.assertEqual(summary["status"], "PASS")
+        # Another commit's lane result is dropped, files and all.
+        self.assertFalse((self.results / "junit" / "web.xml").exists())
+        self.assertIn("PARTIAL: checked only", (self.results / "summary.md").read_text("utf-8"))
+        # A rerun replaces only its own lane.
+        self.assertEqual(self.run_gate({**env, "STUB_JUNIT": junit(1, skipped=1)}, "ai-agent"), 1)
+        summary = self.read("summary.json")
+        self.assertEqual(summary["status"], "FAIL")
+        self.assertEqual(
+            [(lane["name"], lane["status"]) for lane in summary["lanes"]],
+            [("django-celery", "PASS"), ("ai-agent", "FAIL")],
+        )
+
+    def test_no_credential_reaches_any_result_file(self) -> None:
+        password, dashboard_password = "s3cr&t/Pw", "dash-Secret-9"
+        live = f"cubrid+pycubrid://dba:{quote(password, safe='')}@localhost:33005/testdb"
+        dashboard = f"cubrid+pycubrid://dba:{dashboard_password}@localhost:33004/testdb"
+        failing = (
+            '<testsuites><testsuite tests="1" failures="1"><testcase classname="t" name="c">'
+            f'<failure message="{escape(live)} {escape(password)}">{escape(dashboard)}</failure>'
+            "</testcase></testsuite></testsuites>"
+        )
+        env = {
+            "STUB_JUNIT": failing,
+            "STUB_ECHO_URL": "1",
+            "STUB_GOLDENS": "PASS\ta.py\n",
+            "CUBRID_TEST_URL": live,
+            "CUBRID_DASHBOARD_TEST_URL": dashboard,
+        }
+        with mock.patch.object(live_gate.shutil, "which", return_value=str(self.make)):
+            self.assertEqual(self.run_gate(env, "all"), 1)
+        self.assertEqual(self.read("summary.json")["status"], "FAIL")
+        files = [
+            p for d in (self.results, self.tmp / "evidence") for p in d.rglob("*") if p.is_file()
+        ]
+        self.assertTrue(any(p.name == "web.xml" for p in files))
+        for path in files:
+            text = path.read_text("utf-8", errors="replace")
+            for secret in (
+                password,
+                quote(password, safe=""),
+                escape(password),
+                dashboard_password,
+            ):
+                self.assertNotIn(secret, text, path)
+        log = next(
+            p
+            for p in files
+            if p.parts[-2:] == ("ai-agent", "templates__ai-agent__tests__test_live.py.log")
+            and self.results in p.parents
+        )
+        self.assertIn(
+            "connecting to cubrid+pycubrid://dba:***@localhost:33005/testdb", log.read_text("utf-8")
+        )
 
 
 class WiringTests(unittest.TestCase):
