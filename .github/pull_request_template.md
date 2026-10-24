@@ -53,6 +53,13 @@ If translation help is needed, name the language and reason. This request does
 not bypass checks; maintainers must approve the existing translations-deferred
 label and record the follow-up. -->
 
+## Related PRs and Execution Preconditions
+
+<!-- Cite Supersedes #N, Depends on #N, or Parallel to #N with a reason,
+     or None. Recheck current main and unresolved decisions before merge. -->
+Related PRs and precedence: None
+Unresolved decision or dependency: None
+
 ## Related Issues
 
 <!-- Use Closes #N for a completed LOCAL issue (or N/A and a reason).
