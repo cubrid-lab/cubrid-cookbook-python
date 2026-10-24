@@ -89,6 +89,27 @@ Apply these guardrails to every implementation tool:
 - Before merging, verify final code, branch checks and independent approval
   on protected/security-sensitive paths where the project requires it.
 
+## PR overlap and execution precedence
+
+- Before opening a PR, check the linked issue's accepted scope and
+  dependencies, other open PRs, and work merged into `main` since the branch
+  was created. Mark relevant `Supersedes #N`, `Depends on #N` or
+  `Parallel to #N` with a reason; otherwise write `None`.
+- Pick a canonical PR by behavior, focused scope, test evidence and maintainer
+  direction. Recheck before merging; neither a newer PR nor green CI overrides
+  an unmet prerequisite, incomplete golden/live evidence or a protected
+  workflow/release review.
+- In the same review cycle after merging, explain and close truly superseded
+  PRs or record why parallel work stays valid. Update linked issues and do not
+  declare parent acceptance complete merely because sub-PRs merged. Keep
+  contributor history and coordinate external work.
+- After a policy change, reconcile contradictory older instructions in active
+  issues/PRs and templates, or leave a narrow documented follow-up.
+- `priority:` records urgency, `size:` effort; actual execution order also
+  depends on readiness, verification and maintainer release decisions. Preserve
+  the already-live `make verify` contract and do not redo merged Compose work.
+  No additional automation, check or organization-level tracker is required.
+
 ## Issue specification and ownership
 
 Issues and implementation acceptance are repository-local: file work in the
