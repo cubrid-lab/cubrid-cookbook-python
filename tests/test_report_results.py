@@ -11,6 +11,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest import mock
 
@@ -18,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import report_results  # noqa: E402
+import unittest_junit  # noqa: E402
 
 
 def load_runner():  # noqa: ANN201
@@ -147,7 +149,7 @@ class ResetResultsDirTests(unittest.TestCase):
 
 
 class UnittestJunitTests(unittest.TestCase):
-    def run_runner(self, source: str) -> tuple[int, dict[str, int] | None]:
+    def run_runner(self, source: str) -> tuple[int, dict[str, int] | None, str]:
         with tempfile.TemporaryDirectory() as tmp:
             tests = Path(tmp) / "tests"
             tests.mkdir()
@@ -169,10 +171,29 @@ class UnittestJunitTests(unittest.TestCase):
                 timeout=60,
                 cwd=tmp,
             )
-            return proc.returncode, report_results.parse_junit(out)
+            return (
+                proc.returncode,
+                report_results.parse_junit(out),
+                out.read_text(encoding="utf-8"),
+            )
+
+    def test_missing_unittest_arguments_print_usage_without_xml(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "only-junit-path.xml"
+            for argv in ([], [str(out)]):
+                with self.subTest(argv=argv):
+                    stderr = io.StringIO()
+                    with contextlib.redirect_stderr(stderr):
+                        code = unittest_junit.main(argv)
+                    self.assertEqual(code, 2)
+                    self.assertIn(
+                        "usage: unittest_junit.py JUNIT_XML [unittest arguments...]",
+                        stderr.getvalue(),
+                    )
+                    self.assertFalse(out.exists())
 
     def test_pass_fail_error_skip_are_counted(self) -> None:
-        code, counts = self.run_runner(
+        code, counts, _ = self.run_runner(
             """
             import unittest
             class T(unittest.TestCase):
@@ -203,7 +224,7 @@ class UnittestJunitTests(unittest.TestCase):
         )
 
     def test_all_passing_exits_zero(self) -> None:
-        code, counts = self.run_runner(
+        code, counts, _ = self.run_runner(
             """
             import unittest
             class T(unittest.TestCase):
@@ -211,6 +232,21 @@ class UnittestJunitTests(unittest.TestCase):
             """
         )
         self.assertEqual((code, counts["passed"], counts["selected"]), (0, 1, 1))
+
+    def test_unexpected_success_is_a_failed_junit_result(self) -> None:
+        code, counts, xml = self.run_runner(
+            """
+            import unittest
+            class T(unittest.TestCase):
+                @unittest.expectedFailure
+                def test_unexpected_success(self): pass
+            """
+        )
+        failure = ET.fromstring(xml).find(".//failure")
+        self.assertIsNotNone(failure)
+        self.assertEqual(failure.get("message"), "unexpected success")
+        self.assertEqual(code, 1)
+        self.assertEqual((counts["selected"], counts["failed"]), (1, 1))
 
 
 class RunnerAggregationTests(unittest.TestCase):
