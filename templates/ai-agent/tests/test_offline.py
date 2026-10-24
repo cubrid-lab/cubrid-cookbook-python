@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-RECIPE_ROOT = Path(__file__).resolve().parents[1] / "templates/ai-agent"
+RECIPE_ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_recipe(name, monkeypatch=None):
@@ -26,7 +26,7 @@ def load_recipe(name, monkeypatch=None):
 
 def load_live_suite():
     spec = importlib.util.spec_from_file_location(
-        "agent_live_suite", RECIPE_ROOT.parents[1] / "tests/test_ai_agent.py"
+        "agent_live_suite", RECIPE_ROOT / "tests/test_live.py"
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -297,7 +297,7 @@ def run_live_suite(extra_env):
             sys.executable,
             "-m",
             "pytest",
-            "tests/test_ai_agent.py",
+            "templates/ai-agent/tests/test_live.py",
             "-x",
             "-q",
             "-p",

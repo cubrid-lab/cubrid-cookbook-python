@@ -240,7 +240,7 @@ when a row no longer matches the repository. Verification is split:
   `main`, nightly and release verification, and a pull request that changes the
   quickstart (other than Markdown) runs `make verify-quickstart` in the CUBRID
   11.4 smoke lane.
-- The **five AI agent scripts** run via `tests/test_ai_agent.py` against live
+- The **five AI agent scripts** run via `templates/ai-agent/tests/test_live.py` against live
   **11.2 and 11.4** on every smoke-test trigger (the full `make verify`, then
   `make verify-ai-agent` again on the same database), and twice with
   `make verify-ai-agent` on 11.4 for pull requests that touch them.
@@ -253,7 +253,7 @@ when a row no longer matches the repository. Verification is split:
   leaves the table and its rows intact. `make verify-ai-agent` (and the full
   `make verify`) runs the live suite fail-closed (no URL, an unreachable database
   or a skip fails).
-  `tests/test_ai_agent_offline.py` checks ID handling, MCP errors and cleanup.
+  `templates/ai-agent/tests/test_offline.py` checks ID handling, MCP errors and cleanup.
 - The **Celery async-worker** database tasks run through
   `templates/async-worker/tests` without a Redis broker or worker. A dedicated
   CUBRID 11.4 job gates pull requests that touch it; the non-PR smoke matrix
@@ -266,7 +266,7 @@ when a row no longer matches the repository. Verification is split:
   bridge on a dedicated live **11.4** job for pull requests that touch it and in the full
   `make verify` of the **11.2/11.4** non-PR smoke matrix. The suite refuses a preexisting
   `cookbook_django_items` table and removes only its own table.
-- The **migration and performance** suite (`tests/test_performance_benchmarks.py`:
+- The **migration and performance** suite (`performance/tests/test_benchmarks.py`:
   the five Java-to-Python migration goldens, the three benchmarks and their cleanup on failure;
   timings are parsed, never compared) runs in the smoke job's full `make verify` on
   **11.2 and 11.4**, and as `make verify-performance` in the CUBRID 11.4 smoke lane

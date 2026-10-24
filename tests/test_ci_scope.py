@@ -130,9 +130,10 @@ class ClassifierTests(unittest.TestCase):
         # live suites run as focused make verify-<lane> lanes in the 11.4 smoke lane.
         cases = {
             "templates/ai-agent/03_rag_metadata.py": "ai-agent",
-            "tests/test_ai_agent.py": "ai-agent",
+            "templates/ai-agent/tests/test_live.py": "ai-agent",
+            "templates/ai-agent/tests/test_offline.py": "ai-agent",
             "performance/bulk-insert/benchmark.py": "performance",
-            "tests/test_performance_benchmarks.py": "performance",
+            "performance/tests/test_benchmarks.py": "performance",
             "quickstart/5min-fastapi/app.py": "quickstart",
             "quickstart/5min-fastapi/tests/test_live.py": "quickstart",
         }

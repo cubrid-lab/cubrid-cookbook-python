@@ -72,7 +72,7 @@ def setup_database_url(monkeypatch, app_path):
         drop_recipe_tables()
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 RECIPE_ROOT = REPO_ROOT / "templates/ai-agent"
 AGENT_STATE_TABLES = (
     "cookbook_agent_tool_calls",

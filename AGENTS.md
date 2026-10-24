@@ -21,7 +21,7 @@ fundamentals/      → Step-by-step reference for core operations
 demos/             → Recording scripts and provenance for the README demo media
 docs/              → MkDocs site sources, translations and internal design notes
 scripts/           → CI, docs, golden-output and release-verification helpers
-tests/             → Offline repository checks (`make test`) and live suites (`make verify`)
+tests/             → Repository-wide tests and CI checks (recipe tests live beside examples)
 ```
 
 Example counts and tested versions change often; `README.md` and

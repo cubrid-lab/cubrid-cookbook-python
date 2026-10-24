@@ -83,7 +83,7 @@ test: ## Run every offline suite, each in its own process (suite list: scripts/r
 test-offline: test ## Alias of make test
 
 test-normalize: ## Run before/after unit checks for scripts/normalize_output.sh (also part of make test)
-	bash scripts/test_normalize_output.sh
+	bash tests/test_normalize_output.sh
 
 agent-eval-check: ## Validate the agent-evals tasks and re-grade their fixtures (offline; no model, no DB)
 	$(PYTHON) scripts/agent_eval.py validate

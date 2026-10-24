@@ -168,8 +168,8 @@ FAMILIES = (
 SMOKE_LANE_ORDER = ("quickstart", "performance", "ai-agent")
 SMOKE_LANES = (
     ("quickstart", ("quickstart/5min-fastapi/*",)),
-    ("performance", ("performance/*", "tests/test_performance_benchmarks.py")),
-    ("ai-agent", ("templates/ai-agent/*", "tests/test_ai_agent.py")),
+    ("performance", ("performance/*",)),
+    ("ai-agent", ("templates/ai-agent/*",)),
 )
 # Example directories with no live consumer (no goldens, no live suite); the
 # offline checks cover them. Other files in example trees outside a golden root

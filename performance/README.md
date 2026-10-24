@@ -95,14 +95,14 @@ The benchmarks print timings, so they have no golden file. `make verify-performa
 make verify-performance   # JUnit report and summary: .live-evidence/performance/
 ```
 
-`tests/test_performance_benchmarks.py` runs each `benchmark.py` with a time limit and checks that it exits 0,
+`performance/tests/test_benchmarks.py` runs each `benchmark.py` with a time limit and checks that it exits 0,
 prints every comparison line with a finite, nonnegative time, ran its whole workload (10,000 fetched rows per
 strategy; 500, 5,000 and 5,000 stored rows; 50 connections without a pool and 1 to 5 with one) and printed no
 error. It also makes `fetch-optimization` and `bulk-insert` fail on purpose after they create their table and
 checks that the table is dropped anyway, and that an unrelated table is unchanged after each run. It never
 compares one strategy's time with another's, so a slow or noisy machine does not fail it. The report records
 the CUBRID server, Python, pytest and driver versions. `make verify-performance` fails when the database is unreachable,
-any test is skipped or a table is left behind; plain `pytest tests/test_performance_benchmarks.py` skips without a database.
+any test is skipped or a table is left behind; plain `pytest performance/tests/test_benchmarks.py` skips without a database.
 
 The benchmarks and the migration examples use fixed table names (`cookbook_fetch_test`, `cookbook_bulk_test`,
 `cookbook_jdbc_*`, `cookbook_sensors`). Do not run `make verify-performance` at the same time as another `make verify-performance`,
@@ -111,7 +111,7 @@ The benchmarks and the migration examples use fixed table names (`cookbook_fetch
 CI runs the same commands, one lane at a time on job-owned CUBRID containers: the full `make verify` on
 CUBRID 11.2 and 11.4 for every push to `main`, the nightly schedule and release verification, and
 `make verify-performance` on CUBRID 11.4 for pull requests that change `performance/` or
-`tests/test_performance_benchmarks.py`. The lane took about a minute locally and is bounded at 5 minutes in
+`performance/tests/test_benchmarks.py`. The lane took about a minute locally and is bounded at 5 minutes in
 the pull-request lane; its JUnit report and summary are in the `live-evidence-*` workflow artifact.
 
 ## Key Takeaways

@@ -54,7 +54,7 @@ SUITES: tuple[tuple[str, ...], ...] = (
         "-q",
         "--ignore=quickstart/5min-fastapi/tests/test_live.py",
     ),
-    ("python", "-m", "pytest", "tests/test_ai_agent_offline.py", "-q"),
+    ("python", "-m", "pytest", "templates/ai-agent/tests/test_offline.py", "-q"),
     ("python", "-m", "pytest", "tests/test_agent_review_gate.py", "-q"),
     ("python", "-m", "pytest", "tests/test_agent_eval.py", "-q"),
     _unittest("test_release*.py"),
@@ -76,7 +76,7 @@ SUITES: tuple[tuple[str, ...], ...] = (
     _unittest("test_live_gate.py"),
     _unittest("test_report_results.py"),
     # Before/after checks for scripts/normalize_output.sh (also `make test-normalize`).
-    ("bash", "scripts/test_normalize_output.sh"),
+    ("bash", "tests/test_normalize_output.sh"),
 )
 
 

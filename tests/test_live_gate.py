@@ -207,8 +207,8 @@ class ManifestTests(unittest.TestCase):
         for path in (
             ".",
             "quickstart/5min-fastapi/tests/test_live.py",
-            "tests/test_performance_benchmarks.py",
-            "tests/test_ai_agent.py",
+            "performance/tests/test_benchmarks.py",
+            "templates/ai-agent/tests/test_live.py",
             "templates/dashboard/tests",
             "templates/async-worker/tests",
             "templates/django/tests",

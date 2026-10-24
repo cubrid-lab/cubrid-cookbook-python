@@ -65,9 +65,9 @@ Run these commands from the repository root:
 
 ```bash
 pip install -r templates/ai-agent/requirements.txt pytest
-python -m pytest tests/test_ai_agent_offline.py -q
+python -m pytest templates/ai-agent/tests/test_offline.py -q
 CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" \
-  python -m pytest tests/test_ai_agent.py -v
+  python -m pytest templates/ai-agent/tests/test_live.py -v
 ```
 
 The live suite requires a dedicated test database: before and after each
@@ -78,7 +78,7 @@ It restores environment variables and always uses the pycubrid SQLAlchemy
 backend, even if the supplied URL uses the legacy `cubrid://` scheme.
 
 After each run a separate connection reads back what the script persisted and
-compares it with explicit expectations in `tests/test_ai_agent.py`, ignoring
+compares it with explicit expectations in `templates/ai-agent/tests/test_live.py`, ignoring
 auto-increment IDs and timestamps and resolving foreign keys through joins:
 
 - **01** — the `cookbook-agent-state-demo` session, its tags, its three messages

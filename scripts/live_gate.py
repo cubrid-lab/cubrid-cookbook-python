@@ -117,7 +117,7 @@ MANIFEST: dict[str, dict[str, Any]] = {
         "title": "Java -> Python migration goldens and performance benchmarks on live CUBRID",
         "suites": [
             {
-                "glob": "tests/test_performance_benchmarks.py",
+                "glob": "performance/tests/test_benchmarks.py",
                 "database": "examples",
                 "note": "The scripts hard-code localhost:33000/testdb; timings are parsed, "
                 "never compared.",
@@ -164,7 +164,7 @@ MANIFEST: dict[str, dict[str, Any]] = {
         "title": "AI agent state, MCP tools and RAG on live CUBRID",
         "suites": [
             {
-                "glob": "tests/test_ai_agent.py",
+                "glob": "templates/ai-agent/tests/test_live.py",
                 "database": "live",
                 "note": "Each script runs twice for repeatability; the suite drops only "
                 "its scripts' own tables before and after each case.",

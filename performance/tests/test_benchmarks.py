@@ -31,7 +31,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 RUN_EXAMPLE = ROOT / "scripts" / "run_example.py"
 NORMALIZE = ROOT / "scripts" / "normalize_output.sh"
 MIGRATION_DIR = ROOT / "migration" / "java-to-python"

@@ -247,10 +247,10 @@ the database and runs `verify-goldens`.
 |----------------------|-----------|----------|
 | goldens (`verify-goldens`) | every `expected/*.expected` golden, see [Golden Verification](#golden-verification) | the `make docker-up` database |
 | `verify-quickstart` | `quickstart/5min-fastapi/tests/test_live.py`: `/health` and CRUD (#420) | the `make docker-up` database (the app connects to port 33000 and `testdb` only); it keeps its own `cookbook_quickstart_items` table |
-| `verify-performance` | `tests/test_performance_benchmarks.py`: the five migration goldens and the three benchmarks (#423), see [Performance and migration lane](#performance-and-migration-lane) | the `make docker-up` database (the scripts hard-code it) |
+| `verify-performance` | `performance/tests/test_benchmarks.py`: the five migration goldens and the three benchmarks (#423), see [Performance and migration lane](#performance-and-migration-lane) | the `make docker-up` database (the scripts hard-code it) |
 | `verify-web` | `templates/flask/*/tests`, `templates/api-service-fastapi/recipes/*/tests`; `templates/api-service-fastapi/tests` (root template startup and `/health`) | `CUBRID_TEST_URL`; the root template test uses SQLite by design and is reported as startup-only, not live evidence or quickstart coverage |
 | `verify-django-celery` | `templates/django/tests`, `templates/async-worker/tests` | `CUBRID_TEST_URL`; Celery tasks run directly (`.run()` / eager `.apply()`), without Redis or a worker |
-| `verify-ai-agent` | `tests/test_ai_agent.py`: agent state, MCP tools and RAG, each script run twice (#422) | `CUBRID_TEST_URL` |
+| `verify-ai-agent` | `templates/ai-agent/tests/test_live.py`: agent state, MCP tools and RAG, each script run twice (#422) | `CUBRID_TEST_URL` |
 | `verify-dashboard` | `templates/dashboard/tests` | `CUBRID_DASHBOARD_TEST_URL`: the suite drops and recreates its FK-linked tables |
 
 ### CI tiers
@@ -264,7 +264,7 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 | Tier | When | What runs |
 |------|------|-----------|
 | 1 — cheap checks | every pull request | Ruff, `make check`, docs-sync, docs-check, doc-lint, classification and the gate; the strict docs-site build |
-| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify-goldens` scoped to the touched examples; the FastAPI quickstart, `performance/` (and `tests/test_performance_benchmarks.py`) or AI-agent code (and `tests/test_ai_agent.py`) → the same lane with every golden and the focused `make verify-quickstart` / `verify-performance` / `verify-ai-agent` lane; other files in example trees → the same lane with every golden and all three focused lanes |
+| 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify-goldens` scoped to the touched examples; the FastAPI quickstart, `performance/` (and `performance/tests/test_benchmarks.py`) or AI-agent code (and `templates/ai-agent/tests/test_live.py`) → the same lane with every golden and the focused `make verify-quickstart` / `verify-performance` / `verify-ai-agent` lane; other files in example trees → the same lane with every golden and all three focused lanes |
 | 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with every golden (`make verify-goldens VERIFY_PATHS=.`) and all three focused lanes, Python 3.11 + 3.14 compatibility |
 | 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
 | 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | the full, fail-closed `make verify` (every golden and every live suite: quickstart, migration and performance, Flask/FastAPI, Django/Celery, AI agent, dashboard), then `make verify-ai-agent` again, on job-owned CUBRID 11.2 + 11.4 containers (Python 3.12); a release verification adds one CUBRID 11.4 cell on Python 3.11, the supported minimum |
@@ -293,9 +293,9 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   examples database: `make verify-quickstart` (about 1 s) for
   `quickstart/5min-fastapi/` (other than Markdown), `make verify-performance` (about a
   minute, bounded at 5 minutes) for `performance/` and
-  `tests/test_performance_benchmarks.py`, and `make verify-ai-agent` twice on a
+  `performance/tests/test_benchmarks.py`, and `make verify-ai-agent` twice on a
   second, dedicated CUBRID container (`CUBRID_TEST_URL`; about 20 s each) for
-  `templates/ai-agent/` and `tests/test_ai_agent.py` (#425, #426, #428). Each of
+  `templates/ai-agent/` and `templates/ai-agent/tests/test_live.py` (#425, #426, #428). Each of
   these paths runs every golden, even beside a changed golden root. Fan-out, CI
   policy, release smoke, unknown paths and example-tree files outside a golden root
   select all three lanes. Each smoke job uploads `.live-evidence/` once, as the
@@ -523,7 +523,7 @@ summary counts each class. Under GitHub Actions each failure also emits an
 ### Performance and migration lane
 
 `make verify-performance` (also part of `make verify`) runs
-`tests/test_performance_benchmarks.py` against the database
+`performance/tests/test_benchmarks.py` against the database
 the examples hard-code (`localhost:33000`, `testdb`, `dba`; `make docker-up` and
 `make deps` first) and writes a JUnit report and a summary to `.live-evidence/performance/`
 (ignored by git). It has two groups, reported as separate JUnit classes:
@@ -543,7 +543,7 @@ driver fails every database test (the run fails), and the lane also fails if
 the report counts a skipped test or the scripts leave or drop a table. The scripts use fixed table names
 (`cookbook_fetch_test`, `cookbook_bulk_test`, `cookbook_jdbc_*`,
 `cookbook_sensors`), so do not run `make verify-performance` at the same time as another
-`make verify-performance`, `make verify` or a manual benchmark run against the same database. Without the variable, `pytest tests/test_performance_benchmarks.py`
+`make verify-performance`, `make verify` or a manual benchmark run against the same database. Without the variable, `pytest performance/tests/test_benchmarks.py`
 skips when no database answers. A full run took about a minute on CUBRID 11.2
 (longer on slow machines; the `bulk-insert` per-row COMMIT dominates). When you
 change a benchmark, run it twice in a row to show that no stale table is left behind.
@@ -1099,7 +1099,7 @@ surfaces to the maintainers: `.github/workflows/` (including the reusable
 `.github/actions/`, `.github/dependabot.yml`, `.github/CODEOWNERS`, `SECURITY.md`,
 and the shared validation and golden-output infrastructure (`Makefile`,
 `scripts/`, the shared tests in `tests/`, `docker-compose.yml`, `pyproject.toml`).
-Individual recipes, and recipe-specific tests such as `tests/test_ai_agent*.py`,
+Individual recipes, and recipe-specific tests such as `templates/ai-agent/tests/test_*.py`,
 are intentionally not owned, so ordinary recipe contributions need no special
 reviewer. CODEOWNERS is routing only, not a security boundary, and does not by
 itself make any approval mandatory.
