@@ -6,8 +6,8 @@ This gate enforces the "code without doc updates is incomplete" rule from the
 class of drift fixed in issue #42, where example directories existed on disk but
 were never listed in README.md and never smoke-tested.
 
-Two checks are performed for every example directory (an immediate subdirectory
-of one of the category roots):
+Two checks are performed for each top-level example directory. Smoke coverage
+also checks individual nested Flask and FastAPI recipes:
 
 1. README reference (BLOCKING): the example's ``<category>/<name>`` path must
    appear somewhere in README.md and in llms.txt (the index AI assistants
@@ -49,6 +49,10 @@ _IGNORED_DIRS = {"__pycache__", ".pytest_cache", "expected", "tests"}
 # covered by the gate while exempting any future README-only or non-code
 # subdirectory from the same treatment.
 _REQUIRE_CODE_ROOTS = {"pitfalls"}
+
+# These templates contain independent, copyable recipes one level below the
+# indexed top-level example. Check each recipe for smoke coverage separately.
+_NESTED_SMOKE_ROOTS = ("templates/flask", "templates/api-service-fastapi/recipes")
 
 
 def _has_example_code(directory: Path) -> bool:
@@ -96,6 +100,24 @@ def discover_examples(repo_root: Path) -> list[str]:
                 continue
             examples.append(f"{category}/{child.name}")
     return examples
+
+
+def discover_nested_recipes(repo_root: Path) -> list[str]:
+    """Discover runnable nested Flask/FastAPI recipes for smoke-coverage warnings."""
+    recipes: list[str] = []
+    for folder in _NESTED_SMOKE_ROOTS:
+        parent = repo_root / folder
+        if not parent.is_dir():
+            continue
+        for child in sorted(parent.iterdir()):
+            if (
+                child.is_dir()
+                and child.name not in _IGNORED_DIRS
+                and not child.name.startswith(".")
+                and any(p.name != "__init__.py" for p in child.glob("*.py"))
+            ):
+                recipes.append(child.relative_to(repo_root).as_posix())
+    return recipes
 
 
 def load_allowlist(allowlist_path: Path) -> set[str]:
@@ -154,7 +176,7 @@ def find_undocumented(examples: list[str], readme_text: str) -> list[str]:
 
 
 def find_untested(repo_root: Path, examples: list[str], allowlist: set[str]) -> list[str]:
-    """Return non-allowlisted examples lacking an ``expected/`` or ``tests/`` dir."""
+    """Return supplied examples lacking an ``expected/`` or ``tests/`` directory."""
     untested: list[str] = []
     for ex in examples:
         if ex in allowlist:
@@ -180,7 +202,7 @@ def main() -> int:
     examples = discover_examples(repo_root)
     undocumented = find_undocumented(examples, readme_text)
     missing_from_llms = find_undocumented(examples, llms_text)
-    untested = find_untested(repo_root, examples, allowlist)
+    untested = find_untested(repo_root, [*examples, *discover_nested_recipes(repo_root)], allowlist)
 
     print(f"Scanned {len(examples)} example directories across {len(CATEGORY_ROOTS)} categories.")
 
