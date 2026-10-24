@@ -529,15 +529,42 @@ jobs:
           cubrid-version: "11.4"
           verify-paths: ${{ needs.classify.outputs.verify_paths }}
           live-lanes: ${{ needs.classify.outputs.smoke_lanes }}
+      - name: Collect CUBRID logs
+        # Container and server logs of the smoke action's CUBRID containers,
+        # uploaded with the test results; only after a failure.
+        if: failure()
+        continue-on-error: true
+        run: |
+          mkdir -p test-results/cubrid-logs
+          for name in cubrid cubrid-live; do
+            docker inspect "$name" >/dev/null 2>&1 || continue
+            docker logs "$name" > "test-results/cubrid-logs/$name.log" 2>&1 || true
+            docker exec "$name" bash -lc 'tar -C "$CUBRID" -czf - log' \
+              > "test-results/cubrid-logs/$name-server-log.tgz" 2>/dev/null || true
+          done
+      - name: Publish the live verification summary
+        # test-results/verify/summary.md is summary.json (scripts/live_gate.py,
+        # #462) as one table: every lane the smoke action ran, on success and failure.
+        if: always()
+        run: |
+          if [ -f test-results/verify/summary.md ]; then
+            cat test-results/verify/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Live verification: no live lane wrote test-results/verify/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Upload live evidence
-        # JUnit XML, logs and summaries of the make verify-* lanes the smoke
-        # action ran; evidence only, so an upload failure never fails the lane.
+        # test-results/ (summary.json, environment.json, JUnit, logs, CUBRID logs
+        # after a failure) and the .live-evidence/ compatibility layout of the
+        # make verify-* lanes the smoke action ran; evidence only, so an upload
+        # failure never fails the lane.
         if: always()
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: live-evidence-pr-cubrid-11.4
-          path: .live-evidence/
+          path: |
+            test-results/
+            .live-evidence/
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
@@ -563,15 +590,42 @@ jobs:
           cubrid-version: "11.2"
           verify-paths: ${{ needs.classify.outputs.verify_paths }}
           live-lanes: ${{ needs.classify.outputs.smoke_lanes }}
+      - name: Collect CUBRID logs
+        # Container and server logs of the smoke action's CUBRID containers,
+        # uploaded with the test results; only after a failure.
+        if: failure()
+        continue-on-error: true
+        run: |
+          mkdir -p test-results/cubrid-logs
+          for name in cubrid cubrid-live; do
+            docker inspect "$name" >/dev/null 2>&1 || continue
+            docker logs "$name" > "test-results/cubrid-logs/$name.log" 2>&1 || true
+            docker exec "$name" bash -lc 'tar -C "$CUBRID" -czf - log' \
+              > "test-results/cubrid-logs/$name-server-log.tgz" 2>/dev/null || true
+          done
+      - name: Publish the live verification summary
+        # test-results/verify/summary.md is summary.json (scripts/live_gate.py,
+        # #462) as one table: every lane the smoke action ran, on success and failure.
+        if: always()
+        run: |
+          if [ -f test-results/verify/summary.md ]; then
+            cat test-results/verify/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Live verification: no live lane wrote test-results/verify/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Upload live evidence
-        # JUnit XML, logs and summaries of the make verify-* lanes the smoke
-        # action ran; evidence only, so an upload failure never fails the lane.
+        # test-results/ (summary.json, environment.json, JUnit, logs, CUBRID logs
+        # after a failure) and the .live-evidence/ compatibility layout of the
+        # make verify-* lanes the smoke action ran; evidence only, so an upload
+        # failure never fails the lane.
         if: always()
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: live-evidence-pr-cubrid-11.2
-          path: .live-evidence/
+          path: |
+            test-results/
+            .live-evidence/
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14

@@ -328,9 +328,14 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   `templates/ai-agent/` and `templates/ai-agent/tests/test_live.py` (#425, #426, #428). Each of
   these paths runs every golden, even beside a changed golden root. Fan-out, CI
   policy, release smoke, unknown paths and example-tree files outside a golden root
-  select all three lanes. Each smoke job uploads `.live-evidence/` once, as the
-  `live-evidence-pr-cubrid-<version>` artifact (also when it fails; an upload
-  failure never fails the lane).
+  select all three lanes. Each smoke job appends `test-results/verify/summary.md` (one
+  table of every live lane it ran, see [Live verification](#live-verification)) to the
+  job's step summary, collects the CUBRID container and server logs into
+  `test-results/cubrid-logs/` after a failure, and uploads `test-results/` and
+  `.live-evidence/` once, as the `live-evidence-pr-cubrid-<version>` artifact with
+  `test-results/` and `.live-evidence/` folders (also when it fails; 14-day
+  retention; an upload failure never fails the lane). These steps add no permission,
+  secret or trigger.
 - The Flask/FastAPI lane (#227) runs the `tests/` suite of each changed recipe
   root (`ci_scope.web_suites`: a `templates/flask/` or
   `templates/api-service-fastapi/recipes/` recipe, or the root FastAPI app), each

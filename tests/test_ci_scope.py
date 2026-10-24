@@ -651,11 +651,42 @@ class WorkflowWiringTests(unittest.TestCase):
                 upload = body[body.index("- name: Upload live evidence") :]
                 self.assertIn("if: always()", upload)
                 self.assertIn("continue-on-error: true", upload)
-                self.assertIn("path: .live-evidence/", upload)
+                # test-results/ (#462) plus the .live-evidence/ compatibility layout.
+                self.assertIn(
+                    "path: |\n            test-results/\n            .live-evidence/\n", upload
+                )
                 self.assertIn("include-hidden-files: true", upload)
                 self.assertIn(f"name: live-evidence-pr-cubrid-{version}", upload)
+                self.assertIn("retention-days: 14", upload)
         self.assertEqual(CI.count("actions/upload-artifact@"), 2)
+        # smoke-test.yml, which sibling repositories call, keeps its own upload.
         self.assertEqual(SMOKE.count("path: .live-evidence/"), 1)
+
+    def test_pr_smoke_jobs_publish_the_verify_summary_and_cubrid_logs(self) -> None:
+        jobs = parse_jobs(CI)
+        for job in ("smoke-114", "smoke-112"):
+            body = "\n".join(jobs[job])
+            with self.subTest(job=job):
+                action = body.index("uses: ./.github/actions/pr-smoke")
+                logs = body.index("- name: Collect CUBRID logs")
+                summary = body.index("- name: Publish the live verification summary")
+                upload = body.index("- name: Upload live evidence")
+                self.assertLess(action, logs)
+                self.assertLess(logs, summary)
+                self.assertLess(summary, upload)
+                collect = body[logs:summary]
+                self.assertIn("if: failure()", collect)
+                self.assertIn("continue-on-error: true", collect)
+                self.assertIn("for name in cubrid cubrid-live; do", collect)
+                self.assertIn("test-results/cubrid-logs/", collect)
+                publish = body[summary:upload]
+                self.assertIn("if: always()", publish)
+                self.assertIn(
+                    'cat test-results/verify/summary.md >> "$GITHUB_STEP_SUMMARY"', publish
+                )
+                self.assertNotIn("uses:", body[logs:upload])
+                # No new permission: the smoke jobs stay read-only.
+                self.assertIn("    permissions:\n      contents: read\n    steps:", body)
 
     def test_smoke_workflow_dropped_only_the_pull_request_trigger(self) -> None:
         triggers = "\n" + SMOKE.split("\non:\n", 1)[1].split("\n# Release verifications", 1)[0]

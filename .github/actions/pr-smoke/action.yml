@@ -6,7 +6,8 @@ description: >-
   and the cubrid-mcp-server tool surface against live CUBRID, on the latest
   published drivers. smoke-test.yml keeps the broad main/scheduled full
   make verify and the exact release verification runs. Runs after checkout and
-  setup-python; the calling job uploads .live-evidence/.
+  setup-python; the calling job publishes test-results/verify/summary.md and
+  uploads test-results/ and .live-evidence/.
 
 inputs:
   cubrid-version:
