@@ -1,0 +1,27 @@
+=== description and row shapes ===
+  column names: ['id', 'title']
+  id is NUMBER: True, title is STRING: True
+  fetchone():   (1, 'deploy')
+  as a dict:    {'id': 2, 'title': 'rollback'}
+  fetchmany(5): [(3, 'audit')] (only the rows that are left)
+  fetchall():   [] (result exhausted)
+  iterating:    ['deploy', 'rollback', 'audit']
+
+=== CLOB column ===
+  fetched as: dict with a 'lob_type' key: True
+  a NULL CLOB is: None
+  CAST(body AS VARCHAR): 'rolled out'
+
+=== Database errors: class, errno, sqlstate, args ===
+  duplicate key -> IntegrityError
+    errno=-670 code=-670 sqlstate='23000'
+    len(args)=1, args[0] is the message: True
+  unknown table -> ProgrammingError, errno=-493
+  syntax error  -> ProgrammingError, errno=-493
+
+=== Interface errors: no database round trip ===
+  closed cursor -> InterfaceError (Cursor is closed), has errno: False
+  InterfaceError is a DatabaseError: False
+  InterfaceError is a pycubrid.Error: True
+
+Dropped cookbook_cdb_events

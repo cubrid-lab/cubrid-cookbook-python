@@ -33,6 +33,7 @@ shows `commit`, `rollback` and cleanup, before any framework.
 | **Start in 5 minutes** | [`quickstart/5min-fastapi/`](quickstart/5min-fastapi/README.md) | about 5 min once Docker is installed |
 | **Start with SQLAlchemy** | [`quickstart/5min-sqlalchemy/`](quickstart/5min-sqlalchemy/README.md) | about 5 min once Docker and Python are installed |
 | **Migrate from Java** | [`migration/java-to-python/`](migration/java-to-python/) | 30 min |
+| **Move from the CUBRIDdb driver to pycubrid** | [`migration/cubriddb-to-pycubrid/`](migration/cubriddb-to-pycubrid/) | 20 min |
 | **Build a production API** | [`templates/api-service-fastapi/`](templates/api-service-fastapi/) | 15 min |
 
 ---
@@ -67,6 +68,12 @@ same for one Core and ORM script.
 Side-by-side Java JDBC → Python migration with real code comparisons. Covers connections, CRUD (DB-API and ORM), transactions, and batch operations.
 
 > CUBRID's JDBC driver and Python driver use the same CAS protocol — zero data migration required.
+
+Already on Python with the official `CUBRIDdb` C-extension driver? The separate
+[CUBRIDdb → pycubrid guide](migration/cubriddb-to-pycubrid/) is a driver-to-driver
+migration: connection arguments, the autocommit default, thread sharing, parameters,
+error attributes and LOBs, with four runnable pycubrid recipes. It is not a drop-in
+replacement claim.
 
 ### Production Templates
 
@@ -182,7 +189,8 @@ cubrid-cookbook-python/
 │   ├── 5min-fastapi/          # Docker + FastAPI in 5 minutes
 │   └── 5min-sqlalchemy/       # Docker + SQLAlchemy in 5 minutes
 ├── migration/
-│   └── java-to-python/        # JDBC → pycubrid/SQLAlchemy migration
+│   ├── java-to-python/        # JDBC → pycubrid/SQLAlchemy migration
+│   └── cubriddb-to-pycubrid/  # Official CUBRIDdb driver → pycubrid
 ├── templates/
 │   ├── api-service-fastapi/   # Production REST API (12 recipes)
 │   ├── flask/                 # Flask + Flask-SQLAlchemy (11 recipes)

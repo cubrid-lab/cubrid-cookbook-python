@@ -1,0 +1,27 @@
+=== Create: Python values bound with ? ===
+  executemany() rowcount: 2
+  after commit: 3 rows
+    (1, 'Alice', Decimal('19.99'), datetime.date(2026, 1, 15), b'\x01\xff', None)
+    (2, 'Bob', Decimal('0.10'), datetime.date(2026, 2, 1), None, 'rush')
+    (3, "O'Reilly'); DROP TABLE cookbook_cdb_orders; --", Decimal('1234.50'), None, b'\x00', 'quoted safely')
+
+=== Read: Python types that come back ===
+  customer str      'Alice'
+  amount   Decimal  Decimal('19.99')
+  due_on   date     datetime.date(2026, 1, 15)
+  receipt  bytes    b'\x01\xff'
+  memo     NoneType None
+
+=== NULL: None binds as SQL NULL ===
+  WHERE memo = ? with None -> COUNT(*) = 0 (NULL = NULL is never true)
+  WHERE memo IS NULL       -> COUNT(*) = 1
+
+=== Update and delete with ? ===
+  UPDATE rowcount: 1
+  DELETE rowcount: 1 (the hostile text matched as a plain value)
+  DELETE of a missing row, rowcount: 0
+  after commit: 2 rows
+    (1, 'Alice', Decimal('19.99'), datetime.date(2026, 1, 15), b'\x01\xff', None)
+    (2, 'Bob', Decimal('5.11'), datetime.date(2026, 2, 1), None, 'adjusted')
+
+Dropped cookbook_cdb_orders

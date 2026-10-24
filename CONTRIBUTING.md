@@ -403,7 +403,7 @@ not allowlisted, or when `CI Gate` loses `if: always()` or its short timeout.
 quickstart/          # 5-minute getting-started examples
 fundamentals/        # Core CUBRID operations with Python
 templates/           # Production-ready application templates
-migration/           # Language migration guides (Java → Python)
+migration/           # Migration guides (Java → Python, CUBRIDdb → pycubrid)
 performance/         # Benchmark-backed optimization patterns
 pitfalls/            # Common mistakes and fixes
 docs/                # Internal docs (PRD, agent playbook)

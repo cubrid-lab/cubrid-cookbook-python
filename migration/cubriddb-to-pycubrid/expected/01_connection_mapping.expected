@@ -1,0 +1,24 @@
+=== PEP 249 module globals ===
+  apilevel     = '2.0'
+  paramstyle   = 'qmark'  (? markers, same as CUBRIDdb)
+  threadsafety = 1  (threads may share the module, not a connection)
+
+=== Default: autocommit OFF ===
+  conn.autocommit after connect: False
+  inserted 1 row, no commit()
+  same session COUNT(*):      1  (its own pending row)
+  second connection COUNT(*): 0
+  after rollback(), second connection COUNT(*): 0
+
+=== Opt in: autocommit ON (the CUBRIDdb connect-time mode) ===
+  conn.autocommit = True
+  inserted 1 row, no commit()
+  second connection COUNT(*): 1
+  back to conn.autocommit = False
+
+=== Cursor and connection closing ===
+  inside 'with conn.cursor()': [('autocommitted',)]
+  cursor after the with block: InterfaceError (Cursor is closed)
+
+Dropped cookbook_cdb_connect
+conn.cursor() after conn.close(): InterfaceError (connection is closed)

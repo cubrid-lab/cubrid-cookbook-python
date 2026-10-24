@@ -135,6 +135,7 @@ make verify-goldens           # runs every golden-backed example against your lo
 |---|---|
 | Copy-and-customize starters | `templates/` |
 | JDBC-to-Python migration | `migration/java-to-python/` |
+| CUBRIDdb-to-pycubrid driver migration | `migration/cubriddb-to-pycubrid/` |
 | Performance patterns | `performance/` |
 | Known CUBRID quirks | `pitfalls/`, `KNOWN_ISSUES.md` |
 | Supported versions | `SUPPORT_MATRIX.md` |

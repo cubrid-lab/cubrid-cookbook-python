@@ -13,7 +13,7 @@
 
 ```
 quickstart/        → 5-minute getting-started examples
-migration/         → Language migration guides (Java → Python)
+migration/         → Migration guides (Java → Python, CUBRIDdb → pycubrid)
 templates/         → Copy-and-customize production starters
 performance/       → Benchmark-backed optimization patterns
 pitfalls/          → Common anti-patterns and fixes

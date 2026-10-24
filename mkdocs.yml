@@ -55,6 +55,7 @@ nav:
       - SQLAlchemy recipes: fundamentals-sqlalchemy.md
       - pandas recipes: fundamentals-pandas.md
       - "Pass values safely (parameterized queries)": fundamentals-parameterized-queries.md
+      - "Move from CUBRIDdb to pycubrid": migration-cubriddb-to-pycubrid.md
       - Performance patterns: performance.md
       - CUBRID quirks & pitfalls: pitfalls.md
       - Templates:
@@ -84,6 +85,7 @@ nav:
           - "ORM 쓰기 (SQLAlchemy 빠른 시작)": ko/quickstart-sqlalchemy.md
       - 사용 방법:
           - "경로 고르기와 체크아웃 검증 (시작하기)": ko/getting-started.md
+          - "CUBRIDdb에서 pycubrid로 이전": ko/migration-cubriddb-to-pycubrid.md
   - Project:
       - Changelog: changelog.md
 

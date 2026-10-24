@@ -80,6 +80,7 @@ GOLDEN_ROWS: dict[str, tuple[str, ...]] = {
         "fundamentals/isolation-levels",
     ),
     "Java-to-Python migration": ("migration/java-to-python",),
+    "CUBRIDdb-to-pycubrid migration": ("migration/cubriddb-to-pycubrid",),
     "SQLAlchemy quickstart": ("quickstart/5min-sqlalchemy",),
     "First CUBRID tutorial": ("quickstart/first-cubrid",),
     "Pandas batch-etl template": ("templates/batch-etl",),

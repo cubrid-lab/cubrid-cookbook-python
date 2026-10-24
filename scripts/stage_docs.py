@@ -68,6 +68,7 @@ STAGE = [
         "fundamentals/parameterized-queries/README.md",
         "docs/fundamentals-parameterized-queries.md",
     ),
+    ("migration/cubriddb-to-pycubrid/README.md", "docs/migration-cubriddb-to-pycubrid.md"),
     ("performance/README.md", "docs/performance.md"),
     ("pitfalls/README.md", "docs/pitfalls.md"),
     ("templates/api-service-fastapi/README.md", "docs/template-api-service-fastapi.md"),

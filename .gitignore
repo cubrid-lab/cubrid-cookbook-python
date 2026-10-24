@@ -74,6 +74,7 @@ docs/support-matrix.md
 docs/known-issues.md
 docs/changelog.md
 docs/fundamentals*.md
+docs/migration-cubriddb-to-pycubrid.md
 docs/performance.md
 docs/pitfalls.md
 docs/template-*.md

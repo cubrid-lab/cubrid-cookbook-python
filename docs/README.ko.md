@@ -36,6 +36,7 @@
 | **5분 만에 시작** | [`quickstart/5min-fastapi/`](ko/quickstart-fastapi.md) | Docker 설치 후 약 5분 |
 | **SQLAlchemy로 시작** | [`quickstart/5min-sqlalchemy/`](ko/quickstart-sqlalchemy.md) | Docker와 Python 설치 후 약 5분 |
 | **Java에서 마이그레이션** | [`migration/java-to-python/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/migration/java-to-python) | 30분 |
+| **CUBRIDdb 드라이버에서 pycubrid로 이전** | [`migration/cubriddb-to-pycubrid/`](ko/migration-cubriddb-to-pycubrid.md) | 20분 |
 | **프로덕션 API 구축** | [`templates/api-service-fastapi/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/api-service-fastapi) | 15분 |
 
 ---
@@ -68,6 +69,11 @@ Uvicorn으로 실행하는 방법과 멈추고 정리하는 방법도 보여 줍
 Java JDBC → Python 마이그레이션을 실제 코드 나란히 비교로 제공합니다. 연결, CRUD(DB-API와 ORM), 트랜잭션, 배치 작업을 다룹니다.
 
 > CUBRID의 JDBC 드라이버와 Python 드라이버는 동일한 CAS 프로토콜을 사용합니다 — 데이터 마이그레이션이 필요 없습니다.
+
+이미 Python에서 공식 `CUBRIDdb` C 확장 드라이버를 쓰고 있다면, 별도의
+[CUBRIDdb → pycubrid 가이드](ko/migration-cubriddb-to-pycubrid.md)가 드라이버 간 이전을
+다룹니다. 연결 인자, autocommit 기본값, 스레드 공유, 파라미터, 오류 속성, LOB를 실행 가능한
+pycubrid 레시피 네 개로 보여 주며, 그대로 바꿔 끼우면 된다는(drop-in) 주장은 하지 않습니다.
 
 ### 프로덕션 템플릿
 
@@ -183,7 +189,8 @@ cubrid-cookbook-python/
 │   ├── 5min-fastapi/          # 5분 만에 Docker + FastAPI
 │   └── 5min-sqlalchemy/       # 5분 만에 Docker + SQLAlchemy
 ├── migration/
-│   └── java-to-python/        # JDBC → pycubrid/SQLAlchemy 마이그레이션
+│   ├── java-to-python/        # JDBC → pycubrid/SQLAlchemy 마이그레이션
+│   └── cubriddb-to-pycubrid/  # 공식 CUBRIDdb 드라이버 → pycubrid
 ├── templates/
 │   ├── api-service-fastapi/   # 프로덕션 REST API (레시피 12개)
 │   ├── flask/                 # Flask + Flask-SQLAlchemy (레시피 11개)

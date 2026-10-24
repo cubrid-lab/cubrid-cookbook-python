@@ -43,6 +43,7 @@ Core database patterns using pycubrid (DB-API 2.0) and SQLAlchemy ORM.
 ## Migration Guide
 
 - [java-to-python](migration/java-to-python/): Side-by-side Java JDBC → Python DB-API/SQLAlchemy migration (connections, CRUD, transactions, batch operations)
+- [cubriddb-to-pycubrid](migration/cubriddb-to-pycubrid/): Driver-to-driver migration from the official CUBRIDdb C extension to pycubrid — DSN to keyword arguments, autocommit ON (CUBRIDdb) vs OFF (pycubrid), threadsafety 2 vs 1, `?` parameters with Decimal/date/bytes/NULL, tuple rows and dicts from `description`, LOB handles, `errno`/`sqlstate` vs official `args`, transaction visibility; official-driver behavior is read from source, not run; not a drop-in replacement
 
 ## Templates
 

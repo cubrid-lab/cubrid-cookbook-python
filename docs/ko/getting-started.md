@@ -133,6 +133,7 @@ make verify-goldens           # 골든 기반 모든 예제를 로컬 CUBRID에 
 |---|---|
 | 복사-수정형 시작점 | `templates/` |
 | JDBC→Python 마이그레이션 | `migration/java-to-python/` |
+| CUBRIDdb→pycubrid 드라이버 이전 | `migration/cubriddb-to-pycubrid/` |
 | 성능 패턴 | `performance/` |
 | CUBRID의 알려진 특성 | `pitfalls/`, `KNOWN_ISSUES.md` |
 | 지원 버전 | `SUPPORT_MATRIX.md` |

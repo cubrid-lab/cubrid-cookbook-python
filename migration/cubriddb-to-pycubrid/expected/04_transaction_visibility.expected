@@ -1,0 +1,24 @@
+Start: Alice=100.00, Bob=20.00
+
+=== Commit: both updates appear together ===
+  writer, before commit:   Alice=50.00, Bob=70.00
+  observer, before commit: Alice=100.00, Bob=20.00
+  observer, after commit:  Alice=50.00, Bob=70.00
+
+=== Rollback: the pending change is discarded ===
+  writer, before rollback: Alice=50.00, Bob=0.00
+  writer, after rollback:  Alice=50.00, Bob=70.00
+  observer:                Alice=50.00, Bob=70.00
+
+=== A failed statement does not end the transaction ===
+  second INSERT failed: IntegrityError, errno=-670
+  writer still holds the first INSERT: Alice=50.00, Bob=70.00, Carol=5.00
+  observer:                            Alice=50.00, Bob=70.00
+  after rollback(), writer:            Alice=50.00, Bob=70.00
+
+=== autocommit ON: each statement commits on its own ===
+  second INSERT failed: IntegrityError, errno=-670
+  observer after rollback(): Alice=50.00, Bob=70.00, Carol=5.00
+  -> the first INSERT was already committed; rollback() cannot undo it
+
+Dropped cookbook_cdb_ledger
