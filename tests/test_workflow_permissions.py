@@ -35,6 +35,8 @@ WRITE_ALLOWLIST: dict[str, set[tuple[str, str]]] = {
     # The advisory driver-main lane (#239) reports to one tracking issue.
     "ci.yml": {("driver-main-advisory", "issues")},
     "driver-main.yml": {("report", "issues")},
+    # The issue-opened intake marks new reports pending; it does not triage them.
+    "issue-triage.yml": {("intake", "issues")},
     "dependabot-auto-merge.yml": {
         ("auto-merge", "contents"),
         ("auto-merge", "pull-requests"),
@@ -280,6 +282,18 @@ class WorkflowPermissionsTest(unittest.TestCase):
         for where, command in creates:
             with self.subTest(where=where):
                 self.assertEqual(label_problems(command), [])
+
+    def test_automated_issue_creation_keeps_triage_pending(self) -> None:
+        """A GITHUB_TOKEN-generated issue does not trigger the intake workflow."""
+        created = [
+            command
+            for path in workflow_paths()
+            for command in issue_create_commands(path.read_text(encoding="utf-8"))
+        ]
+        self.assertTrue(created)
+        for command in created:
+            with self.subTest(command=command[:70]):
+                self.assertIn('--label "status: needs triage"', command)
 
     def test_issue_create_parser_follows_shell_continuations(self) -> None:
         split = 'run: |\n  gh issue \\\n    create --title "t" \\\n    --label ci\n'
