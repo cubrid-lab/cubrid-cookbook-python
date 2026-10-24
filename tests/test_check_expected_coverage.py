@@ -151,6 +151,112 @@ class MissingGoldenTests(unittest.TestCase):
 
             self.assertEqual(result, [])
 
+    def test_expected_as_a_regular_file_does_not_opt_the_folder_in(self):
+        # Only an expected/ DIRECTORY opts in: a file literally named
+        # `expected` beside a script must not make that script "missing".
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            example = root / "examples"
+            example.mkdir()
+            (example / "expected").write_text(  # a file, not a directory
+                "not a directory\n",
+                encoding="utf-8",
+            )
+            (example / "demo.py").write_text(
+                "print('hello')\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(coverage, "REPO_ROOT", root):
+                result = coverage.find_missing([example], set())
+
+            self.assertEqual(result, [])
+
+    def test_scripts_in_a_subfolder_without_their_own_expected_are_not_reported(self):
+        # An expected/ directory opts in only the scripts directly beside it;
+        # a nested folder without its own expected/ stays out.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            example = root / "examples"
+            expected = example / "expected"
+            expected.mkdir(parents=True)
+            nested = example / "sub"
+            nested.mkdir()
+            (nested / "two.py").write_text(
+                "print('two')\n",
+                encoding="utf-8",
+            )
+            (example / "demo.py").write_text(
+                "print('hello')\n",
+                encoding="utf-8",
+            )
+            (expected / "demo.expected").write_text(
+                "hello\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(coverage, "REPO_ROOT", root):
+                result = coverage.find_missing([example], set())
+
+            self.assertEqual(result, [])
+
+    def test_only_expected_stem_suffix_counts_as_a_golden(self):
+        # `expected/three.txt` is not a golden for `three.py`; a script whose
+        # only "golden" has the wrong suffix is still reported as missing.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            example = root / "examples"
+            expected = example / "expected"
+            expected.mkdir(parents=True)
+            (example / "three.py").write_text(
+                "print('three')\n",
+                encoding="utf-8",
+            )
+            (expected / "three.txt").write_text(
+                "wrong suffix\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(coverage, "REPO_ROOT", root):
+                result = coverage.find_missing([example], set())
+
+            self.assertEqual(result, ["examples/three.py"])
+
+    def test_the_issue_repro_tree_reports_only_the_wrong_suffix_script(self):
+        # One tree exercising all three rules at once: a file named `expected`
+        # does not opt in, a subfolder script stays out, and only the
+        # `.expected` suffix counts.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a").mkdir()
+            (root / "a" / "expected").write_text(
+                "not a directory\n",
+                encoding="utf-8",
+            )
+            (root / "a" / "demo.py").write_text(
+                "print('demo')\n",
+                encoding="utf-8",
+            )
+            (root / "b" / "expected").mkdir(parents=True)
+            (root / "b" / "sub").mkdir()
+            (root / "b" / "sub" / "two.py").write_text(
+                "print('two')\n",
+                encoding="utf-8",
+            )
+            (root / "b" / "three.py").write_text(
+                "print('three')\n",
+                encoding="utf-8",
+            )
+            (root / "b" / "expected" / "three.txt").write_text(
+                "wrong suffix\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(coverage, "REPO_ROOT", root):
+                result = coverage.find_missing([root], set())
+
+            self.assertEqual(result, ["b/three.py"])
+
 
 class MainTests(unittest.TestCase):
     def test_missing_golden_returns_exit_code_one(self):

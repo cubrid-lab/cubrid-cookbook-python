@@ -178,3 +178,30 @@ def test_api_create_product_non_object_json(client) -> None:
     assert null_response.get_json()["error"] == "name is required"
 
     assert client.get("/api/products").get_json() == []
+
+
+def test_api_update_product_invalid_price(client) -> None:
+    create_response = client.post(
+        "/api/products",
+        json={
+            "name": "GalaxyA72",
+            "description": "6.3 inch",
+            "price": "1500.00",
+            "category": "Smartphones",
+            "in_stock": "10",
+        },
+    )
+
+    created = create_response.get_json()
+    product_id = created["id"]
+
+    update_response = client.put(f"/api/products/{product_id}", json={"price": "invalid"})
+
+    product = client.get(f"/api/products/{product_id}").get_json()
+
+    assert create_response.status_code == 201
+    assert update_response.status_code == 400
+
+    assert product["price"] == "1500.00"
+    assert product["name"] == "GalaxyA72"
+    assert product["category"] == "Smartphones"
