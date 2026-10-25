@@ -66,7 +66,15 @@ class ReadinessCommandTests(unittest.TestCase):
         )
         return shlex.join([sys.executable, str(self.compose)])
 
-    def wait(self, mode: str, *, timeout: str = str(WAIT_TIMEOUT), compose: str | None = None):
+    def wait(
+        self,
+        mode: str,
+        *,
+        timeout: str = str(WAIT_TIMEOUT),
+        probe_timeout: str = str(PROBE_TIMEOUT),
+        interval: str = "0.01",
+        compose: str | None = None,
+    ):
         if compose is None:
             compose = self.fake_compose(mode)
         command = [
@@ -77,9 +85,9 @@ class ReadinessCommandTests(unittest.TestCase):
             "--timeout",
             timeout,
             "--probe-timeout",
-            str(PROBE_TIMEOUT),
+            probe_timeout,
             "--interval",
-            "0.01",
+            interval,
         ]
         started = time.monotonic()
         outer_timeout = WAIT_TIMEOUT + 2 * PROBE_TIMEOUT + PROCESS_MARGIN
@@ -124,11 +132,13 @@ class ReadinessCommandTests(unittest.TestCase):
                     self.assertIn("exit 7", result.stderr)
 
     def test_invalid_budget_does_not_run_compose(self) -> None:
-        for value in ("0", "-1", "nan", "inf"):
-            with self.subTest(value=value):
-                result = self.wait("success", timeout=value)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertFalse(self.log.exists())
+        for option in ("timeout", "probe_timeout", "interval"):
+            for value in ("0", "-1", "nan", "inf", "not-a-number"):
+                with self.subTest(option=option, value=value):
+                    result = self.wait("success", **{option: value})
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(f"--{option.replace('_', '-')}", result.stderr)
+                    self.assertFalse(self.log.exists())
 
     def test_missing_compose_executable_fails_fast_without_retrying(self) -> None:
         missing = str(self.root / "nonexistent-compose")
