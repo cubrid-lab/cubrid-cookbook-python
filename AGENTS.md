@@ -184,8 +184,11 @@ not checked, so do not add foreign closing keywords there.
 Record executed commands/results separately from AI review and checks not run.
 Agent benchmark tasks and their offline grader live in
 [`agent-evals/`](agent-evals/README.md) (`make agent-eval-check`); they never replace
-the checks above.
-Explain gaps; maintainers coordinate the remaining required CI/live validation.
+the checks above. Their frozen fixtures and historical revisions apply **only**
+to optional agent evaluations, not ordinary recipe issues or PR merge criteria.
+Never claim an offline score or a partial golden lane proves a live, complete
+`make verify` run. Explain gaps; maintainers coordinate the remaining
+required CI/live validation.
 
 ## Commit Convention
 
