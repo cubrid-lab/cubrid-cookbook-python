@@ -410,8 +410,10 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   manual full smoke) also runs the `Newest CUBRID image (advisory)` job: it pulls
   `cubrid/cubrid:latest` and `cubrid/cubrid:11.4` once, records each image digest
   and `cubrid_rel` engine version in the run summary, and lets
-  `scripts/latest_server.py` decide. The same digest means the required 11.4
-  cells of that run are the newest-stable test and no extra database starts;
+  `scripts/latest_server.py` decide. The same digest is reported as the
+  newest-stable image with no extra database; every smoke cell records the image
+  it actually ran (digest and `cubrid_rel`) in its own summary, so the run's 11.4
+  cells tested that image only if they show the same digest;
   a `latest` that is not a newer engine build needs nothing more; only a newer
   build gets a focused canary (`SELECT VERSION()` on the running server, then
   `make verify-goldens VERIFY_PATHS=fundamentals/pycubrid`) on its immutable

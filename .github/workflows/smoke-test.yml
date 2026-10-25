@@ -260,6 +260,17 @@ jobs:
               cubrid/cubrid:${{ matrix.cubrid }}
           done
 
+      - name: Record CUBRID image
+        # The exact image this cell ran (#480): its digest and engine version in
+        # the step summary, on every event. Evidence only; it never fails the job.
+        env:
+          CUBRID_IMAGE: cubrid/cubrid:${{ matrix.cubrid }}
+        run: |
+          ref=$(docker image inspect --format '{{index .RepoDigests 0}}' "$CUBRID_IMAGE" || true)
+          rel=$(docker exec cubrid bash -lc cubrid_rel | tr '\r\n' '  ' || true)
+          printf 'CUBRID image: %s -> %s (%s)\n' "$CUBRID_IMAGE" "${ref:-unresolved}" "${rel:-unknown}" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -633,8 +644,9 @@ jobs:
     # release verification or the report job, and continue-on-error, so a failure
     # shows on the run without failing it. Resolves the moving `latest` and the
     # supported `11.4` tags once (digest plus cubrid_rel engine version); when
-    # they are the same image, the required 11.4 cells of this run are the
-    # newest-stable test and no database starts here. Only a newer engine build
+    # they are the same image, the summary names that digest as the newest-stable
+    # image and no database starts here; the 11.4 verify cells record the image
+    # they actually ran (Record CUBRID image), which must show the same digest. Only a newer engine build
     # behind `latest` gets a focused canary, by its immutable digest reference.
     # Nothing here changes the support matrix or the release cells. A manual full
     # smoke (package = latest) runs it too, to validate this job before merging.

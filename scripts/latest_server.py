@@ -7,8 +7,10 @@ required cells (``cubrid/cubrid:11.2`` and ``cubrid/cubrid:11.4``). Its advisory
 series tag (``SERIES_TAG``) once, reads each image's digest and engine version
 (``cubrid_rel``), and this script decides what that evidence means:
 
-* ``covered``    - same digest: the required 11.4 cells already test the newest
-  published image, so no duplicate database starts.
+* ``same-image`` - same digest: the newest published image is the reported
+  digest, and no duplicate database starts. The run's 11.4 smoke cells record
+  the image they actually ran in their own summaries; they tested the newest
+  image only if they show the same digest (they pull the tag separately).
 * ``not-newer``  - another digest whose engine build is not newer than 11.4 (for
   example a ``latest`` alias that has not moved yet): nothing extra to test.
 * ``newer``      - ``latest`` is a newer engine build: an advisory canary tests
@@ -57,7 +59,7 @@ def decide(latest_ref: str, latest_rel: str, series_ref: str, series_rel: str) -
     if not valid_refs or latest is None or series is None:
         status = "unverified"
     elif latest_ref == series_ref:
-        status = "covered"
+        status = "same-image"
     elif latest > series:
         status = "newer"
     else:
@@ -89,10 +91,12 @@ def describe(
         f"| `{SERIES_TAG}` | `{series_ref or 'not resolved'}` | {version(series_rel)} |",
         "",
     ]
-    if status == "covered":
+    if status == "same-image":
         lines.append(
-            f"`latest` is the same image as `{SERIES_TAG}`: the required CUBRID {SERIES_TAG}"
-            " cells of this run are the newest-stable test. No extra database started."
+            f"`latest` and `{SERIES_TAG}` resolved to the same image: the newest-stable image"
+            f" is `{latest_ref}`. This run's CUBRID {SERIES_TAG} smoke cells record the image"
+            " they actually ran in their own summaries; they tested the newest-stable image"
+            " only if they show this same digest. No extra database started."
         )
     elif status == "not-newer":
         lines.append(
@@ -127,7 +131,7 @@ def report(status: str, image: str, outcome: str) -> tuple[int, str, str]:
             ),
             "::error::Advisory canary on the newer CUBRID image did not pass",
         )
-    if status in ("covered", "not-newer"):
+    if status in ("same-image", "not-newer"):
         return 0, "No advisory canary needed.", ""
     return (
         0,

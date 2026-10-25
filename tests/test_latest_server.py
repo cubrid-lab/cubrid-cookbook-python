@@ -29,7 +29,7 @@ REL_1145 = "CUBRID 11.4.5 (11.4.5.1900-0123456) (64bit release build for Linux)"
 class DecisionTests(unittest.TestCase):
     def test_equal_digest_starts_no_duplicate_database(self) -> None:
         decision = latest_server.decide(REF_A, REL_1146, REF_A, REL_1146)
-        self.assertEqual(decision, {"status": "covered", "canary": "false", "image": ""})
+        self.assertEqual(decision, {"status": "same-image", "canary": "false", "image": ""})
 
     def test_newer_ga_series_runs_the_canary_on_the_immutable_ref(self) -> None:
         for rel in (REL_1150, REL_1147):
@@ -74,7 +74,7 @@ class DecisionTests(unittest.TestCase):
         self.assertIn("UNVERIFIED", line)
         self.assertNotIn("passed", line)
         self.assertTrue(annotation.startswith("::warning::"))
-        for status in ("covered", "not-newer"):
+        for status in ("same-image", "not-newer"):
             self.assertEqual(latest_server.report(status, "", "")[:2][0], 0)
         # An unknown status (for example the resolve step never ran) is unverified.
         self.assertIn("UNVERIFIED", latest_server.report("", "", "")[1])
@@ -88,10 +88,16 @@ class DecisionTests(unittest.TestCase):
             args += ["--date", "2026-10-26", "--output", str(output)]
             with contextlib.redirect_stdout(stdout):
                 self.assertEqual(latest_server.main(args), 0)
-            self.assertEqual(output.read_text(), "status=covered\ncanary=false\nimage=\n")
+            self.assertEqual(output.read_text(), "status=same-image\ncanary=false\nimage=\n")
         text = stdout.getvalue()
         for evidence in (REF_A, "11.4.6.1963", "2026-10-26", "No extra database started"):
             self.assertIn(evidence, text)
+        # The equal-digest wording ties any claim to the digest the cells record
+        # (#480 rule 4); it never claims the cells passed or are the newest test.
+        self.assertIn(f"the newest-stable image is `{REF_A}`", text)
+        self.assertIn("only if they show this same digest", text)
+        self.assertNotIn("are the newest-stable test", text)
+        self.assertNotIn("passed", text)
 
     def test_report_appends_to_the_summary_and_fails_a_failed_canary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -148,6 +154,21 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("if: always()", final)
         self.assertIn("CANARY_OUTCOME: ${{ steps.canary.outcome }}", final)
         self.assertIn("python3 scripts/latest_server.py report", final)
+
+    def test_every_smoke_cell_records_the_image_it_ran(self) -> None:
+        verify = SMOKE[SMOKE.index("\n  verify:") : SMOKE.index("\n  report:")]
+        start = verify.index("      - name: Start CUBRID containers\n")
+        record = verify.index("      - name: Record CUBRID image\n")
+        setup = verify.index("      - name: Setup Python\n")
+        self.assertLess(start, record)
+        self.assertLess(record, setup)
+        step = verify[record:setup]
+        self.assertIn("CUBRID_IMAGE: cubrid/cubrid:${{ matrix.cubrid }}", step)
+        self.assertIn("{{index .RepoDigests 0}}", step)
+        self.assertIn("docker exec cubrid bash -lc cubrid_rel", step)
+        self.assertIn('tee -a "$GITHUB_STEP_SUMMARY"', step)
+        self.assertNotIn("if:", step)  # every event, including release runs
+        self.assertNotIn("inputs.", step)
 
     def test_never_touches_support_or_release_files(self) -> None:
         job = self.job()
