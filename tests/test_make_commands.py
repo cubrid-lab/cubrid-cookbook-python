@@ -6,6 +6,7 @@ import contextlib
 import importlib.util
 import io
 import os
+import re
 from pathlib import Path
 import shutil
 import signal
@@ -1120,9 +1121,15 @@ class OfflineWorkflowTests(unittest.TestCase):
             "CUBRID_DASHBOARD_TEST_URL: cubrid+pycubrid://dba@localhost:33200/testdb", step
         )
         # The broad smoke never names VERIFY_PATHS: on the command line make verify
-        # refuses it (#437), and the run must cover every golden.
-        self.assertNotIn("VERIFY_PATHS=", workflow)
-        self.assertNotIn("VERIFY_PATHS:", workflow)
+        # refuses it (#437), and the run must cover every golden. The only use is
+        # the advisory newest-image canary's partial verify-goldens (#480).
+        broad, latest = workflow.split("\n  latest-server:", 1)
+        self.assertNotIn("VERIFY_PATHS=", broad)
+        self.assertNotIn("VERIFY_PATHS:", broad)
+        self.assertEqual(
+            re.findall(r"make \S+ VERIFY_PATHS=\S+", latest),
+            ["make verify-goldens VERIFY_PATHS=fundamentals/pycubrid"],
+        )
         self.assertNotIn("continue-on-error", workflow[start:upload])
         # Two sequential AI agent runs on the same database, both kept (#426).
         self.assertIn("make verify-ai-agent", workflow[repeat:upload])

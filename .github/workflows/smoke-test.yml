@@ -17,13 +17,18 @@ run-name: >-
 # 11.2/11.4 smoke twice. This workflow is the broad main/scheduled smoke, the
 # manual run and the exact release verification. The daily schedule is kept: it
 # caught make verify regressions on days without a main push (see CONTRIBUTING.md
-# "CI tiers"). Validate a change to this file with
+# "CI tiers"). Routine events run CUBRID 11.4 only (#480): a push to main and the
+# daily cron; the weekly cron (Monday, the ci.yml weekly day, never also a daily
+# slot) and manual runs keep 11.2 + 11.4; release verification is unchanged (see
+# the verify matrix). Validate a change to this file with
 # `gh workflow run smoke-test.yml --ref <branch>` before merging.
 on:
   push:
     branches: [main]
   schedule:
-    - cron: "0 0 * * *"
+    # The verify matrix and the latest-server job match these exact strings.
+    - cron: "0 0 * * 0,2-6"
+    - cron: "0 0 * * 1"
   repository_dispatch:
     types: [upstream-released]
   workflow_dispatch:
@@ -157,12 +162,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cubrid: ["11.2", "11.4"]
+        # #480: a push to main and the daily cron run CUBRID 11.4 only. The weekly
+        # cron, manual runs, any other event or cron, and every release
+        # verification run 11.2 + 11.4. A workflow call always sets the package input
+        # (github.event_name is then the caller's event), so it never narrows.
+        cubrid: >-
+          ${{ fromJSON(!inputs.package && (github.event_name == 'push'
+          || (github.event_name == 'schedule' && github.event.schedule == '0 0 * * 0,2-6'))
+          && '["11.4"]' || '["11.2", "11.4"]') }}
         python: ["3.12"]
         # Python 3.11 is the supported minimum. Only a release verification
         # (the same condition as the concurrency group above) adds one extra
         # cell, CUBRID 11.4 on 3.11; main, the schedule and other manual runs
-        # keep the two Python 3.12 cells. Existing job and artifact names stay.
+        # keep their Python 3.12 cells. Existing job and artifact names stay.
         include: >-
           ${{ fromJSON((github.event_name == 'repository_dispatch' || (inputs.package && inputs.package != 'latest'))
           && '[{"cubrid": "11.4", "python": "3.11"}]' || '[]') }}
@@ -615,3 +627,97 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           overwrite: true
+
+  latest-server:
+    # Weekly newest-stable CUBRID drift check (#480), advisory: never part of a
+    # release verification or the report job, and continue-on-error, so a failure
+    # shows on the run without failing it. Resolves the moving `latest` and the
+    # supported `11.4` tags once (digest plus cubrid_rel engine version); when
+    # they are the same image, the required 11.4 cells of this run are the
+    # newest-stable test and no database starts here. Only a newer engine build
+    # behind `latest` gets a focused canary, by its immutable digest reference.
+    # Nothing here changes the support matrix or the release cells. A manual full
+    # smoke (package = latest) runs it too, to validate this job before merging.
+    name: Newest CUBRID image (advisory)
+    if: >-
+      ${{ !inputs.package && github.event_name == 'schedule' && github.event.schedule == '0 0 * * 1'
+      || github.event_name == 'workflow_dispatch' && inputs.package == 'latest' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve latest and 11.4 images
+        id: resolve
+        run: |
+          set -uo pipefail
+          # A failed pull, digest or version lookup leaves the value empty and
+          # latest_server.py reports the check as unverified (never passed).
+          for tag in latest 11.4; do
+            ref=""
+            rel=""
+            if docker pull -q "cubrid/cubrid:$tag" >/dev/null; then
+              ref=$(docker image inspect --format '{{index .RepoDigests 0}}' "cubrid/cubrid:$tag" || true)
+            fi
+            if [ -n "$ref" ]; then
+              rel=$(docker run --rm --entrypoint bash "$ref" -lc cubrid_rel | tr '\r\n' '  ' || true)
+            fi
+            printf 'cubrid/cubrid:%s -> %s: %s\n' "$tag" "${ref:-unresolved}" "${rel:-unknown}"
+            if [ "$tag" = latest ]; then latest_ref=$ref latest_rel=$rel; else series_ref=$ref series_rel=$rel; fi
+          done
+          python3 scripts/latest_server.py resolve \
+            --latest-ref "$latest_ref" --latest-rel "$latest_rel" \
+            --series-ref "$series_ref" --series-rel "$series_rel" \
+            --date "$(date -u +%Y-%m-%dT%H:%MZ)" --output "$GITHUB_OUTPUT" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Start the newer CUBRID image
+        if: steps.resolve.outputs.canary == 'true'
+        env:
+          CANARY_IMAGE: ${{ steps.resolve.outputs.image }}
+        run: |
+          docker run -d --name cubrid --shm-size 512m -e CUBRID_DB=testdb \
+            -p 33000:33000 "$CANARY_IMAGE"
+
+      - name: Setup Python
+        if: steps.resolve.outputs.canary == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Run the advisory canary
+        id: canary
+        if: steps.resolve.outputs.canary == 'true'
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          python -m pip install -r fundamentals/pycubrid/requirements.txt
+          for i in $(seq 1 60); do
+            if docker exec cubrid bash -lc "csql -u dba testdb -c 'SELECT 1;'" >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "::error::the newer CUBRID image did not become ready in time"
+              docker logs cubrid || true
+              exit 1
+            fi
+            sleep 5
+          done
+          # The running server's own version, next to the image's cubrid_rel.
+          docker exec cubrid bash -lc "csql -u dba testdb -c 'SELECT VERSION();'" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+          make verify-goldens VERIFY_PATHS=fundamentals/pycubrid
+
+      - name: Report newest CUBRID image result
+        if: always()
+        env:
+          STATUS: ${{ steps.resolve.outputs.status }}
+          CANARY_IMAGE: ${{ steps.resolve.outputs.image }}
+          CANARY_OUTCOME: ${{ steps.canary.outcome }}
+        run: |
+          python3 scripts/latest_server.py report --status "$STATUS" \
+            --image "$CANARY_IMAGE" --outcome "$CANARY_OUTCOME" --summary "$GITHUB_STEP_SUMMARY"

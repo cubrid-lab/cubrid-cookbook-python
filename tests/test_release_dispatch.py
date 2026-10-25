@@ -443,11 +443,19 @@ class ReleaseDispatchTests(unittest.TestCase):
         # but job steps must read them from GITHUB_EVENT_PATH or RELEASE_INPUT_*
         # (via release_smoke.py), never via interpolation.
         jobs = workflow[workflow.index("\njobs:") :]
+        # The advisory latest-server job (#480) reads inputs.package only in its
+        # job-level condition, never in a step.
+        latest = jobs[jobs.index("\n  latest-server:") :]
+        condition = latest[latest.index("    if: >-\n") : latest.index("\n    runs-on:")]
+        self.assertEqual(latest.count("inputs."), 2)
+        self.assertEqual(condition.count("inputs.package"), 2)
+        jobs = jobs[: jobs.index("\n  latest-server:")]
         report_condition = "|| inputs.package != '') }}"
-        # The verify job's strategy (the release-only Python 3.11 cell) is the only
-        # other use; it is a boolean condition, never part of a step.
+        # The verify job's strategy (the routine CUBRID 11.4-only cells, #480, and the
+        # release-only Python 3.11 cell) is the only other use; boolean conditions,
+        # never part of a step.
         strategy = jobs[jobs.index("    strategy:") : jobs.index("    steps:")]
-        self.assertEqual(strategy.count("inputs."), 2)
+        self.assertEqual(strategy.count("inputs."), 3)
         self.assertEqual(jobs.count(report_condition), 1)
         # Candidate mode (#240) only selects steps (`if:`) and names artifacts in
         # action `with:` values (`name:`/`pattern:`); never in a run: step.

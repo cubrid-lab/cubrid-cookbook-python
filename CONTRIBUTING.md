@@ -263,7 +263,7 @@ change which goldens or suites run.
 narrow it, and `make verify VERIFY_PATHS=<dirs>` on the command line fails with a
 one-line message that names `make verify-goldens VERIFY_PATHS=<dirs>`, the partial
 check of only the goldens under those roots (#437). CI calls the same targets: `smoke-test.yml` runs the
-full `make verify` on CUBRID 11.2 and 11.4, and the pull-request smoke lanes run
+full `make verify` on CUBRID 11.4, and on 11.2 too on its weekly, manual and release runs, and the pull-request smoke lanes run
 `make verify-goldens VERIFY_PATHS=<roots>` and the focused `verify-*` lanes their
 changed paths select (see [CI tiers](#ci-tiers)). The other pull-request recipe
 jobs keep their own per-recipe environments.
@@ -300,7 +300,7 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
 | 2 — path-selected live lanes | pull requests | only the touched family on CUBRID 11.4 / Python 3.12: Flask/FastAPI → the changed recipes' own suites (representative suites for shared files, see below); dashboard, async-worker, Django → their suite; CQRS recipe → its pinned job; golden examples → `Smoke Tests (CUBRID 11.4)` with `make verify-goldens` scoped to the touched examples; the FastAPI quickstart, `performance/` (and `performance/tests/test_benchmarks.py`) or AI-agent code (and `templates/ai-agent/tests/test_live.py`) → the same lane with every golden and the focused `make verify-quickstart` / `verify-performance` / `verify-ai-agent` lane; other files in example trees → the same lane with every golden and all three focused lanes |
 | 2 — fan-out | pull requests changing shared live infrastructure (`Makefile`, `docker-compose.yml`, `scripts/normalize_output.sh`, readiness/coverage scripts), `ci.yml`, `scripts/ci_scope.py` or `.github/actions/` | every live lane, both smoke lanes and CQRS on 11.2 + 11.4 with every golden (`make verify-goldens VERIFY_PATHS=.`) and all three focused lanes, Python 3.11 + 3.14 compatibility |
 | 3 — Python compatibility | push to `main`, weekly schedule, manual `ci.yml` run; pull requests changing `fundamentals/pycubrid`, `fundamentals/sqlalchemy` or fan-out paths | 3.11–3.14 on broad events; 3.11 + 3.14 endpoints on those pull requests |
-| 4 — broad smoke | `smoke-test.yml`: push to `main`, nightly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | the full, fail-closed `make verify` (every golden and every live suite: quickstart, migration and performance, Flask/FastAPI, Django/Celery, AI agent, dashboard), then `make verify-ai-agent` again, on job-owned CUBRID 11.2 + 11.4 containers (Python 3.12); a release verification adds one CUBRID 11.4 cell on Python 3.11, the supported minimum |
+| 4 — broad smoke | `smoke-test.yml`: push to `main`, daily schedule, weekly schedule, manual run, release verification (`repository_dispatch` / `workflow_call`) | the full, fail-closed `make verify` (every golden and every live suite: quickstart, migration and performance, Flask/FastAPI, Django/Celery, AI agent, dashboard), then `make verify-ai-agent` again, on job-owned CUBRID containers (Python 3.12): 11.4 only for a push to `main` and the daily schedule; 11.2 + 11.4 for the weekly schedule (Mondays), manual runs and release verification, which also adds one CUBRID 11.4 cell on Python 3.11, the supported minimum (#480) |
 
 - Docs-only pull requests (`*.md`, `docs/`, `mkdocs.yml`, …) start no live CUBRID,
   except `SUPPORT_MATRIX.md`, which documents the driver floors.
@@ -384,16 +384,42 @@ unexpectedly skipped lane, or a failed classification, fails the gate.
   two, so the lanes are not separate required checks (see
   [Main branch protection](#main-branch-protection)).
 - On `main` and schedule events `ci.yml` runs only what `smoke-test.yml` does not
-  cover (Python 3.11–3.14 and CQRS pins on 11.2 + 11.4); its other live jobs
+  cover (Python 3.11–3.14 and the CQRS pins: on 11.4 for a push to `main`, on
+  11.2 + 11.4 for the weekly schedule and manual runs, #480); its other live jobs
   report skipped there.
 - Dependabot grouping is unchanged. A grouped multi-directory recipe bump starts
   only the families it touches (for example a Flask bump: one Flask/FastAPI lane)
   plus the cheap checks; a GitHub Actions group bump edits `ci.yml` and therefore
   fans out.
-- The nightly `smoke-test.yml` schedule stays daily: between 2026-09-01 and
+- The `smoke-test.yml` schedule stays daily: between 2026-09-01 and
   2026-10-07, 10 of 37 scheduled runs failed in `make verify`, most on days
   without a `main` push (2026-09-03 to 09-08, 09-25/26), so main pushes alone
   would have detected those regressions days later.
+- **Per-event CUBRID cadence (#480).** Routine runs keep one full, fail-closed
+  signal without repeating the historical server every time: a push to `main` and
+  the daily cron (`0 0 * * 0,2-6`) run `make verify` on CUBRID 11.4 only; the
+  weekly cron (`0 0 * * 1`, the Monday of the weekly `ci.yml` schedule; the daily
+  cron skips Monday, so no slot runs both) and manual runs keep 11.2 + 11.4.
+  Release verification (`repository_dispatch`, a pinned manual run, `workflow_call`
+  and candidate mode) keeps exactly the three cells in
+  `scripts/release_smoke.py` `RELEASE_CELLS`. The verify matrix narrows only for
+  those two exact routine cases, so any other event or cron string runs both
+  versions; `tests/test_ci_scope.py` evaluates the matrix expressions for every
+  event, including a workflow call made from a caller's push or schedule.
+- **Newest CUBRID image check (#480), advisory.** The weekly smoke run (and a
+  manual full smoke) also runs the `Newest CUBRID image (advisory)` job: it pulls
+  `cubrid/cubrid:latest` and `cubrid/cubrid:11.4` once, records each image digest
+  and `cubrid_rel` engine version in the run summary, and lets
+  `scripts/latest_server.py` decide. The same digest means the required 11.4
+  cells of that run are the newest-stable test and no extra database starts;
+  a `latest` that is not a newer engine build needs nothing more; only a newer
+  build gets a focused canary (`SELECT VERSION()` on the running server, then
+  `make verify-goldens VERIFY_PATHS=fundamentals/pycubrid`) on its immutable
+  `cubrid/cubrid@sha256:…` reference. A failed pull or lookup is reported as
+  UNVERIFIED (a warning), never as passed. The job is `continue-on-error`, is not
+  part of the release report, and never changes `SUPPORT_MATRIX.md` or the
+  release cells; a newer series is added to the support set only by a reviewed
+  pull request. The `develop` and prerelease tags are never pulled.
 - **Advisory driver-main lane (#239), never gated.** `.github/workflows/driver-main.yml`
   installs `pycubrid` and `sqlalchemy-cubrid` from their `main` branches (pinned
   to the commits resolved at the start of the run, and verified after install)
@@ -426,6 +452,19 @@ round each job up to a whole minute):
 | Last 40 merged PRs, total | 840 (480) | 532 / 960 | 598 (204) | 323 / 734 |
 | Push to `main` (`ci.yml` + `smoke-test.yml`) | 21 (12) | 16.3 / 28 | 17 (8) | 11.9 / 22 |
 | Schedule | 2 (2) daily | 6.1 / 7 per day | unchanged daily, plus `ci.yml` weekly 15 (6) | + ~5.7 / 15 per week |
+
+Measured for #480 (median job durations of the last 10 successful runs per event
+before 2026-10-25; billed minutes round each job up): `smoke-test.yml` push jobs
+took 5.6 min (11.4) and 4.9 min (11.2), scheduled jobs 3.9 min (11.4) and 3.7 min
+(11.2), and the `ci.yml` CQRS 11.2 job 0.8 min. The newest-image job is new and
+not yet measured.
+
+| Event | Before live jobs | Before job-min / billed | After live jobs | After job-min / billed |
+|-------|------------------|-------------------------|-----------------|------------------------|
+| Push to `main` (smoke + CQRS) | 4 | 12.1 / 13 | 2 | 6.4 / 7 |
+| Daily schedule (Tuesday–Sunday) | 2 | 7.7 / 8 | 1 | 3.9 / 4 |
+| Weekly schedule (Monday) | 2 | 7.7 / 8 | 2, plus the advisory newest-image job | 7.7 / 8, plus that job |
+| Schedules, per week | 14 | 53.7 / 56 | 8, plus 1 advisory | 31.3 / 32, plus that job |
 
 ---
 
@@ -673,7 +712,7 @@ These inputs are read from the event JSON and follow the same validation, exact
 PyPI install, bounded retry, pinning, origin check and summary as a release
 dispatch; an invalid, unavailable or mismatched release fails instead of testing
 the latest release. A manual run with the default inputs (`package=latest`, empty
-`version`), like pushes and the nightly schedule, is an ordinary
+`version`), like pushes and the scheduled runs, is an ordinary
 smoke run on the latest published releases and is reported as not a release
 verification.
 

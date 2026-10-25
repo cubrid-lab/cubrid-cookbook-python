@@ -3,7 +3,7 @@
 Runnable Python examples and production-shaped application templates for CUBRID — from a five-minute first query to natural-language database access, everything installs from PyPI.
 
 - **100+ runnable recipes** across pycubrid, SQLAlchemy, pandas, Alembic, JSON, isolation levels, migration, and the application templates (exact counts in the [support matrix](support-matrix.md#recipe-coverage))
-- **Every golden-backed recipe is CI-verified** — `make verify` compares exact stdout against `expected/*.expected` files on a **CUBRID 11.2 + 11.4 job matrix** for every `main` push, nightly and release verification; pull requests check the examples they touch on 11.4
+- **Every golden-backed recipe is CI-verified** — `make verify` compares exact stdout against `expected/*.expected` files on **CUBRID 11.4** for every `main` push and daily, and on a **CUBRID 11.2 + 11.4 job matrix** weekly, on manual runs and in release verification; pull requests check the examples they touch on 11.4
 - **6 application templates**: FastAPI service, Flask app, Django app, Streamlit dashboard, Celery async worker, pandas batch ETL — the dashboard is a one-command `docker compose up` demo
 
 **New to CUBRID? Start here:** [your first CUBRID database from Python](first-cubrid.md), five short lessons from a local practice database to a first query, `commit`, `rollback` and a safe clean-up. The paths below are for readers who already know what they want to build; the [Help](known-issues.md) pages cover known problems.
@@ -23,9 +23,9 @@ Runnable Python examples and production-shaped application templates for CUBRID 
 | pycubrid fundamentals | 16 | `make verify` goldens (CI, CUBRID 11.2 + 11.4) |
 | SQLAlchemy fundamentals | 7 | `make verify` goldens (CI) |
 | pandas fundamentals | 6 | `make verify` goldens (CI) |
-| Flask / FastAPI templates | 11 + 12 | pytest suites (CI on `main` + nightly, CUBRID 11.2 + 11.4) |
+| Flask / FastAPI templates | 11 + 12 | pytest suites (CI on `main` + daily 11.4; weekly 11.2 + 11.4) |
 | Streamlit / Django templates | 5 + 1 | Streamlit: isolated CUBRID pytest suite; Django: HTTP + SQLAlchemy bridge pytest (both PR CI 11.4 when touched and non-PR 11.2 + 11.4) |
-| Celery / batch-ETL templates | 1 + 5 | Celery database tasks: live pytest (PR CI 11.4 when touched; `main` + nightly 11.2 + 11.4), broker/worker manual; ETL goldens in `expected/` |
+| Celery / batch-ETL templates | 1 + 5 | Celery database tasks: live pytest (PR CI 11.4 when touched; `main` + daily 11.4, weekly 11.2 + 11.4), broker/worker manual; ETL goldens in `expected/` |
 | Async · Alembic · JSON · isolation | 4 | `make verify` goldens (CI) |
 | Migration, performance, pitfalls | topic guides | docs |
 

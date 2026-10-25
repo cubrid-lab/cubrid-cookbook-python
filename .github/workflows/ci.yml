@@ -4,9 +4,10 @@ name: CI
 # start only when selected and ci-gate accepts a skip only where the classifier
 # said "false". Pull requests: cheap checks always, then only the touched recipe
 # families on CUBRID 11.4 / Python 3.12. Push, the weekly schedule and manual
-# runs: Python 3.11-3.14 and CQRS on 11.2 + 11.4 (schedule and manual runs also
-# the exact driver floors, #241); smoke-test.yml owns the broad
-# 11.2/11.4 goldens and recipe suites there. See CONTRIBUTING.md "CI tiers".
+# runs: Python 3.11-3.14 and pinned CQRS, on 11.4 for a push and on 11.2 + 11.4
+# for the schedule and manual runs (#480; they also run the exact driver floors,
+# #241); smoke-test.yml owns the broad goldens and recipe suites there. See
+# CONTRIBUTING.md "CI tiers".
 on:
   pull_request:
   push:
@@ -443,8 +444,9 @@ jobs:
         python fundamentals/sqlalchemy/01_connect_and_session.py | bash scripts/normalize_output.sh | diff -u fundamentals/sqlalchemy/expected/01_connect_and_session.expected -
 
   # Recipe 10 has independent pins that broad latest-package smoke cannot validate.
-  # 11.2 + 11.4 on push/schedule/dispatch and when its pins or shared live
-  # infrastructure change; 11.4 for other recipe-10 PRs; skipped otherwise.
+  # 11.2 + 11.4 on the weekly schedule, manual runs and when its pins or shared
+  # live infrastructure change; 11.4 on a push to main (#480) and for other
+  # recipe-10 PRs; skipped otherwise.
   cqrs-pinned-pytest:
     name: CQRS pinned requirements (CUBRID ${{ matrix.cubrid }})
     needs: [classify]

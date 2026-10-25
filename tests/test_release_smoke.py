@@ -139,8 +139,11 @@ class ReleaseSmokeTests(unittest.TestCase):
         # make deps honours PIP_CONSTRAINT: every example keeps the selected drivers.
         self.assertIn("run: make deps\n", workflow[deps:report])
         self.assertIn("set -o pipefail", workflow[report:verify])
-        self.assertNotIn("pip install", workflow[report:])
-        self.assertNotIn("make deps", workflow[report:])
+        # Through the end of the release report job; the advisory latest-server
+        # job (#480) never runs for a release and installs its own canary deps.
+        rest = workflow[report : workflow.index("\n  latest-server:")]
+        self.assertNotIn("pip install", rest)
+        self.assertNotIn("make deps", rest)
 
 
 if __name__ == "__main__":

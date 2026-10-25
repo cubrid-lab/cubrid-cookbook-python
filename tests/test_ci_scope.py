@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import contextlib
+import importlib.util
 import io
+import json
 import os
 import re
 import subprocess
@@ -43,6 +45,11 @@ CQRS = ci_scope.CQRS_ROOT
 DRIVER_MAIN = (ROOT / ".github/workflows/driver-main.yml").read_text(encoding="utf-8")
 # Jobs that must never feed ci-gate (#239): advisory lanes only.
 ADVISORY_JOBS = {"driver-main-advisory"}
+
+
+DAILY_SMOKE_CRON = "0 0 * * 0,2-6"
+WEEKLY_SMOKE_CRON = "0 0 * * 1"
+RELEASE_SMOKE_CELLS = {("11.2", "3.12"), ("11.4", "3.12"), ("11.4", "3.11")}
 
 
 def scope(*paths: str, event: str = "pull_request") -> dict[str, object]:
@@ -255,12 +262,19 @@ class ClassifierTests(unittest.TestCase):
         self.assertEqual(scope("README.md", event="merge_group")["tier"], "full")
 
     def test_broad_events_keep_python_and_cqrs_evidence(self) -> None:
+        # #480: a push to main runs pinned CQRS on 11.4 only; the weekly schedule
+        # and manual runs keep 11.2 + 11.4.
+        cqrs = {
+            "push": ["11.4"],
+            "schedule": ["11.2", "11.4"],
+            "workflow_dispatch": ["11.2", "11.4"],
+        }
         for event in ("push", "schedule", "workflow_dispatch"):
             with self.subTest(event=event):
                 result = scope(event=event)
                 self.assertEqual(result["tier"], "main")
                 self.assertEqual(result["python"], ["3.11", "3.12", "3.13", "3.14"])
-                self.assertEqual(result["cqrs_cubrid"], ["11.2", "11.4"])
+                self.assertEqual(result["cqrs_cubrid"], cqrs[event])
                 floors = {"floors"} if event != "push" else set()
                 self.assertEqual(selected(result), {"compat", "cqrs"} | floors)
                 self.assertEqual(result["smoke_lanes"], "")
@@ -693,7 +707,10 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertNotIn("  pull_request", triggers)
         for trigger in ("push:", "schedule:", "repository_dispatch:", "workflow_dispatch:"):
             self.assertIn(f"\n  {trigger}", triggers)
-        self.assertIn('cron: "0 0 * * *"', triggers)
+        # #480: one daily and one weekly cron, never both on the same slot.
+        self.assertEqual(
+            re.findall(r'cron: "([^"]+)"', triggers), [DAILY_SMOKE_CRON, WEEKLY_SMOKE_CRON]
+        )
         call = triggers.split("  workflow_call:\n", 1)[1]
         for name in ("package", "version"):
             block = call.split(f"      {name}:\n", 1)[1].split("\n      ", 1)[0]
@@ -710,6 +727,103 @@ class WorkflowWiringTests(unittest.TestCase):
         triggers = "\n" + CI.split("\non:\n", 1)[1].split("\nconcurrency:", 1)[0]
         for trigger in ("pull_request:", "push:", "schedule:", "workflow_dispatch:"):
             self.assertIn(f"\n  {trigger}", triggers)
+
+
+def evaluate(expression: str, event: str, schedule: str = "", package: str | None = None):
+    """Evaluate a smoke-test.yml matrix expression for one event (#480).
+
+    Only the operators these expressions use: ``&&``/``||`` return an operand,
+    like Python's and/or; ``!`` is ``not``; ``fromJSON`` parses JSON.
+    """
+    body = " ".join(expression.split())
+    body = body.removeprefix("${{").removesuffix("}}")
+    names = {
+        "github.event_name": "event_name",
+        "github.event.schedule": "schedule",
+        "inputs.package": "package",
+        "fromJSON": "fromJSON",
+    }
+    python = body.replace("&&", " and ").replace("||", " or ")
+    python = re.sub(r"!(?!=)", " not ", python)
+    for name, alias in names.items():
+        python = python.replace(name, alias)
+    leftover = re.findall(r"[a-z]+\.[a-z_.]+", python)
+    if leftover:
+        raise AssertionError(f"unexpected context in matrix expression: {leftover}")
+    scope_vars = {
+        "event_name": event,
+        "schedule": schedule,
+        "package": package,
+        "fromJSON": json.loads,
+    }
+    return eval(python, {"__builtins__": {}}, scope_vars)  # noqa: S307 - repository text
+
+
+class SmokeEventMatrixTests(unittest.TestCase):
+    """smoke-test.yml selects its CUBRID cells per event (#480)."""
+
+    def strategy(self) -> tuple[str, str, list[str]]:
+        verify = SMOKE[SMOKE.index("\n  verify:") : SMOKE.index("\n  report:")]
+        strategy = verify[verify.index("    strategy:") : verify.index("    steps:")]
+        cubrid = strategy.split("        cubrid: >-\n", 1)[1].split("\n        python:", 1)[0]
+        include = strategy.split("        include: >-\n", 1)[1]
+        python = re.search(r"(?m)^        python: (\[.*\])$", strategy).group(1)
+        return cubrid, include, json.loads(python)
+
+    def cells(self, event: str, schedule: str = "", package: str | None = None) -> set:
+        cubrid, include, python = self.strategy()
+        cells = {
+            (version, py) for version in evaluate(cubrid, event, schedule, package) for py in python
+        }
+        for extra in evaluate(include, event, schedule, package):
+            cells.add((extra["cubrid"], extra["python"]))
+        return cells
+
+    def test_each_event_selects_its_documented_cells(self) -> None:
+        only_114 = {("11.4", "3.12")}
+        both = {("11.2", "3.12"), ("11.4", "3.12")}
+        cases = (
+            ("push to main", ("push",), only_114),
+            ("daily schedule", ("schedule", DAILY_SMOKE_CRON), only_114),
+            ("weekly schedule", ("schedule", WEEKLY_SMOKE_CRON), both),
+            # An unknown cron string fails wide, never narrower.
+            ("other cron", ("schedule", "0 0 * * *"), both),
+            ("manual full smoke", ("workflow_dispatch", "", "latest"), both),
+            ("manual release", ("workflow_dispatch", "", "pycubrid"), RELEASE_SMOKE_CELLS),
+            ("repository_dispatch", ("repository_dispatch",), RELEASE_SMOKE_CELLS),
+            # Under workflow_call github.event_name is the CALLER's event.
+            ("call from push", ("push", "", "pycubrid"), RELEASE_SMOKE_CELLS),
+            (
+                "call from daily cron",
+                ("schedule", DAILY_SMOKE_CRON, "pycubrid"),
+                RELEASE_SMOKE_CELLS,
+            ),
+            ("call from release", ("release", "", "sqlalchemy-cubrid"), RELEASE_SMOKE_CELLS),
+            (
+                "call from dispatch",
+                ("workflow_dispatch", "", "cubrid-mcp-server"),
+                RELEASE_SMOKE_CELLS,
+            ),
+        )
+        for name, args, expected in cases:
+            with self.subTest(case=name):
+                self.assertEqual(self.cells(*args), expected)
+
+    def test_release_cells_match_release_smoke(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "release_smoke_480", ROOT / "scripts/release_smoke.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual(set(module.RELEASE_CELLS), RELEASE_SMOKE_CELLS)
+
+    def test_weekly_smoke_shares_the_weekly_ci_day(self) -> None:
+        ci_cron = re.search(r'cron: "([^"]+)"', CI).group(1).split()
+        weekly = WEEKLY_SMOKE_CRON.split()
+        self.assertEqual(weekly[2:], ci_cron[2:])  # same day of month/month/weekday
+        daily_days = DAILY_SMOKE_CRON.split()[4]
+        self.assertEqual(daily_days, "0,2-6")
+        self.assertNotIn(weekly[4], ("0", "2", "3", "4", "5", "6"))
 
 
 class DriverMainAdvisoryTests(unittest.TestCase):

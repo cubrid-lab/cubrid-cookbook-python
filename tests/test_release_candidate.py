@@ -847,7 +847,7 @@ class CandidateWorkflowTests(unittest.TestCase):
 
     def test_no_new_trigger_schedule_or_permission(self) -> None:
         triggers = WORKFLOW[WORKFLOW.index("\non:") : WORKFLOW.index("\nconcurrency:")]
-        self.assertEqual(triggers.count("cron:"), 1)
+        self.assertEqual(triggers.count("cron:"), 2)  # daily + weekly (#480)
         self.assertNotIn("pull_request", triggers.split("workflow_call:")[0].split("\n  push:")[0])
         self.assertNotIn("id-token", WORKFLOW)
         self.assertNotIn("secrets.", WORKFLOW)

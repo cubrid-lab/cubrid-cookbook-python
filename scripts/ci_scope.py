@@ -22,9 +22,11 @@ Tiers:
 * ``full`` - a pull request that changes the CI policy itself: every lane, both
   CUBRID versions and the Python 3.11/3.14 endpoints.
 * ``main`` - push, schedule or manual dispatch: Python 3.11-3.14 compatibility
-  and CQRS on both CUBRID versions; the weekly schedule and manual runs also
-  install the documented driver floors (``floors``, #241). ``smoke-test.yml`` owns the broad 11.2/11.4
-  goldens and recipe suites on these events, so ``ci.yml`` does not repeat them.
+  and pinned CQRS, on CUBRID 11.4 for a push to ``main`` and on both CUBRID
+  versions for the weekly schedule and manual runs (``CQRS_DUAL_EVENTS``, #480);
+  the weekly schedule and manual runs also install the documented driver floors
+  (``floors``, #241). ``smoke-test.yml`` owns the broad goldens and recipe suites
+  on these events, so ``ci.yml`` does not repeat them.
 
 The PR smoke lanes also run the focused ``make verify-<lane>`` lanes named in
 ``smoke_lanes`` (``SMOKE_LANE_ORDER``): ``quickstart`` for the FastAPI quickstart,
@@ -67,6 +69,9 @@ MAIN_EVENTS = {"push", "schedule", "workflow_dispatch"}
 # weekly schedule catches a new release of a non-pinned dependency (SQLAlchemy,
 # pandas, ...) breaking an old driver.
 FLOOR_EVENTS = {"schedule", "workflow_dispatch"}
+# Pinned CQRS on CUBRID 11.2 (#480): the weekly schedule and manual runs; a push
+# to main runs it on the representative 11.4 only.
+CQRS_DUAL_EVENTS = {"schedule", "workflow_dispatch"}
 
 CQRS_ROOT = "templates/api-service-fastapi/recipes/10-cqrs-event-sourcing"
 FASTAPI_ROOT = "templates/api-service-fastapi"
@@ -263,7 +268,7 @@ def classify(
             "async_worker": False,
             "django": False,
             "cqrs": True,
-            "cqrs_cubrid": CUBRID_ENDPOINTS,
+            "cqrs_cubrid": CUBRID_ENDPOINTS if event in CQRS_DUAL_EVENTS else DEFAULT_CUBRID,
             "compat": True,
             "python": PYTHON_ALL,
             "smoke_114": False,

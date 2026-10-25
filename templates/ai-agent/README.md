@@ -109,8 +109,9 @@ Each script runs in its own process with a 60-second limit; cleanup connections
 have a 10-second connect timeout and a 15-second read timeout. CI runs the
 live suite through the same commands, twice on the same dedicated database to
 catch stale demonstration keys after teardown: the smoke-test matrix runs the
-full `make verify` and then `make verify-ai-agent` on both CUBRID 11.2 and 11.4
-for every `main` push, the nightly schedule and release verification, and the
+full `make verify` and then `make verify-ai-agent` on CUBRID 11.4 for every
+`main` push and the daily schedule, on both CUBRID 11.2 and 11.4 for the weekly
+schedule, manual runs and release verification, and the
 CUBRID 11.4 pull-request smoke lane runs `make verify-ai-agent` twice when a pull
 request touches this template or its tests. Both runs keep their evidence
 (`.live-evidence/ai-agent-run-1/` and `-run-2/` in the `live-evidence-*` workflow

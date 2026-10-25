@@ -66,6 +66,7 @@ SUITES: tuple[tuple[str, ...], ...] = (
     _unittest("test_third_party_licenses.py"),
     _unittest("test_pr_title.py"),
     _unittest("test_ci_scope.py"),
+    _unittest("test_latest_server.py"),
     _unittest("test_workflow_timeouts.py"),
     _unittest("test_workflow_installs.py"),
     _unittest("test_workflow_permissions.py"),
