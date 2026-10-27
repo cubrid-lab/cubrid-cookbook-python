@@ -272,5 +272,73 @@ class FindUntestedTests(unittest.TestCase):
                 self.assertIn("templates/bare", out.getvalue())
 
 
+class MainErrorTests(unittest.TestCase):
+    """Exercise main()'s exit-1 error blocks on undocumented examples (issue
+    #512)."""
+
+    def test_example_missing_only_from_readme_makes_main_exit_nonzero(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "templates" / "bare" / "expected").mkdir(parents=True)
+            (root / "scripts").mkdir()
+            (root / "README.md").write_text("")
+            (root / "llms.txt").write_text("templates/bare\n")
+            fake_script = root / "scripts" / "check_docs_sync.py"
+
+            with (
+                mock.patch.object(check_docs_sync, "__file__", str(fake_script)),
+                mock.patch("sys.stdout", new_callable=io.StringIO) as out,
+            ):
+                exit_code = check_docs_sync.main()
+
+                self.assertEqual(exit_code, 1)
+                self.assertIn("ERROR: examples missing from README.md:", out.getvalue())
+                self.assertIn("templates/bare", out.getvalue())
+                self.assertNotIn("ERROR: examples missing from llms.txt:", out.getvalue())
+                self.assertNotIn("OK:", out.getvalue())
+
+    def test_example_missing_only_from_llms_txt_makes_main_exit_nonzero(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "templates" / "bare" / "expected").mkdir(parents=True)
+            (root / "scripts").mkdir()
+            (root / "README.md").write_text("templates/bare\n")
+            (root / "llms.txt").write_text("")
+            fake_script = root / "scripts" / "check_docs_sync.py"
+
+            with (
+                mock.patch.object(check_docs_sync, "__file__", str(fake_script)),
+                mock.patch("sys.stdout", new_callable=io.StringIO) as out,
+            ):
+                exit_code = check_docs_sync.main()
+
+                self.assertEqual(exit_code, 1)
+                self.assertIn("ERROR: examples missing from llms.txt:", out.getvalue())
+                self.assertIn("templates/bare", out.getvalue())
+                self.assertNotIn("ERROR: examples missing from README.md:", out.getvalue())
+                self.assertNotIn("OK:", out.getvalue())
+
+    def test_example_missing_from_both_files_prints_both_errors_and_exits_nonzero(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "templates" / "bare" / "expected").mkdir(parents=True)
+            (root / "scripts").mkdir()
+            (root / "README.md").write_text("")
+            (root / "llms.txt").write_text("")
+            fake_script = root / "scripts" / "check_docs_sync.py"
+
+            with (
+                mock.patch.object(check_docs_sync, "__file__", str(fake_script)),
+                mock.patch("sys.stdout", new_callable=io.StringIO) as out,
+            ):
+                exit_code = check_docs_sync.main()
+
+                self.assertEqual(exit_code, 1)
+                self.assertIn("ERROR: examples missing from README.md:", out.getvalue())
+                self.assertIn("ERROR: examples missing from llms.txt:", out.getvalue())
+                self.assertIn("templates/bare", out.getvalue())
+                self.assertNotIn("OK:", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
