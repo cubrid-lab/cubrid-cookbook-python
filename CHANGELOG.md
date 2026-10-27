@@ -145,6 +145,8 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 
 ### Documentation
 
+- **README and docs site show the transparent brand icon (#533)** — the icon URL pinned in the README, its translations and `mkdocs.yml` (logo and favicon) now points at brand revision `e55990a`, where the Cookbook icon's open book is two transparent pages instead of white pages with text lines. Documentation only; behavior is unchanged.
+
 - **README and docs site show the brand icon with white marks (#507)** — the icon URL pinned in the README, its translations and `mkdocs.yml` (logo and favicon) now points at brand revision `3a385be`, where the Python Yellow icons draw white role marks on a bare cube like every other language. Documentation only; behavior is unchanged.
 - **README and docs site show the emblem-aligned brand icon (#505)** — the icon URL pinned in the README, its translations and `mkdocs.yml` (logo and favicon) now points at the brand revision `538bad3`, whose Python Yellow keyline keeps the cube silhouette of the organization emblem (open seams, no flat bottom). Documentation only; behavior is unchanged.
 - **README and docs site show the 2026-10-25 brand icon (#499)** — the icon URL pinned in the README, its translations and `mkdocs.yml` (logo and favicon) now points at the approved CUBRID Lab brand revision `8aa81b7`. Documentation only; behavior is unchanged.
