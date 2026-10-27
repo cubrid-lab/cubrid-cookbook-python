@@ -145,6 +145,7 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 
 ### Documentation
 
+- **README and docs site show the emblem-aligned brand icon (#505)** — the icon URL pinned in the README, its translations and `mkdocs.yml` (logo and favicon) now points at the brand revision `538bad3`, whose Python Yellow keyline keeps the cube silhouette of the organization emblem (open seams, no flat bottom). Documentation only; behavior is unchanged.
 - **README and docs site show the 2026-10-25 brand icon (#499)** — the icon URL pinned in the README, its translations and `mkdocs.yml` (logo and favicon) now points at the approved CUBRID Lab brand revision `8aa81b7`. Documentation only; behavior is unchanged.
 
 - **The README and the documentation site pin the approved 2026-10-25 Cookbook icon (#497)** — `README.md`, `docs/README.ko.md` and the site logo and favicon in `mkdocs.yml` loaded the icon from an older cubrid-lab/brand commit that predates the brand icon fixes (glyphs kept off the cube seams, redrawn Cookbook mark). They now pin brand commit `2de5d23`, the revision recorded as approved in cubrid-lab/brand#6.
