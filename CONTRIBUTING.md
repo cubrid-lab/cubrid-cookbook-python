@@ -1,5 +1,7 @@
 # Contributing to cubrid-cookbook-python
 
+**Issue titles:** use `feat:`, `bug:`, `docs:`, etc. without a required scope; [organization guidance](https://github.com/cubrid-lab/.github/blob/main/docs/ISSUE_PR_COMMIT_STANDARD.md). **PR/commit titles:** retain Conventional Commits and local CI rules. Triage owns validity, relative priority and size; PR checks own syntax and tested changes.
+
 Thank you for your interest in contributing! This document provides guidelines
 and instructions for contributing to the project.
 
@@ -1266,8 +1268,7 @@ Existing tests, docs requirements and PR review/merge policies remain unchanged.
 
 ## Pull request and commit titles
 
-This rule covers issue titles, pull request titles and commit subjects in every
-cubrid-lab repository. Pull requests are squash-merged and the pull request
+This section covers pull request titles and commit subjects. Issue titles use type-only prefixes, as defined in the [organization standard](https://github.com/cubrid-lab/.github/blob/main/docs/ISSUE_PR_COMMIT_STANDARD.md). Pull requests are squash-merged and the pull request
 title becomes the commit title on `main`, so the pull request title is the one
 that must be right. The `PR title` check enforces it.
 
@@ -1341,8 +1342,7 @@ When reporting a bug in an example, please include:
 
 For new example requests, describe the use case and framework.
 
-Issue titles follow [Pull request and commit titles](#pull-request-and-commit-titles):
-keep the prefilled `fix:` (bug report) or `feat:` (example request) prefix.
+Issue titles use type-only prefixes: `bug:` for a bug report and `feat:` for a feature request, without a module scope.
 
 Describe urgency and the expected scope when useful. Maintainers or triagers
 assign/create the canonical `priority:` and `size:` GitHub labels; reporters do
