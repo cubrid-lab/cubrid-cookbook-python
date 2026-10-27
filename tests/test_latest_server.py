@@ -111,6 +111,40 @@ class DecisionTests(unittest.TestCase):
             self.assertNotIn("::error::", summary.read_text())
             self.assertTrue(stdout.getvalue().startswith("::error::"))
 
+    def test_describe_names_the_canary_for_a_newer_build(self) -> None:
+        decision = latest_server.decide(REF_B, REL_1150, REF_A, REL_1146)
+        self.assertEqual(decision["status"], "newer")
+
+        text = latest_server.describe(decision, REF_B, REL_1150, REF_A, REL_1146, "2026-10-26")
+
+        self.assertIn(f"`latest` is a newer engine build than `{latest_server.SERIES_TAG}`", text)
+        self.assertIn(f"an advisory canary tests `{REF_B}`", text)
+        self.assertIn("It is not part of the support matrix", text)
+        self.assertNotIn("nothing extra to test", text)
+        self.assertNotIn("UNVERIFIED", text)
+
+    def test_describe_says_nothing_extra_for_a_not_newer_build(self) -> None:
+        decision = latest_server.decide(REF_B, REL_1145, REF_A, REL_1146)
+        self.assertEqual(decision["status"], "not-newer")
+
+        text = latest_server.describe(decision, REF_B, REL_1145, REF_A, REL_1146, "2026-10-26")
+
+        self.assertIn("nothing extra to test", text)
+        self.assertNotIn("canary", text)
+        self.assertNotIn("UNVERIFIED", text)
+
+    def test_describe_never_reports_an_unverified_lookup_as_passed(self) -> None:
+        decision = latest_server.decide("", "", REF_A, REL_1146)
+        self.assertEqual(decision["status"], "unverified")
+
+        text = latest_server.describe(decision, "", "", REF_A, REL_1146, "")
+
+        self.assertIn("Checked unknown date.", text)
+        self.assertIn("| `latest` | `not resolved` | unknown |", text)
+        self.assertIn("UNVERIFIED", text)
+        self.assertNotIn("passed", text)
+        self.assertNotIn("nothing extra to test", text)
+
 
 class WorkflowTests(unittest.TestCase):
     def job(self) -> str:
