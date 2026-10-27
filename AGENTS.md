@@ -1,5 +1,10 @@
 # AGENTS.md
 
+## Organization-wide issue and PR writing standard
+
+Follow [the shared cubrid-lab policy](https://github.com/cubrid-lab/.github/blob/main/docs/ISSUE_PR_COMMIT_STANDARD.md). Use type-only Issue titles (`feat: ...`, `bug: ...`, `docs: ...`) **without a required module scope**. Describe the problem or desired result in readable English and document observable acceptance criteria, distinguishing reproduced facts from assumptions. Triage decides validity, duplicates, priority and size. PRs and commits keep their existing Conventional Commits/CI rules; do not turn issue-body prose into agent narration or personal comments.
+
+
 ## Purpose
 
 `cubrid-cookbook-python` provides use-case-centric, production-style Python examples for CUBRID.
@@ -192,7 +197,7 @@ required CI/live validation.
 
 ## Commit Convention
 
-Issue titles, pull request titles and commit subjects follow
+Pull request titles and commit subjects follow
 [CONTRIBUTING.md - Pull request and commit titles](CONTRIBUTING.md#pull-request-and-commit-titles):
 `type(scope)!: description` with types `feat`, `fix`, `docs`, `test`, `perf`,
 `refactor`, `ci`, `build`, `chore`, `style`, `revert`; English, lowercase start
@@ -276,8 +281,7 @@ alongside a type label (`bug`/`enhancement`/`documentation`/`chore`/`ci`/…) an
 `area:` label when applicable. These must be GitHub labels, not just text in the
 issue title or body.
 
-Issue titles use the same `type(scope): description` format as pull request
-titles (see [CONTRIBUTING.md](CONTRIBUTING.md#pull-request-and-commit-titles)).
+Issue titles use type-only prefixes such as `feat:` or `bug:` (see [organization standard](https://github.com/cubrid-lab/.github/blob/main/docs/ISSUE_PR_COMMIT_STANDARD.md)).
 
 Use the following exact names, with **one space after the colon**:
 
