@@ -1,0 +1,38 @@
+/* Python yellow from cubrid-lab/brand tokens/colors.json (languages.python), the
+   same yellow as the project icon. The header uses it as a background with dark
+   text; links use a darker yellow so they stay readable on white. */
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #FFD43B;
+  --md-primary-fg-color--light: #FFE27A;
+  --md-primary-fg-color--dark: #E6BC1F;
+  --md-primary-bg-color: #1F2328;
+  --md-primary-bg-color--light: rgba(31, 35, 40, 0.7);
+  --md-accent-fg-color: #8A6A00;
+  --md-typeset-a-color: #7A5C00;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #FFD43B;
+  --md-primary-fg-color--light: #FFE27A;
+  --md-primary-fg-color--dark: #E6BC1F;
+  --md-primary-bg-color: #1F2328;
+  --md-primary-bg-color--light: rgba(31, 35, 40, 0.7);
+  --md-accent-fg-color: #FFE27A;
+  --md-typeset-a-color: #FFD43B;
+}
+
+/* The project icon is the same yellow as the header, so it sits on a dark tile. */
+.md-header__button.md-logo img,
+.md-nav__button.md-logo img {
+  background: #1F2328;
+  border-radius: 6px;
+  padding: 3px;
+  box-sizing: content-box;
+}
+
+/* Links in the dark announcement bar use the bright yellow. */
+.md-banner a,
+.md-banner .md-typeset a {
+  color: #FFD43B;
+}
