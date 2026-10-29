@@ -21,7 +21,7 @@ body:
     attributes:
       value: |
         Keep the `bug:` title prefix and finish the title in English, for example
-        `fix: basic CRUD recipe leaks a connection on error`. You do not need to
+        `bug: basic CRUD recipe leaks a connection on error`. You do not need to
         apply labels; maintainers assign priority and size after triage.
 
   - type: dropdown
