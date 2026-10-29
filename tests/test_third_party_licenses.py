@@ -345,5 +345,104 @@ class LicenseClassification(unittest.TestCase):
         self.assertRegex(record, r"--exclude-newer \d{4}-\d{2}-\d{2}T[\d:]+Z --write")
 
 
+class LicenseMetadataFallbacks(unittest.TestCase):
+    class FakeDistribution:
+        def __init__(self, values: dict[str, list[str] | None]):
+            self.metadata = self
+            self.values = values
+
+        def get_all(self, key: str) -> list[str] | None:
+            return self.values.get(key)
+
+    def test_license_of_metadata_precedence_and_fallbacks(self) -> None:
+        cases = [
+            (
+                "License-Expression wins over classifiers",
+                {
+                    "License-Expression": ["MIT OR Apache-2.0"],
+                    "Classifier": ["License :: OSI Approved :: BSD License"],
+                },
+                "MIT OR Apache-2.0",
+            ),
+            (
+                "classifiers are filtered, deduplicated, and sorted",
+                {
+                    "Classifier": [
+                        "License :: MIT License",
+                        "License :: OSI Approved",
+                        "License :: BSD License",
+                        "License :: MIT License",
+                    ],
+                },
+                "BSD License / MIT License",
+            ),
+            (
+                "short one-line License is used",
+                {"License": ["BSD-3-Clause"]},
+                "BSD-3-Clause",
+            ),
+            (
+                "multiline License is rejected",
+                {"License": ["MIT\nfull text"]},
+                "UNKNOWN",
+            ),
+            (
+                "License longer than 60 characters is rejected",
+                {"License": ["A" * 61]},
+                "UNKNOWN",
+            ),
+            (
+                "missing metadata returns UNKNOWN",
+                {},
+                "UNKNOWN",
+            ),
+        ]
+
+        for name, values, expected in cases:
+            with self.subTest(name=name):
+                dist = self.FakeDistribution(values)
+                self.assertEqual(generator.license_of(dist), expected)
+
+    def test_url_of_project_url_and_home_page_fallbacks(self) -> None:
+        cases = [
+            (
+                "matching Project-URL beats Home-page",
+                {
+                    "Project-URL": [
+                        "Documentation, https://docs.example",
+                        "Homepage, https://home.example",
+                    ],
+                    "Home-page": ["https://old.example"],
+                },
+                "https://home.example",
+            ),
+            (
+                "Project-URL labels are case-insensitive and stripped",
+                {
+                    "Project-URL": ["  Source Code  , https://source.example  "],
+                },
+                "https://source.example",
+            ),
+            (
+                "non-matching Project-URL falls back to Home-page",
+                {
+                    "Project-URL": ["Documentation, https://docs.example"],
+                    "Home-page": ["https://old.example"],
+                },
+                "https://old.example",
+            ),
+            (
+                "missing metadata returns dash",
+                {},
+                "-",
+            ),
+        ]
+
+        for name, values, expected in cases:
+            with self.subTest(name=name):
+                dist = self.FakeDistribution(values)
+                self.assertEqual(generator.url_of(dist), expected)
+
+
 if __name__ == "__main__":
     unittest.main()
