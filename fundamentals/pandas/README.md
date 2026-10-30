@@ -11,10 +11,10 @@ All scripts use:
 ## Setup
 
 ```bash
-cd python/pandas
+cd cubrid-cookbook-python/
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r fundamentals/pandas/requirements.txt
 ```
 
 ## Recipes
