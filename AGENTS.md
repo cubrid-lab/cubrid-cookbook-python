@@ -406,5 +406,16 @@ documentation, presentations, and other maintainer-facing writing.
   separate lookup table. Edit an existing editable comment to correct unclear
   wording rather than adding redundant follow-up comments.
 
+Learner-facing recipe comments, sample code, test names, run instructions,
+PR descriptions and review replies or summaries follow the organization's
+canonical rule,
+[Explanations in code, tests, reviews and agent-written text](https://github.com/cubrid-lab/.github/blob/main/docs/ISSUE_PR_COMMIT_STANDARD.md#6-explanations-in-code-tests-reviews-and-agent-written-text).
+Explain what a pattern does, why it is safe or useful and the CUBRID or driver
+constraint behind it, not which issue introduced it; an issue number may follow
+for traceability. Keep comments next to the code they describe, and do not
+change test names, golden files, expected output or exact commands to satisfy
+this rule. Revise existing comments only where a learner would be confused.
+
 This is a shared writing convention, not a new CI check, reviewer approval,
-or merge gate. Keep existing repository-specific technical and safety rules.
+or merge gate. This repository's recipe, golden/live validation, security and
+release rules keep precedence over it.

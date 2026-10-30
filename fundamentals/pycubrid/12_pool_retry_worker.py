@@ -16,7 +16,9 @@ import time
 
 import pycubrid  # type: ignore[import-not-found]
 
-# Use pycubrid.connect() directly (issue #31)
+# Errors that mean a connection is broken or unreachable: the pool replaces
+# the connection and run_with_retry() tries the job again. getattr() falls
+# back to Exception if a driver build does not export one of these classes.
 OPERATIONAL_ERROR = getattr(pycubrid, "OperationalError", Exception)
 INTERFACE_ERROR = getattr(pycubrid, "InterfaceError", Exception)
 
