@@ -1,6 +1,6 @@
 """03_rollback.py — undo an uncommitted change with rollback.
 
-Step 4 of the beginner tutorial (quickstart/first-cubrid/README.md). Run
+Lesson 4 of the beginner tutorial (quickstart/first-cubrid/README.md). Run
 02_save_and_verify.py first: this step uses its table and keeps its rows.
 """
 
