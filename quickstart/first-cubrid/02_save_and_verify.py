@@ -1,6 +1,6 @@
 """02_save_and_verify.py — save rows, commit them and read them back from a second connection.
 
-Step 4 of the beginner tutorial (quickstart/first-cubrid/README.md). It creates
+Lesson 3 of the beginner tutorial (quickstart/first-cubrid/README.md). It creates
 the tutorial's own table, cookbook_first_cubrid_notes, and stops without changing
 anything if a table with that name already exists.
 """
