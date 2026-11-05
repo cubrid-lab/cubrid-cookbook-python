@@ -1,6 +1,6 @@
 """04_cleanup.py — remove the tutorial's table, and only that table.
 
-Step 5 of the beginner tutorial (quickstart/first-cubrid/README.md). Safe to
+Lesson 5 of the beginner tutorial (quickstart/first-cubrid/README.md). Safe to
 run any number of times: it drops cookbook_first_cubrid_notes only when the tutorial
 created it, and leaves any other table alone.
 """
