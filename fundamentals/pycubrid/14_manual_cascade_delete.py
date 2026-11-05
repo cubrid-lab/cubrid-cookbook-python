@@ -13,8 +13,6 @@ import datetime
 
 import pycubrid  # type: ignore[import-not-found]
 
-# Use pycubrid.connect() directly (issue #31)
-
 DB_CONFIG = {
     "host": "localhost",
     "port": 33000,

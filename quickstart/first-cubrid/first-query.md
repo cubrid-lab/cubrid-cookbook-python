@@ -28,7 +28,7 @@ This is the whole first program,
 ```python
 """01_first_query.py — connect to CUBRID from Python and read a first result.
 
-Step 3 of the beginner tutorial (quickstart/first-cubrid/README.md).
+Lesson 2 of the beginner tutorial (quickstart/first-cubrid/README.md).
 """
 
 from __future__ import annotations

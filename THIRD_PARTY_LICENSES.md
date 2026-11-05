@@ -123,6 +123,10 @@ Third-party material actually stored in the repository:
   generated 2026-10-09; the `DEMO` set was switched to `demos/record_browser.py`
   and the section regenerated on 2026-10-13 with the same command and
   `--exclude-newer` timestamp, which left every other set unchanged
+- `DOCS` pin updates: each Dependabot bump of a pinned docs tool updates only that
+  tool's row, after checking its PyPI license and dependency names are unchanged
+  (mkdocs-material 9.8.0 and pymdown-extensions 12.3, 2026-11-05); a full regeneration records them at the
+  pinned versions
 - Command (creates one fresh `uv` environment per requirement set and rewrites
   the generated section below):
 
@@ -264,7 +268,7 @@ added or removed, or when its declared packages change.
 | mergedeep | 1.3.4 | MIT License | Permissive | https://github.com/clarketm/mergedeep | DOCS |
 | mkdocs | 1.6.1 | BSD-2-Clause | Permissive | https://github.com/mkdocs/mkdocs | DOCS |
 | mkdocs-get-deps | 0.2.2 | MIT | Permissive | https://github.com/mkdocs/get-deps | DOCS |
-| mkdocs-material | 9.7.7 | MIT | Permissive | https://github.com/squidfunk/mkdocs-material | DOCS |
+| mkdocs-material | 9.8.0 | MIT | Permissive | https://github.com/squidfunk/mkdocs-material | DOCS |
 | mkdocs-material-extensions | 1.3.1 | MIT | Permissive | https://github.com/facelessuser/mkdocs-material-extensions | DOCS |
 | more-itertools | 11.1.0 | MIT | Permissive | https://github.com/more-itertools/more-itertools | S11 |
 | narwhals | 2.26.0 | MIT | Permissive | https://github.com/narwhals-dev/narwhals | S20 |
@@ -289,7 +293,7 @@ added or removed, or when its declared packages change.
 | pyee | 13.0.1 | MIT License | Permissive | https://github.com/jfhbrook/pyee | DEMO |
 | Pygments | 2.21.0 | BSD-2-Clause | Permissive | https://pygments.org | DOCS, S11, S14, S15, S16, S23, S24, TOOLING |
 | PyJWT | 2.15.1 | MIT | Permissive | https://github.com/jpadilla/pyjwt | S11 |
-| pymdown-extensions | 12.1 | MIT | Permissive | https://github.com/facelessuser/pymdown-extensions | DOCS |
+| pymdown-extensions | 12.3 | MIT | Permissive | https://github.com/facelessuser/pymdown-extensions | DOCS |
 | pyparsing | 3.3.3 | MIT | Permissive | https://github.com/pyparsing/pyparsing/ | S19 |
 | pyperclip | 1.11.0 | BSD License | Permissive | https://github.com/asweigart/pyperclip | S11 |
 | pytest | 9.1.1 | MIT | Permissive | https://docs.pytest.org/en/latest/ | S14, S15, S16, S23, S24, TOOLING |
