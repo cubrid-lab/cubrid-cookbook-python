@@ -125,7 +125,7 @@ Third-party material actually stored in the repository:
   `--exclude-newer` timestamp, which left every other set unchanged
 - `DOCS` pin updates: each Dependabot bump of a pinned docs tool updates only that
   tool's row, after checking its PyPI license and dependency names are unchanged
-  (mkdocs-material 9.8.0, 2026-11-05); a full regeneration records them at the
+  (mkdocs-material 9.8.0 and pymdown-extensions 12.3, 2026-11-05); a full regeneration records them at the
   pinned versions
 - Command (creates one fresh `uv` environment per requirement set and rewrites
   the generated section below):
@@ -293,7 +293,7 @@ added or removed, or when its declared packages change.
 | pyee | 13.0.1 | MIT License | Permissive | https://github.com/jfhbrook/pyee | DEMO |
 | Pygments | 2.21.0 | BSD-2-Clause | Permissive | https://pygments.org | DOCS, S11, S14, S15, S16, S23, S24, TOOLING |
 | PyJWT | 2.15.1 | MIT | Permissive | https://github.com/jpadilla/pyjwt | S11 |
-| pymdown-extensions | 12.1 | MIT | Permissive | https://github.com/facelessuser/pymdown-extensions | DOCS |
+| pymdown-extensions | 12.3 | MIT | Permissive | https://github.com/facelessuser/pymdown-extensions | DOCS |
 | pyparsing | 3.3.3 | MIT | Permissive | https://github.com/pyparsing/pyparsing/ | S19 |
 | pyperclip | 1.11.0 | BSD License | Permissive | https://github.com/asweigart/pyperclip | S11 |
 | pytest | 9.1.1 | MIT | Permissive | https://docs.pytest.org/en/latest/ | S14, S15, S16, S23, S24, TOOLING |
