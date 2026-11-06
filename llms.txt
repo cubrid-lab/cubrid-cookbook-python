@@ -50,6 +50,7 @@ Core database patterns using pycubrid (DB-API 2.0) and SQLAlchemy ORM.
 Copy-and-customize production starters (recipe counts per template are in [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md#recipe-coverage)):
 
 - [ai-agent](templates/ai-agent/): AI agent patterns — agent state and memory in JSON columns, MCP tool chain via `cubrid-mcp-server`, RAG metadata, agent loop, SQLAlchemy chatbot backend
+- [rag](templates/rag/): complete local retrieval-and-generation example with CUBRID canonical document chunks, Qdrant embeddings and Ollama models; manual full-stack run and offline tests
 - [api-service-fastapi](templates/api-service-fastapi/): REST API with FastAPI, SQLAlchemy, Docker, plus advanced recipes (saga, CQRS, rate limiter, etc.)
 - [flask](templates/flask/): Flask + Flask-SQLAlchemy progressive examples (basic CRUD → workflow engine)
 - [django](templates/django/): Django project using CUBRID via SQLAlchemy bridge

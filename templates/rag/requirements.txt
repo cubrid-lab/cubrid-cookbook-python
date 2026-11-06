@@ -1,0 +1,3 @@
+fastapi>=0.100
+pycubrid>=1.6.1
+uvicorn>=0.20
