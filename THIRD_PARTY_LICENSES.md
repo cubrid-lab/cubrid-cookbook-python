@@ -118,7 +118,7 @@ Third-party material actually stored in the repository:
 
 ## How the inventory was generated
 
-- Requirement files: commit `277584cc477919edf6e863481199680ab171adee`
+- Requirement files: commit `277584cc477919edf6e863481199680ab171adee`; on 2026-11-06, `templates/rag/requirements.txt` was added to the existing S09 set because it declares exactly the same requirement lines, without changing resolved package versions
 - Environment: CPython 3.12.13 on Linux x86_64 (glibc 2.35), uv 0.11.7,
   generated 2026-10-09; the `DEMO` set was switched to `demos/record_browser.py`
   and the section regenerated on 2026-10-13 with the same command and
@@ -169,7 +169,7 @@ added or removed, or when its declared packages change.
 | S06 | `fundamentals/pycubrid/requirements.txt` | pycubrid |
 | S07 | `fundamentals/sqlalchemy/requirements.txt` | pycubrid, sqlalchemy, sqlalchemy-cubrid |
 | S08 | `migration/java-to-python/requirements.txt` | pycubrid, sqlalchemy-cubrid |
-| S09 | `quickstart/5min-fastapi/requirements.txt` | fastapi, pycubrid, uvicorn |
+| S09 | `quickstart/5min-fastapi/requirements.txt`<br>`templates/rag/requirements.txt` | fastapi, pycubrid, uvicorn |
 | S10 | `quickstart/5min-sqlalchemy/requirements.txt` | pycubrid, sqlalchemy, sqlalchemy-cubrid |
 | S11 | `templates/ai-agent/requirements.txt` | cubrid-mcp-server, pycubrid, sqlalchemy-cubrid |
 | S12 | `templates/api-service-fastapi/recipes/01-basic-crud/requirements.txt`<br>`templates/api-service-fastapi/recipes/03-catalog-sync/requirements.txt`<br>`templates/api-service-fastapi/recipes/06-price-books/requirements.txt`<br>`templates/api-service-fastapi/recipes/07-document-publishing/requirements.txt`<br>`templates/api-service-fastapi/recipes/08-webhook-inbox/requirements.txt` | fastapi, pycubrid, sqlalchemy, sqlalchemy-cubrid, uvicorn |
