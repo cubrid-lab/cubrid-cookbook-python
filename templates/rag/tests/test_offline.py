@@ -1,4 +1,5 @@
 """Fast offline tests; no CUBRID, Ollama, or Qdrant required."""
+
 from __future__ import annotations
 
 import sys
@@ -125,12 +126,14 @@ def test_query_looks_up_cubrid_rows_and_cites_only_found_documents():
         ollama=llm,
     )
     assert result["answer"] == "Fictional answer [1]."
-    assert result["sources"] == [{
-        "citation": 1,
-        "title": "Example Guide",
-        "source_ref": "sample://one",
-        "chunk_id": part_id,
-    }]
+    assert result["sources"] == [
+        {
+            "citation": 1,
+            "title": "Example Guide",
+            "source_ref": "sample://one",
+            "chunk_id": part_id,
+        }
+    ]
     assert len(conn.cursor_instance.queries) == 2
     for sql, parameters in conn.cursor_instance.queries:
         assert "c.chunk_id = ? AND c.doc_id = ?" in sql
@@ -141,8 +144,7 @@ def test_query_looks_up_cubrid_rows_and_cites_only_found_documents():
 
 def test_empty_search_does_not_call_generation():
     conn, llm = FakeConnection(), FakeOllama()
-    result = answer_question("Where?", connect=lambda: conn, qdrant=FakeQdrant(),
-                             ollama=llm)
+    result = answer_question("Where?", connect=lambda: conn, qdrant=FakeQdrant(), ollama=llm)
     assert result["sources"] == []
     assert "No matching" in result["answer"]
     assert llm.prompts == [] and conn.closed

@@ -1,4 +1,5 @@
 """Local-only example API for asking questions over a fictional CUBRID corpus."""
+
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException

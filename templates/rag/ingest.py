@@ -1,4 +1,5 @@
 """Load a fictional public-service corpus into CUBRID and Qdrant."""
+
 from __future__ import annotations
 
 import json

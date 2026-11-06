@@ -3,6 +3,7 @@
 Only the *sample corpus* is supported. This is not an authorization layer or a
 production AI gateway; see README.md before using any non-public information.
 """
+
 from __future__ import annotations
 
 import json
@@ -93,9 +94,7 @@ class Qdrant:
             payload={"filter": {"must": [{"key": "doc_id", "match": {"value": doc_id}}]}},
         )
         if points:
-            request_json(
-                f"{endpoint}?wait=true", method="PUT", payload={"points": points}
-            )
+            request_json(f"{endpoint}?wait=true", method="PUT", payload={"points": points})
 
     def search(self, vector: list[float], limit: int) -> list[dict]:
         result = request_json(
@@ -217,8 +216,9 @@ def build_prompt(question: str, contexts: list[str]) -> str:
     )
 
 
-def answer_question(question: str, *, connect=None, qdrant=None, ollama=None,
-                    limit: int = 3) -> dict:
+def answer_question(
+    question: str, *, connect=None, qdrant=None, ollama=None, limit: int = 3
+) -> dict:
     if not isinstance(question, str) or not question.strip() or len(question) > 1000:
         raise ValueError("Question must have between 1 and 1000 characters")
     if not 1 <= limit <= 5:
