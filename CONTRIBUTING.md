@@ -1136,11 +1136,11 @@ must contain visible text: empty emphasized link captions such as
 while `[**tests only**](/issue)` does. The existing
 `docs-not-needed` label remains a maintainer-managed exception for this gate.
 
-If you need translation help, name the missing language and reason in the PR.
-This request does not bypass checks: Korean README synchronization remains
-required, while other community translation drift is advisory. Only explicit
-maintainer approval via the existing `translations-deferred` label skips that
-gate; maintainers record and own the follow-up.
+Missing README translations, including Korean, now generate advisory warnings
+only. Contributors may update them in the same PR or document a translation
+follow-up; the `translations-deferred` label is no longer needed for the
+README drift check. Other required documentation and golden-test gates are
+unchanged.
 
 The shared documentation-lint and live-smoke callers use reviewed commit SHAs.
 Maintainers update them through a PR after verifying the upstream commit,
