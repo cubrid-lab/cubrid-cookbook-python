@@ -393,7 +393,7 @@ documentation, presentations, and other maintainer-facing writing.
   Do not substitute `P1`/`P2` for repository priority labels.
 - When an internal identifier is necessary for accurate cross-reference,
   **describe the subject first**, then add the identifier in context:
-  `pycubrid introduction (0:20; storyboard shot P1)`. Use descriptive
+  `cookbook lesson introduction (0:20; section 1)`. Use descriptive
   names and timestamps, section titles, or paths wherever practical.
 - Use natural, actionable wording. Prefer `Listen to the full narration and
   verify the pronunciation of each project name` to `Maintainer full listen`.
@@ -421,3 +421,9 @@ this rule. Revise existing comments only where a learner would be confused.
 This is a shared writing convention, not a new CI check, reviewer approval,
 or merge gate. This repository's recipe, golden/live validation, security and
 release rules keep precedence over it.
+
+## Local design and evidence authority
+
+This repository owns **Python learning recipes, reproducible examples and tutorials for CUBRID**. Even when an issue, PR or release note mentions another CUBRID Lab project, its title, opening rationale, test evidence, ADR decision and implementation acceptance must be independently understandable using recipe entry points, pinned sample dependency ranges, actual SQL/example outputs, tested Compose environment and learner-facing instructions. Do not copy another repository's language/tool requirements, issue tracking, architecture approval or release schedule.
+
+pycubrid, sqlalchemy-cubrid and the MCP server may be actual recipe dependencies or instructional links. Their ADRs and release plans do not become cookbook acceptance criteria. Use external links as explicit dependency or research context; keep local tests, review decisions and issue closure local. Verify the relevant PR title/body, issue, contributor instructions and published docs for pasted foreign terminology. This is a manual writing check and leaves existing CI and maintainer approval unchanged.
