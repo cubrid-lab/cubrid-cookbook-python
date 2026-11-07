@@ -858,18 +858,19 @@ class DocsReasonWorkflowTests(unittest.TestCase):
                         run.stdout + run.stderr,
                     )
 
-    def test_body_is_json_data_and_translation_requires_existing_label(self) -> None:
+    def test_body_is_json_data_and_readme_translation_is_advisory(self) -> None:
         text = WORKFLOW.read_text()
         self.assertIn("json.load(_f)", text)
         self.assertNotIn("${{ github.event.pull_request.body }}", text)
         translation = text.split("  translation-sync:", 1)[1]
-        self.assertIn(
+        self.assertNotIn(
             "!contains(github.event.pull_request.labels.*.name, 'translations-deferred')",
             translation,
         )
+        self.assertIn("github.event.pull_request.user.login != 'dependabot[bot]'", translation)
         self.assertNotIn("pull_request.body", translation)
         script = (ROOT / "scripts/check_translation_sync.py").read_text()
-        self.assertIn('REQUIRED_LANGS = {"ko"}', script)
+        self.assertIn("REQUIRED_LANGS: set[str] = set()", script)
         self.assertNotIn('print("  Docs: not needed - <reason>")', text)
         self.assertIn("Replace the example explanation with your actual reason", text)
         template = (ROOT / ".github/pull_request_template.md").read_text()

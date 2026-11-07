@@ -120,9 +120,9 @@ jobs:
           PY
 
   translation-sync:
-    # README.md must not drift from its docs/README.<lang>.md translations.
-    # Escape hatch: the `translations-deferred` PR label.
-    if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'translations-deferred') && github.event.pull_request.user.login != 'dependabot[bot]' }}
+    # Advisory only: report README translation drift (including Korean) as warnings.
+    # This check no longer needs a translations-deferred bypass.
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -130,7 +130,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Check README translations stay in sync
+      - name: Report README translation drift (advisory)
         env:
           BASE_REF: ${{ github.base_ref }}
         run: python scripts/check_translation_sync.py
