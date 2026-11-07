@@ -1139,8 +1139,9 @@ while `[**tests only**](/issue)` does. The existing
 Missing README translations, including Korean, now generate advisory warnings
 only. Contributors may update them in the same PR or document a translation
 follow-up; the `translations-deferred` label is no longer needed for the
-README drift check. Other required documentation and golden-test gates are
-unchanged.
+README drift check. The advisory check concerns only the root README;
+required Korean docs-site structure, documentation coverage and golden-test
+gates remain unchanged.
 
 The shared documentation-lint and live-smoke callers use reviewed commit SHAs.
 Maintainers update them through a PR after verifying the upstream commit,
