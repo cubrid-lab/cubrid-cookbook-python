@@ -168,7 +168,6 @@ class MainTests(unittest.TestCase):
         self.assertNotIn("::error::", output)
         self.assertIn("translation sync OK", output)
 
-
     def test_readme_changed_with_korean_passes(self) -> None:
         code, output = self._main(["ko"], {"README.md", "docs/README.ko.md"})
         self.assertEqual(code, 0)
@@ -192,7 +191,6 @@ class MainTests(unittest.TestCase):
         self.assertIn("::warning", output)
         self.assertNotIn("docs/README.de.md (Deutsch)", output)
         self.assertNotIn("::error::", output)
-
 
     def test_unknown_language_is_labelled_by_its_code(self) -> None:
         code, output = self._main(["ko", "fr"], {"README.md", "docs/README.ko.md"})
