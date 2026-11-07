@@ -1,7 +1,7 @@
 """Unit tests for scripts/check_translation_sync.py.
 
-The check warns (without failing) when README.md changes without the Korean
-or other community translations, and honors a
+The check fails when README.md changes without the required Korean
+translation, warns about other community translations, and honors a
 ``BASE_REF`` that may or may not already carry an ``origin/`` prefix.
 """
 
@@ -159,14 +159,13 @@ class MainTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("README.md unchanged", output)
 
-    def test_readme_changed_without_korean_warns(self) -> None:
+    def test_readme_changed_without_korean_fails(self) -> None:
         code, output = self._main(["ko"], {"README.md"})
-        self.assertEqual(check_translation_sync.REQUIRED_LANGS, set())
-        self.assertEqual(code, 0)
-        self.assertIn("::warning", output)
+        self.assertEqual(check_translation_sync.REQUIRED_LANGS, {"ko"})
+        self.assertEqual(code, 1)
+        self.assertIn("::error::", output)
         self.assertIn("docs/README.ko.md (한국어)", output)
-        self.assertNotIn("::error::", output)
-        self.assertIn("translation sync OK", output)
+        self.assertIn("translations-deferred", output)
 
     def test_readme_changed_with_korean_passes(self) -> None:
         code, output = self._main(["ko"], {"README.md", "docs/README.ko.md"})
@@ -184,13 +183,13 @@ class MainTests(unittest.TestCase):
         self.assertNotIn("docs/README.de.md (Deutsch)", output)
         self.assertNotIn("::error::", output)
 
-    def test_missing_korean_warns_even_when_others_are_updated(self) -> None:
+    def test_missing_korean_fails_even_when_others_are_updated(self) -> None:
         code, output = self._main(["ko", "de"], {"README.md", "docs/README.de.md"})
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 1)
         self.assertIn("docs/README.ko.md (한국어)", output)
-        self.assertIn("::warning", output)
+        self.assertNotIn("::warning", output)
         self.assertNotIn("docs/README.de.md (Deutsch)", output)
-        self.assertNotIn("::error::", output)
+        self.assertIn("::error::", output)
 
     def test_unknown_language_is_labelled_by_its_code(self) -> None:
         code, output = self._main(["ko", "fr"], {"README.md", "docs/README.ko.md"})
