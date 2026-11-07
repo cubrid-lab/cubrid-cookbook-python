@@ -339,10 +339,10 @@ If no documentation change is needed, put a real, nonempty reason on a standalon
 The literal placeholder is not a reason. The existing `docs-not-needed` label is
 a maintainer-managed alternative for the docs gate only.
 
-Contributors may request translation help with a language and reason; the request
-does not authorize a bypass. Keep Korean synchronization required and community
-languages advisory. Only the existing maintainer-approved `translations-deferred`
-label skips translation enforcement; maintainers record and own follow-up.
+Missing README translations (including Korean) now generate warnings only.
+The `translations-deferred` label is unnecessary for this advisory check.
+Maintainers may track resynchronization as a follow-up. Keep the separate
+required documentation, example coverage and golden-test policies unchanged.
 
 Shared doc-lint/live-smoke callers are pinned to reviewed upstream commits.
 Before updating, verify the commit, workflow files and inputs, preserve caller
