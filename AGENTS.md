@@ -357,7 +357,6 @@ Do not mark work complete until code, tests, and documentation are consistent.
 ## Project Context
 
 > This repo is the **Python cookbook** for the CUBRID ecosystem.
-> Board: [CUBRID Ecosystem Roadmap](https://github.com/orgs/cubrid-lab/projects/2)
 
 ### Role
 
