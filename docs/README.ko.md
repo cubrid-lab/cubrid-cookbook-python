@@ -234,7 +234,7 @@ cubrid-cookbook-python/
 
 ## 로드맵
 
-계획된 추가 사항은 [`ROADMAP.md`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/ROADMAP.md)를 참고하세요. 생태계 전체 관점은 [CUBRID Labs Ecosystem Roadmap](https://github.com/cubrid-lab/.github/blob/main/ROADMAP.md)에서 볼 수 있습니다.
+계획된 추가 사항은 [`ROADMAP.md`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/ROADMAP.md)를 참고하세요.
 
 ## 기여
 
