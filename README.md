@@ -235,7 +235,6 @@ cubrid-cookbook-python/
 
 See [`ROADMAP.md`](ROADMAP.md) for planned additions.
 
-For the ecosystem-wide view, see the [CUBRID Labs Ecosystem Roadmap](https://github.com/cubrid-lab/.github/blob/main/ROADMAP.md).
 
 ## Contributing
 
