@@ -36,7 +36,7 @@ From the repository root:
 
 ```bash
 cd templates/rag
-docker compose up -d
+docker compose up -d --wait
 docker compose exec ollama ollama pull nomic-embed-text
 docker compose exec ollama ollama pull qwen2.5:0.5b
 python -m venv .venv
@@ -46,6 +46,8 @@ python ingest.py
 uvicorn app:app --host 127.0.0.1 --port 8000
 ```
 
+`--wait` returns once CUBRID answers its health check. The first start creates
+the `testdb` database and can take a few minutes; later starts are faster.
 On Windows, activate the virtual environment with the command for your shell.
 In a second terminal, send a question:
 
@@ -65,10 +67,13 @@ down -v` **deletes all example database, vectors and model volumes**.
 
 ## Validation
 
-Run offline, deterministic tests (no Docker, DB or models):
+Run offline, deterministic tests (no Docker, DB or models). pytest is a test
+tool, not a runtime dependency, so install it into the same virtual environment
+first. From `templates/rag`:
 
 ```bash
-python -m pytest templates/rag/tests/test_offline.py -q
+pip install pytest
+python -m pytest tests/test_offline.py -q
 ```
 
 For the full end-to-end example, execute the Run commands and inspect a real

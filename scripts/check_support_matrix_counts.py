@@ -11,7 +11,7 @@ below, and the script fails when a row's number differs from the repository:
 * Flask and FastAPI rows count recipe directories that have a ``tests/``
   directory, the same ``*/tests`` discovery the smoke-test workflow uses.
 * Script rows count numbered ``NN_*.py`` scripts in the template directory.
-* Single-application templates (Django, Celery, FastAPI quickstart) are one
+* Single-application templates (Django, Celery, FastAPI quickstart, local RAG) are one
   recipe each; their row fails if the application directory disappears.
 
 The **Total** row must equal the sum of the rows, and its "N golden-backed"
@@ -122,6 +122,7 @@ OTHER_ROWS: dict[str, Callable[[Path], int]] = {
     "Streamlit templates": lambda r: count_scripts(r, "templates/dashboard"),
     "Django template": lambda r: count_app(r, "templates/django/manage.py"),
     "Celery async-worker template": lambda r: count_app(r, "templates/async-worker/app.py"),
+    "Local RAG template": lambda r: count_app(r, "templates/rag/app.py"),
 }
 
 

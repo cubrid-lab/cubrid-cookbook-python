@@ -268,6 +268,12 @@ when a row no longer matches the repository. Verification is split:
   **11.2 and 11.4** weekly, on manual runs and in release verification). The suite asserts persisted job state/result and
   report/email rows, refuses preexisting worker tables, and removes its own
   tables afterward. Broker delivery and Celery's result backend are not tested.
+- The **local RAG template** (`templates/rag`) keeps source text in CUBRID,
+  vectors in Qdrant and runs embeddings and answers with a local Ollama model.
+  `templates/rag/tests/test_offline.py` runs in `make test` with fake services.
+  The full CUBRID 11.4 + Qdrant + Ollama stack is not started in CI; it was run
+  by hand once (ingest, a rerun that keeps the same rows and vectors, and
+  `POST /ask` returning `sample://` sources). It is not verified on CUBRID 11.2.
 - The **Django template** uses Django for HTTP requests and SQLAlchemy for
   CUBRID persistence; it has no native Django CUBRID backend or Django ORM
   model. `templates/django/tests` gates the existing `/health` and `/items`
@@ -305,7 +311,8 @@ when a row no longer matches the repository. Verification is split:
 | Streamlit templates | 5 | pytest (CI on `main` + daily 11.4, weekly 11.2 + 11.4; PR CI 11.4 when touched) |
 | Django template | 1 | Django HTTP + SQLAlchemy bridge: live pytest (PR CI 11.4 when touched; `main` + daily 11.4, weekly 11.2 + 11.4); no native Django ORM |
 | Celery async-worker template | 1 | database tasks: live pytest (PR CI 11.4 when touched; `main` + daily 11.4, weekly 11.2 + 11.4); broker/worker manual |
-| **Total** | **105** | 69 golden-backed via `make verify` on 11.2 + 11.4; Flask, FastAPI, Streamlit and Django bridge pytest suites in CI; async-worker database tasks and AI agent suite live-tested; Celery broker/worker and native Django ORM are not covered |
+| Local RAG template | 1 | offline pytest (`make test`, PR CI); full CUBRID 11.4 + Qdrant + Ollama stack run manually, not in CI |
+| **Total** | **106** | 69 golden-backed via `make verify` on 11.2 + 11.4; Flask, FastAPI, Streamlit and Django bridge pytest suites in CI; async-worker database tasks and AI agent suite live-tested; Celery broker/worker, native Django ORM and the RAG template's AI services are not covered |
 
 ## Known Limitations by Version
 

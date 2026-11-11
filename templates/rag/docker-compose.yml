@@ -12,7 +12,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 30s
+      # The first start creates testdb, which can take a few minutes.
+      start_period: 300s
     volumes:
       - cubrid_data:/var/lib/cubrid
       - cubrid_databases:/home/cubrid/CUBRID/databases
