@@ -20,8 +20,10 @@ make docker-up
 
 ## Install
 
+Run from the repository root:
+
 ```bash
-pip install -r requirements.txt
+pip install -r fundamentals/sqlalchemy/requirements.txt
 ```
 
 ## Recipes
@@ -44,13 +46,13 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-python3 01_connect_and_session.py
-python3 02_orm_crud.py
-python3 03_relationships.py
-python3 04_bulk_insert.py
-python3 05_cubrid_upsert.py
-python3 06_reflection.py
-python3 07_collection_types.py
+python3 fundamentals/sqlalchemy/01_connect_and_session.py
+python3 fundamentals/sqlalchemy/02_orm_crud.py
+python3 fundamentals/sqlalchemy/03_relationships.py
+python3 fundamentals/sqlalchemy/04_bulk_insert.py
+python3 fundamentals/sqlalchemy/05_cubrid_upsert.py
+python3 fundamentals/sqlalchemy/06_reflection.py
+python3 fundamentals/sqlalchemy/07_collection_types.py
 ```
 
 ## Notes
