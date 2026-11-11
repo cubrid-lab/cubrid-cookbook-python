@@ -24,8 +24,10 @@ make docker-up
 
 ## Setup
 
+Run from the repository root:
+
 ```bash
-pip install -r requirements.txt
+pip install -r fundamentals/pycubrid/requirements.txt
 ```
 
 These recipes use the published `pycubrid>=1.9,<2` release line: the
@@ -68,12 +70,12 @@ constrains installation to its selected published driver version.
 ## Run
 
 ```bash
-python 01_connect.py
-python 02_crud.py
-python 03_transactions.py
-python 04_prepared.py
-python 05_error_handling.py
-python 06_lob.py
+python fundamentals/pycubrid/01_connect.py
+python fundamentals/pycubrid/02_crud.py
+python fundamentals/pycubrid/03_transactions.py
+python fundamentals/pycubrid/04_prepared.py
+python fundamentals/pycubrid/05_error_handling.py
+python fundamentals/pycubrid/06_lob.py
 ```
 
 Each script is self-contained — it creates its own tables, runs examples, and cleans up.
