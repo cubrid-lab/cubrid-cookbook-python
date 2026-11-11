@@ -60,7 +60,7 @@ curl -sS -X POST localhost:8000/items -H 'Content-Type: application/json' -d '{"
 Uvicorn으로 실행하는 방법과 멈추고 정리하는 방법도 보여 줍니다.
 [SQLAlchemy 빠른 시작](ko/quickstart-sqlalchemy.md)은 Core와 ORM 스크립트 하나로 같은 과정을 안내합니다.
 
-<a href="demo-fastapi.gif"><img src="demo-fastapi.png" alt="FastAPI 퀵스타트: Swagger UI에서 POST /items로 만든 항목을 GET /items가 CUBRID에서 반환, 녹화의 마지막 장면" width="100%"/></a>
+<a href="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-fastapi.gif"><img src="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-fastapi.png" alt="FastAPI 퀵스타트: Swagger UI에서 POST /items로 만든 항목을 GET /items가 CUBRID에서 반환, 녹화의 마지막 장면" width="100%"/></a>
 
 <sub>▶ [녹화 재생](demo-fastapi.gif) (애니메이션 GIF, 12초)</sub>
 
@@ -89,7 +89,7 @@ pycubrid 레시피 네 개로 보여 주며, 그대로 바꿔 끼우면 된다�
 | [`ai-agent/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/ai-agent) | AI 에이전트 상태 저장소 + MCP 도구 체인 + RAG 메타데이터 (실제 DB로 검증하는 스크립트 5개) |
 | [`dashboard/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/dashboard) | Streamlit 인터랙티브 대시보드 (`docker compose up` 원커맨드 데모) |
 
-<a href="demo-dashboard.gif"><img src="demo-dashboard.png" alt="docker compose up 후 CUBRID 데이터를 보여 주는 Streamlit 대시보드 템플릿, 녹화의 마지막 장면" width="100%"/></a>
+<a href="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-dashboard.gif"><img src="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-dashboard.png" alt="docker compose up 후 CUBRID 데이터를 보여 주는 Streamlit 대시보드 템플릿, 녹화의 마지막 장면" width="100%"/></a>
 
 <sub>▶ [녹화 재생](demo-dashboard.gif) (애니메이션 GIF, 12초)</sub>
 
