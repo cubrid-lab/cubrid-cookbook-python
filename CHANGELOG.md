@@ -145,6 +145,8 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 
 ### Documentation
 
+- **Fundamentals setup and run commands work from the repository root (#522)** — the pycubrid and SQLAlchemy fundamentals READMEs told readers to start from the repository root and then ran `pip install -r requirements.txt` and bare script names, which exist only inside each fundamentals folder. The Setup, Install and Run blocks now use repository-root paths (`fundamentals/pycubrid/...`, `fundamentals/sqlalchemy/...`). Documentation only; the scripts are unchanged.
+
 - **README and docs site show the transparent brand icon (#533)** — the icon URL pinned in the README, its translations and `mkdocs.yml` (logo and favicon) now points at brand revision `e55990a`, where the Cookbook icon's open book is two transparent pages instead of white pages with text lines. Documentation only; behavior is unchanged.
 
 - **README and docs site show the brand icon with white marks (#507)** — the icon URL pinned in the README, its translations and `mkdocs.yml` (logo and favicon) now points at brand revision `3a385be`, where the Python Yellow icons draw white role marks on a bare cube like every other language. Documentation only; behavior is unchanged.
