@@ -120,8 +120,8 @@ jobs:
           PY
 
   translation-sync:
-    # README.md must not drift from its docs/README.<lang>.md translations.
-    # Escape hatch: the `translations-deferred` PR label.
+    # Korean README translation is required; community translations are advisory.
+    # A maintainer may authorize a recorded translations-deferred follow-up.
     if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'translations-deferred') && github.event.pull_request.user.login != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -6,7 +6,7 @@
 
 # CUBRID Python Cookbook (한국어)
 
-> 🌐 Translated from [README.md](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/README.md) — 한국어는 심사 기간 동안 동기화가 **필수**입니다: README.md가 바뀌면 같은 PR에서 이 파일도 업데이트하세요 (`translation-sync` CI 검사, 보류 시 `translations-deferred` 라벨). English is canonical.
+> 🌐 Translated from [README.md](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/README.md) — 한국어 README 번역 동기화는 **필수**입니다: README.md가 바뀌면 같은 PR에서 이 파일도 업데이트하세요 (`translation-sync` CI 검사, 예외는 유지보수자가 승인한 `translations-deferred` 라벨과 후속 작업 기록이 필요). English is canonical.
 
 
 **CUBRID를 위한 프로덕션급 Python 예제 모음** — 첫 연결부터 프로덕션 API까지, 마이그레이션 가이드·성능 패턴·흔한 함정까지 함께 제공합니다.
@@ -60,7 +60,7 @@ curl -sS -X POST localhost:8000/items -H 'Content-Type: application/json' -d '{"
 Uvicorn으로 실행하는 방법과 멈추고 정리하는 방법도 보여 줍니다.
 [SQLAlchemy 빠른 시작](ko/quickstart-sqlalchemy.md)은 Core와 ORM 스크립트 하나로 같은 과정을 안내합니다.
 
-<a href="demo-fastapi.gif"><img src="demo-fastapi.png" alt="FastAPI 퀵스타트: Swagger UI에서 POST /items로 만든 항목을 GET /items가 CUBRID에서 반환, 녹화의 마지막 장면" width="100%"/></a>
+<a href="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-fastapi.gif"><img src="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-fastapi.png" alt="FastAPI 퀵스타트: Swagger UI에서 POST /items로 만든 항목을 GET /items가 CUBRID에서 반환, 녹화의 마지막 장면" width="100%"/></a>
 
 <sub>▶ [녹화 재생](demo-fastapi.gif) (애니메이션 GIF, 12초)</sub>
 
@@ -90,7 +90,7 @@ pycubrid 레시피 네 개로 보여 주며, 그대로 바꿔 끼우면 된다�
 | [`rag/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/rag) | CUBRID 원문 + Qdrant 벡터 검색 + Ollama 모델을 활용하는 로컬 RAG 예제 (오프라인 단위 테스트 및 수동 통합 실행) |
 | [`dashboard/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/dashboard) | Streamlit 인터랙티브 대시보드 (`docker compose up` 원커맨드 데모) |
 
-<a href="demo-dashboard.gif"><img src="demo-dashboard.png" alt="docker compose up 후 CUBRID 데이터를 보여 주는 Streamlit 대시보드 템플릿, 녹화의 마지막 장면" width="100%"/></a>
+<a href="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-dashboard.gif"><img src="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-dashboard.png" alt="docker compose up 후 CUBRID 데이터를 보여 주는 Streamlit 대시보드 템플릿, 녹화의 마지막 장면" width="100%"/></a>
 
 <sub>▶ [녹화 재생](demo-dashboard.gif) (애니메이션 GIF, 12초)</sub>
 
@@ -235,7 +235,7 @@ cubrid-cookbook-python/
 
 ## 로드맵
 
-계획된 추가 사항은 [`ROADMAP.md`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/ROADMAP.md)를 참고하세요. 생태계 전체 관점은 [CUBRID Labs Ecosystem Roadmap](https://github.com/cubrid-lab/.github/blob/main/ROADMAP.md)에서 볼 수 있습니다.
+계획된 추가 사항은 [`ROADMAP.md`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/ROADMAP.md)를 참고하세요.
 
 ## 기여
 

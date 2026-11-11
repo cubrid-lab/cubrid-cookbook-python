@@ -1,8 +1,8 @@
 # AGENTS.md
 
-## Organization-wide issue and PR writing standard
+## Issue and PR writing for cookbook contributors
 
-Follow [the shared cubrid-lab policy](https://github.com/cubrid-lab/.github/blob/main/docs/ISSUE_PR_COMMIT_STANDARD.md). Use type-only Issue titles (`feat: ...`, `bug: ...`, `docs: ...`) **without a required module scope**. Describe the problem or desired result in readable English and document observable acceptance criteria, distinguishing reproduced facts from assumptions. Triage decides validity, duplicates, priority and size. PRs and commits keep their existing Conventional Commits/CI rules; do not turn issue-body prose into agent narration or personal comments.
+Follow this repository's [CONTRIBUTING.md](CONTRIBUTING.md) and local issue forms. Use type-only Issue titles (`feat: ...`, `bug: ...`, `docs: ...`) **without a required module scope**. Describe the problem or desired result in readable English and document observable acceptance criteria, distinguishing reproduced facts from assumptions. Triage decides validity, duplicates, priority and size. PRs and commits keep their existing Conventional Commits/CI rules; do not turn issue-body prose into agent narration or personal comments.
 
 
 ## Purpose
@@ -281,7 +281,7 @@ alongside a type label (`bug`/`enhancement`/`documentation`/`chore`/`ci`/…) an
 `area:` label when applicable. These must be GitHub labels, not just text in the
 issue title or body.
 
-Issue titles use type-only prefixes such as `feat:` or `bug:` (see [organization standard](https://github.com/cubrid-lab/.github/blob/main/docs/ISSUE_PR_COMMIT_STANDARD.md)).
+Issue titles use type-only prefixes such as `feat:` or `bug:` as described in this repository's [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Use the following exact names, with **one space after the colon**:
 
@@ -339,10 +339,12 @@ If no documentation change is needed, put a real, nonempty reason on a standalon
 The literal placeholder is not a reason. The existing `docs-not-needed` label is
 a maintainer-managed alternative for the docs gate only.
 
-Contributors may request translation help with a language and reason; the request
-does not authorize a bypass. Keep Korean synchronization required and community
-languages advisory. Only the existing maintainer-approved `translations-deferred`
-label skips translation enforcement; maintainers record and own follow-up.
+Korean `docs/README.ko.md` synchronization is required when English
+`README.md` changes; missing Korean translation fails `translation-sync`.
+Other community translations are advisory. Contributors needing a deferral
+must request explicit maintainer approval via `translations-deferred`, with a
+recorded follow-up. Separate documentation, example coverage and golden-test
+policies remain required.
 
 Shared doc-lint/live-smoke callers are pinned to reviewed upstream commits.
 Before updating, verify the commit, workflow files and inputs, preserve caller
@@ -355,7 +357,6 @@ Do not mark work complete until code, tests, and documentation are consistent.
 ## Project Context
 
 > This repo is the **Python cookbook** for the CUBRID ecosystem.
-> Board: [CUBRID Ecosystem Roadmap](https://github.com/orgs/cubrid-lab/projects/2)
 
 ### Role
 
@@ -391,7 +392,7 @@ documentation, presentations, and other maintainer-facing writing.
   Do not substitute `P1`/`P2` for repository priority labels.
 - When an internal identifier is necessary for accurate cross-reference,
   **describe the subject first**, then add the identifier in context:
-  `pycubrid introduction (0:20; storyboard shot P1)`. Use descriptive
+  `cookbook lesson introduction (0:20; section 1)`. Use descriptive
   names and timestamps, section titles, or paths wherever practical.
 - Use natural, actionable wording. Prefer `Listen to the full narration and
   verify the pronunciation of each project name` to `Maintainer full listen`.
@@ -407,15 +408,19 @@ documentation, presentations, and other maintainer-facing writing.
   wording rather than adding redundant follow-up comments.
 
 Learner-facing recipe comments, sample code, test names, run instructions,
-PR descriptions and review replies or summaries follow the organization's
-canonical rule,
-[Explanations in code, tests, reviews and agent-written text](https://github.com/cubrid-lab/.github/blob/main/docs/ISSUE_PR_COMMIT_STANDARD.md#6-explanations-in-code-tests-reviews-and-agent-written-text).
+PR descriptions and review replies or summaries follow the local explanation rule below.
 Explain what a pattern does, why it is safe or useful and the CUBRID or driver
 constraint behind it, not which issue introduced it; an issue number may follow
 for traceability. Keep comments next to the code they describe, and do not
 change test names, golden files, expected output or exact commands to satisfy
 this rule. Revise existing comments only where a learner would be confused.
 
-This is a shared writing convention, not a new CI check, reviewer approval,
+These are local writing expectations, not an extra CI check, reviewer approval,
 or merge gate. This repository's recipe, golden/live validation, security and
-release rules keep precedence over it.
+release requirements remain authoritative.
+
+## Local design and evidence authority
+
+This repository owns **Python learning recipes, reproducible examples and tutorials for CUBRID**. Even when an issue, PR or release note mentions another CUBRID Lab project, its title, opening rationale, test evidence, ADR decision and implementation acceptance must be independently understandable using recipe entry points, pinned sample dependency ranges, actual SQL/example outputs, tested Compose environment and learner-facing instructions. Do not copy another repository's language/tool requirements, issue tracking, architecture approval or release schedule.
+
+pycubrid, sqlalchemy-cubrid and the MCP server may be actual recipe dependencies or instructional links. Their ADRs and release plans do not become cookbook acceptance criteria. Use external links as explicit dependency or research context; keep local tests, review decisions and issue closure local. Verify the relevant PR title/body, issue, contributor instructions and published docs for pasted foreign terminology. This is a manual writing check and leaves existing CI and maintainer approval unchanged.

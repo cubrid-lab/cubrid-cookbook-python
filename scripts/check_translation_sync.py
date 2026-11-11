@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Translation-drift policy for cubrid-lab (hybrid, per Oracle review 2026-09).
+"""Check README translation drift using the repository's documentation policy.
 
-- 한국어 (docs/README.ko.md) is REQUIRED for contest readiness: a PR that
-  changes README.md without it FAILS (escape hatch: `translations-deferred`).
-- Other languages are community translations: drift emits a warning
-  annotation only; the maintainers' AI agent opens follow-up resync PRs.
-- English is canonical. The Korean hard gate is time-boxed until the
-  2026 contest finals and should be relaxed to advisory afterwards.
+English README.md is canonical. Korean docs/README.ko.md must be updated when
+the English README changes, unless a maintainer approves a documented
+`translations-deferred` follow-up. Other language translations are advisory.
+The independent Korean docs/ko structural checks remain required.
 """
 
 from __future__ import annotations
@@ -63,7 +61,7 @@ def main() -> int:
         print(
             "::error::README.md changed but the required translation did not: "
             + ", ".join(failures)
-            + ". Update it in this PR, or add the `translations-deferred` label if deferring is intentional."
+            + ". Update it in this PR, or request maintainer approval for the `translations-deferred` label."
         )
         return 1
     print("translation sync OK")
