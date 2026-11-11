@@ -1,0 +1,36 @@
+# Standalone, loopback-only demonstration stack. Not a production deployment.
+services:
+  cubrid:
+    image: cubrid/cubrid:11.4
+    ports:
+      - "127.0.0.1:33000:33000"
+    environment:
+      CUBRID_DB: testdb
+      CUBRID_DB_HOST: localhost
+    healthcheck:
+      test: ["CMD", "csql", "-u", "dba", "testdb", "-c", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      # The first start creates testdb, which can take a few minutes.
+      start_period: 300s
+    volumes:
+      - cubrid_data:/var/lib/cubrid
+      - cubrid_databases:/home/cubrid/CUBRID/databases
+  qdrant:
+    image: qdrant/qdrant:v1.15.5
+    ports:
+      - "127.0.0.1:6333:6333"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+  ollama:
+    image: ollama/ollama:0.12.3
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+volumes:
+  cubrid_data:
+  cubrid_databases:
+  qdrant_storage:
+  ollama_models:

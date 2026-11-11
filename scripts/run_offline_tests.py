@@ -55,6 +55,7 @@ SUITES: tuple[tuple[str, ...], ...] = (
         "--ignore=quickstart/5min-fastapi/tests/test_live.py",
     ),
     ("python", "-m", "pytest", "templates/ai-agent/tests/test_offline.py", "-q"),
+    ("python", "-m", "pytest", "templates/rag/tests/test_offline.py", "-q"),
     ("python", "-m", "pytest", "tests/test_agent_review_gate.py", "-q"),
     ("python", "-m", "pytest", "tests/test_agent_eval.py", "-q"),
     _unittest("test_release*.py"),

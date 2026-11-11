@@ -1,0 +1,17 @@
+[
+  {
+    "title": "Example City Public Records Guide",
+    "source_ref": "sample://fictional-city/public-records",
+    "content": "This is fictional sample information for a demonstration, not a real administrative procedure. In Example City, a resident can request an imaginary public document through the fictional city portal. The sample office reviews requests and sends a response within five fictional working days. A request needs the document category and a contact method. The portal never collects passwords or government identification numbers in this demo."
+  },
+  {
+    "title": "Example City Parking Guide",
+    "source_ref": "sample://fictional-city/parking",
+    "content": "This is fictional sample information only. Example City's imaginary visitor parking area is open from 09:00 to 18:00. A sample visitor can register a vehicle at the fictional reception desk. This is not parking guidance for an actual government building."
+  },
+  {
+    "title": "Example City Waste Collection Guide",
+    "source_ref": "sample://fictional-city/recycling",
+    "content": "This is fictional sample information only, not real waste-disposal policy. In Example City, sample paper and glass recycling is collected on an imaginary Thursday schedule. The fictional service desk answers questions about special collections."
+  }
+]

@@ -87,6 +87,7 @@ pycubrid 레시피 네 개로 보여 주며, 그대로 바꿔 끼우면 된다�
 | [`async-worker/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/async-worker) | Celery 백그라운드 작업 처리 |
 | [`batch-etl/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/batch-etl) | Pandas 데이터 파이프라인 |
 | [`ai-agent/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/ai-agent) | AI 에이전트 상태 저장소 + MCP 도구 체인 + RAG 메타데이터 (실제 DB로 검증하는 스크립트 5개) |
+| [`rag/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/rag) | CUBRID 원문 + Qdrant 벡터 검색 + Ollama 모델을 활용하는 로컬 RAG 예제 (오프라인 단위 테스트 및 수동 통합 실행) |
 | [`dashboard/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/dashboard) | Streamlit 인터랙티브 대시보드 (`docker compose up` 원커맨드 데모) |
 
 <a href="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-dashboard.gif"><img src="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-dashboard.png" alt="docker compose up 후 CUBRID 데이터를 보여 주는 Streamlit 대시보드 템플릿, 녹화의 마지막 장면" width="100%"/></a>

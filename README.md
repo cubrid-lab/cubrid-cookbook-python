@@ -87,6 +87,7 @@ Copy-and-customize starting points for real applications:
 | [`async-worker/`](templates/async-worker/) | Background task processing with Celery |
 | [`batch-etl/`](templates/batch-etl/) | Data pipeline with Pandas |
 | [`ai-agent/`](templates/ai-agent/) | AI agent state store + MCP toolchain + RAG metadata (5 live-tested scripts) |
+| [`rag/`](templates/rag/) | Local RAG: CUBRID source text + Qdrant vectors + Ollama embeddings/LLM (offline unit tests; manual full-stack run) |
 | [`dashboard/`](templates/dashboard/) | Interactive dashboard with Streamlit |
 
 <a href="docs/demo-dashboard.gif"><img src="docs/demo-dashboard.png" alt="Streamlit dashboard template showing CUBRID rows after docker compose up, last frame of the recording" width="100%"/></a>
