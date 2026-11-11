@@ -867,6 +867,7 @@ class DocsReasonWorkflowTests(unittest.TestCase):
             "!contains(github.event.pull_request.labels.*.name, 'translations-deferred')",
             translation,
         )
+        self.assertIn("github.event.pull_request.user.login != 'dependabot[bot]'", translation)
         self.assertNotIn("pull_request.body", translation)
         script = (ROOT / "scripts/check_translation_sync.py").read_text()
         self.assertIn('REQUIRED_LANGS = {"ko"}', script)

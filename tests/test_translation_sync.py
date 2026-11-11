@@ -1,7 +1,7 @@
 """Unit tests for scripts/check_translation_sync.py.
 
-The gate fails a PR that changes README.md without the required Korean
-translation, only warns for the community translations, and honors a
+The check fails when README.md changes without the required Korean
+translation, warns about other community translations, and honors a
 ``BASE_REF`` that may or may not already carry an ``origin/`` prefix.
 """
 
@@ -121,7 +121,7 @@ class ChangedFilesRealGitTests(unittest.TestCase):
         )
         self.assertEqual(files, {"COPY.md"})
 
-    def test_rename_of_source_triggers_the_korean_requirement(self) -> None:
+    def test_rename_of_source_triggers_translation_drift_check(self) -> None:
         files = self._changed(lambda repo, body: (repo / "README.md").rename(repo / "GUIDE.md"))
         self.assertIn(check_translation_sync.SOURCE.as_posix(), files)
 
@@ -161,6 +161,7 @@ class MainTests(unittest.TestCase):
 
     def test_readme_changed_without_korean_fails(self) -> None:
         code, output = self._main(["ko"], {"README.md"})
+        self.assertEqual(check_translation_sync.REQUIRED_LANGS, {"ko"})
         self.assertEqual(code, 1)
         self.assertIn("::error::", output)
         self.assertIn("docs/README.ko.md (한국어)", output)
@@ -187,6 +188,8 @@ class MainTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("docs/README.ko.md (한국어)", output)
         self.assertNotIn("::warning", output)
+        self.assertNotIn("docs/README.de.md (Deutsch)", output)
+        self.assertIn("::error::", output)
 
     def test_unknown_language_is_labelled_by_its_code(self) -> None:
         code, output = self._main(["ko", "fr"], {"README.md", "docs/README.ko.md"})

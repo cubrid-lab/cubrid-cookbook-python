@@ -6,7 +6,7 @@
 
 # CUBRID Python Cookbook (한국어)
 
-> 🌐 Translated from [README.md](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/README.md) — 한국어는 심사 기간 동안 동기화가 **필수**입니다: README.md가 바뀌면 같은 PR에서 이 파일도 업데이트하세요 (`translation-sync` CI 검사, 보류 시 `translations-deferred` 라벨). English is canonical.
+> 🌐 Translated from [README.md](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/README.md) — 한국어 README 번역 동기화는 **필수**입니다: README.md가 바뀌면 같은 PR에서 이 파일도 업데이트하세요 (`translation-sync` CI 검사, 예외는 유지보수자가 승인한 `translations-deferred` 라벨과 후속 작업 기록이 필요). English is canonical.
 
 
 **CUBRID를 위한 프로덕션급 Python 예제 모음** — 첫 연결부터 프로덕션 API까지, 마이그레이션 가이드·성능 패턴·흔한 함정까지 함께 제공합니다.
@@ -234,7 +234,7 @@ cubrid-cookbook-python/
 
 ## 로드맵
 
-계획된 추가 사항은 [`ROADMAP.md`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/ROADMAP.md)를 참고하세요. 생태계 전체 관점은 [CUBRID Labs Ecosystem Roadmap](https://github.com/cubrid-lab/.github/blob/main/ROADMAP.md)에서 볼 수 있습니다.
+계획된 추가 사항은 [`ROADMAP.md`](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/ROADMAP.md)를 참고하세요.
 
 ## 기여
 

@@ -1,6 +1,6 @@
 # Contributing to cubrid-cookbook-python
 
-**Issue titles:** use `feat:`, `bug:`, `docs:`, etc. without a required scope; [organization guidance](https://github.com/cubrid-lab/.github/blob/main/docs/ISSUE_PR_COMMIT_STANDARD.md). **PR/commit titles:** retain Conventional Commits and local CI rules. Triage owns validity, relative priority and size; PR checks own syntax and tested changes.
+**Issue titles:** use `feat:`, `bug:`, `docs:`, etc. without a required scope, following the local issue forms and [AGENTS.md](AGENTS.md). **PR/commit titles:** retain Conventional Commits and local CI rules. Triage owns validity, relative priority and size; PR checks own syntax and tested changes.
 
 Thank you for your interest in contributing! This document provides guidelines
 and instructions for contributing to the project.
@@ -1136,11 +1136,12 @@ must contain visible text: empty emphasized link captions such as
 while `[**tests only**](/issue)` does. The existing
 `docs-not-needed` label remains a maintainer-managed exception for this gate.
 
-If you need translation help, name the missing language and reason in the PR.
-This request does not bypass checks: Korean README synchronization remains
-required, while other community translation drift is advisory. Only explicit
-maintainer approval via the existing `translations-deferred` label skips that
-gate; maintainers record and own the follow-up.
+When English `README.md` changes, Korean `docs/README.ko.md` must be updated
+in the same PR. A missing Korean translation fails the `translation-sync` check;
+other community translations produce advisory warnings. Contributors needing
+a deferral must request maintainer approval through `translations-deferred`
+with a recorded follow-up. The README check is independent of the required
+Korean docs-site structure, documentation coverage and golden-test gates.
 
 The shared documentation-lint and live-smoke callers use reviewed commit SHAs.
 Maintainers update them through a PR after verifying the upstream commit,
@@ -1268,7 +1269,7 @@ Existing tests, docs requirements and PR review/merge policies remain unchanged.
 
 ## Pull request and commit titles
 
-This section covers pull request titles and commit subjects. Issue titles use type-only prefixes, as defined in the [organization standard](https://github.com/cubrid-lab/.github/blob/main/docs/ISSUE_PR_COMMIT_STANDARD.md). Pull requests are squash-merged and the pull request
+This section covers pull request titles and commit subjects. Issue titles use type-only prefixes, as described in the local issue forms and [AGENTS.md](AGENTS.md). Pull requests are squash-merged and the pull request
 title becomes the commit title on `main`, so the pull request title is the one
 that must be right. The `PR title` check enforces it.
 
