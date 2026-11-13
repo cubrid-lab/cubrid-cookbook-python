@@ -1368,8 +1368,8 @@ implementation, review and completion are **different decisions**:
    acceptance criteria. A maintainer removes the intake label only after
    confirming the saved GitHub metadata. Do not infer priority, size, or triage
    completion automatically from the title or an AI suggestion.
-2. **Ready:** Triage completion alone does not authorize development. Mark work
-   Ready only when the intended outcome and non-goals are bounded, blockers
+2. **Ready:** Triage completion alone does not authorize development. Record
+   the Ready decision in the issue only when the intended outcome and non-goals are bounded, blockers
    have been resolved, and any repository-specific product, architecture,
    safety or compatibility decisions have been accepted. Unresolved research
    remains investigation; blocked work records its dependency and next action.
@@ -1390,11 +1390,19 @@ implementation, review and completion are **different decisions**:
    satisfies its acceptance criteria. A merged PR is not proof that any
    deferred integration, fault, security or release verification has passed.
 
-**Tracking:** Where a GitHub Project is in use, track `Todo`, `Ready`,
-`In Progress`, `In Review` and `Done` in its Status field; record
-`Blocked` and the unblock condition when applicable. Without a Project,
-record the next action in the issue, maintain the Assignee and linked PR, and
-avoid creating duplicate status-label taxonomies. Priority means impact,
-size means estimated effort, and neither is a work-in-progress indicator.
-This guidance does not add an automatic merge gate or supersede this
-repository's existing design, testing, security, or release requirements.
+**Tracking without boards:** GitHub Issues and pull requests are the only
+workflow tracker. The sole lifecycle label is `status: needs triage` for
+unreviewed intake. Once triage is completed, remove that label after checking
+the actual saved issue metadata; do not create `status: ready`, `status: in
+progress`, or other duplicate workflow labels. Record the **Ready** decision,
+remaining dependencies, and next action in the issue. For **In Progress**,
+identify the actual implementer using Assignees and add a concise start/handoff
+comment; link the working PR when it exists. **In Review** is visible from the
+linked open, non-draft PR and its actual review/check status. A **Blocked**
+issue records the blocker, responsible party, and unblock condition in a
+comment. **Done** is the issue's Closed state with the recorded validated
+outcome or explained disposition, not merely the existence of a merged PR.
+Do not configure or depend on GitHub Projects/boards. Priority measures impact,
+and size estimates effort; neither represents work-in-progress.
+This guidance introduces no new automated merge gate and does not supersede
+this repository's design, testing, security, or release requirements.
