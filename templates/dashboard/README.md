@@ -26,6 +26,11 @@ docker compose up -d
 # → CUBRID 11.4 on localhost:33000 + dashboard at http://localhost:8501
 ```
 
+This demo publishes CUBRID on `127.0.0.1:33000`, the same port as the
+repository root lab, so the two cannot run at once. If the root lab is
+running, stop it first from the repository root with `make docker-down`
+(the data is kept), and restart it later with `make docker-up`.
+
 The compose file starts CUBRID 11.4 and a Streamlit service that installs the
 pinned requirements on first start (a few minutes; later runs reuse the pip
 cache). Recipes read `DATABASE_URL` from the environment (default
