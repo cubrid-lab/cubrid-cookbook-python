@@ -46,6 +46,11 @@ cd templates/dashboard
 docker compose up -d   # CUBRID 11.4 + Streamlit at http://localhost:8501
 ```
 
+The dashboard publishes its own CUBRID on `127.0.0.1:33000`, the same port as
+the root lab, so the two cannot run at once. If the root lab is running, stop
+it first from the repository root with `make docker-down` (the data is kept),
+and restart it later with `make docker-up`.
+
 ## Ecosystem
 
 - [pycubrid](https://github.com/cubrid-lab/pycubrid) — pure-Python DB-API 2.0 driver (sync + asyncio)

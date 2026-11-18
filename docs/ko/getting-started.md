@@ -98,6 +98,8 @@ cd templates/dashboard
 docker compose up -d           # CUBRID 11.4 + Streamlit at http://localhost:8501
 ```
 
+대시보드도 자체 CUBRID를 `127.0.0.1:33000`에 게시하므로 0단계의 랩과 동시에 실행할 수 없습니다. 0단계에서 랩을 시작했다면 먼저 저장소 루트에서 `make docker-down`으로 중지하고(데이터는 유지됩니다), 나중에 `make docker-up`으로 다시 시작하세요.
+
 ## 3. 데이터베이스 위의 자연어 (cubrid-mcp-server)
 
 ```bash

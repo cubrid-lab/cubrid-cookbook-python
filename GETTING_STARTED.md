@@ -100,6 +100,11 @@ cd templates/dashboard
 docker compose up -d           # CUBRID 11.4 + Streamlit at http://localhost:8501
 ```
 
+The dashboard publishes its own CUBRID on `127.0.0.1:33000`, the same port as
+the step 0 lab, so the two cannot run at once. If you started the lab in step
+0, stop it first from the repository root with `make docker-down` (the data
+is kept), and restart it later with `make docker-up`.
+
 ## 3. Natural language over the database (cubrid-mcp-server)
 
 ```bash

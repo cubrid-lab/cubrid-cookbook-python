@@ -1355,3 +1355,54 @@ not need label permissions.
 
 Open a [GitHub Discussion](https://github.com/cubrid-lab/cubrid-cookbook-python/discussions)
 or file an [issue](https://github.com/cubrid-lab/cubrid-cookbook-python/issues).
+
+
+## Issue handoff and development progress
+
+Use the issue and PR's actual state as evidence. Classification, authorization,
+implementation, review and completion are **different decisions**:
+
+1. **Intake / triage:** A newly filed issue starts with `status: needs triage`.
+   Check evidence or reproduction, duplicate open/closed issues and overlapping
+   PRs, repository scope, type, priority, size, dependencies, and verifiable
+   acceptance criteria. A maintainer removes the intake label only after
+   confirming the saved GitHub metadata. Do not infer priority, size, or triage
+   completion automatically from the title or an AI suggestion.
+2. **Ready:** Triage completion alone does not authorize development. Record
+   the Ready decision in the issue only when the intended outcome and non-goals are bounded, blockers
+   have been resolved, and any repository-specific product, architecture,
+   safety or compatibility decisions have been accepted. Unresolved research
+   remains investigation; blocked work records its dependency and next action.
+3. **In Progress:** Before maintainer-directed or autonomous implementation,
+   identify the actual implementer in the GitHub Assignee field, check whether
+   another open PR already owns the change, and link the implementation PR to
+   its issue. Human-led outside contributors may propose a change on an
+   unclaimed issue without prior assignment or an AI-tool-specific approval;
+   coordinate with existing assignees and follow the local contribution rules.
+4. **In Review:** A PR is in review only when its scoped change and verification
+   evidence are available. Check the required CI on the final PR head, test
+   coverage appropriate to the risk, unresolved review findings and any
+   repository-specific independent review or live-system validation. A bot
+   review or passing CI cannot replace an outstanding product/safety decision.
+5. **Done:** Record the actual disposition: a merged and validated change,
+   a completed investigation with evidence, or an explained duplicate/not-
+   planned closure. Use an issue-closing PR keyword only if merging actually
+   satisfies its acceptance criteria. A merged PR is not proof that any
+   deferred integration, fault, security or release verification has passed.
+
+**Tracking without boards:** GitHub Issues and pull requests are the only
+workflow tracker. The sole lifecycle label is `status: needs triage` for
+unreviewed intake. Once triage is completed, remove that label after checking
+the actual saved issue metadata; do not create `status: ready`, `status: in
+progress`, or other duplicate workflow labels. Record the **Ready** decision,
+remaining dependencies, and next action in the issue. For **In Progress**,
+identify the actual implementer using Assignees and add a concise start/handoff
+comment; link the working PR when it exists. **In Review** is visible from the
+linked open, non-draft PR and its actual review/check status. A **Blocked**
+issue records the blocker, responsible party, and unblock condition in a
+comment. **Done** is the issue's Closed state with the recorded validated
+outcome or explained disposition, not merely the existence of a merged PR.
+Do not configure or depend on GitHub Projects/boards. Priority measures impact,
+and size estimates effort; neither represents work-in-progress.
+This guidance introduces no new automated merge gate and does not supersede
+this repository's design, testing, security, or release requirements.
