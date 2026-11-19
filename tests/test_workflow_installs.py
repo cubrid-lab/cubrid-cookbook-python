@@ -20,17 +20,45 @@ from pathlib import Path
 from test_workflow_timeouts import parse_jobs
 
 ROOT = Path(__file__).resolve().parents[1]
-CI = ROOT / ".github/workflows/ci.yml"
+WORKFLOW_DIR = ROOT / ".github/workflows"
+CI = WORKFLOW_DIR / "ci.yml"
 
-UV_ACTION = "astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2"
+UV_ACTION_PREFIX = "astral-sh/setup-uv@"
+UV_ACTION_REF = re.compile(rf"{re.escape(UV_ACTION_PREFIX)}([^\s#'\"]*)")
+FULL_SHA = re.compile(r"[0-9a-f]{40}")
+# Dependabot rewrites the SHA and the version comment together; the test
+# requires a pin with a version comment, not one version (#552).
+UV_PIN = re.compile(r"uses: astral-sh/setup-uv@[0-9a-f]{40} # v\d+(?:\.\d+)*\b")
 UV_VERSION = '"0.12.17"'
 UV_JOBS = {"lint-python", "quickstart-tests", "docs-site", "docs-check", "pytest-suites"}
 PIP_INSTALL = re.compile(r"(?<!uv )\bpip3?\s+install\b")
 
 
+def uv_ref_problem(refs: set[str]) -> str | None:
+    """Say what is wrong with the setup-uv refs, without naming the expected SHA (#552).
+
+    Dependabot bumps the action in the workflows only, so the test checks what
+    the pin is for: one ref everywhere, and a full commit SHA.
+    """
+    if len(refs) != 1:
+        return f"setup-uv must use one ref everywhere, found {sorted(refs)}"
+    ref = next(iter(refs))
+    if not FULL_SHA.fullmatch(ref):
+        return f"setup-uv must be pinned to a full commit SHA, found {ref!r}"
+    return None
+
+
+def workflow_uv_refs() -> set[str]:
+    return {
+        ref
+        for path in WORKFLOW_DIR.glob("*.yml")
+        for ref in UV_ACTION_REF.findall(path.read_text(encoding="utf-8"))
+    }
+
+
 def uv_step(body: list[str]) -> list[str]:
     """Lines of the job's ``setup-uv`` step (up to the next step)."""
-    start = next(i for i, line in enumerate(body) if UV_ACTION in line)
+    start = next(i for i, line in enumerate(body) if UV_ACTION_PREFIX in line)
     end = next(
         (i for i in range(start + 1, len(body)) if body[i].startswith("      - ")), len(body)
     )
@@ -46,8 +74,8 @@ class WorkflowInstallTest(unittest.TestCase):
             body = self.jobs[name]
             text = "\n".join(body)
             with self.subTest(job=name):
-                self.assertEqual(text.count("astral-sh/setup-uv@"), 1)
-                self.assertIn(f"uses: {UV_ACTION} # v10.3.3", text)
+                self.assertEqual(text.count(UV_ACTION_PREFIX), 1)
+                self.assertRegex(text, UV_PIN)
                 step = "\n".join(uv_step(body))
                 self.assertIn(f"version: {UV_VERSION}", step)
                 self.assertIn("enable-cache: true", step)
@@ -58,6 +86,52 @@ class WorkflowInstallTest(unittest.TestCase):
                 self.assertLess(
                     text.index("actions/setup-python@"), text.index("astral-sh/setup-uv@")
                 )
+
+    def test_setup_uv_has_one_full_sha_pin(self) -> None:
+        self.assertIsNone(uv_ref_problem(workflow_uv_refs()))
+
+    def test_a_new_setup_uv_sha_needs_no_test_edit(self) -> None:
+        for refs in ({"a" * 40}, {"0123456789abcdef0123456789abcdef01234567"}):
+            with self.subTest(refs=refs):
+                self.assertIsNone(uv_ref_problem(refs))
+
+    def test_setup_uv_ref_problems_are_reported(self) -> None:
+        for refs, message in (
+            ({"a" * 40, "b" * 40}, "one ref"),
+            ({"a" * 40, ""}, "one ref"),
+            ({""}, "full commit SHA"),
+            ({"v10.3.3"}, "full commit SHA"),
+            ({"v10"}, "full commit SHA"),
+            ({"main"}, "full commit SHA"),
+            ({"68559e9"}, "full commit SHA"),
+            ({"a" * 39}, "full commit SHA"),
+            ({"a" * 41}, "full commit SHA"),
+            ({"A" * 40}, "full commit SHA"),
+            (set(), "one ref"),
+        ):
+            with self.subTest(refs=refs):
+                problem = uv_ref_problem(refs)
+                self.assertIsNotNone(problem)
+                self.assertIn(message, problem or "")
+
+    def test_workflow_uv_ref_is_read_without_its_comment_or_quotes(self) -> None:
+        for line, ref in (
+            ("      - uses: astral-sh/setup-uv@abc123 # v10.3.3\n", "abc123"),
+            ("      - uses: 'astral-sh/setup-uv@abc123'\n", "abc123"),
+            ('      - uses: "astral-sh/setup-uv@v10"\n', "v10"),
+            ("      - uses: astral-sh/setup-uv@\n", ""),
+        ):
+            with self.subTest(line=line):
+                self.assertEqual(UV_ACTION_REF.findall(line), [ref])
+
+    def test_a_bumped_pin_keeps_its_version_comment(self) -> None:
+        pin = "      - uses: astral-sh/setup-uv@" + "b" * 40
+        for comment in (" # v10.4.0", " # v11.0", " # v11"):
+            with self.subTest(comment=comment):
+                self.assertRegex(pin + comment, UV_PIN)
+        for comment in ("", " # main", " # 10.4.0"):
+            with self.subTest(comment=comment):
+                self.assertNotRegex(pin + comment, UV_PIN)
 
     def test_uv_jobs_install_with_uv_and_log_versions(self) -> None:
         for name in sorted(UV_JOBS):
@@ -90,7 +164,7 @@ class WorkflowInstallTest(unittest.TestCase):
         for name, body in self.jobs.items():
             if name not in UV_JOBS:
                 with self.subTest(job=name):
-                    self.assertNotIn("astral-sh/setup-uv@", "\n".join(body))
+                    self.assertNotIn(UV_ACTION_PREFIX, "\n".join(body))
 
 
 if __name__ == "__main__":
