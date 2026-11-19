@@ -147,6 +147,8 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 
 ### Documentation
 
+- **Getting Started now starts with the clone and virtual environment steps (#516)** — `GETTING_STARTED.md` and its Korean page no longer claim that everything installs from PyPI with no git checkouts: the packages come from PyPI, and the examples and the lab come from a clone. A new "Before you start" section (`git clone`, `cd`, `python3 -m venv .venv`, activate) sits before step 0, and the site home page says the same. Documentation only.
+
 - **Getting Started and the dashboard demo warn about the shared port 33000 (#517)** — the dashboard command in `GETTING_STARTED.md`, its Korean page, the site home page and `templates/dashboard/README.md` now says the dashboard and the root lab both publish `127.0.0.1:33000` and cannot run at once, and to stop the lab first with `make docker-down` (data kept) and restart it with `make docker-up`. Documentation only.
 
 - **Fundamentals setup and run commands work from the repository root (#522)** — the pycubrid and SQLAlchemy fundamentals READMEs told readers to start from the repository root and then ran `pip install -r requirements.txt` and bare script names, which exist only inside each fundamentals folder. The Setup, Install and Run blocks now use repository-root paths (`fundamentals/pycubrid/...`, `fundamentals/sqlalchemy/...`). Documentation only; the scripts are unchanged.

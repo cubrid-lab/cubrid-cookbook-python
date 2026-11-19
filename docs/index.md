@@ -1,6 +1,6 @@
 # cubrid-cookbook-python
 
-Runnable Python examples and production-shaped application templates for CUBRID — from a five-minute first query to natural-language database access, everything installs from PyPI.
+Runnable Python examples and production-shaped application templates for CUBRID — from a five-minute first query to natural-language database access. The packages install from PyPI; the examples and the lab come from a clone of this repository.
 
 - **100+ runnable recipes** across pycubrid, SQLAlchemy, pandas, Alembic, JSON, isolation levels, migration, and the application templates (exact counts in the [support matrix](support-matrix.md#recipe-coverage))
 - **Every golden-backed recipe is CI-verified** — `make verify` compares exact stdout against `expected/*.expected` files on **CUBRID 11.4** for every `main` push and daily, and on a **CUBRID 11.2 + 11.4 job matrix** weekly, on manual runs and in release verification; pull requests check the examples they touch on 11.4

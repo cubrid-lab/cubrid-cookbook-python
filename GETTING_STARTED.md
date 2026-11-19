@@ -1,8 +1,21 @@
 # Getting Started
 
-Three paths, from a 5-minute first query to a natural-language MCP session. Everything installs from PyPI — no git checkouts, no C compiler.
+Three paths, from a 5-minute first query to a natural-language MCP session. The packages install from PyPI and no C compiler is needed, but the examples and the lab live in this repository, so the paths below run from a clone of it.
 
 New to CUBRID? Start with the beginner tutorial, [your first CUBRID database from Python](quickstart/first-cubrid/README.md): it explains the lab and the connection settings and goes one step at a time. This page is for choosing a path, verifying a full checkout and recovering an older lab.
+
+## Before you start
+
+Clone this repository and create a virtual environment, then run every command on this page from the repository folder:
+
+```bash
+git clone https://github.com/cubrid-lab/cubrid-cookbook-python.git
+cd cubrid-cookbook-python
+python3 -m venv .venv          # Python 3.11 or later
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+```
+
+The clone is what step 0 and paths 1 and 2 run: `make docker-up` and the example scripts live in it, not in the PyPI packages. The virtual environment also keeps the `pip install` commands below from failing with `externally-managed-environment` on Debian, Ubuntu and Homebrew Pythons.
 
 ## 0. Start CUBRID (all paths)
 
