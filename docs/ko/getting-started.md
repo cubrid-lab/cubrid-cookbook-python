@@ -2,9 +2,22 @@
 
 > 🌐 [GETTING_STARTED.md](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/GETTING_STARTED.md)의 사이트 번역입니다. 영어 원문이 표준이며, 페이지 번역은 경고 수준의 동기화 규칙을 따릅니다.
 
-세 가지 경로 — 5분 첫 쿼리부터 자연어 MCP 세션까지. 모든 것은 PyPI에서 설치됩니다 — git 체크아웃도, C 컴파일러도 필요 없습니다.
+세 가지 경로 — 5분 첫 쿼리부터 자연어 MCP 세션까지. 패키지는 PyPI에서 설치되고 C 컴파일러는 필요 없지만, 예제와 실습 환경은 이 저장소 안에 있으므로 아래 경로는 저장소를 클론한 상태에서 실행합니다.
 
 CUBRID가 처음이라면 초보자 튜토리얼 [처음 만드는 CUBRID 데이터베이스](first-cubrid.md)부터 시작하세요. 실습 환경과 연결 설정을 설명하고 한 단계씩 진행합니다. 이 페이지는 경로를 고르고, 전체 체크아웃을 검증하고, 예전 실습 환경을 복구하기 위한 것입니다.
+
+## 시작하기 전에
+
+이 저장소를 클론하고 가상 환경을 만든 뒤, 이 페이지의 모든 명령을 저장소 폴더에서 실행하세요.
+
+```bash
+git clone https://github.com/cubrid-lab/cubrid-cookbook-python.git
+cd cubrid-cookbook-python
+python3 -m venv .venv          # Python 3.11 이상
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+```
+
+0단계와 1, 2번 경로가 실행하는 것은 클론 안에 있습니다. `make docker-up`과 예제 스크립트는 PyPI 패키지가 아니라 클론에 있습니다. 가상 환경을 쓰면 Debian, Ubuntu, Homebrew Python에서 `pip install`이 `externally-managed-environment` 오류로 실패하는 일도 없습니다.
 
 ## 0. CUBRID 시작 (모든 경로 공통)
 
