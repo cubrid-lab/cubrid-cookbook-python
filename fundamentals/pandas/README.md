@@ -37,6 +37,7 @@ pip install -r requirements.txt
 - `06_export_csv.py`
   - End-to-end query, summary build, and CSV export.
   - Writes `cookbook_monthly_sales_summary.csv`.
+  - Always drops the table and disposes the engine once. If cleanup fails, `Cleanup error: ...` goes to stderr; the original export or query error and its exit code `1` are kept, and a successful export with a failed cleanup also exits `1`.
 
 ## Run
 
