@@ -58,7 +58,14 @@ def seed_catalog(cursor):
     print(f"✓ Inserted catalog rows: {len(rows)}")
 
 
+def _check_page(page):
+    # Pages start at 1; page 0 or below would build a negative offset/range.
+    if isinstance(page, bool) or not isinstance(page, int) or page < 1:
+        raise ValueError(f"page must be a positive integer, got {page!r}")
+
+
 def page_with_limit_offset(cursor, page):
+    _check_page(page)
     offset = (page - 1) * PAGE_SIZE
     cursor.execute(
         """
@@ -72,6 +79,7 @@ def page_with_limit_offset(cursor, page):
 
 
 def page_with_orderby_num(cursor, page):
+    _check_page(page)
     lo = (page - 1) * PAGE_SIZE + 1
     hi = page * PAGE_SIZE
     # ORDERBY_NUM() is assigned AFTER the ORDER BY, so it pages an ordered set.
