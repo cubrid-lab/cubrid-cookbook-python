@@ -292,7 +292,7 @@ when a row no longer matches the repository. Verification is split:
 
 | Category | Recipes | Verified by |
 |----------|---------|-------------|
-| pycubrid fundamentals | 22 | `make verify` (CI, 11.2 + 11.4) |
+| pycubrid fundamentals | 22 | `make verify` (CI, 11.2 + 11.4); cursor-memory timing and cleanup regressions run offline in `make test` |
 | SQLAlchemy fundamentals | 7 | `make verify` (CI, 11.2 + 11.4) |
 | SQLAlchemy ORM basics | 6 | `make verify` (CI, 11.2 + 11.4) |
 | Pandas fundamentals | 6 | `make verify` (CI, 11.2 + 11.4) |
