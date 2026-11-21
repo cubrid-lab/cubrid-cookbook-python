@@ -1,0 +1,37 @@
+name: Improvement Idea
+description: Flag a confusing step, missing test or docs, rough edge, or idea without designing a fix.
+labels: ["status: needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A clear observation is enough; you do not need a proposed fix,
+        completed reproduction, or acceptance criteria to report an idea.
+        Maintainers triage evidence, scope, priority and acceptance later.
+        Use a descriptive English title (docs:, test:, feat:, etc. if known).
+        Avoid duplicate issues when convenient. Do not share passwords,
+        secrets, private logs or vulnerability details publicly.
+        An idea does not grant implementation approval or bypass local
+        assignment, security, CI and release requirements.
+  - type: textarea
+    id: observation
+    attributes:
+      label: What did you notice?
+      description: What was unclear, missing, unexpectedly hard or worth improving?
+      placeholder: "I tried ... and noticed ..."
+    validations:
+      required: true
+  - type: textarea
+    id: location
+    attributes:
+      label: Where did you notice it? (optional)
+      description: Link or path, command, environment, version, if known.
+    validations:
+      required: false
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What would help? (optional)
+      description: A useful outcome or idea if you have one; no design needed.
+    validations:
+      required: false
