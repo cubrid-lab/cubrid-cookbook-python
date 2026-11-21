@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 import pandas as pd
 
@@ -13,9 +15,8 @@ TABLE_NAME = "cookbook_monthly_sales"
 OUTPUT_FILE = Path("cookbook_monthly_sales_summary.csv")
 
 
-def main() -> int:
-    engine = create_engine(DATABASE_URL)
-
+def run_export(engine: Engine) -> int:
+    """Seed the demo table, build the summary and write the CSV."""
     try:
         with engine.begin() as conn:
             # SECURITY: TABLE_NAME is a hardcoded constant. NEVER use f-string
@@ -98,12 +99,37 @@ def main() -> int:
     except SQLAlchemyError as exc:
         print(f"Database error: {exc}")
         return 1
-    finally:
+
+
+def cleanup(engine: Engine) -> bool:
+    """Drop the demo table, then dispose of the engine exactly once.
+
+    Returns True when the table was dropped. A cleanup failure is reported on
+    stderr and never raised, so it cannot replace the primary error.
+    """
+    try:
         with engine.begin() as conn:
             # SECURITY: TABLE_NAME is a hardcoded constant. NEVER use f-string
             # interpolation with text() for user-supplied values.
             _ = conn.execute(text(f"DROP TABLE IF EXISTS {TABLE_NAME}"))
+        return True
+    except Exception as exc:
+        print(f"Cleanup error: could not drop {TABLE_NAME}: {exc}", file=sys.stderr)
+        return False
+    finally:
         engine.dispose()
+
+
+def main() -> int:
+    engine = create_engine(DATABASE_URL)
+    status = 1
+    try:
+        status = run_export(engine)
+    finally:
+        cleaned = cleanup(engine)
+    # A failed export keeps its own exit code; a cleanup failure after a
+    # successful export is still reported as a failure.
+    return status if status != 0 else (0 if cleaned else 1)
 
 
 if __name__ == "__main__":

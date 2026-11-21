@@ -75,6 +75,7 @@ SUITES: tuple[tuple[str, ...], ...] = (
     _unittest("test_table_prefix.py"),
     _unittest("test_quickstart_config.py"),
     _unittest("test_quickstart_cleanup.py"),
+    _unittest("test_pandas_export_csv_cleanup.py"),
     _unittest("test_live_gate.py"),
     _unittest("test_report_results.py"),
     # Before/after checks for scripts/normalize_output.sh (also `make test-normalize`).
