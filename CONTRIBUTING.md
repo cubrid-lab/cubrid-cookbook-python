@@ -8,6 +8,30 @@ and instructions for contributing to the project.
 Use English for GitHub issues, pull requests, and comments; localized documentation
 is welcome, and no specific tool is required.
 
+
+## Suggest improvements and credit problem discovery
+
+You can contribute by **finding problems**, not just implementing a ready-made
+task. Confusing docs and onboarding, missing tests, an unexpected result or
+an awkward workflow are worth reporting. Select **Improvement Idea** from
+[New issue](https://github.com/cubrid-lab/cubrid-cookbook-python/issues/new/choose).
+One clear observation is enough; the fix, root cause, reproduction and
+acceptance criteria can be unknown at intake. Maintainers check duplicates,
+evidence, relative priority, ownership and implementation scope during triage.
+
+Keep secrets, private logs, personal data and security vulnerabilities out
+of public issues. A suggestion is not permission to implement a new public
+feature or to bypass design, safety, CI or release gates. Don't open a
+separate issue merely to satisfy a checkbox before a small PR **where local
+implementation rules permit a direct PR**; check existing issues and PRs.
+
+When a reported problem leads to a PR, **link the originating issue** and
+acknowledge its verified reporter as a reporter. In reviews, distinguish
+discovery from code authorship; in curated release notes, preserve the
+repository's verified implementation-author credits and, where useful and
+allowed, add a separate `reported by @handle` credit. Do not invent
+identities or require repetitive credit boilerplate.
+
 ## Table of Contents
 
 - [Development Workflow](#development-workflow)
