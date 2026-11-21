@@ -49,6 +49,15 @@ Recipe 04 creates and seeds `cookbook_agent_products` so its product query
 does not depend on another example. Database connections and the ORM engine
 are closed even if a demonstration raises.
 
+Recipe 04's `health_check` executes the read-only `SELECT 1` probe and fetches
+its result through the current connection before returning `Connection OK`.
+This checks that the connection can execute and read a query; it does not check
+application tables or the health of the entire CUBRID service. A driver error
+returns `Connection failed: ...`, and an unknown tool returns `Unsupported tool: ...`;
+both are recorded with tool-call status `failed`. Probe cursors are closed even
+when execution or fetching fails. Recording still uses the same connection, so
+if it cannot persist the failure, that database error propagates to the caller.
+
 With released pycubrid 1.7.x, INSERT IDs must be read from `cursor.lastrowid`
 before commit. Collection members are bound inside `{?, ...}` expressions;
 `TABLE(collection)` reads SET and SEQUENCE elements as ordinary scalar rows.
@@ -69,6 +78,10 @@ python -m pytest templates/ai-agent/tests/test_offline.py -q
 CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb" \
   python -m pytest templates/ai-agent/tests/test_live.py -v
 ```
+
+The offline suite covers successful health probes, driver errors while creating
+the cursor, executing or fetching, and unsupported tools. These checks verify
+tool-call status and cursor cleanup without a running database.
 
 The live suite requires a dedicated test database: before and after each
 script it drops only that script's `agent_*`, `rag_*`, or `chat_*` tables
