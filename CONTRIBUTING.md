@@ -585,6 +585,16 @@ anything, `make verify-goldens` checks that the
 selected examples' requirements are installed and stops once with "run
 `make deps` first" if not.
 
+The dependency preflight uses `packaging` (installed with pytest by `make deps`)
+to parse PEP 508 requirements and evaluate environment markers against the
+Python interpreter and platform running the check. Inapplicable requirements
+are skipped before looking up installed distributions. Applicable requirements
+remain presence-only checks: versions and extras are not resolved. Pip options
+and includes such as `-r` are ignored, not followed recursively; other unsupported
+lines fail with their file and line number. Listing requirement files still
+uses only the standard library, so initial `make deps` discovery works before
+the checking tools are installed.
+
 Each script runs through `scripts/run_example.py` with a `VERIFY_TIMEOUT`
 wall-clock limit (default 60 seconds; the slowest golden took about 7 seconds on
 CUBRID 11.4) and stdin redirected from `/dev/null`. The script runs in its own
