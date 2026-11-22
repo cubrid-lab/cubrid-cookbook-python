@@ -1278,9 +1278,14 @@ supply a real dependency or compatibility contract; their priorities and
 completion are not inherited. Close only this repository's issues (Closes #N).
 PRs with no local issue may state N/A and a reason. The existing PR title check
 rejects direct cross-repository issue-closing keywords, including emphasized or
-linked ones, in the PR body, the PR title and commit messages. The title and
-commit messages make up the squash commit and are read as plain text; an edit to
-the squash message at merge time is not checked. In the body, the check ignores
+linked ones, in contributor PR bodies, all PR titles and commit messages.
+Dependabot bodies quote upstream release notes, so only a PR authored by exactly
+`dependabot[bot]` (from GitHub's event metadata) skips the body check. Its title
+and commit messages still receive all checks. The actor that triggers or reruns
+a workflow, a bot mention in the body, or another bot's name does not grant this
+exemption. The title and commit messages make up the squash commit and are read
+as plain text; an edit to the squash message at merge time is not checked. In the
+body, the check ignores
 fenced and indented code blocks and HTML comment blocks only where it can follow
 the Markdown exactly, so anything uncertain is checked: code and comment blocks
 inside list items, footnotes and block quotes are always checked; after a fence
