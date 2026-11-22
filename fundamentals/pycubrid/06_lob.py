@@ -109,10 +109,13 @@ def blob_example(conn: Connection) -> None:
     files = [
         ("icon.bin", bytes(range(256))),  # 256 bytes
         ("sample.bin", b"\x00\x01\x02" * 1000),  # 3KB
-        ("empty.bin", b""),  # Empty BLOB
+        ("empty.bin", b""),  # NULL example: stored as SQL NULL, not a zero-byte BLOB
     ]
 
     for filename, file_data in files:
+        # Non-empty bytes are bound as BLOB data. Empty bytes take the else
+        # branch, which inserts SQL NULL explicitly, so this recipe never
+        # stores a zero-length BLOB and reads that row back as (NULL).
         if file_data:
             cursor.execute(
                 "INSERT INTO cookbook_lob_files (filename, file_data) VALUES (?, ?)",
@@ -135,6 +138,7 @@ def blob_example(conn: Connection) -> None:
             data = read_lob(conn, blob_dict)
             print(f"  {filename:15s} ({len(data):,d} bytes)")
         else:
+            # The SQL NULL row (empty.bin above) has no LOB dict to read
             print(f"  {filename:15s} (NULL)")
 
     cursor.close()
