@@ -156,6 +156,12 @@ text = Lob(conn, clob["lob_type"], clob["packed_lob_handle"]).read(clob["lob_len
 print(text.decode("utf-8"))
 ```
 
+An empty Python `bytes` value (`b""`) and SQL `NULL` are different things. In
+`06_lob.py`, the `empty.bin` row starts as `b""`, but the recipe sends it down
+an explicit `VALUES (?, NULL)` branch, so the column stores SQL `NULL`. On
+readback that row has no LOB dict to read, so the script prints `(NULL)`. The
+recipe does not store a zero-length BLOB.
+
 `conn.create_lob(lob_type)` takes only a type code (`CUBRIDDataType.CLOB` or
 `CUBRIDDataType.BLOB` from `pycubrid.constants`) and returns an empty server-side
 `Lob` to `write()` to. `execute()` and the default `executemany()` cannot bind
