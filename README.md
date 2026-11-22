@@ -101,7 +101,7 @@ Benchmark-backed optimization patterns:
 | Pattern | Impact |
 |---------|--------|
 | [Fetch optimization](performance/fetch-optimization/) | `fetchall()` vs `fetchone()`, column selection and server-side pagination |
-| [Bulk insert](performance/bulk-insert/) | batch your COMMITs (~28 → ~1,279 rows/s, pycubrid 1.10.0) |
+| [Bulk insert](performance/bulk-insert/) | batch your COMMITs (~28 → ~1,279 rows/s, pycubrid 1.10.0); benchmark preserves existing tables |
 | [Connection pooling](performance/connection-pooling/) | reuse connections (~5.9 ms vs ~0.8 ms per query, pycubrid 1.10.0) |
 
 ### Pitfalls
@@ -121,7 +121,7 @@ Step-by-step reference for every core operation:
 | [Error handling](fundamentals/error-handling/) | Exception types, retry patterns (`05_error_handling.py` redirects to `fundamentals/pycubrid/05_error_handling.py`) |
 | [LOB handling](fundamentals/lob-handling/) | BLOB/CLOB operations (redirect to `fundamentals/pycubrid/06_lob.py`) |
 | [ORM basics](fundamentals/orm-basics/) | SQLAlchemy engine, core, ORM, relationships |
-| [pycubrid driver](fundamentals/pycubrid/) | 22 DB-API recipes: cursors, window functions, recursive CTEs, pagination, timezone/ENUM types |
+| [pycubrid driver](fundamentals/pycubrid/) | 22 DB-API recipes: cursors and memory measurement, window functions, recursive CTEs, pagination, timezone/ENUM types |
 | [SQLAlchemy recipes](fundamentals/sqlalchemy/) | 7 recipes including SET/MULTISET/SEQUENCE collection types |
 | [Pandas](fundamentals/pandas/) | 6 recipes: read_sql, chunked reads, to_sql load patterns |
 | [Async I/O](fundamentals/async/) | pycubrid.aio and SQLAlchemy async engine |
