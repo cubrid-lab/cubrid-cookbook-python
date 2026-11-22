@@ -56,7 +56,7 @@ constrains installation to its selected published driver version.
 | `10_collection_columns.py` | Native collection columns | `SET`, `MULTISET`, `LIST`, typed `Set`/`Multiset`/`Sequence` binding, `decode_collections=True` |
 | `11_bulk_etl_pipeline.py` | Chunked ETL pipeline | staging table, `executemany()` chunks, validation, upsert apply |
 | `12_pool_retry_worker.py` | Connection pool & retry | minimal pool, exponential backoff, transient error recovery |
-| `13_atomic_counters.py` | Atomic counters | `ON DUPLICATE KEY UPDATE`, hot-path metrics, rankings |
+| `13_atomic_counters.py` | Atomic counters | `ON DUPLICATE KEY UPDATE` (atomic SQL-side increment; a bare SELECT-then-INSERT/UPDATE is not a concurrency-safe fallback), hot-path metrics, rankings |
 | `14_manual_cascade_delete.py` | App-managed cascades | child-first deletes, preview counts, CUBRID no-CASCADE workaround |
 | `15_cursor_memory_bound.py` | Bounded fetch with ``fetch_size`` | tracemalloc, fetch_size vs arraysize, peak-memory comparison |
 | `16_batch_error_handling.py` | All-or-nothing batch recovery | ``executemany_batch`` error paths, `rollback()` for all-or-nothing semantics |
