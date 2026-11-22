@@ -204,6 +204,11 @@ on PyPI was 2.1.4. The `<2.2` cap shipped in 1.11.0 (see the table above).
 
 ## Recipe Coverage
 
+The pool/retry teaching recipe has offline resource-ownership checks in
+`tests/test_pool_retry_recipe.py`, run by `make test` with fake driver connections.
+They verify failure cleanup and retry control flow; live CUBRID compatibility remains
+covered separately by the recipe's existing golden verification.
+
 The table below is the source of truth for recipe counts;
 `scripts/check_support_matrix_counts.py` (run by `make check-docs`) fails
 when a row no longer matches the repository. Verification is split:

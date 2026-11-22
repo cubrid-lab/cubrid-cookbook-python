@@ -46,6 +46,7 @@ SUITES: tuple[tuple[str, ...], ...] = (
     _unittest("test_mcp_smoke.py"),
     _unittest("test_check_expected_coverage.py"),
     _unittest("test_example_requirements.py"),
+    ("python", "-m", "pytest", "tests/test_pool_retry_recipe.py", "-q"),
     (
         "python",
         "-m",
