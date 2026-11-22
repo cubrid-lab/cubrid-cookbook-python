@@ -7,9 +7,14 @@ Demonstrates:
 - Top-N rankings query
 
 Adaptation note:
-- If ON DUPLICATE KEY UPDATE fails on your server build, switch to a
-  SELECT-then-INSERT/UPDATE pattern. This script uses ODKU directly because it
-  is supported on standard CUBRID 11.2 setups.
+- This script uses ``INSERT ... ON DUPLICATE KEY UPDATE hit_count = hit_count + ?``
+  (ODKU) directly as the supported atomic SQL-side increment demonstration on
+  standard CUBRID 11.2 setups.
+- If ODKU is unavailable on your server build, do not treat a naive client-side
+  ``SELECT``-then-``INSERT``/``UPDATE`` (read-modify-write) pattern as a drop-in
+  replacement: without its own concurrency/locking or compare-and-swap design, it
+  is not concurrency-safe because concurrent writers can read the same count and
+  overwrite increments or race to insert the same key.
 """
 
 from __future__ import annotations
