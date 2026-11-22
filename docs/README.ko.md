@@ -101,7 +101,7 @@ pycubrid 레시피 네 개로 보여 주며, 그대로 바꿔 끼우면 된다�
 | 패턴 | 효과 |
 |------|------|
 | [Fetch 최적화](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/performance/fetch-optimization) | `fetchall()` vs `fetchone()`, 컬럼 선택, 서버 측 페이지네이션 |
-| [벌크 인서트](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/performance/bulk-insert) | COMMIT을 배치로 (~28 → ~1,279 rows/s, pycubrid 1.10.0) |
+| [벌크 인서트](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/performance/bulk-insert) | COMMIT을 배치로 (~28 → ~1,279 rows/s, pycubrid 1.10.0); 벤치마크는 기존 테이블을 보존 |
 | [커넥션 풀링](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/performance/connection-pooling) | 연결 재사용 (쿼리당 ~5.9 ms vs ~0.8 ms, pycubrid 1.10.0) |
 
 ### 함정 (Pitfalls)
