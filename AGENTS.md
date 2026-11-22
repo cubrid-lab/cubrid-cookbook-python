@@ -264,10 +264,11 @@ added. If Releases are introduced later, these rules apply unchanged.
 
 ## Issue triage lifecycle
 
-Every new issue here starts with `status: needs triage`; templates attach the
-label, while the `issues: opened` workflow covers other user submissions.
+Every new issue here starts with the single intake label `needs triage`; templates
+attach it, while the `issues: opened` workflow covers other user submissions.
 Automation using `GITHUB_TOKEN` must include it on issue creation since
-those events may not trigger a subsequent workflow.
+those events may not trigger a subsequent workflow. Do not add `status:*`
+labels to represent development progress.
 
 1. Verify problem, evidence and unknowns, duplicate/open-PR overlap, correct
    repository/type, scope/non-goals, acceptance criteria and prerequisites.
@@ -280,7 +281,7 @@ those events may not trigger a subsequent workflow.
    existing `size: XS/S/M/L/XL`. Size measures work, not urgency; split large
    implementations into independently verifiable tasks when appropriate.
 4. Read the saved issue's **actual GitHub labels** and reviewed scope again.
-   Remove `status: needs triage` only when type, priority, size, duplicate
+   Remove `needs triage` only when type, priority, size, duplicate
    disposition and relative queue position have been verified. Keep it while
    a substantive decision remains unresolved.
 
@@ -290,7 +291,7 @@ golden, security and release review criteria remain unchanged.
 
 ## Issue Labeling (cubrid-lab org standard)
 
-When creating an issue in this repository, first assign `status: needs triage`.
+When creating an issue in this repository, first assign `needs triage`.
 After review, assign exactly one `priority: <value>` and one `size: <value>`,
 alongside a type label (`bug`/`enhancement`/`documentation`/`chore`/`ci`/…) and an
 `area:` label when applicable. These must be GitHub labels, not just text in the
@@ -328,7 +329,7 @@ Rules:
 
 1. **Size reflects effort, not importance** — a one-line fix for a critical bug is still `size: XS`.
 2. **Finalize `priority:` and `size:` during maintainer triage.**
-   Uncertainty or a provisional label means `status: needs triage` remains.
+   Uncertainty or a provisional label means `needs triage` remains.
 3. **`good first issue` should be `size: XS` or `size: S`.** If a good-first-issue grows
    past `size: S`, re-scope it or drop the `good first issue` label.
 4. **`size: XL` is a signal to split**, not a green light to start a sprawling change.
@@ -340,8 +341,8 @@ Rules:
 - **Maintainer-operated autonomous coding agents:** require explicit maintainer authorization for that specific newcomer-reserved issue and an actual GitHub assignment before implementation. A general request to clear backlog or prepare a release is not authorization.
 - Maintainers handle Assignees and labels. Human contributors without assignment rights may still submit PRs; ordinary CI and review gates remain mandatory.
 - Unclaimed: retain `good first issue`.
-- On opening a PR: maintainers remove `good first issue` and add `status: in progress`, coordinating ownership.
-- On merge: close the issue. If a PR closes unmerged: check for other open PRs before restoring `good first issue` and removing `status: in progress`.
+- On opening a PR: maintainers remove `good first issue`, link the PR and coordinate the real Assignee/ownership without adding a progress label.
+- On merge: close the issue. If a PR closes unmerged: check for other open PRs before restoring `good first issue` and updating the assignment/handoff.
 - Keep at least three genuinely unclaimed XS/S good first issues with a small blast radius and an existing reference pattern.
 - A release-blocker handoff to an autonomous agent needs a recorded maintainer decision after checking Assignees, comments and open PRs.
 
