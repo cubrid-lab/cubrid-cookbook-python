@@ -88,6 +88,16 @@ TICK = chr(96)
 FENCE = TICK * 3
 GUARD_SHA256 = "a44a7759b0897b3bc790605175e29ffb86421f7a245b882a52b70c399817178d"
 
+# Synthetic upstream notes, not a captured failed Dependabot PR in this repository.
+DEPENDABOT_NOTES = """Bumps ruff to the next release.
+<details>
+<summary>Release notes</summary>
+<blockquote>
+<ul><li>Handle new syntax; closes <a href="https://github.com/astral-sh/ruff/issues/29470">#29470</a>.</li></ul>
+</blockquote>
+</details>
+"""
+
 
 def _validator() -> str:
     text = WORKFLOW.read_text(encoding="utf-8")
@@ -98,12 +108,18 @@ def _validator() -> str:
 
 
 def _run(
-    title: str, body: str = "", commits: str | None = None, timeout: float | None = None
+    title: str,
+    body: str = "",
+    commits: str | None = None,
+    timeout: float | None = None,
+    *,
+    author: str = "",
 ) -> subprocess.CompletedProcess[str]:
     env = {
         **os.environ,
         "PR_TITLE": title,
         "PR_BODY": body,
+        "PR_AUTHOR": author,
         "GITHUB_REPOSITORY": "cubrid-lab/cubrid-cookbook-python",
     }
     env.pop("PR_COMMITS_FILE", None)
@@ -173,6 +189,7 @@ class PrTitleValidatorTest(unittest.TestCase):
         self.assertNotIn("actions/checkout", text)
         self.assertIn("PR_TITLE: ${{ github.event.pull_request.title }}", text)
         self.assertIn("PR_BODY: ${{ github.event.pull_request.body }}", text)
+        self.assertIn("PR_AUTHOR: ${{ github.event.pull_request.user.login }}", text)
         self.assertRegex(text, r"\n    name: PR title\n")
         run_block = text.split("run: |", 1)[1]
         self.assertNotIn("${{", run_block)
@@ -182,6 +199,97 @@ class PrTitleValidatorTest(unittest.TestCase):
         self.assertIsNotNone(match)
         assert match is not None
         self.assertEqual(tuple(re.findall(r'"([a-z]+)"', match[1])), TYPES)
+
+    def test_dependabot_upstream_notes_pass(self) -> None:
+        for body in (
+            DEPENDABOT_NOTES,
+            "> closes [#29470](https://github.com/astral-sh/ruff/issues/29470)",
+            "> Closes astral-sh/ruff#29470",
+        ):
+            with self.subTest(body=body):
+                result = _run("chore(deps): bump ruff", body, author="dependabot[bot]")
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertNotIn("Cross-repository issue closure", result.stdout)
+
+    def test_dependabot_notes_from_other_authors_still_fail(self) -> None:
+        for author in (
+            "",
+            "contributor",
+            "dependabot",
+            "dependabot-preview[bot]",
+            "Dependabot[bot]",
+        ):
+            with self.subTest(author=author):
+                result = _run("chore(deps): bump ruff", DEPENDABOT_NOTES, author=author)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("Cross-repository issue closure", result.stdout)
+                self.assertIn("astral-sh/ruff#29470", result.stdout)
+
+    def test_dependabot_actor_cannot_exempt_a_contributors_body(self) -> None:
+        with unittest.mock.patch.dict(os.environ, {"GITHUB_ACTOR": "dependabot[bot]"}):
+            result = _run("chore(deps): bump ruff", DEPENDABOT_NOTES, author="contributor")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Cross-repository issue closure", result.stdout)
+
+    def test_dependabot_mentions_cannot_exempt_a_contributors_body(self) -> None:
+        result = _run(
+            "chore(deps): bump ruff",
+            "Author: dependabot[bot]\nPR_AUTHOR=dependabot[bot]\n" + DEPENDABOT_NOTES,
+            author="contributor",
+        )
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Cross-repository issue closure", result.stdout)
+
+    def test_dependabot_title_rules_still_apply(self) -> None:
+        for title in ("Bump ruff", "chore(deps): bump ruff.", "chore(deps): bump ruff (#43)"):
+            with self.subTest(title=title):
+                result = _run(title, DEPENDABOT_NOTES, author="dependabot[bot]")
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        result = _run(
+            "chore(deps): closes another-org/another-repo#43",
+            DEPENDABOT_NOTES,
+            author="dependabot[bot]",
+        )
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Cross-repository issue closure", result.stdout)
+        self.assertIn("PR title", result.stdout)
+
+    def test_dependabot_commit_messages_still_checked_as_plain_text(self) -> None:
+        for message in (
+            "Closes another-org/another-repo#43",
+            f"{FENCE}\nCloses another-org/another-repo#43\n{FENCE}",
+            "<!-- Closes another-org/another-repo#43 -->",
+        ):
+            with self.subTest(message=message):
+                result = _run(
+                    "chore(deps): bump ruff",
+                    DEPENDABOT_NOTES,
+                    commits=message,
+                    author="dependabot[bot]",
+                )
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("Cross-repository issue closure", result.stdout)
+                self.assertIn("commit message", result.stdout)
+
+    def test_dependabot_commit_limit_is_still_enforced(self) -> None:
+        with unittest.mock.patch.dict(os.environ, {"PR_COMMIT_COUNT": "250"}):
+            result = _run(
+                "chore(deps): bump ruff",
+                DEPENDABOT_NOTES,
+                commits="chore(deps): bump ruff",
+                author="dependabot[bot]",
+            )
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("250 or more commits", result.stdout)
+
+    def test_dependabot_local_commit_messages_pass(self) -> None:
+        result = _run(
+            "chore(deps): bump ruff",
+            DEPENDABOT_NOTES,
+            commits="chore(deps): bump ruff\0Fixes #43\0",
+            author="dependabot[bot]",
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def assert_blocked(self, *bodies: str, issue: str = "another-org/another-repo#43") -> None:
         for body in bodies:
