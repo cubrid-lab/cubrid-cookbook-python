@@ -23,10 +23,10 @@ Coverage is not measured by the offline suites, so ``summary.json`` records
 ``"coverage": {"measured": false}`` and no ``coverage.xml`` is written. This module
 adds no coverage gate.
 
-The JUnit files are parsed with the standard library, like ``scripts/live_gate.py``
-already does for its own pytest JUnit output. They are produced by this repository's own
-test processes in the same run (never downloaded input), and this repository runs no
-XML-aware security linter (``ruff`` selects only E4, E7, E9 and F).
+JUnit files are produced by this repository's own test processes in the same run.
+Before standard-library parsing, raw bytes containing NUL, DTD or entity declarations
+are rejected as incomplete evidence. Other XML-declared encodings are preserved;
+malformed or unsupported encodings are handled like unreadable reports.
 """
 
 from __future__ import annotations
@@ -57,10 +57,16 @@ def _outcome(case: ET.Element) -> str:
 
 
 def parse_junit(path: Path) -> dict[str, int] | None:
-    """Count the tests of a JUnit file; None if it is missing or unreadable."""
+    """Count JUnit tests; None for missing, unreadable, invalid or rejected XML."""
     try:
-        root = ET.parse(path).getroot()
-    except (OSError, ET.ParseError):
+        raw = path.read_bytes()
+        upper = raw.upper()
+        # Check bytes before parsing so declarations cannot become passing evidence.
+        if b"\x00" in raw or b"<!DOCTYPE" in upper or b"<!ENTITY" in upper:
+            return None
+        # Keep the XML encoding declaration authoritative instead of decoding as UTF-8.
+        root = ET.fromstring(raw)
+    except (OSError, ET.ParseError, LookupError, ValueError):
         return None
     outcomes: dict[tuple[str, str], str] = {}
     for case in root.iter("testcase"):

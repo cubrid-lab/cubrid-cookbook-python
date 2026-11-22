@@ -82,6 +82,94 @@ class ParseJunitTests(unittest.TestCase):
         self.assertIsNone(report_results.parse_junit(self.dir / "absent.xml"))
         self.assertIsNone(self.parse("<testsuite"))
 
+    def rejected_reports(self) -> dict[str, bytes]:
+        report = junit('<testcase name="private-xml-payload"/>')
+        return {
+            "internal entity": (
+                '<!DOCTYPE testsuites [<!ENTITY ok "private-xml-payload">]>'
+                + junit('<testcase name="&ok;"/>')
+            ).encode(),
+            "external DTD": (
+                '<!DOCTYPE testsuites SYSTEM "https://example.invalid/unused.dtd">' + report
+            ).encode(),
+            "external entity": (
+                '<!DOCTYPE testsuites [<!ENTITY ext SYSTEM "file:///unused">]>' + report
+            ).encode(),
+            "mixed-case DTD": ("<!dOcTyPe testsuites>" + report).encode(),
+            "entity declaration": ('<!ENTITY ok "unused">' + report).encode(),
+            "mixed-case entity": ('<!eNtItY ok "unused">' + report).encode(),
+            "NUL byte": (report + "\x00").encode(),
+            "UTF-16 with NUL": report.encode("utf-16"),
+        }
+
+    def test_rejects_declarations_and_nul_before_parsing(self) -> None:
+        path = self.dir / "rejected.xml"
+        for name, payload in self.rejected_reports().items():
+            with self.subTest(report=name):
+                path.write_bytes(payload)
+                # Rejection must precede either standard-library parser entry point.
+                with (
+                    mock.patch.object(ET, "parse", side_effect=AssertionError("parsed")),
+                    mock.patch.object(ET, "fromstring", side_effect=AssertionError("parsed")),
+                ):
+                    self.assertIsNone(report_results.parse_junit(path))
+
+    def test_rejected_evidence_never_passes_or_leaks_xml(self) -> None:
+        path = self.dir / "rejected.xml"
+        for name, payload in self.rejected_reports().items():
+            for exit_code, expected in ((0, "INCOMPLETE"), (2, "FAIL")):
+                with self.subTest(report=name, exit_code=exit_code):
+                    path.write_bytes(payload)
+                    stdout, stderr = io.StringIO(), io.StringIO()
+                    with (
+                        contextlib.redirect_stdout(stdout),
+                        contextlib.redirect_stderr(stderr),
+                    ):
+                        entry = report_results.suite_entry(
+                            "rejected", ["test-command"], exit_code, path, self.dir
+                        )
+                        summary = report_results.build_summary("test", [entry])
+                        diagnostic = report_results.console_line(summary)
+                    self.assertEqual(entry["status"], expected)
+                    self.assertEqual(summary["status"], expected)
+                    self.assertEqual(entry["counts"], dict.fromkeys(report_results.COUNTS, 0))
+                    self.assertEqual(stdout.getvalue(), "")
+                    self.assertEqual(stderr.getvalue(), "")
+                    self.assertNotIn("private-xml-payload", json.dumps(summary) + diagnostic)
+
+    def test_preserves_declared_encodings_and_utf8_bom(self) -> None:
+        for encoding, name in (("utf-8", "café"), ("iso-8859-1", "café"), ("ascii", "ok")):
+            for bom in (False, True) if encoding == "utf-8" else (False,):
+                with self.subTest(encoding=encoding, bom=bom):
+                    xml = (
+                        f'<?xml version="1.0" encoding="{encoding}"?>'
+                        f'<testsuite><testcase name="{name}"/>'
+                        '<testcase name="skip"><skipped/></testcase></testsuite>'
+                    ).encode(encoding)
+                    path = self.dir / "encoded.xml"
+                    path.write_bytes((b"\xef\xbb\xbf" if bom else b"") + xml)
+                    counts = report_results.parse_junit(path)
+                    self.assertIsNotNone(counts)
+                    self.assertEqual(
+                        (counts["selected"], counts["passed"], counts["skipped"]),
+                        (2, 1, 1),
+                    )
+                    self.assertEqual(report_results.decide(counts, 0), "PASS")
+
+    def test_malformed_bytes_and_encoding_errors_are_none(self) -> None:
+        reports = {
+            "truncated XML": b"<testsuites",
+            "invalid bytes": b"\xff<testsuites/>",
+            "invalid UTF-8": b'<testsuite><testcase name="\xff"/></testsuite>',
+            "unknown encoding": b'<?xml version="1.0" encoding="unknown-codec"?><testsuite/>',
+            "unsupported encoding": b'<?xml version="1.0" encoding="utf-7"?><testsuite/>',
+        }
+        for name, payload in reports.items():
+            with self.subTest(report=name):
+                path = self.dir / "malformed.xml"
+                path.write_bytes(payload)
+                self.assertIsNone(report_results.parse_junit(path))
+
 
 class DecideAndSummaryTests(unittest.TestCase):
     def counts(self, **kw: int) -> dict[str, int]:

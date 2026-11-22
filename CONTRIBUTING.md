@@ -98,6 +98,10 @@ overall status (`PASS`, `FAIL` or `INCOMPLETE`), per-suite and total counts and 
 suites not run after a failure; the last console line repeats the same status and
 counts. Coverage is not measured, so `summary.json` says `"coverage": {"measured": false}`
 and no `coverage.xml` is written. A failing suite still stops the run and exits 1.
+The JUnit reader rejects raw NUL bytes, DTD and entity declarations before parsing,
+including mixed-case spellings. Missing, rejected or undecodable reports count as
+`INCOMPLETE` after exit 0 and `FAIL` after a nonzero exit, never `PASS`; other valid
+XML-declared encodings retain their count semantics.
 These checks require no database and do not prove live CUBRID compatibility;
 run the relevant example, a `make verify-*` lane or the full `make verify` against
 CUBRID for that evidence (see [Live verification](#live-verification)).
