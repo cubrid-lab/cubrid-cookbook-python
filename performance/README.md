@@ -99,14 +99,17 @@ make verify-performance   # JUnit report and summary: .live-evidence/performance
 prints every comparison line with a finite, nonnegative time, ran its whole workload (10,000 fetched rows per
 strategy; 500, 5,000 and 5,000 stored rows; 50 connections without a pool and 1 to 5 with one) and printed no
 error. It also makes `fetch-optimization` and `bulk-insert` fail on purpose after they create their table and
-checks that the table is dropped anyway, and that an unrelated table is unchanged after each run. It never
+checks that the table is dropped anyway, and that an unrelated table is unchanged after each run.
+The bulk-insert test also creates an owned sentinel at the benchmark's fixed name
+and checks that a refused run leaves its rows intact. It never
 compares one strategy's time with another's, so a slow or noisy machine does not fail it. The report records
 the CUBRID server, Python, pytest and driver versions. `make verify-performance` fails when the database is unreachable,
 any test is skipped or a table is left behind; plain `pytest performance/tests/test_benchmarks.py` skips without a database.
 
 The benchmarks and the migration examples use fixed table names (`cookbook_fetch_test`, `cookbook_bulk_test`,
 `cookbook_jdbc_*`, `cookbook_sensors`). Do not run `make verify-performance` at the same time as another `make verify-performance`,
-`make verify` or a manual benchmark run against the same database: they would drop each other's tables.
+`make verify` or a manual benchmark run against the same database: other examples
+can drop these tables, and bulk-insert refuses a table it did not create.
 
 CI runs the same commands, one lane at a time on job-owned CUBRID containers: the full `make verify` on
 CUBRID 11.4 for every push to `main` and the daily schedule, on CUBRID 11.2 and 11.4 for the weekly
