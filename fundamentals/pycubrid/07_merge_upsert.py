@@ -42,17 +42,36 @@ def get_connection():
     return pycubrid.connect(**DB_CONFIG)
 
 
+def _is_unknown_table(exc):
+    """True iff *exc* is the driver's table-not-found error (CUBRID -493 / S0002).
+
+    pycubrid surfaces the CAS error number as ``errno`` (``code`` on database
+    errors, ``args[0]`` on older versions) and the SQLSTATE as ``sqlstate``.
+    """
+    if getattr(exc, "errno", None) == -493 or getattr(exc, "code", None) == -493:
+        return True
+    if getattr(exc, "sqlstate", None) == "S0002":
+        return True
+    return bool(exc.args) and exc.args[0] == -493
+
+
 def table_exists(cursor, name):
     """Read-only existence probe: a SELECT against the table fails iff it is missing.
 
     A catalog query would work too, but this probe needs no catalog knowledge
     and never reads the table's rows. `name` is a module constant, not user input.
+
+    Only the driver's "unknown table" error (-493 / SQLSTATE S0002) means the
+    table is absent; any other failure (permissions, a dead connection) is
+    re-raised, so an unhealthy database is never misreported as an absent object.
     """
     try:
         cursor.execute(f"SELECT 1 FROM {name} WHERE 1 = 0")
         return True
-    except Exception:
-        return False
+    except Exception as e:
+        if _is_unknown_table(e):
+            return False
+        raise
 
 
 def drop_owned(conn, names):
@@ -222,13 +241,14 @@ def cleanup(conn, owned):
         conn.commit()
     finally:
         cursor.close()
-    print("\n✓ Cleaned up 'cookbook_product_stage' and 'cookbook_merge_products'")
     if failures:
         raise RuntimeError(
             "cleanup failed for "
             + "; ".join(failures)
             + f" (dropped: {', '.join(dropped) if dropped else 'none'})"
         )
+    # Claim success only when every owned table actually dropped.
+    print("\n✓ Cleaned up 'cookbook_product_stage' and 'cookbook_merge_products'")
 
 
 def main():

@@ -52,13 +52,22 @@ def table_of(sql: str) -> str | None:
     return m.group(1) if m else None
 
 
-def make_conn(existing=(), create_fail=(), drop_fail=(), fail_on=None):
+class UnknownTableError(Exception):
+    """Mimics pycubrid's table-not-found error (CAS errno -493, SQLSTATE S0002)."""
+
+    errno = -493
+    sqlstate = "S0002"
+
+
+def make_conn(existing=(), create_fail=(), drop_fail=(), fail_on=None, probe_error=None):
     """A fake pycubrid connection whose cursor fails where told.
 
     - `existing`: tables the existence probe reports as present
     - `create_fail`: table names whose CREATE TABLE raises
     - `drop_fail`: table names whose DROP TABLE raises
     - `fail_on`: substring that makes any other execute() raise (e.g. MERGE)
+    - `probe_error`: exception the existence probe raises for missing tables
+      (defaults to the driver's unknown-table error, -493 / S0002)
     """
     conn = MagicMock(name="conn")
     cursor = conn.cursor.return_value
@@ -71,7 +80,7 @@ def make_conn(existing=(), create_fail=(), drop_fail=(), fail_on=None):
         if flat.upper().startswith("SELECT 1 FROM"):
             if name in existing:
                 return
-            raise RuntimeError(f"-286: table {name} does not exist")
+            raise probe_error or UnknownTableError(f"-493: unknown table {name}")
         if flat.upper().startswith("CREATE TABLE") and name in create_fail:
             raise RuntimeError(f"create failed for {name}")
         if flat.upper().startswith("DROP TABLE") and name in drop_fail:
@@ -154,12 +163,30 @@ def test_cleanup_with_empty_owned_drops_nothing(module):
     assert executed(cursor, "DROP") == []
 
 
-def test_cleanup_partial_failure_still_drops_rest_and_raises(module):
+def test_cleanup_partial_failure_still_drops_rest_and_raises(module, capsys):
     conn, cursor = make_conn(drop_fail={STAGE})
     with pytest.raises(RuntimeError, match="cleanup failed.*cookbook_product_stage"):
         module.cleanup(conn, [TARGET, STAGE])
     drops = [table_of(d) for d in executed(cursor, "DROP TABLE")]
     assert drops == [STAGE, TARGET]  # both attempted, target succeeded
+    # "Cleaned up" is claimed only when no DROP failed.
+    assert "Cleaned up" not in capsys.readouterr().out
+
+
+def test_cleanup_success_prints_cleaned_up(module, capsys):
+    conn, cursor = make_conn()
+    module.cleanup(conn, [TARGET, STAGE])
+    assert "Cleaned up" in capsys.readouterr().out
+
+
+def test_probe_error_other_than_unknown_table_propagates(module):
+    """A probe failure that is NOT table-not-found (e.g. a dead connection)
+    must not be read as 'missing' — setup must abort without creating."""
+    conn, cursor = make_conn(probe_error=ConnectionError("connection dead"))
+    with pytest.raises(ConnectionError, match="connection dead"):
+        module.setup_schema(conn)
+    assert executed(cursor, "CREATE") == []
+    assert executed(cursor, "DROP") == []
 
 
 def test_main_clean_run_applies_two_snapshots_and_cleans_up(module, monkeypatch):
