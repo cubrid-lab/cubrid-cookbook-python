@@ -105,7 +105,7 @@ pycubrid 레시피 네 개로 보여 주며, 그대로 바꿔 끼우면 된다�
 | 패턴 | 효과 |
 |------|------|
 | [Fetch 최적화](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/performance/fetch-optimization) | `fetchall()` vs `fetchone()`, 컬럼 선택, 서버 측 페이지네이션 |
-| [벌크 인서트](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/performance/bulk-insert) | COMMIT을 배치로 (~28 → ~1,279 rows/s, pycubrid 1.10.0) |
+| [벌크 인서트](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/performance/bulk-insert) | COMMIT을 배치로 (~28 → ~1,279 rows/s, pycubrid 1.10.0); 벤치마크는 기존 테이블을 보존 |
 | [커넥션 풀링](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/performance/connection-pooling) | 연결 재사용 (쿼리당 ~5.9 ms vs ~0.8 ms, pycubrid 1.10.0) |
 
 ### 함정 (Pitfalls)
@@ -125,7 +125,7 @@ pycubrid 레시피 네 개로 보여 주며, 그대로 바꿔 끼우면 된다�
 | [에러 처리](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/error-handling) | 예외 타입, 재시도 패턴 (`05_error_handling.py`는 `fundamentals/pycubrid/05_error_handling.py`로 리다이렉트) |
 | [LOB 처리](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/lob-handling) | BLOB/CLOB 연산 (`fundamentals/pycubrid/06_lob.py`로 리다이렉트) |
 | [ORM 기초](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/orm-basics) | SQLAlchemy 엔진, Core, ORM, 릴레이션십 |
-| [pycubrid 드라이버](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/pycubrid) | 22개 DB-API 레시피: 커서, 윈도우 함수, 재귀 CTE, 페이지네이션, 타임존/ENUM |
+| [pycubrid 드라이버](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/pycubrid) | 22개 DB-API 레시피: 커서와 메모리 측정, 윈도우 함수, 재귀 CTE, 페이지네이션, 타임존/ENUM |
 | [SQLAlchemy 레시피](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/sqlalchemy) | SET/MULTISET/SEQUENCE 컬렉션 타입 포함 7개 |
 | [Pandas](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/pandas) | 6개 레시피: read_sql, 청크 읽기, to_sql 적재 |
 | [비동기 I/O](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/fundamentals/async) | pycubrid.aio와 SQLAlchemy 비동기 엔진 |
