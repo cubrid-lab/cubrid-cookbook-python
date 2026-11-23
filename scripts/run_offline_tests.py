@@ -47,6 +47,7 @@ SUITES: tuple[tuple[str, ...], ...] = (
     _unittest("test_check_expected_coverage.py"),
     _unittest("test_example_requirements.py"),
     _unittest("test_build_media.py"),
+    ("python", "-m", "pytest", "tests/test_cursor_memory_recipe.py", "-q"),
     (
         "python",
         "-m",

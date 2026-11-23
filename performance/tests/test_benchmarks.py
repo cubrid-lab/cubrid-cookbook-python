@@ -335,6 +335,24 @@ class TestPerformanceBenchmarks:
         assert no_pool == POOL_QUERIES, "NullPool must open one connection per query"
         assert 1 <= pooled <= POOL_SIZE, "the pool must reuse its connections"
 
+    def test_bulk_insert_preserves_existing_table(
+        self, live_db: LiveDB, sentinel_unchanged: None
+    ) -> None:
+        # Plain CREATE establishes ownership; never remove a pre-existing lab table.
+        live_db.query("CREATE TABLE cookbook_bulk_test (id INT PRIMARY KEY, label VARCHAR(40))")
+        try:
+            live_db.query(
+                "INSERT INTO cookbook_bulk_test (id, label) VALUES (?, ?)", (7, "keep this row")
+            )
+            before = live_db.query("SELECT id, label FROM cookbook_bulk_test ORDER BY id")
+            result = _run([sys.executable, str(PERFORMANCE_DIR / "bulk-insert/benchmark.py")], 600)
+            assert result.returncode != 0, "benchmark must refuse an existing table"
+            assert "fresh disposable database" in result.stdout, _tail(result.stdout)
+            assert "Strategy 1" not in result.stdout, _tail(result.stdout)
+            assert live_db.query("SELECT id, label FROM cookbook_bulk_test ORDER BY id") == before
+        finally:
+            live_db.query("DROP TABLE cookbook_bulk_test")
+
     def test_fetch_optimization_cleans_up_when_it_raises(
         self, live_db: LiveDB, sentinel_unchanged: None
     ) -> None:
