@@ -7,14 +7,26 @@ Demonstrates:
 
 If MERGE syntax fails on a specific server patch level, adapt to
 INSERT ... ON DUPLICATE KEY UPDATE while keeping the same behavior.
+
+Data safety (#627): the lesson refuses to run when either table already
+exists (dropping them could destroy someone else's data), and tracks which
+tables each run actually created, so a partial setup failure or a failed
+cleanup only ever drops this run's own tables. The original error is kept
+when cleanup fails too.
 """
 
 from __future__ import annotations
 
 # pyright: reportAttributeAccessIssue=false, reportMissingImports=false
 
+import sys
+
 import pycubrid
 from datetime import datetime, timezone
+
+
+TARGET_TABLE = "cookbook_merge_products"
+STAGE_TABLE = "cookbook_product_stage"
 
 
 DB_CONFIG = {
@@ -30,34 +42,87 @@ def get_connection():
     return pycubrid.connect(**DB_CONFIG)
 
 
-def setup_schema(conn):
-    cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_product_stage")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_merge_products")
+def table_exists(cursor, name):
+    """Read-only existence probe: a SELECT against the table fails iff it is missing.
 
-    cursor.execute(
-        """
-        CREATE TABLE cookbook_merge_products (
-            sku            VARCHAR(40) PRIMARY KEY,
-            name           VARCHAR(200) NOT NULL,
-            price_cents    INT NOT NULL,
-            active         INT NOT NULL DEFAULT 1,
-            last_seen_utc  DATETIME
-        )
-        """
-    )
-    cursor.execute(
-        """
-        CREATE TABLE cookbook_product_stage (
-            sku         VARCHAR(40) PRIMARY KEY,
-            name        VARCHAR(200) NOT NULL,
-            price_cents INT NOT NULL
-        )
-        """
-    )
-    conn.commit()
+    A catalog query would work too, but this probe needs no catalog knowledge
+    and never reads the table's rows. `name` is a module constant, not user input.
+    """
+    try:
+        cursor.execute(f"SELECT 1 FROM {name} WHERE 1 = 0")
+        return True
+    except Exception:
+        return False
+
+
+def drop_owned(conn, names):
+    """Drop exactly the tables this run created, newest first."""
+    if not names:
+        return
+    cursor = conn.cursor()
+    try:
+        for name in reversed(names):
+            cursor.execute(f"DROP TABLE IF EXISTS {name}")
+        conn.commit()
+    finally:
+        cursor.close()
+
+
+def setup_schema(conn):
+    """Create the target and staging tables, refusing to touch existing ones.
+
+    Returns the list of tables this call created, so cleanup drops only those
+    even when creation fails halfway (#627). A collision with pre-existing
+    tables raises before any destructive SQL runs.
+    """
+    cursor = conn.cursor()
+    existing = [n for n in (STAGE_TABLE, TARGET_TABLE) if table_exists(cursor, n)]
     cursor.close()
+    if existing:
+        raise RuntimeError(
+            "refusing to run: "
+            + ", ".join(f"'{n}'" for n in existing)
+            + " already exist and this lesson would DROP them — "
+            "drop them manually first, or run the lesson in a scratch database (#627)"
+        )
+
+    created = []
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE cookbook_merge_products (
+                sku            VARCHAR(40) PRIMARY KEY,
+                name           VARCHAR(200) NOT NULL,
+                price_cents    INT NOT NULL,
+                active         INT NOT NULL DEFAULT 1,
+                last_seen_utc  DATETIME
+            )
+            """
+        )
+        created.append(TARGET_TABLE)
+        cursor.execute(
+            """
+            CREATE TABLE cookbook_product_stage (
+                sku         VARCHAR(40) PRIMARY KEY,
+                name        VARCHAR(200) NOT NULL,
+                price_cents INT NOT NULL
+            )
+            """
+        )
+        created.append(STAGE_TABLE)
+        conn.commit()
+        cursor.close()
+    except Exception as original:
+        # Clean up only what this run actually created; if that cleanup fails
+        # too, the ORIGINAL error is the one that propagates (#627).
+        try:
+            drop_owned(conn, created)
+        except Exception as cleanup_error:
+            raise original from cleanup_error
+        raise
     print("✓ Created tables 'cookbook_merge_products' and 'cookbook_product_stage'")
+    return created
 
 
 def load_snapshot(cursor, rows):
@@ -136,20 +201,42 @@ def show_results(cursor, label):
         )
 
 
-def cleanup(conn):
+def cleanup(conn, owned):
+    """Drop only the tables this run created, tracking per-table failures.
+
+    `owned` is the list returned by setup_schema; an empty list (refused or
+    failed setup) drops nothing, so pre-existing tables are never touched.
+    """
+    if not owned:
+        return
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_product_stage")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_merge_products")
-    conn.commit()
-    cursor.close()
+    dropped = []
+    failures = []
+    try:
+        for name in reversed(owned):
+            try:
+                cursor.execute(f"DROP TABLE IF EXISTS {name}")
+                dropped.append(name)
+            except Exception as e:
+                failures.append(f"{name}: {e}")
+        conn.commit()
+    finally:
+        cursor.close()
     print("\n✓ Cleaned up 'cookbook_product_stage' and 'cookbook_merge_products'")
+    if failures:
+        raise RuntimeError(
+            "cleanup failed for "
+            + "; ".join(failures)
+            + f" (dropped: {', '.join(dropped) if dropped else 'none'})"
+        )
 
 
-if __name__ == "__main__":
+def main():
     conn = get_connection()
+    owned = []
 
     try:
-        setup_schema(conn)
+        owned = setup_schema(conn)
         cursor = conn.cursor()
 
         seed_rows = [
@@ -177,5 +264,19 @@ if __name__ == "__main__":
 
         cursor.close()
     finally:
-        cleanup(conn)
+        try:
+            cleanup(conn, owned)
+        except Exception as cleanup_error:
+            # Keep the original error when cleanup also fails (#627); only a
+            # cleanup failure on an otherwise-successful run raises.
+            if sys.exc_info()[0] is None:
+                raise
+            print(
+                f"warning: cleanup failed ({cleanup_error}); the original error is kept",
+                file=sys.stderr,
+            )
         conn.close()
+
+
+if __name__ == "__main__":
+    main()
