@@ -35,7 +35,7 @@ WRITE_ALLOWLIST: dict[str, set[tuple[str, str]]] = {
     # The advisory driver-main lane (#239) reports to one tracking issue.
     "ci.yml": {("driver-main-advisory", "issues")},
     "driver-main.yml": {("report", "issues")},
-    # The issue-opened intake marks new reports pending; it does not triage them.
+    # The issue-opened intake adds only the needs triage label; it does not triage them.
     "issue-triage.yml": {("intake", "issues")},
     "dependabot-auto-merge.yml": {
         ("auto-merge", "contents"),
@@ -283,7 +283,7 @@ class WorkflowPermissionsTest(unittest.TestCase):
             with self.subTest(where=where):
                 self.assertEqual(label_problems(command), [])
 
-    def test_automated_issue_creation_keeps_triage_pending(self) -> None:
+    def test_automated_issue_creation_uses_plain_needs_triage(self) -> None:
         """A GITHUB_TOKEN-generated issue does not trigger the intake workflow."""
         created = [
             command
@@ -293,7 +293,18 @@ class WorkflowPermissionsTest(unittest.TestCase):
         self.assertTrue(created)
         for command in created:
             with self.subTest(command=command[:70]):
-                self.assertIn('--label "status: needs triage"', command)
+                self.assertIn('--label "needs triage"', command)
+
+    def test_issue_intake_uses_no_status_prefixed_labels(self) -> None:
+        """New issues need one intake label, not progress/status labels."""
+        workflow = (WORKFLOWS / "issue-triage.yml").read_text(encoding="utf-8")
+        self.assertIn("--add-label 'needs triage'", workflow)
+        self.assertNotIn("status:", workflow)
+        for name in ("bug_report.yml", "feature_request.yml", "improvement_idea.yml"):
+            with self.subTest(form=name):
+                form = (ROOT / ".github/ISSUE_TEMPLATE" / name).read_text(encoding="utf-8")
+                self.assertIn("needs triage", form)
+                self.assertNotIn("status: needs triage", form)
 
     def test_issue_create_parser_follows_shell_continuations(self) -> None:
         split = 'run: |\n  gh issue \\\n    create --title "t" \\\n    --label ci\n'

@@ -21,4 +21,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --add-label 'status: needs triage'
+          gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --add-label 'needs triage'

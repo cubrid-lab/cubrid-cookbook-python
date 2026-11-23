@@ -1,6 +1,6 @@
 name: Improvement Idea
 description: Flag a confusing step, missing test or docs, rough edge, or idea without designing a fix.
-labels: ["status: needs triage"]
+labels: ["needs triage"]
 body:
   - type: markdown
     attributes:
