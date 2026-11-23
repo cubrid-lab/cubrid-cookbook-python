@@ -88,6 +88,26 @@ def probe_settings() -> dict[str, Any]:
     return settings
 
 
+def _probe_table_exists(cursor) -> bool:
+    """Existence probe for the fixed-name probe table.
+
+    Only the driver's unknown-table error (CAS -493 / SQLSTATE S0002) means
+    absent; any other failure (permissions, dead connection) propagates.
+    """
+    try:
+        cursor.execute(f"SELECT 1 FROM {PROBE_TABLE} WHERE 1 = 0")
+        return True
+    except Exception as e:
+        if (
+            getattr(e, "errno", None) == -493
+            or getattr(e, "code", None) == -493
+            or getattr(e, "sqlstate", None) == "S0002"
+            or (e.args and e.args[0] == -493)
+        ):
+            return False
+        raise
+
+
 def run_probe(
     connect: Callable[[], Any],
     key: str,
@@ -99,26 +119,35 @@ def run_probe(
 
     `connect` opens one independent connection per call. Returns a report
     dict {final, expected, attempts, errors}; raises the last error when no
-    attempt succeeded. The probe table is dropped in `finally` regardless.
+    attempt succeeded. The probe refuses to run if the probe table already
+    exists, and the `finally` drops only a table this call created — a
+    pre-existing table of the same name is never deleted, even on failure.
     """
-    # Setup on its own connection: fresh test-owned table + one seeded row.
-    with closing(connect()) as conn:
-        with closing(conn.cursor()) as cursor:
-            cursor.execute(f"DROP TABLE IF EXISTS {PROBE_TABLE}")
-            cursor.execute(CREATE_PROBE_TABLE)
-            cursor.execute(
-                f"INSERT INTO {PROBE_TABLE} (metric_key, metric_day, hit_count) VALUES (?, ?, 0)",
-                (key, day),
-            )
-        conn.commit()
-
     report: dict[str, Any] = {
         "final": None,
         "expected": 2 * per_connection,
         "attempts": 0,
         "errors": [],
     }
+    owned = False
     try:
+        # Setup on its own connection: refuse a pre-existing probe table, then
+        # create the run-owned one plus one seeded row.
+        with closing(connect()) as conn:
+            with closing(conn.cursor()) as cursor:
+                if _probe_table_exists(cursor):
+                    raise RuntimeError(
+                        f"refusing to run probe: '{PROBE_TABLE}' already exists — "
+                        "the probe only drops tables it created itself"
+                    )
+                cursor.execute(CREATE_PROBE_TABLE)
+                owned = True
+                cursor.execute(
+                    f"INSERT INTO {PROBE_TABLE} (metric_key, metric_day, hit_count) VALUES (?, ?, 0)",
+                    (key, day),
+                )
+            conn.commit()
+
         last_error: Exception | None = None
         for attempt in range(1, max_attempts + 1):
             report["attempts"] = attempt
@@ -164,10 +193,12 @@ def run_probe(
             return report
         raise last_error if last_error else RuntimeError("probe failed without an error")
     finally:
-        with closing(connect()) as conn:
-            with closing(conn.cursor()) as cursor:
-                cursor.execute(f"DROP TABLE IF EXISTS {PROBE_TABLE}")
-            conn.commit()
+        # Drop only a table this call created; a pre-existing one survives.
+        if owned:
+            with closing(connect()) as conn:
+                with closing(conn.cursor()) as cursor:
+                    cursor.execute(f"DROP TABLE IF EXISTS {PROBE_TABLE}")
+                conn.commit()
 
 
 @pytest.fixture
@@ -203,3 +234,40 @@ def test_probe_table_is_torn_down(settings):
                 (PROBE_TABLE.upper(),),
             )
             assert cursor.fetchone()[0] == 0, "probe table must be dropped after the run"
+
+
+def test_preexisting_probe_table_is_refused_and_survives(settings):
+    """Ownership guard: a pre-existing fixed-name probe table makes the probe
+    refuse to run, and the refusal must NOT delete that table — even though
+    the run fails, the foreign table is still there afterwards."""
+    import pycubrid  # type: ignore[import-not-found]
+
+    connect = lambda: pycubrid.connect(**settings, connect_timeout=10)  # noqa: E731
+    with closing(connect()) as conn:
+        with closing(conn.cursor()) as cursor:
+            cursor.execute(f"DROP TABLE IF EXISTS {PROBE_TABLE}")  # start clean
+            cursor.execute(CREATE_PROBE_TABLE)
+            cursor.execute(
+                f"INSERT INTO {PROBE_TABLE} (metric_key, metric_day, hit_count) VALUES ('sentinel', CURRENT_DATE, 42)"
+            )
+        conn.commit()
+
+    key = f"probe-{uuid.uuid4().hex}"
+    day = datetime.datetime.now(datetime.timezone.utc).date()
+    with pytest.raises(RuntimeError, match="already exists"):
+        run_probe(connect, key, day)
+
+    # The pre-existing table and its sentinel row were not touched.
+    with closing(connect()) as conn:
+        with closing(conn.cursor()) as cursor:
+            cursor.execute(
+                f"SELECT hit_count FROM {PROBE_TABLE} WHERE metric_key = 'sentinel'"
+            )
+            row = cursor.fetchone()
+            assert row is not None and row[0] == 42, "pre-existing probe table must survive a refused run"
+        conn.rollback()
+    # Clean up the table this test itself created.
+    with closing(connect()) as conn:
+        with closing(conn.cursor()) as cursor:
+            cursor.execute(f"DROP TABLE IF EXISTS {PROBE_TABLE}")
+        conn.commit()

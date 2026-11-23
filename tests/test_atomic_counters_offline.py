@@ -37,6 +37,13 @@ def load_live_module(monkeypatch):
     return module
 
 
+class UnknownTableError(Exception):
+    """Mimics pycubrid's table-not-found error (CAS errno -493, SQLSTATE S0002)."""
+
+    errno = -493
+    sqlstate = "S0002"
+
+
 class FakeCubrid:
     """In-memory stand-in for the counter table; increments are atomic per call."""
 
@@ -76,6 +83,10 @@ class FakeCursor:
         elif flat.startswith("INSERT INTO"):
             key, day = params[0], params[1]
             self.pending[(key, day)] = 0  # seed row: hit_count literal 0 in the SQL
+        elif flat.startswith("SELECT 1 FROM"):
+            # Existence probe: only the unknown-table error (-493 / S0002) means absent.
+            if table.upper() not in {t.upper() for t in self.state.tables}:
+                raise UnknownTableError(f"-493: unknown table {table}")
         elif flat.startswith("SELECT HIT_COUNT"):
             self._row = (
                 (
@@ -163,6 +174,16 @@ def test_probe_tears_down_even_when_every_attempt_fails(live):
             max_attempts=2,
         )
     assert live.PROBE_TABLE not in state.tables  # finally-drop still ran
+
+
+def test_probe_refuses_and_preserves_a_preexisting_probe_table(live):
+    """Ownership guard: when the fixed-name probe table already exists, the
+    probe refuses to run and must not delete that foreign table on failure."""
+    state = FakeCubrid()
+    state.tables.add(live.PROBE_TABLE)  # foreign table already present
+    with pytest.raises(RuntimeError, match="already exists"):
+        live.run_probe(state.connect, "probe-guard", datetime.date(2026, 11, 22), per_connection=1)
+    assert live.PROBE_TABLE in state.tables  # survived the refused run
 
 
 def test_recipe_uses_on_duplicate_key_update_increment(monkeypatch):
