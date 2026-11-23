@@ -17,8 +17,10 @@ Usage:
     python scripts/example_requirements.py --check [--all] [ROOT ...]  # verify pre-flight
 
 ``--check`` fails once, listing every requirement whose distribution is not
-installed, with a hint to run ``make deps``. It checks presence only, not
-versions or extras.
+installed and applies in the current environment, with a hint to run ``make deps``.
+It checks presence only, not versions or extras. Checking requires ``packaging``
+(installed with pytest by ``make deps``); file discovery uses only the standard
+library. Pip options and includes are skipped, not recursively resolved.
 """
 
 from __future__ import annotations
@@ -28,8 +30,6 @@ import re
 import sys
 from importlib import metadata
 from pathlib import Path
-
-REQUIREMENT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
 def requirement_files(root: Path, every: bool = False) -> list[Path]:
@@ -43,13 +43,32 @@ def requirement_files(root: Path, every: bool = False) -> list[Path]:
 
 
 def requirement_names(requirements: Path) -> list[str]:
-    """Return the distribution names a requirements file lists (no options or includes)."""
+    """Return applicable PEP 508 distribution names (no pip options or includes)."""
+    # Keep file discovery usable before make deps installs the checking tools.
+    try:
+        from packaging.markers import UndefinedComparison, UndefinedEnvironmentName
+        from packaging.requirements import InvalidRequirement, Requirement
+    except ImportError as exc:
+        raise ValueError(
+            "Dependency preflight needs 'packaging'; install it with `python -m pip install packaging`"
+        ) from exc
+
     names = []
-    for line in requirements.read_text(encoding="utf-8").splitlines():
-        line = line.split("#", 1)[0].strip()
-        match = REQUIREMENT_NAME.match(line)
-        if match:
-            names.append(match.group())
+    for number, line in enumerate(requirements.read_text(encoding="utf-8").splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith(("#", "-")):
+            continue
+        # Inline comments require whitespace; preserve direct-URL hash fragments
+        # so a later environment marker still reaches the PEP 508 parser.
+        line = re.split(r"\s+#", line, maxsplit=1)[0].strip()
+        try:
+            requirement = Requirement(line)
+            if requirement.marker is None or requirement.marker.evaluate():
+                names.append(requirement.name)
+        except (InvalidRequirement, UndefinedComparison, UndefinedEnvironmentName) as exc:
+            raise ValueError(
+                f"{requirements}:{number}: unsupported requirement {line!r}: {exc}"
+            ) from exc
     return names
 
 
@@ -80,7 +99,11 @@ def main(argv: list[str]) -> int:
     every = "--all" in argv
     roots = [Path(arg) for arg in argv if arg not in ("--check", "--all")] or [Path(".")]
     if check:
-        missing = missing_distributions(roots, every)
+        try:
+            missing = missing_distributions(roots, every)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
         if missing:
             print("Missing example dependencies: run `make deps` first.", file=sys.stderr)
             for entry in missing:
