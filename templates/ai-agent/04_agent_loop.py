@@ -79,29 +79,42 @@ class SimpleDataAgent:
     def act(self, tool: str, args: dict) -> str:
         """Execute the planned tool call against CUBRID."""
         start = time.perf_counter()
-        cur = self.conn.cursor()
+        status = "completed"
 
-        if tool == "all_table_names":
-            cur.execute(
-                "SELECT class_name FROM db_class "
-                "WHERE class_type = 'CLASS' AND is_system_class = 'NO'"
-            )
-            tables = [row[0] for row in cur]
-            result = f"Found {len(tables)} tables: {', '.join(tables[:5])}"
-        elif tool == "execute_query":
+        if tool == "health_check":
             try:
-                cur.execute(args.get("sql", "SELECT 1"))
-                rows = cur.fetchall()
-                result = f"Query returned {len(rows)} rows"
-                for row in rows[:3]:
-                    result += f"\n  {row}"
+                # Read through the current connection before reporting it healthy.
+                # closing() also releases the cursor when execute or fetch fails.
+                with closing(self.conn.cursor()) as cur:
+                    cur.execute("SELECT 1")
+                    cur.fetchone()
+                result = "Connection OK"
             except pycubrid.Error as e:
-                result = f"Query failed: {e.msg}"
+                result = f"Connection failed: {e.msg}"
+                status = "failed"
+        elif tool in {"all_table_names", "execute_query"}:
+            with closing(self.conn.cursor()) as cur:
+                if tool == "all_table_names":
+                    cur.execute(
+                        "SELECT class_name FROM db_class "
+                        "WHERE class_type = 'CLASS' AND is_system_class = 'NO'"
+                    )
+                    tables = [row[0] for row in cur]
+                    result = f"Found {len(tables)} tables: {', '.join(tables[:5])}"
+                else:
+                    try:
+                        cur.execute(args.get("sql", "SELECT 1"))
+                        rows = cur.fetchall()
+                        result = f"Query returned {len(rows)} rows"
+                        for row in rows[:3]:
+                            result += f"\n  {row}"
+                    except pycubrid.Error as e:
+                        result = f"Query failed: {e.msg}"
         else:
-            result = "Connection OK"
+            result = f"Unsupported tool: {tool}"
+            status = "failed"
 
         elapsed_ms = int((time.perf_counter() - start) * 1000)
-        cur.close()
 
         _agent_state.record_tool_call(
             self.conn,
@@ -109,6 +122,7 @@ class SimpleDataAgent:
             tool,
             arguments=args,
             result={"summary": result[:100]},
+            status=status,
             duration_ms=elapsed_ms,
         )
         return result

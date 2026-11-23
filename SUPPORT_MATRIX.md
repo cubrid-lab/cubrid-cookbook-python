@@ -260,7 +260,10 @@ when a row no longer matches the repository. Verification is split:
   leaves the table and its rows intact. `make verify-ai-agent` (and the full
   `make verify`) runs the live suite fail-closed (no URL, an unreachable database
   or a skip fails).
-  `templates/ai-agent/tests/test_offline.py` checks ID handling, MCP errors and cleanup.
+  `templates/ai-agent/tests/test_offline.py` checks ID handling, MCP errors and cleanup,
+  plus the agent loop's `SELECT 1` health probe, failed probe statuses, cursor cleanup
+  and unsupported-tool rejection. These mocked probe cases are offline evidence;
+  the existing live suite checks the successful demonstration against CUBRID.
 - The **Celery async-worker** database tasks run through
   `templates/async-worker/tests` without a Redis broker or worker. A dedicated
   CUBRID 11.4 job gates pull requests that touch it; the non-PR smoke matrix

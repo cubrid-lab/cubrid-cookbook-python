@@ -33,6 +33,63 @@ def load_live_suite():
     return module
 
 
+def test_agent_health_check_probes_database_and_records_success(monkeypatch):
+    module = load_recipe("04_agent_loop.py")
+    conn = MagicMock()
+    cursor = conn.cursor.return_value
+    cursor.fetchone.return_value = (1,)
+    monkeypatch.setattr(module._agent_state, "create_session", lambda *args, **kwargs: 17)
+    record = MagicMock()
+    monkeypatch.setattr(module._agent_state, "record_tool_call", record)
+    agent = module.SimpleDataAgent(conn, "test-health")
+
+    assert agent.act("health_check", {}) == "Connection OK"
+
+    cursor.execute.assert_called_once_with("SELECT 1")
+    cursor.fetchone.assert_called_once_with()
+    cursor.close.assert_called_once_with()
+    assert record.call_args.args == (conn, 17, "health_check")
+    assert record.call_args.kwargs["status"] == "completed"
+    assert record.call_args.kwargs["result"] == {"summary": "Connection OK"}
+
+
+@pytest.mark.parametrize("failure_at", ["cursor", "execute", "fetchone"])
+def test_agent_health_check_records_failed_probe(failure_at, monkeypatch):
+    module = load_recipe("04_agent_loop.py")
+    conn = MagicMock()
+    cursor = conn.cursor.return_value
+    # Keep state persistence mocked so this test isolates the health probe.
+    monkeypatch.setattr(module._agent_state, "create_session", lambda *args, **kwargs: 17)
+    record = MagicMock()
+    monkeypatch.setattr(module._agent_state, "record_tool_call", record)
+    operation = conn.cursor if failure_at == "cursor" else getattr(cursor, failure_at)
+    operation.side_effect = module.pycubrid.Error("database unavailable")
+    agent = module.SimpleDataAgent(conn, "test-health")
+
+    assert agent.act("health_check", {}) == "Connection failed: database unavailable"
+
+    assert record.call_args.kwargs["status"] == "failed"
+    if failure_at == "cursor":
+        cursor.close.assert_not_called()
+    else:
+        cursor.close.assert_called_once_with()
+
+
+def test_agent_rejects_unsupported_tool_without_querying(monkeypatch):
+    module = load_recipe("04_agent_loop.py")
+    conn = MagicMock()
+    monkeypatch.setattr(module._agent_state, "create_session", lambda *args, **kwargs: 17)
+    record = MagicMock()
+    monkeypatch.setattr(module._agent_state, "record_tool_call", record)
+    agent = module.SimpleDataAgent(conn, "test-health")
+
+    assert agent.act("unknown_tool", {}) == "Unsupported tool: unknown_tool"
+
+    conn.cursor.assert_not_called()
+    assert record.call_args.args == (conn, 17, "unknown_tool")
+    assert record.call_args.kwargs["status"] == "failed"
+
+
 INSERT_CASES = [
     ("01_agent_state.py", "create_session", ("session",)),
     ("01_agent_state.py", "add_message", (1, "user", "Hello")),

@@ -102,6 +102,7 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 
 ### Fixed
 
+- **Agent-loop health checks query the database (#594)** — `templates/ai-agent/04_agent_loop.py` now executes and fetches a read-only `SELECT 1` probe through its current connection before returning `Connection OK`. Driver errors and unsupported tools produce failed tool-call records instead of reporting a healthy connection. Probe cursors are closed on failure; offline tests cover successful probes, cursor/execution/fetch errors and unknown tools. Recording errors still propagate if the same connection cannot persist the result.
 - **Cursor-memory scans report elapsed time and release resources (#587)** — `15_cursor_memory_bound.py` now returns monotonic query/fetch elapsed seconds instead of `0.0`. Tracing, cursor and connection cleanup run on success and failure, attempt every cleanup, and preserve the primary scan error if cleanup also fails. Offline regressions cover both fetch modes, row-count validation, setup/scan failures and cleanup failures; printed demonstration output is unchanged.
 
 - **The pandas clean-and-transform golden passes on pandas 3.1 (#443)** — `fundamentals/pandas/03_clean_and_transform.py` printed its seven-column result with `print(df)`, which truncates a wide frame to the display width; pandas 3.1.0 changed that truncated layout, so the golden failed on every CI run that installed it. The recipe now prints `DataFrame.to_string()`, which shows every column and gives the same output on pandas 3.0 and 3.1; the golden is regenerated.

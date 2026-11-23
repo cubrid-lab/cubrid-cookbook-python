@@ -90,6 +90,10 @@ pycubrid 레시피 네 개로 보여 주며, 그대로 바꿔 끼우면 된다�
 | [`rag/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/rag) | CUBRID 원문 + Qdrant 벡터 검색 + Ollama 모델을 활용하는 로컬 RAG 예제 (오프라인 단위 테스트 및 수동 통합 실행) |
 | [`dashboard/`](https://github.com/cubrid-lab/cubrid-cookbook-python/tree/main/templates/dashboard) | Streamlit 인터랙티브 대시보드 (`docker compose up` 원커맨드 데모) |
 
+[AI 에이전트 루프](https://github.com/cubrid-lab/cubrid-cookbook-python/blob/main/templates/ai-agent/README.md)는
+현재 데이터베이스 연결에서 `SELECT 1`을 실행한 뒤 `Connection OK`를 반환합니다.
+연결 확인에 실패하거나 지원하지 않는 도구를 요청하면 도구 호출을 실패로 기록합니다.
+
 <a href="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-dashboard.gif"><img src="https://github.com/cubrid-lab/cubrid-cookbook-python/raw/main/docs/demo-dashboard.png" alt="docker compose up 후 CUBRID 데이터를 보여 주는 Streamlit 대시보드 템플릿, 녹화의 마지막 장면" width="100%"/></a>
 
 <sub>▶ [녹화 재생](demo-dashboard.gif) (애니메이션 GIF, 12초)</sub>

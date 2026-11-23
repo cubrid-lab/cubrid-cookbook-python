@@ -90,6 +90,10 @@ Copy-and-customize starting points for real applications:
 | [`rag/`](templates/rag/) | Local RAG: CUBRID source text + Qdrant vectors + Ollama embeddings/LLM (offline unit tests; manual full-stack run) |
 | [`dashboard/`](templates/dashboard/) | Interactive dashboard with Streamlit |
 
+The [AI agent loop](templates/ai-agent/README.md) probes its current database
+connection with `SELECT 1` before reporting `Connection OK`; failed probes and
+unsupported tools are recorded as failed tool calls.
+
 <a href="docs/demo-dashboard.gif"><img src="docs/demo-dashboard.png" alt="Streamlit dashboard template showing CUBRID rows after docker compose up, last frame of the recording" width="100%"/></a>
 
 <sub>▶ [Play the recording](docs/demo-dashboard.gif) (animated GIF, 12 seconds)</sub>
