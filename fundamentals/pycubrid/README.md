@@ -67,6 +67,15 @@ constrains installation to its selected published driver version.
 | `21_enum_type.py` | The ENUM column type | declaration-order sorting, `col + 0` ordinal, out-of-set rejection |
 | `22_date_formatting.py` | Date formatting & parsing | `TO_CHAR(date/number, fmt)`, `TO_DATE(str, fmt)`, fixed-width padding |
 
+The memory probe in `15_cursor_memory_bound.py` returns peak traced Python
+memory and monotonic elapsed seconds for query execution and row fetching.
+Connection setup and cleanup are outside the timed scan. Both fetch modes
+verify the full row count and release tracing, the cursor and the connection
+even on failure. Cleanup attempts continue after an error; a scan error remains
+the primary failure, while a cleanup error after a successful scan is reported.
+The printed memory-comparison output is unchanged. Offline timing and cleanup
+regressions run in `make test`; the golden script still requires live CUBRID.
+
 ## Run
 
 ```bash

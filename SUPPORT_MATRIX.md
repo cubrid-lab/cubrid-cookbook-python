@@ -287,7 +287,8 @@ when a row no longer matches the repository. Verification is split:
   **11.2/11.4** weekly, on manual runs and in release verification). The suite refuses a preexisting
   `cookbook_django_items` table and removes only its own table.
 - The **migration and performance** suite (`performance/tests/test_benchmarks.py`:
-  the five Java-to-Python migration goldens, the three benchmarks and their cleanup on failure;
+  the five Java-to-Python migration goldens, the three benchmarks and their cleanup on failure,
+  plus preservation of a pre-existing bulk-insert table;
   timings are parsed, never compared) runs in the smoke job's full `make verify`
   (**11.4** on `main` and daily, **11.2 and 11.4** weekly, on manual runs and in
   release verification), and as `make verify-performance` in the CUBRID 11.4 smoke lane
@@ -297,7 +298,7 @@ when a row no longer matches the repository. Verification is split:
 
 | Category | Recipes | Verified by |
 |----------|---------|-------------|
-| pycubrid fundamentals | 22 | `make verify` (CI, 11.2 + 11.4) |
+| pycubrid fundamentals | 22 | `make verify` (CI, 11.2 + 11.4); cursor-memory timing and cleanup regressions run offline in `make test` |
 | SQLAlchemy fundamentals | 7 | `make verify` (CI, 11.2 + 11.4) |
 | SQLAlchemy ORM basics | 6 | `make verify` (CI, 11.2 + 11.4) |
 | Pandas fundamentals | 6 | `make verify` (CI, 11.2 + 11.4) |

@@ -21,6 +21,7 @@ Run:
 from __future__ import annotations
 
 import tracemalloc
+from time import perf_counter
 from typing import Any
 
 import pycubrid  # type: ignore[import-not-found]
@@ -80,22 +81,44 @@ def measure_peak_memory(fetch_size: int, keep_rows: bool = False) -> tuple[int, 
     every row in one list, so its peak is the whole result whatever the fetch_size.
     """
     conn = get_connection(fetch_size)
-    cur = conn.cursor()
-    tracemalloc.start()
-    cur.execute("SELECT id, payload, created_at FROM cookbook_fetch_probe")
-    if keep_rows:
-        seen = len(cur.fetchall())
-    else:
-        seen = 0
-        while batch := cur.fetchmany(10):
-            seen += len(batch)
-    _, peak = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
-    cur.close()
-    conn.close()
-    if seen != ROW_COUNT:
-        raise RuntimeError(f"expected {ROW_COUNT} rows, got {seen}")
-    return peak, 0.0
+    cur = None
+    tracing_started = False
+    succeeded = False
+    try:
+        cur = conn.cursor()
+        tracemalloc.start()
+        tracing_started = True
+        start = perf_counter()
+        cur.execute("SELECT id, payload, created_at FROM cookbook_fetch_probe")
+        if keep_rows:
+            seen = len(cur.fetchall())
+        else:
+            seen = 0
+            while batch := cur.fetchmany(10):
+                seen += len(batch)
+        elapsed = perf_counter() - start
+        _, peak = tracemalloc.get_traced_memory()
+        if seen != ROW_COUNT:
+            raise RuntimeError(f"expected {ROW_COUNT} rows, got {seen}")
+        succeeded = True
+        return peak, elapsed
+    finally:
+        # Attempt every cleanup even if an earlier one fails. A scan failure
+        # remains primary; after success, report the first cleanup failure.
+        cleanups = [conn.close]
+        if cur is not None:
+            cleanups.insert(0, cur.close)
+        if tracing_started:
+            cleanups.insert(0, tracemalloc.stop)
+        cleanup_error = None
+        for cleanup in cleanups:
+            try:
+                cleanup()
+            except Exception as exc:
+                if cleanup_error is None:
+                    cleanup_error = exc
+        if succeeded and cleanup_error is not None:
+            raise cleanup_error
 
 
 def main() -> None:

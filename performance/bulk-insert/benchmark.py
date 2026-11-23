@@ -13,6 +13,7 @@ def count_rows(cursor) -> int:
 def main() -> None:
     """Benchmark three bulk insert strategies against CUBRID."""
     conn = None
+    created_table = False
     try:
         conn = pycubrid.connect(
             host="localhost",
@@ -23,18 +24,25 @@ def main() -> None:
         )
         cursor = conn.cursor()
 
-        # Create test table
-        cursor.execute("DROP TABLE IF EXISTS cookbook_bulk_test")
-        cursor.execute(
-            """
-            CREATE TABLE cookbook_bulk_test (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(100),
-                val INT,
-                is_active INT
+        # CREATE without IF NOT EXISTS refuses a collision without touching its rows.
+        try:
+            cursor.execute(
+                """
+                CREATE TABLE cookbook_bulk_test (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(100),
+                    val INT,
+                    is_active INT
+                )
+                """
             )
-            """
-        )
+        except pycubrid.DatabaseError as exc:
+            raise RuntimeError(
+                "Cannot create cookbook_bulk_test; the benchmark will not replace an existing "
+                "table. Use a fresh disposable database and check the underlying database error."
+            ) from exc
+        # Set ownership before COMMIT so a commit failure still attempts cleanup.
+        created_table = True
         conn.commit()
 
         num_rows = 5000
@@ -103,12 +111,13 @@ def main() -> None:
 
     finally:
         if conn:
-            try:
-                cursor = conn.cursor()
-                cursor.execute("DROP TABLE IF EXISTS cookbook_bulk_test")
-                conn.commit()
-            except Exception:
-                pass
+            if created_table:
+                try:
+                    cursor = conn.cursor()
+                    cursor.execute("DROP TABLE IF EXISTS cookbook_bulk_test")
+                    conn.commit()
+                except Exception:
+                    pass
             conn.close()
 
 

@@ -7,8 +7,8 @@ name: PR title
 # nothing and receives the title and body only through environment variables, so
 # no PR-controlled code or string is executed. The job's token can only read pull
 # requests: `gh api` lists the PR's commit messages into a file that is read as
-# data only. Also rejects foreign-issue closing keywords in the PR body, and in
-# the title and commit messages, which make up the squash commit.
+# data only. Also rejects foreign-issue closing keywords in contributor PR bodies
+# and in the title and commit messages, which make up the squash commit.
 # The job name "PR title" is the required-status-check context; keep it stable.
 
 on:
@@ -33,6 +33,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_COMMIT_COUNT: ${{ github.event.pull_request.commits }}
           GH_TOKEN: ${{ github.token }}
@@ -107,6 +108,12 @@ jobs:
           if any(ch.isalpha() and not ch.isascii() for ch in title):
               errors.append("Write the title in English (ASCII letters only).")
 
+
+          # Dependabot's generated body includes quoted upstream release notes.
+          # Trust only the PR author from the event, never the actor or body text:
+          # a rerun must not exempt a contributor's PR. Titles/commits stay checked.
+          if os.environ.get("PR_AUTHOR") == "dependabot[bot]":
+              os.environ["PR_BODY"] = ""
 
           # BEGIN cross-repo-closing-guard
           # No checkout or execution of untrusted PR-body text is needed.
