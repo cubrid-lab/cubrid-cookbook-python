@@ -1115,6 +1115,17 @@ ruff format .
 
 ---
 
+## PR review outcomes
+
+Use the same decision labels for every PR, whether human-authored or AI-assisted:
+
+- **`APPROVE`** a reviewed, non-blocking change; optional suggestions can accompany approval instead of delaying it.
+- **`REQUEST_CHANGES`** for an actionable must-fix defect, with the affected code and required correction clearly identified.
+- **`COMMENT`** when asking a question or when a review is not yet decisive. The author cannot approve their own PR; never imply an AI review is an independent human approval.
+- Code approval and GitHub Actions **run approval** are separate. `action_required`, pending, failed or stale required CI checks do not permit merge, even if a code review is approved. Confirm final-head CI, resolved blocking findings, applicable independent/security/integration requirements and the maintainer's merge decision before merging.
+
+See [AGENTS.md — PR review outcomes](AGENTS.md#pr-review-outcomes-common-decision-rules). Existing repository-specific branch, release, security and required-review safeguards continue to apply.
+
 ## Pull Request Guidelines
 
 ### Before Submitting
@@ -1267,9 +1278,14 @@ supply a real dependency or compatibility contract; their priorities and
 completion are not inherited. Close only this repository's issues (Closes #N).
 PRs with no local issue may state N/A and a reason. The existing PR title check
 rejects direct cross-repository issue-closing keywords, including emphasized or
-linked ones, in the PR body, the PR title and commit messages. The title and
-commit messages make up the squash commit and are read as plain text; an edit to
-the squash message at merge time is not checked. In the body, the check ignores
+linked ones, in contributor PR bodies, all PR titles and commit messages.
+Dependabot bodies quote upstream release notes, so only a PR authored by exactly
+`dependabot[bot]` (from GitHub's event metadata) skips the body check. Its title
+and commit messages still receive all checks. The actor that triggers or reruns
+a workflow, a bot mention in the body, or another bot's name does not grant this
+exemption. The title and commit messages make up the squash commit and are read
+as plain text; an edit to the squash message at merge time is not checked. In the
+body, the check ignores
 fenced and indented code blocks and HTML comment blocks only where it can follow
 the Markdown exactly, so anything uncertain is checked: code and comment blocks
 inside list items, footnotes and block quotes are always checked; after a fence
@@ -1386,7 +1402,7 @@ or file an [issue](https://github.com/cubrid-lab/cubrid-cookbook-python/issues).
 Use the issue and PR's actual state as evidence. Classification, authorization,
 implementation, review and completion are **different decisions**:
 
-1. **Intake / triage:** A newly filed issue starts with `status: needs triage`.
+1. **Intake / triage:** A newly filed issue starts with `needs triage`.
    Check evidence or reproduction, duplicate open/closed issues and overlapping
    PRs, repository scope, type, priority, size, dependencies, and verifiable
    acceptance criteria. A maintainer removes the intake label only after
@@ -1415,10 +1431,10 @@ implementation, review and completion are **different decisions**:
    deferred integration, fault, security or release verification has passed.
 
 **Tracking without boards:** GitHub Issues and pull requests are the only
-workflow tracker. The sole lifecycle label is `status: needs triage` for
-unreviewed intake. Once triage is completed, remove that label after checking
+workflow tracker. The only intake label is `needs triage` for
+unreviewed issues. Once triage is completed, remove that label after checking
 the actual saved issue metadata; do not create `status: ready`, `status: in
-progress`, or other duplicate workflow labels. Record the **Ready** decision,
+progress`, or any other `status:*` workflow labels. Record the **Ready** decision,
 remaining dependencies, and next action in the issue. For **In Progress**,
 identify the actual implementer using Assignees and add a concise start/handoff
 comment; link the working PR when it exists. **In Review** is visible from the
