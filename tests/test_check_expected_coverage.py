@@ -258,6 +258,48 @@ class MissingGoldenTests(unittest.TestCase):
             self.assertEqual(result, ["b/three.py"])
 
 
+class ExternalRootTests(unittest.TestCase):
+    """Roots outside the checkout are reported by absolute path (#583)."""
+
+    def _external_example(self, tmp: str, with_golden: bool) -> Path:
+        example = Path(tmp) / "external" / "examples"
+        expected = example / "expected"
+        expected.mkdir(parents=True)
+        (example / "demo.py").write_text("print('hello')\n", encoding="utf-8")
+        if with_golden:
+            (expected / "demo.expected").write_text("hello\n", encoding="utf-8")
+        return example
+
+    def test_external_missing_golden_is_reported_by_absolute_path(self):
+        with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as tmp:
+            example = self._external_example(tmp, with_golden=False)
+
+            with mock.patch.object(coverage, "REPO_ROOT", Path(repo)):
+                result = coverage.find_missing([example], set())
+
+            self.assertEqual(result, [(example / "demo.py").as_posix()])
+
+    def test_external_root_with_goldens_reports_nothing(self):
+        with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as tmp:
+            example = self._external_example(tmp, with_golden=True)
+
+            with mock.patch.object(coverage, "REPO_ROOT", Path(repo)):
+                result = coverage.find_missing([example], set())
+
+            self.assertEqual(result, [])
+
+    def test_repo_relative_allowlist_still_matches_inside_the_checkout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            example = root / "examples"
+            (example / "expected").mkdir(parents=True)
+            (example / "demo.py").write_text("print('hello')\n", encoding="utf-8")
+
+            with mock.patch.object(coverage, "REPO_ROOT", root):
+                self.assertEqual(coverage.find_missing([example], {"examples/demo.py"}), [])
+                self.assertEqual(coverage.find_missing([example], set()), ["examples/demo.py"])
+
+
 class MainTests(unittest.TestCase):
     def test_missing_golden_returns_exit_code_one(self):
         with tempfile.TemporaryDirectory() as tmp:

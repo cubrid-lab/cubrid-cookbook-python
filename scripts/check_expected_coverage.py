@@ -70,6 +70,14 @@ def is_runnable_example(py: Path) -> bool:
     return True
 
 
+def _report_path(py: Path) -> str:
+    """Repo-relative path, or the absolute path for a root outside the checkout."""
+    try:
+        return py.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return py.as_posix()
+
+
 def find_missing(roots: list[Path], allowlist: set[str]) -> list[str]:
     missing: list[str] = []
     for root in roots:
@@ -80,7 +88,7 @@ def find_missing(roots: list[Path], allowlist: set[str]) -> list[str]:
             for py in sorted(example_dir.glob("*.py")):
                 if not is_runnable_example(py):
                     continue
-                rel = py.relative_to(REPO_ROOT).as_posix()
+                rel = _report_path(py)
                 if rel in allowlist:
                     continue
                 golden = expected_dir / f"{py.stem}.expected"
