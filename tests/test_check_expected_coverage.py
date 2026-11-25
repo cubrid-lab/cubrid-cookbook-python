@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import io
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -363,6 +365,56 @@ class MainTests(unittest.TestCase):
     def test_real_repository_passes(self):
         with mock.patch("sys.stdout", new_callable=io.StringIO):
             self.assertEqual(coverage.main([]), 0)
+
+    def test_missing_golden_diagnostic_works_on_cp1252_stdout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            example = Path(tmp) / "examples"
+            (example / "expected").mkdir(parents=True)
+            demo = example / "demo.py"
+            demo.write_text("print('hello')\n", encoding="utf-8")
+
+            env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "check_expected_coverage.py"),
+                    str(example),
+                ],
+                capture_output=True,
+                text=True,
+                encoding="cp1252",
+                env=env,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertNotIn("UnicodeEncodeError", result.stderr)
+        self.assertIn("Missing .expected goldens", result.stdout)
+        self.assertIn(f"  x {demo.resolve().as_posix()}", result.stdout)
+
+    def test_missing_golden_diagnostic_keeps_utf8_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            example = Path(tmp) / "examples"
+            (example / "expected").mkdir(parents=True)
+            demo = example / "demo.py"
+            demo.write_text("print('hello')\n", encoding="utf-8")
+
+            env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "check_expected_coverage.py"),
+                    str(example),
+                ],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env=env,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"  ✗ {demo.resolve().as_posix()}", result.stdout)
 
 
 if __name__ == "__main__":

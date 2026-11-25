@@ -97,6 +97,19 @@ def find_missing(roots: list[Path], allowlist: set[str]) -> list[str]:
     return missing
 
 
+def _missing_marker(stream: object | None = None) -> str:
+    """Return '✗' when the output stream can encode it, or an ASCII fallback."""
+    target = sys.stdout if stream is None else stream
+    encoding = getattr(target, "encoding", None)
+    if not encoding:
+        return "✗"
+    try:
+        "✗".encode(encoding)
+    except (LookupError, UnicodeEncodeError):
+        return "x"
+    return "✗"
+
+
 def main(argv: list[str]) -> int:
     if argv:
         roots = [Path(a).resolve() for a in argv]
@@ -111,9 +124,10 @@ def main(argv: list[str]) -> int:
     missing = find_missing(roots, allowlist)
 
     if missing:
+        marker = _missing_marker()
         print("Missing .expected goldens for opted-in example scripts:\n")
         for rel in missing:
-            print(f"  ✗ {rel}")
+            print(f"  {marker} {rel}")
         print(
             "\nEvery *.py in a directory that owns an expected/ folder must have a\n"
             f"matching expected/<name>.expected golden, or be listed in\n"
