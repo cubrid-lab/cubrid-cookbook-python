@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import io
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -363,6 +365,59 @@ class MainTests(unittest.TestCase):
     def test_real_repository_passes(self):
         with mock.patch("sys.stdout", new_callable=io.StringIO):
             self.assertEqual(coverage.main([]), 0)
+
+
+class NonUtf8ConsoleTests(unittest.TestCase):
+    """The diagnostic must survive a console that cannot encode the marker."""
+
+    SCRIPT = Path(coverage.__file__).resolve()
+
+    def _run(self, root: Path, encoding: str) -> subprocess.CompletedProcess[bytes]:
+        env = {**os.environ, "PYTHONIOENCODING": encoding}
+        env.pop("PYTHONUTF8", None)
+        return subprocess.run(
+            [sys.executable, str(self.SCRIPT), str(root)],
+            capture_output=True,
+            env=env,
+            check=False,
+        )
+
+    def _tree_with_missing_golden(self, root: Path) -> None:
+        (root / "demo" / "expected").mkdir(parents=True)
+        (root / "demo" / "run.py").write_text("print('hi')\n", encoding="utf-8")
+
+    def test_missing_golden_is_reported_on_a_cp1252_console(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._tree_with_missing_golden(root)
+
+            result = self._run(root, "cp1252")
+
+        self.assertEqual(result.returncode, 1, result.stderr.decode("cp1252", "replace"))
+        self.assertNotIn(b"UnicodeEncodeError", result.stderr)
+        self.assertIn(b"run.py", result.stdout)
+
+    def test_utf8_console_keeps_the_original_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._tree_with_missing_golden(root)
+
+            result = self._run(root, "utf-8")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("\u2717 ", result.stdout.decode("utf-8"))
+        self.assertIn("run.py", result.stdout.decode("utf-8"))
+
+    def test_successful_check_is_unchanged_on_a_cp1252_console(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "demo" / "expected").mkdir(parents=True)
+            (root / "demo" / "run.py").write_text("print('hi')\n", encoding="utf-8")
+            (root / "demo" / "expected" / "run.expected").write_text("hi\n", encoding="utf-8")
+
+            result = self._run(root, "cp1252")
+
+        self.assertEqual(result.returncode, 0, result.stderr.decode("cp1252", "replace"))
 
 
 if __name__ == "__main__":
