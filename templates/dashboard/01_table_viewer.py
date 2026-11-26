@@ -49,6 +49,26 @@ def create_tables(connection) -> None:
     )
 
 
+def _demo_product_ids(connection) -> list[int]:
+    """Return the real IDs of the first demo products, in a stable order.
+
+    AUTO_INCREMENT values do not restart at 1 after earlier inserts and deletes, so sales
+    must reference the IDs CUBRID actually assigned, never ``1..10``.
+    """
+    ids = [
+        int(row[0])
+        for row in connection.execute(
+            text(f"SELECT product_id FROM {PRODUCTS_TABLE} ORDER BY product_id LIMIT 10")
+        )
+    ]
+    if not ids:
+        raise RuntimeError(
+            f"{PRODUCTS_TABLE} has no products to attach sample sales to; "
+            "add products or use Reset Demo Data."
+        )
+    return ids
+
+
 def seed_if_empty(connection) -> None:
     product_count = connection.execute(text(f"SELECT COUNT(*) FROM {PRODUCTS_TABLE}")).scalar_one()
     if int(product_count) == 0:
@@ -128,10 +148,11 @@ def seed_if_empty(connection) -> None:
 
     sales_count = connection.execute(text(f"SELECT COUNT(*) FROM {SALES_TABLE}")).scalar_one()
     if int(sales_count) == 0:
+        product_ids = _demo_product_ids(connection)
         base = date(2026, 1, 1)
         sales = [
             {
-                "product_id": ((i % 10) + 1),
+                "product_id": product_ids[i % len(product_ids)],
                 "quantity": ((i % 5) + 1),
                 "sale_date": base + timedelta(days=i),
             }
