@@ -256,6 +256,8 @@ added. If Releases are introduced later, these rules apply unchanged.
   Added, Changed, Deprecated, Removed, Fixed, Security, Performance, Documentation, CI,
   Tests. `scripts/lint_changelog.py` enforces this for `[Unreleased]` and for releases
   after 0.2.0.
+- Use `Documentation`, not `Docs`. Put release automation and tooling entries under
+  `CI` or `Changed`.
 - Never bulk-rewrite historical notes or regenerate them from current `main`. A
   selective fix needs a dry-run diff and maintainer approval. Never invent PR or commit
   references. Note formatting never changes tags, dates, artifacts or publish state.
