@@ -22,7 +22,7 @@ from test_workflow_timeouts import parse_jobs
 ROOT = Path(__file__).resolve().parents[1]
 CI = ROOT / ".github/workflows/ci.yml"
 
-UV_ACTION = "astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2"
+UV_ACTION = "astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d"
 UV_VERSION = '"0.12.17"'
 UV_JOBS = {"lint-python", "quickstart-tests", "docs-site", "docs-check", "pytest-suites"}
 PIP_INSTALL = re.compile(r"(?<!uv )\bpip3?\s+install\b")
@@ -47,7 +47,7 @@ class WorkflowInstallTest(unittest.TestCase):
             text = "\n".join(body)
             with self.subTest(job=name):
                 self.assertEqual(text.count("astral-sh/setup-uv@"), 1)
-                self.assertIn(f"uses: {UV_ACTION} # v10.3.3", text)
+                self.assertIn(f"uses: {UV_ACTION} # v10.4.0", text)
                 step = "\n".join(uv_step(body))
                 self.assertIn(f"version: {UV_VERSION}", step)
                 self.assertIn("enable-cache: true", step)
