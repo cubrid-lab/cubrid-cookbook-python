@@ -102,6 +102,7 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 
 ### Fixed
 
+- **The ENUM lesson fails when CUBRID accepts an out-of-set value (#624)**: `fundamentals/pycubrid/21_enum_type.py` committed the invalid `'urgent'` row, printed `(unexpected) insert succeeded` and exited 0, so a broken ENUM constraint still looked verified. It now rolls the insert back and raises, so the script exits nonzero. Only `ProgrammingError`, `DataError` and `IntegrityError` count as the expected rejection; an unrelated driver error (for example a lost connection) propagates instead of being reported as one. The expected output of a correct run is unchanged. Covered by offline fake-driver tests.
 - **Cursor-memory scans report elapsed time and release resources (#587)** — `15_cursor_memory_bound.py` now returns monotonic query/fetch elapsed seconds instead of `0.0`. Tracing, cursor and connection cleanup run on success and failure, attempt every cleanup, and preserve the primary scan error if cleanup also fails. Offline regressions cover both fetch modes, row-count validation, setup/scan failures and cleanup failures; printed demonstration output is unchanged.
 - **`scripts/check_expected_coverage.py` handles roots outside the checkout (#583)**: a missing golden under a PATH root outside the repository raised `ValueError` from `relative_to()`. Such scripts are now reported by their absolute path; repo-relative paths and allowlist matching inside the checkout are unchanged.
 

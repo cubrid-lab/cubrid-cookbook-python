@@ -76,6 +76,16 @@ def order_by_enum(cursor):
         print(f"  {ordinal:>7}  {priority:<8}  {title}")
 
 
+# Errors CUBRID raises when a value does not fit the column definition. Anything
+# else (a lost connection, a permission error) says nothing about the ENUM, so
+# it is left to propagate instead of being reported as a successful rejection.
+ENUM_REJECTION_ERRORS = (
+    pycubrid.ProgrammingError,
+    pycubrid.DataError,
+    pycubrid.IntegrityError,
+)
+
+
 def reject_invalid(cursor, conn):
     print("\nInserting an out-of-set value ('urgent'):")
     try:
@@ -83,11 +93,16 @@ def reject_invalid(cursor, conn):
             "INSERT INTO cookbook_tickets (id, title, priority) VALUES (?, ?, ?)",
             (99, "Bad value", "urgent"),
         )
-        conn.commit()
-        print("  (unexpected) insert succeeded")
-    except pycubrid.DatabaseError as exc:
+    except ENUM_REJECTION_ERRORS as exc:
         conn.rollback()
         print(f"  rejected by ENUM constraint: {type(exc).__name__}")
+        return
+    # The insert went through: the lesson's claim is false, so do not keep the
+    # row and do not let the script exit successfully.
+    conn.rollback()
+    raise RuntimeError(
+        "ENUM accepted the out-of-set value 'urgent'; the rejection was not verified"
+    )
 
 
 def cleanup(conn):
