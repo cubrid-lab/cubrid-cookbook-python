@@ -102,6 +102,8 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 
 ### Fixed
 
+- Fail the bulk-insert benchmark on a persisted row-count mismatch before running later strategies or reporting throughput; keep validation outside the timed work (#620).
+
 - **Cursor-memory scans report elapsed time and release resources (#587)** — `15_cursor_memory_bound.py` now returns monotonic query/fetch elapsed seconds instead of `0.0`. Tracing, cursor and connection cleanup run on success and failure, attempt every cleanup, and preserve the primary scan error if cleanup also fails. Offline regressions cover both fetch modes, row-count validation, setup/scan failures and cleanup failures; printed demonstration output is unchanged.
 - **`scripts/check_expected_coverage.py` handles roots outside the checkout (#583)**: a missing golden under a PATH root outside the repository raised `ValueError` from `relative_to()`. Such scripts are now reported by their absolute path; repo-relative paths and allowlist matching inside the checkout are unchanged.
 

@@ -10,6 +10,14 @@ def count_rows(cursor) -> int:
     return cursor.fetchone()[0]
 
 
+def _require_row_count(strategy: int, expected: int, actual: int) -> None:
+    """Reject an incomplete workload before reporting a successful comparison."""
+    if actual != expected:
+        raise RuntimeError(
+            f"Strategy {strategy} row count mismatch: expected {expected}, observed {actual}"
+        )
+
+
 def main() -> None:
     """Benchmark three bulk insert strategies against CUBRID."""
     conn = None
@@ -61,6 +69,7 @@ def main() -> None:
         strategy1_time = time.time() - start
         strategy1_rows_sec = per_row_count / strategy1_time
         strategy1_rows = count_rows(cursor)
+        _require_row_count(1, per_row_count, strategy1_rows)
 
         # Strategy 2: Batch COMMIT (every 500 rows)
         cursor.execute("DELETE FROM cookbook_bulk_test")
@@ -77,6 +86,7 @@ def main() -> None:
         strategy2_time = time.time() - start
         strategy2_rows_sec = num_rows / strategy2_time
         strategy2_rows = count_rows(cursor)
+        _require_row_count(2, num_rows, strategy2_rows)
 
         # Strategy 3: Single COMMIT at end
         cursor.execute("DELETE FROM cookbook_bulk_test")
@@ -91,6 +101,7 @@ def main() -> None:
         strategy3_time = time.time() - start
         strategy3_rows_sec = num_rows / strategy3_time
         strategy3_rows = count_rows(cursor)
+        _require_row_count(3, num_rows, strategy3_rows)
 
         # Print results
         print("\n=== Bulk Insert Benchmark ===")
