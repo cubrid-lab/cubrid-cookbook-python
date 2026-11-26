@@ -76,14 +76,21 @@ def order_by_enum(cursor):
         print(f"  {ordinal:>7}  {priority:<8}  {title}")
 
 
-# Errors CUBRID raises when a value does not fit the column definition. Anything
-# else (a lost connection, a permission error) says nothing about the ENUM, so
-# it is left to propagate instead of being reported as a successful rejection.
-ENUM_REJECTION_ERRORS = (
-    pycubrid.ProgrammingError,
-    pycubrid.DataError,
-    pycubrid.IntegrityError,
-)
+# CUBRID reports a bound value that cannot be converted to the column type as error -494
+# (pycubrid raises ProgrammingError) with the text "Cannot coerce host var to type ...".
+# Other errors of the same classes (a duplicate key is -670 and an IntegrityError, a
+# missing table is also -494 but says nothing about coercion) and everything else (a lost
+# connection, a permission error) prove nothing about the ENUM, so they propagate instead
+# of being reported as a successful rejection.
+SEMANTIC_ERRNO = -494
+
+
+def is_invalid_enum_error(exc):
+    return (
+        isinstance(exc, pycubrid.ProgrammingError)
+        and getattr(exc, "errno", None) == SEMANTIC_ERRNO
+        and "coerce" in str(exc).lower()
+    )
 
 
 def reject_invalid(cursor, conn):
@@ -93,8 +100,10 @@ def reject_invalid(cursor, conn):
             "INSERT INTO cookbook_tickets (id, title, priority) VALUES (?, ?, ?)",
             (99, "Bad value", "urgent"),
         )
-    except ENUM_REJECTION_ERRORS as exc:
+    except pycubrid.Error as exc:
         conn.rollback()
+        if not is_invalid_enum_error(exc):
+            raise
         print(f"  rejected by ENUM constraint: {type(exc).__name__}")
         return
     # The insert went through: the lesson's claim is false, so do not keep the
