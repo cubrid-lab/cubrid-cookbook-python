@@ -67,6 +67,16 @@ constrains installation to its selected published driver version.
 | `21_enum_type.py` | The ENUM column type | declaration-order sorting, `col + 0` ordinal, out-of-set rejection |
 | `22_date_formatting.py` | Date formatting & parsing | `TO_CHAR(date/number, fmt)`, `TO_DATE(str, fmt)`, fixed-width padding |
 
+The MERGE lesson (`07_merge_upsert.py`) needs a disposable database where
+`cookbook_merge_products` and `cookbook_product_stage` do not already exist.
+It refuses an existing name without replacing its table or rows. Cleanup only
+drops tables created by that invocation, including after partial setup or a
+failed MERGE. A cleanup failure does not hide the original error; after a
+successful lesson, a cleanup failure still makes the run fail. Use a fresh
+disposable database if either name is occupied; do not delete existing data
+to make room for the example. Both snapshot results and normal output stay
+the same.
+
 The memory probe in `15_cursor_memory_bound.py` returns peak traced Python
 memory and monotonic elapsed seconds for query execution and row fetching.
 Connection setup and cleanup are outside the timed scan. Both fetch modes

@@ -121,7 +121,7 @@ Step-by-step reference for every core operation:
 | [Error handling](fundamentals/error-handling/) | Exception types, retry patterns (`05_error_handling.py` redirects to `fundamentals/pycubrid/05_error_handling.py`) |
 | [LOB handling](fundamentals/lob-handling/) | BLOB/CLOB operations (redirect to `fundamentals/pycubrid/06_lob.py`) |
 | [ORM basics](fundamentals/orm-basics/) | SQLAlchemy engine, core, ORM, relationships |
-| [pycubrid driver](fundamentals/pycubrid/) | 22 DB-API recipes: cursors and memory measurement, window functions, recursive CTEs, pagination, timezone/ENUM types |
+| [pycubrid driver](fundamentals/pycubrid/) | 22 DB-API recipes: MERGE with existing-table protection, cursors and memory measurement, window functions, recursive CTEs, pagination, timezone/ENUM types |
 | [SQLAlchemy recipes](fundamentals/sqlalchemy/) | 7 recipes including SET/MULTISET/SEQUENCE collection types |
 | [Pandas](fundamentals/pandas/) | 6 recipes: read_sql, chunked reads, to_sql load patterns |
 | [Async I/O](fundamentals/async/) | pycubrid.aio and SQLAlchemy async engine |

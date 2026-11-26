@@ -102,6 +102,7 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 
 ### Fixed
 
+- **Preserve existing MERGE lesson tables (#627)** — `07_merge_upsert.py` refuses existing stage or target names, records each successful CREATE, and only cleans up tables it created. Cleanup attempts continue after a DROP failure, and the original lesson error remains primary if cleanup also fails. The two snapshots, bound SQL parameters and successful output are unchanged. Reported by @yeongseon.
 - **Cursor-memory scans report elapsed time and release resources (#587)** — `15_cursor_memory_bound.py` now returns monotonic query/fetch elapsed seconds instead of `0.0`. Tracing, cursor and connection cleanup run on success and failure, attempt every cleanup, and preserve the primary scan error if cleanup also fails. Offline regressions cover both fetch modes, row-count validation, setup/scan failures and cleanup failures; printed demonstration output is unchanged.
 - **`scripts/check_expected_coverage.py` handles roots outside the checkout (#583)**: a missing golden under a PATH root outside the repository raised `ValueError` from `relative_to()`. Such scripts are now reported by their absolute path; repo-relative paths and allowlist matching inside the checkout are unchanged.
 
