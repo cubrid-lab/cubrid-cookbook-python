@@ -89,6 +89,25 @@ python fundamentals/pycubrid/06_lob.py
 
 Each script is self-contained — it creates its own tables, runs examples, and cleans up.
 
+### Pool and retry worker
+
+`12_pool_retry_worker.py` is a teaching example for borrowing, returning and replacing
+connections. Its size limits the idle cache; concurrent borrowers can open additional
+connections, so it provides no total connection limit or checkout timeout.
+
+A failed health probe closes its cursor and replaces a connection after an
+`OperationalError` or `InterfaceError`. A nonretryable callback error closes the borrowed
+connection and propagates the original error, even if cleanup also fails. The retry
+count, exponential backoff and conditional job-claim SQL stay the same.
+
+The resource-ownership regression tests use fake connections and require no database:
+
+```bash
+python -m pytest tests/test_pool_retry_recipe.py -q
+```
+
+These checks run in `make test`; the recipe's golden still needs live CUBRID validation.
+
 ## Code Highlights
 
 ### Connecting to CUBRID

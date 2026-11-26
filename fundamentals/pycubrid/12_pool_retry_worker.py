@@ -35,8 +35,17 @@ def get_connection():
     return pycubrid.connect(**DB_CONFIG)
 
 
+def _close_quietly(resource) -> None:
+    """Attempt cleanup without replacing the operation's original exception."""
+    if resource is not None:
+        try:
+            resource.close()
+        except Exception:
+            pass
+
+
 class ConnectionPool:
-    """Minimal bounded connection pool (thread-safe)."""
+    """Teaching pool with a bounded idle cache (thread-safe)."""
 
     def __init__(self, size: int = 2) -> None:
         self._lock = threading.Lock()
@@ -71,19 +80,27 @@ class ConnectionPool:
         with self._lock:
             healthy = 0
             unhealthy = 0
-            refreshed = []
-            for conn in self._connections:
+            for index, conn in enumerate(self._connections):
                 try:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT 1")
-                    cursor.fetchone()
+                    cursor = None
+                    try:
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT 1")
+                        cursor.fetchone()
+                    except BaseException:
+                        _close_quietly(cursor)
+                        raise
+                    # A close failure after a successful probe keeps its existing
+                    # error classification; failed probes keep their original error.
                     cursor.close()
-                    healthy += 1
-                    refreshed.append(conn)
                 except (OPERATIONAL_ERROR, INTERFACE_ERROR):
                     unhealthy += 1
-                    refreshed.append(get_connection())
-            self._connections = refreshed
+                    # Remove first so a failed replacement cannot leave a closed
+                    # connection available for the next borrower.
+                    self._connections.pop(index)
+                    self._connections.insert(index, self.replace(conn))
+                else:
+                    healthy += 1
         print(f"✓ Pool health check: healthy={healthy}, replaced={unhealthy}")
 
     def close_all(self) -> None:
@@ -107,10 +124,7 @@ def run_with_retry(pool: ConnectionPool, fn, max_retries: int = 3):
         except (OPERATIONAL_ERROR, INTERFACE_ERROR) as e:
             attempt += 1
             if attempt > max_retries:
-                try:
-                    conn.close()
-                except Exception:
-                    pass
+                _close_quietly(conn)
                 raise
             backoff = 0.1 * (2 ** (attempt - 1))
             print(
@@ -119,6 +133,11 @@ def run_with_retry(pool: ConnectionPool, fn, max_retries: int = 3):
             replacement = pool.replace(conn)
             pool.put(replacement)
             time.sleep(backoff)
+        except BaseException:
+            # The callback may have left an open transaction. Discard the borrowed
+            # connection instead of leaking it or returning unknown state to the pool.
+            _close_quietly(conn)
+            raise
 
 
 def setup_schema(conn) -> None:

@@ -101,6 +101,7 @@ Tags `v0.1.0` and `v0.2.0` predate this file and have no sections.
 - Refactored to Python-only repository (removed planned Go and Node.js examples)
 
 ### Fixed
+- **The pool/retry teaching recipe releases failed resources (#585)** — failed health probes close their cursors and discard broken connections before replacement; nonretryable callbacks close their borrowed connections without masking the original exception. Retry counts, backoff and job-claim SQL are unchanged. Offline fake-driver tests cover cleanup failures and pool recovery.
 
 - **Cursor-memory scans report elapsed time and release resources (#587)** — `15_cursor_memory_bound.py` now returns monotonic query/fetch elapsed seconds instead of `0.0`. Tracing, cursor and connection cleanup run on success and failure, attempt every cleanup, and preserve the primary scan error if cleanup also fails. Offline regressions cover both fetch modes, row-count validation, setup/scan failures and cleanup failures; printed demonstration output is unchanged.
 - **`scripts/check_expected_coverage.py` handles roots outside the checkout (#583)**: a missing golden under a PATH root outside the repository raised `ValueError` from `relative_to()`. Such scripts are now reported by their absolute path; repo-relative paths and allowlist matching inside the checkout are unchanged.
