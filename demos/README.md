@@ -81,9 +81,29 @@ bash demos/build_media.sh
 ```
 
 All outputs go to the ignored `.demo-artifacts/` directory. `build_media.sh`
-writes `.demo-artifacts/out/`; watch every file in full and check it with
+builds a complete set in a fresh temporary directory there and checks that all
+nine outputs are nonempty before replacing `.demo-artifacts/out/`. Conversion,
+copy or validation failures and handled interruptions leave the previous set
+intact. Run one build at a time: promotion uses two same-filesystem renames with
+a temporary backup, not an atomic directory exchange. If restoration itself
+fails, the script reports the retained recovery directory instead of deleting
+the previous outputs. An uncatchable termination or power loss may also require
+manual recovery from that directory. Output symlinks and non-directories are
+rejected. Input recordings are never removed.
+
+Watch every file in full and check it with
 `ffprobe` before copying it over the published file. Targets: README GIFs 8–12
 seconds and under about 2 MB; docs-site MP4s 30–60 seconds, H.264, `yuv420p`.
 Update `recording-provenance.json` and the hashes in it in the same change.
 
 No VHS publish, external upload or release step is part of this workflow.
+
+The staging failure paths can be checked without real recordings, `ffmpeg`,
+Docker or CUBRID:
+
+```bash
+python -m unittest discover -s tests -p 'test_build_media.py' -v
+bash -n demos/build_media.sh
+```
+
+These tests use fake converters and do not verify media quality or provenance.

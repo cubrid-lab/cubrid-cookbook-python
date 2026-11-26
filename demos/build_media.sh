@@ -1,17 +1,53 @@
 #!/usr/bin/env bash
 # Convert the staged recordings in .demo-artifacts/ into the published GIF/MP4 files.
 # Run from the repository root after the VHS tapes and demos/record_browser.py
-# (see demos/README.md). Writes only .demo-artifacts/out/; promoting the files
-# into docs/ is a separate, reviewed step.
+# (see demos/README.md). Stages a complete set before replacing .demo-artifacts/out/.
+# Promoting the files into docs/ is a separate, reviewed step.
 set -euo pipefail
 
 A=.demo-artifacts
-OUT="$A/out"
-mkdir -p "$OUT"
+DEST="$A/out"
 for f in "$A/demo-agent-state.gif" "$A/agent-state.mp4" "$A/mcp-toolchain.mp4" \
     "$A/dashboard-terminal.mp4" "$A/raw/dashboard.webm" "$A/raw/fastapi.webm"; do
     test -s "$f" || { echo "missing recording: $f" >&2; exit 1; }
 done
+
+# Never follow an output symlink or replace an unrelated non-directory.
+if [[ -L "$DEST" || ( -e "$DEST" && ! -d "$DEST" ) ]]; then
+    echo "output must be a directory, not a symlink or file: $DEST" >&2
+    exit 1
+fi
+
+# Both renames stay on the same filesystem. Keep the previous set until the
+# final rename succeeds; an error or handled signal restores it before cleanup.
+WORK=$(mktemp -d "$A/.build-media.XXXXXX")
+OUT="$WORK/out"
+publishing=0
+cleanup() {
+    local status=$?
+    trap - EXIT HUP INT TERM
+    if (( status != 0 && publishing )); then
+        if [[ ! -d "$OUT" && -d "$DEST" ]]; then
+            if ! mv -- "$DEST" "$OUT"; then
+                echo "cannot undo publication; recovery files retained in $WORK" >&2
+                exit 1
+            fi
+        fi
+        if [[ -d "$WORK/previous" ]]; then
+            if ! mv -- "$WORK/previous" "$DEST"; then
+                echo "cannot restore previous output; recovery files retained in $WORK" >&2
+                exit 1
+            fi
+        fi
+    fi
+    rm -rf -- "$WORK"
+    exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+mkdir "$OUT"
 
 # Browser excerpt -> README GIF: 10 fps, 960 px wide, one palette per GIF.
 gif() {
@@ -42,4 +78,16 @@ for name in agent-state fastapi dashboard; do
     ffmpeg -loglevel error -y -i "$OUT/demo-$name.gif" -update 1 "$OUT/demo-$name.png"
 done
 
+# A converter may return success without producing usable output.
+for f in demo-dashboard.gif demo-fastapi.gif demo-agent-state.gif \
+    dashboard.mp4 agent-state.mp4 mcp-toolchain.mp4 \
+    demo-agent-state.png demo-fastapi.png demo-dashboard.png; do
+    test -s "$OUT/$f" || { echo "missing or empty output: $f" >&2; exit 1; }
+done
 ls -l "$OUT"
+
+publishing=1
+if [[ -d "$DEST" ]]; then
+    mv -- "$DEST" "$WORK/previous"
+fi
+mv -- "$OUT" "$DEST"
