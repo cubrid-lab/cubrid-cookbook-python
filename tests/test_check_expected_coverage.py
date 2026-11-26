@@ -396,6 +396,7 @@ class NonUtf8ConsoleTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stderr.decode("cp1252", "replace"))
         self.assertNotIn(b"UnicodeEncodeError", result.stderr)
         self.assertIn(b"run.py", result.stdout)
+        self.assertIn(b"  x ", result.stdout)
 
     def test_utf8_console_keeps_the_original_marker(self):
         with tempfile.TemporaryDirectory() as tmp:
