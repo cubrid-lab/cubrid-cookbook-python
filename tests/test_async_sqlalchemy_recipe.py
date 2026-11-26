@@ -18,12 +18,12 @@ class FakeConnection:
         self.engine = engine
 
     async def run_sync(self, fn):
-        # ``create_all`` / ``drop_all`` are the bound methods of the recipe's metadata.
+        # The recipe's sync helpers are told apart by name; ``drop_all`` is the metadata method.
         name = getattr(fn, "__name__", "")
-        if name == "create_all":
+        if name == "_create_demo_table":
             self.engine.events.append("create_all")
             if self.engine.fail_create:
-                raise RuntimeError("create failed")
+                raise self.engine.create_error
             return None
         if name == "drop_all":
             self.engine.events.append("drop_all")
@@ -49,6 +49,7 @@ class FakeEngine:
         self.events: list[str] = []
         self.table_exists = False
         self.fail_create = False
+        self.create_error: BaseException = RuntimeError("create failed")
         self.fail_drop = False
         self.disposed = 0
 
@@ -148,3 +149,35 @@ async def test_failed_drop_after_a_successful_demo_is_reported(recipe):
         await module.main()
 
     assert engine.events == ["create_all", "crud", "drop_all", "dispose"]
+
+
+async def test_table_created_by_another_session_after_the_check_is_not_dropped(recipe):
+    module, engine = recipe
+    # The existence check saw no table, but the database refuses the creation because
+    # another session created it in between.
+    engine.fail_create = True
+    engine.create_error = RuntimeError("table cookbook_async_orm_demo already exists")
+
+    with pytest.raises(RuntimeError, match="already exists"):
+        await module.main()
+
+    assert engine.events == ["create_all", "dispose"]
+
+
+def test_demo_table_creation_does_not_skip_an_existing_table(recipe):
+    module, _engine = recipe
+    calls: list[tuple[object, dict[str, object]]] = []
+
+    class _Table:
+        def create(self, bind: object, **kwargs: object) -> None:
+            calls.append((bind, kwargs))
+
+    class _Model:
+        __table__ = _Table()
+
+    module.CookbookAsyncOrmDemo = _Model
+    sync_conn = object()
+
+    module._create_demo_table(sync_conn)
+
+    assert calls == [(sync_conn, {"checkfirst": False})]

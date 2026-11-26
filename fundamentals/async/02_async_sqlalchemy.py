@@ -44,17 +44,27 @@ class CookbookAsyncOrmDemo(Base):
     score: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
+def _create_demo_table(sync_conn) -> None:
+    """Create the demo table and fail if it already exists.
+
+    ``checkfirst=False`` makes the database itself report a table that another session
+    created after the existence check below, instead of silently reusing it.
+    """
+    CookbookAsyncOrmDemo.__table__.create(sync_conn, checkfirst=False)
+
+
 async def run_demo(engine: AsyncEngine) -> None:
     """Create the demo table, exercise async CRUD, then drop only what this run created."""
     async with engine.begin() as conn:
-        # Refuse to touch a table this run did not create: ``create_all`` would silently
-        # reuse it and ``drop_all`` would then delete someone else's data.
+        # Refuse to touch a table this run did not create: reusing it and then dropping it
+        # would delete someone else's data. This check gives the friendly message; the
+        # creation below still fails if the table appears between the two calls.
         if await conn.run_sync(lambda sync_conn: inspect(sync_conn).has_table(TABLE_NAME)):
             raise RuntimeError(
                 f"Table {TABLE_NAME} already exists, so this demo will not modify or drop it. "
                 "Drop it yourself or point DATABASE_URL at a disposable database, then re-run."
             )
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_create_demo_table)
     print("[1] Created table cookbook_async_orm_demo")
 
     failed = False
