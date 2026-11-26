@@ -13,6 +13,18 @@ from sqlalchemy.engine import Engine
 DATABASE_URL = os.environ.get("DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb")
 PRODUCTS_TABLE = "cookbook_dashboard_products"
 SALES_TABLE = "cookbook_dashboard_sales"
+DEMO_PRODUCT_NAMES = (
+    "Laptop 14",
+    "Wireless Mouse",
+    "Desk Lamp",
+    "Office Chair",
+    "Notebook Pack",
+    "Tea Kettle",
+    "Fitness Band",
+    "Water Bottle",
+    "Monitor 27",
+    "Standing Desk",
+)
 
 
 @st.cache_resource
@@ -50,21 +62,33 @@ def create_tables(connection) -> None:
 
 
 def _demo_product_ids(connection) -> list[int]:
-    """Return the real IDs of the first demo products, in a stable order.
+    """Return the real IDs of the ten demo products, in the order they are seeded.
 
     AUTO_INCREMENT values do not restart at 1 after earlier inserts and deletes, so sales
-    must reference the IDs CUBRID actually assigned, never ``1..10``.
+    must reference the IDs CUBRID actually assigned. The demo products are found by name,
+    so unrelated rows in the table are never used; if a demo product is missing, renamed
+    or ambiguous, nothing is seeded and the error says how to recover.
     """
-    ids = [
-        int(row[0])
-        for row in connection.execute(
-            text(f"SELECT product_id FROM {PRODUCTS_TABLE} ORDER BY product_id LIMIT 10")
-        )
-    ]
-    if not ids:
+    ids: list[int] = []
+    problems: list[str] = []
+    for name in DEMO_PRODUCT_NAMES:
+        found = [
+            int(row[0])
+            for row in connection.execute(
+                text(f"SELECT product_id FROM {PRODUCTS_TABLE} WHERE product_name = :name"),
+                {"name": name},
+            )
+        ]
+        if len(found) == 1:
+            ids.append(found[0])
+        else:
+            problems.append(f"{name!r} ({'missing' if not found else f'{len(found)} rows'})")
+    if problems:
         raise RuntimeError(
-            f"{PRODUCTS_TABLE} has no products to attach sample sales to; "
-            "add products or use Reset Demo Data."
+            "Cannot seed sample sales: the demo products "
+            + ", ".join(problems)
+            + " cannot be identified in "
+            + f"{PRODUCTS_TABLE}. Restore them or use Reset Demo Data."
         )
     return ids
 

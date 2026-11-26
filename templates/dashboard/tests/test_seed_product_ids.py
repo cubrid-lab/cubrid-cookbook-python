@@ -1,4 +1,4 @@
-"""Sales seeding must use the product IDs the database actually assigned (#622)."""
+"""Sales seeding must use the real IDs of the intended demo products (#622)."""
 
 from __future__ import annotations
 
@@ -36,51 +36,136 @@ def _load(name: str, monkeypatch: pytest.MonkeyPatch):
     return module
 
 
-@pytest.mark.parametrize("recipe", sorted(SEEDERS))
-def test_sales_reference_existing_products_when_ids_do_not_start_at_one(
-    recipe: str, dashboard_database_url: str, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    module = _load(recipe, monkeypatch)
-    engine = create_engine(dashboard_database_url)
-    try:
-        with engine.begin() as connection:
-            connection.execute(text("DROP TABLE IF EXISTS cookbook_dashboard_sales"))
-            connection.execute(text("DROP TABLE IF EXISTS cookbook_dashboard_products"))
+def _reset(engine) -> None:
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS cookbook_dashboard_sales"))
+        connection.execute(text("DROP TABLE IF EXISTS cookbook_dashboard_products"))
 
-        SEEDERS[recipe](module)
 
-        # Leave products with IDs 6..10 and no sales, as after earlier inserts and deletes.
-        with engine.begin() as connection:
-            connection.execute(text("DELETE FROM cookbook_dashboard_sales"))
+def _insert_products(engine, names: list[str]) -> None:
+    with engine.begin() as connection:
+        for name in names:
             connection.execute(
-                text("DELETE FROM cookbook_dashboard_products WHERE product_id <= 5")
+                text(
+                    "INSERT INTO cookbook_dashboard_products "
+                    "(product_name, category_name, unit_price_cents, is_active) "
+                    "VALUES (:name, 'Other', 100, 1)"
+                ),
+                {"name": name},
             )
 
-        SEEDERS[recipe](module)
 
-        with engine.connect() as connection:
-            product_ids = {
-                int(row[0])
-                for row in connection.execute(
-                    text("SELECT product_id FROM cookbook_dashboard_products")
-                )
-            }
-            sold_ids = [
-                int(row[0])
-                for row in connection.execute(
-                    text("SELECT product_id FROM cookbook_dashboard_sales")
-                )
-            ]
-        assert product_ids == {6, 7, 8, 9, 10}
-        assert sold_ids, "sample sales were not seeded"
-        assert set(sold_ids) <= product_ids
+def _ids(engine, table: str, column: str) -> list[int]:
+    with engine.connect() as connection:
+        return [int(r[0]) for r in connection.execute(text(f"SELECT {column} FROM {table}"))]
 
-        # Seeding again must not duplicate the sample sales.
-        SEEDERS[recipe](module)
-        with engine.connect() as connection:
-            count = connection.execute(
-                text("SELECT COUNT(*) FROM cookbook_dashboard_sales")
-            ).scalar_one()
-        assert count == len(sold_ids)
-    finally:
-        engine.dispose()
+
+def _id_by_name(engine) -> dict[str, int]:
+    with engine.connect() as connection:
+        return {
+            r[1]: int(r[0])
+            for r in connection.execute(
+                text("SELECT product_id, product_name FROM cookbook_dashboard_products")
+            )
+        }
+
+
+@pytest.fixture
+def seeded(request, dashboard_database_url: str, monkeypatch: pytest.MonkeyPatch):
+    recipe = request.param
+    module = _load(recipe, monkeypatch)
+    engine = create_engine(dashboard_database_url)
+    _reset(engine)
+    SEEDERS[recipe](module)  # creates both tables and seeds them once
+    with engine.begin() as connection:
+        connection.execute(text("DELETE FROM cookbook_dashboard_sales"))
+    yield module, engine, SEEDERS[recipe]
+    engine.dispose()
+
+
+RECIPES = pytest.mark.parametrize("seeded", sorted(SEEDERS), indirect=True)
+
+
+@RECIPES
+def test_sales_use_demo_product_ids_that_do_not_start_at_one(seeded) -> None:
+    module, engine, seed = seeded
+    # Unrelated products take IDs 1 to 3; the demo products come back as 4 to 13.
+    with engine.begin() as connection:
+        connection.execute(text("DELETE FROM cookbook_dashboard_products"))
+    _insert_products(engine, ["Unrelated A", "Unrelated B", "Unrelated C"])
+    _insert_products(engine, list(module.DEMO_PRODUCT_NAMES))
+    demo_ids = {
+        pid for name, pid in _id_by_name(engine).items() if name in module.DEMO_PRODUCT_NAMES
+    }
+    assert min(demo_ids) > 3
+
+    seed(module)
+
+    sold = _ids(engine, "cookbook_dashboard_sales", "product_id")
+    assert sold, "sample sales were not seeded"
+    assert set(sold) <= demo_ids
+
+    # Seeding again must not duplicate the sample sales.
+    seed(module)
+    assert len(_ids(engine, "cookbook_dashboard_sales", "sale_id")) == len(sold)
+
+
+@RECIPES
+def test_unrelated_products_are_never_used_and_nothing_is_seeded(seeded) -> None:
+    module, engine, seed = seeded
+    with engine.begin() as connection:
+        connection.execute(text("DELETE FROM cookbook_dashboard_products"))
+    _insert_products(engine, ["Unrelated A", "Unrelated B"])
+
+    with pytest.raises(RuntimeError, match="demo products"):
+        seed(module)
+
+    assert _ids(engine, "cookbook_dashboard_sales", "sale_id") == []
+    assert sorted(_id_by_name(engine)) == ["Unrelated A", "Unrelated B"]
+
+
+@RECIPES
+def test_missing_or_edited_demo_product_is_refused(seeded) -> None:
+    module, engine, seed = seeded
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "UPDATE cookbook_dashboard_products SET product_name = 'Desk Lamp (edited)' "
+                "WHERE product_name = 'Desk Lamp'"
+            )
+        )
+
+    with pytest.raises(RuntimeError, match="Desk Lamp"):
+        seed(module)
+
+    assert _ids(engine, "cookbook_dashboard_sales", "sale_id") == []
+
+
+@RECIPES
+def test_duplicate_demo_product_name_is_refused(seeded) -> None:
+    module, engine, seed = seeded
+    _insert_products(engine, ["Desk Lamp"])
+
+    with pytest.raises(RuntimeError, match="Desk Lamp.*2 rows"):
+        seed(module)
+
+    assert _ids(engine, "cookbook_dashboard_sales", "sale_id") == []
+
+
+@RECIPES
+def test_fresh_database_seeds_the_same_sales_as_before(seeded) -> None:
+    module, engine, seed = seeded
+    ids_by_name = _id_by_name(engine)
+
+    seed(module)
+
+    with engine.connect() as connection:
+        sold = [
+            int(r[0])
+            for r in connection.execute(
+                text("SELECT product_id FROM cookbook_dashboard_sales ORDER BY sale_id")
+            )
+        ]
+    # The i-th sale is still of the i-th demo product, as with the old (i % 10) + 1.
+    assert sold == [ids_by_name[module.DEMO_PRODUCT_NAMES[i % 10]] for i in range(len(sold))]
+    assert len(sold) in (12, 15)
