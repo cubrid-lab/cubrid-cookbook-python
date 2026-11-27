@@ -59,6 +59,7 @@ SUITES: tuple[tuple[str, ...], ...] = (
     ("python", "-m", "pytest", "templates/rag/tests/test_offline.py", "-q"),
     ("python", "-m", "pytest", "tests/test_agent_review_gate.py", "-q"),
     ("python", "-m", "pytest", "tests/test_agent_eval.py", "-q"),
+    ("python", "-m", "pytest", "tests/test_pagination_recipe.py", "-q"),
     _unittest("test_release*.py"),
     _unittest("test_make_commands.py"),
     _unittest("test_wait_for_cubrid.py"),
