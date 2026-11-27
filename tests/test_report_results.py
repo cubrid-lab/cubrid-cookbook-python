@@ -100,6 +100,13 @@ class DecideAndSummaryTests(unittest.TestCase):
         self.assertEqual(d(None, 0), "INCOMPLETE")
         self.assertEqual(d(None, 2), "FAIL")
 
+    def test_nonzero_exit_without_passing_tests_is_fail(self) -> None:
+        d = report_results.decide
+        self.assertEqual(d(self.counts(), 5), "FAIL")
+        self.assertEqual(d(self.counts(skipped=2), 1), "FAIL")
+        self.assertEqual(d(self.counts(xfailed=1), 1), "FAIL")
+        self.assertEqual(d(self.counts(skipped=1, xfailed=1), 2), "FAIL")
+
     def entry(self, status: str, **kw: int) -> dict:
         return {"name": status, "status": status, "counts": self.counts(**kw)}
 
@@ -378,6 +385,27 @@ class SuiteEntryTests(unittest.TestCase):
             self.assertEqual(entry["status"], "FAIL")
             self.assertEqual(sum(entry["counts"].values()), 0)
             self.assertEqual(entry["junit"], "no-such.xml")
+
+    def test_empty_or_skipped_only_junit_with_nonzero_exit_is_fail(self):
+        reports = {
+            "empty": "",
+            "skipped": '<testcase classname="a" name="s"><skipped/></testcase>',
+            "xfailed": '<testcase classname="a" name="x"><skipped type="pytest.xfail"/></testcase>',
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            results_dir = Path(tmp)
+            for name, cases in reports.items():
+                with self.subTest(name):
+                    path = results_dir / f"{name}.xml"
+                    path.write_text(junit(cases), encoding="utf-8")
+                    failing = report_results.suite_entry(name, ["cmd"], 5, path, results_dir)
+                    self.assertEqual(failing["status"], "FAIL")
+                    self.assertEqual(failing["counts"]["passed"], 0)
+                    summary = report_results.build_summary("test", [failing])
+                    self.assertEqual(summary["status"], "FAIL")
+                    self.assertIn("test: FAIL", report_results.console_line(summary))
+                    clean = report_results.suite_entry(name, ["cmd"], 0, path, results_dir)
+                    self.assertEqual(clean["status"], "INCOMPLETE")
 
     def test_real_junit_counts_from_parse(self):
         with tempfile.TemporaryDirectory() as tmp:
