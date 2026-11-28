@@ -79,11 +79,11 @@ def decide(counts: dict[str, int] | None, exit_code: int) -> str:
     """PASS, FAIL or INCOMPLETE for one suite (see the module docstring)."""
     if counts is None:
         return "FAIL" if exit_code else "INCOMPLETE"
-    if counts["failed"] or counts["errors"]:
+    if counts["failed"] or counts["errors"] or exit_code:
         return "FAIL"
     if counts["passed"] == 0:
         return "INCOMPLETE"
-    return "FAIL" if exit_code else "PASS"
+    return "PASS"
 
 
 def suite_entry(
