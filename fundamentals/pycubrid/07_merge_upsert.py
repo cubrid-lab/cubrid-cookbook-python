@@ -5,6 +5,9 @@ Demonstrates:
 - MERGE INTO target USING staging (upsert by business key)
 - Deactivating rows missing from the latest snapshot
 
+Run in a disposable database with both lesson table names unused. Existing
+tables are never replaced; cleanup only drops tables created by this run.
+
 If MERGE syntax fails on a specific server patch level, adapt to
 INSERT ... ON DUPLICATE KEY UPDATE while keeping the same behavior.
 """
@@ -30,11 +33,9 @@ def get_connection():
     return pycubrid.connect(**DB_CONFIG)
 
 
-def setup_schema(conn):
-    cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_product_stage")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_merge_products")
-
+def setup_schema(conn, cursor, created_tables):
+    # Plain CREATE refuses an existing name. Record each success immediately,
+    # so a later CREATE or commit failure cannot give us ownership of that name.
     cursor.execute(
         """
         CREATE TABLE cookbook_merge_products (
@@ -46,6 +47,7 @@ def setup_schema(conn):
         )
         """
     )
+    created_tables.add("cookbook_merge_products")
     cursor.execute(
         """
         CREATE TABLE cookbook_product_stage (
@@ -55,8 +57,8 @@ def setup_schema(conn):
         )
         """
     )
+    created_tables.add("cookbook_product_stage")
     conn.commit()
-    cursor.close()
     print("✓ Created tables 'cookbook_merge_products' and 'cookbook_product_stage'")
 
 
@@ -136,21 +138,45 @@ def show_results(cursor, label):
         )
 
 
-def cleanup(conn):
-    cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS cookbook_product_stage")
-    cursor.execute("DROP TABLE IF EXISTS cookbook_merge_products")
-    conn.commit()
-    cursor.close()
-    print("\n✓ Cleaned up 'cookbook_product_stage' and 'cookbook_merge_products'")
-
-
-if __name__ == "__main__":
-    conn = get_connection()
-
+def cleanup(conn, cursor, created_tables):
+    if not created_tables:
+        return
+    error = None
+    # Try every owned table even if an earlier DROP fails. SQL identifiers are
+    # fixed lesson names, never input supplied by a caller.
+    for table, sql in (
+        ("cookbook_product_stage", "DROP TABLE IF EXISTS cookbook_product_stage"),
+        ("cookbook_merge_products", "DROP TABLE IF EXISTS cookbook_merge_products"),
+    ):
+        if table in created_tables:
+            try:
+                cursor.execute(sql)
+            except Exception as exc:
+                if error is None:
+                    error = exc
+                else:
+                    error.add_note(f"Additional cleanup failure: {exc}")
     try:
-        setup_schema(conn)
+        conn.commit()
+    except Exception as exc:
+        if error is None:
+            error = exc
+        else:
+            error.add_note(f"Cleanup commit also failed: {exc}")
+    if error is not None:
+        raise error
+    if len(created_tables) == 2:
+        print("\n✓ Cleaned up 'cookbook_product_stage' and 'cookbook_merge_products'")
+
+
+def main():
+    conn = get_connection()
+    cursor = None
+    created_tables = set()
+    error = None
+    try:
         cursor = conn.cursor()
+        setup_schema(conn, cursor, created_tables)
 
         seed_rows = [
             ("SKU-100", "Keyboard", 4999),
@@ -175,7 +201,29 @@ if __name__ == "__main__":
         conn.commit()
         show_results(cursor, "After second snapshot")
 
-        cursor.close()
+    except BaseException as exc:
+        error = exc
+        raise
     finally:
-        cleanup(conn)
-        conn.close()
+        # Release every resource, keeping the lesson failure primary. If the
+        # lesson succeeded, the first cleanup failure must still fail the run.
+        cleanups = [conn.close]
+        if cursor is not None:
+            cleanups = [lambda: cleanup(conn, cursor, created_tables), cursor.close, *cleanups]
+        cleanup_error = None
+        for close in cleanups:
+            try:
+                close()
+            except Exception as exc:
+                if error is not None:
+                    error.add_note(f"Cleanup also failed: {exc}")
+                elif cleanup_error is None:
+                    cleanup_error = exc
+                else:
+                    cleanup_error.add_note(f"Additional cleanup failure: {exc}")
+        if error is None and cleanup_error is not None:
+            raise cleanup_error
+
+
+if __name__ == "__main__":
+    main()
