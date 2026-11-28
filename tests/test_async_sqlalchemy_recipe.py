@@ -51,6 +51,7 @@ class FakeEngine:
         self.fail_create = False
         self.create_error: BaseException = RuntimeError("create failed")
         self.fail_drop = False
+        self.fail_dispose = False
         self.disposed = 0
 
     def begin(self) -> FakeBegin:
@@ -59,6 +60,8 @@ class FakeEngine:
     async def dispose(self) -> None:
         self.events.append("dispose")
         self.disposed += 1
+        if self.fail_dispose:
+            raise RuntimeError("dispose failed")
 
 
 @pytest.fixture
@@ -181,3 +184,41 @@ def test_demo_table_creation_does_not_skip_an_existing_table(recipe):
     module._create_demo_table(sync_conn)
 
     assert calls == [(sync_conn, {"checkfirst": False})]
+
+
+async def test_failed_dispose_does_not_hide_the_original_error(recipe, monkeypatch, capsys):
+    module, engine = recipe
+    engine.fail_dispose = True
+
+    async def broken_crud(_engine):
+        raise ValueError("insert failed")
+
+    monkeypatch.setattr(module, "_crud_demo", broken_crud)
+
+    with pytest.raises(ValueError, match="insert failed"):
+        await module.main()
+
+    assert engine.events[-1] == "dispose"
+    assert "could not dispose the engine" in capsys.readouterr().err
+
+
+async def test_failed_dispose_after_failed_setup_keeps_the_setup_error(recipe, capsys):
+    module, engine = recipe
+    engine.table_exists = True
+    engine.fail_dispose = True
+
+    with pytest.raises(RuntimeError, match="already exists"):
+        await module.main()
+
+    assert engine.events == ["dispose"]
+    assert "could not dispose the engine" in capsys.readouterr().err
+
+
+async def test_a_standalone_dispose_failure_is_raised(recipe):
+    module, engine = recipe
+    engine.fail_dispose = True
+
+    with pytest.raises(RuntimeError, match="dispose failed"):
+        await module.main()
+
+    assert engine.events == ["create_all", "crud", "drop_all", "dispose"]

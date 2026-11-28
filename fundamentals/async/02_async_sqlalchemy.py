@@ -136,11 +136,22 @@ async def main() -> None:
     print()
 
     engine = create_async_engine(DATABASE_URL, echo=False)
+    failed = False
     try:
         await run_demo(engine)
+    except BaseException:
+        failed = True
+        raise
     finally:
         # Release pooled connections even when setup, a query, a commit or cleanup failed.
-        await engine.dispose()
+        # A disposal error must not hide the failure that is already propagating, but
+        # on its own (nothing else failed) it is raised.
+        try:
+            await engine.dispose()
+        except Exception as exc:  # noqa: BLE001 - never mask the error that got us here
+            if not failed:
+                raise
+            print(f"warning: could not dispose the engine: {exc!r}", file=sys.stderr)
     print()
     print("[5] Dropped table and closed engine")
 
