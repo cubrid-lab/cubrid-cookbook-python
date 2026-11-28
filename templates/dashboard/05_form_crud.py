@@ -32,6 +32,10 @@ def get_engine() -> Engine:
     return create_engine(DATABASE_URL)
 
 
+class DemoDataError(RuntimeError):
+    """The demo products cannot be identified, so sample sales are not seeded."""
+
+
 def _demo_product_ids(connection) -> list[int]:
     """Return the real IDs of the ten demo products, in the order they are seeded.
 
@@ -55,7 +59,7 @@ def _demo_product_ids(connection) -> list[int]:
         else:
             problems.append(f"{name!r} ({'missing' if not found else f'{len(found)} rows'})")
     if problems:
-        raise RuntimeError(
+        raise DemoDataError(
             "Cannot seed sample sales: the demo products "
             + ", ".join(problems)
             + " cannot be identified in "
@@ -263,10 +267,19 @@ def main() -> None:
     st.title("05 Form CRUD")
     st.caption("Create, update, and delete rows through st.form submit actions.")
 
-    bootstrap(reset=False)
+    seed_error = None
+    try:
+        bootstrap(reset=False)
+    except DemoDataError as exc:
+        # Keep the explicit reset action reachable; nothing is reset automatically.
+        seed_error = exc
     if st.button("Reset Demo Data"):
         bootstrap(reset=True)
+        seed_error = None
         st.success("Demo tables recreated and reseeded.")
+    if seed_error is not None:
+        st.error(str(seed_error))
+        st.stop()
 
     st.subheader("Current Products")
     products_df = list_products()

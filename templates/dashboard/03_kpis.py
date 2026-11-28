@@ -31,6 +31,10 @@ def get_engine() -> Engine:
     return create_engine(DATABASE_URL)
 
 
+class DemoDataError(RuntimeError):
+    """The demo products cannot be identified, so sample sales are not seeded."""
+
+
 def _demo_product_ids(connection) -> list[int]:
     """Return the real IDs of the ten demo products, in the order they are seeded.
 
@@ -54,7 +58,7 @@ def _demo_product_ids(connection) -> list[int]:
         else:
             problems.append(f"{name!r} ({'missing' if not found else f'{len(found)} rows'})")
     if problems:
-        raise RuntimeError(
+        raise DemoDataError(
             "Cannot seed sample sales: the demo products "
             + ", ".join(problems)
             + " cannot be identified in "
@@ -220,10 +224,19 @@ def main() -> None:
     st.title("03 KPIs")
     st.caption("KPI cards using st.metric + SQL COUNT/SUM/AVG from cookbook_ tables.")
 
-    ensure_data(reset=False)
+    seed_error = None
+    try:
+        ensure_data(reset=False)
+    except DemoDataError as exc:
+        # Keep the explicit reset action reachable; nothing is reset automatically.
+        seed_error = exc
     if st.button("Reset Demo Data"):
         ensure_data(reset=True)
+        seed_error = None
         st.success("Demo tables recreated and reseeded.")
+    if seed_error is not None:
+        st.error(str(seed_error))
+        st.stop()
 
     kpis = fetch_kpis()
     col1, col2, col3, col4 = st.columns(4)

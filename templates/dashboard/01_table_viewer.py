@@ -61,6 +61,10 @@ def create_tables(connection) -> None:
     )
 
 
+class DemoDataError(RuntimeError):
+    """The demo products cannot be identified, so sample sales are not seeded."""
+
+
 def _demo_product_ids(connection) -> list[int]:
     """Return the real IDs of the ten demo products, in the order they are seeded.
 
@@ -84,7 +88,7 @@ def _demo_product_ids(connection) -> list[int]:
         else:
             problems.append(f"{name!r} ({'missing' if not found else f'{len(found)} rows'})")
     if problems:
-        raise RuntimeError(
+        raise DemoDataError(
             "Cannot seed sample sales: the demo products "
             + ", ".join(problems)
             + " cannot be identified in "
@@ -232,11 +236,20 @@ def main() -> None:
     st.title("01 Table Viewer")
     st.caption("Live query display with manual Refresh button (no auto-refresh).")
 
-    ensure_data()
+    seed_error = None
+    try:
+        ensure_data()
+    except DemoDataError as exc:
+        # Keep the explicit reset action reachable; nothing is reset automatically.
+        seed_error = exc
 
     if st.button("Reset Demo Data"):
         reset_demo_data()
+        seed_error = None
         st.success("Demo tables recreated and reseeded.")
+    if seed_error is not None:
+        st.error(str(seed_error))
+        st.stop()
 
     df = load_table()
     st.dataframe(df, use_container_width=True, hide_index=True)

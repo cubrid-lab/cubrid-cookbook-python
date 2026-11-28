@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, text
+from streamlit.testing.v1 import AppTest
 
 DASHBOARD_ROOT = Path(__file__).resolve().parent.parent
 
@@ -169,3 +170,36 @@ def test_fresh_database_seeds_the_same_sales_as_before(seeded) -> None:
     # The i-th sale is still of the i-th demo product, as with the old (i % 10) + 1.
     assert sold == [ids_by_name[module.DEMO_PRODUCT_NAMES[i % 10]] for i in range(len(sold))]
     assert len(sold) in (12, 15)
+
+
+@RECIPES
+def test_reset_button_stays_reachable_when_a_demo_product_is_missing(seeded) -> None:
+    module, engine, _seed = seeded
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "UPDATE cookbook_dashboard_products SET product_name = 'Desk Lamp (edited)' "
+                "WHERE product_name = 'Desk Lamp'"
+            )
+        )
+
+    at = AppTest.from_file(module.__file__)
+    at.run(timeout=30)
+
+    # The page explains the problem and still offers the reset; nothing was reset or seeded.
+    assert not at.exception
+    assert len(at.error) == 1
+    assert "Desk Lamp" in at.error[0].value
+    resets = [button for button in at.button if button.label == "Reset Demo Data"]
+    assert len(resets) == 1
+    assert _ids(engine, "cookbook_dashboard_sales", "sale_id") == []
+    assert "Desk Lamp (edited)" in _id_by_name(engine)
+
+    # Clicking it recovers the page: tables are recreated and reseeded.
+    resets[0].click()
+    at.run(timeout=30)
+
+    assert not at.exception
+    assert len(at.error) == 0
+    assert _ids(engine, "cookbook_dashboard_sales", "sale_id")
+    assert "Desk Lamp" in _id_by_name(engine)
