@@ -8,6 +8,8 @@ All scripts use:
 
 `cubrid+pycubrid://dba@localhost:33000/testdb`
 
+> **Warning:** These examples execute destructive SQL statements against fixed `cookbook_` table names, including `DROP TABLE IF EXISTS`. Running them can remove existing tables with those names. Run the recipes only against a dedicated, disposable CUBRID database with isolated lab credentials. Never use a shared, production, or otherwise valuable database.
+
 ## Setup
 
 ```bash
