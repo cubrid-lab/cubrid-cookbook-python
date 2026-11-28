@@ -97,6 +97,21 @@ def find_missing(roots: list[Path], allowlist: set[str]) -> list[str]:
     return missing
 
 
+def _missing_marker() -> str:
+    """Return the diagnostic bullet, falling back to ASCII on a narrow console.
+
+    A Windows cp1252 console cannot encode the check-mark glyph, and printing it
+    raises UnicodeEncodeError before the missing path is shown. The glyph is
+    cosmetic, so use it only when stdout can actually encode it.
+    """
+    marker = "\u2717"
+    try:
+        marker.encode(sys.stdout.encoding or "utf-8")
+    except (UnicodeEncodeError, LookupError):
+        return "x"
+    return marker
+
+
 def main(argv: list[str]) -> int:
     if argv:
         roots = [Path(a).resolve() for a in argv]
@@ -112,8 +127,9 @@ def main(argv: list[str]) -> int:
 
     if missing:
         print("Missing .expected goldens for opted-in example scripts:\n")
+        marker = _missing_marker()
         for rel in missing:
-            print(f"  ✗ {rel}")
+            print(f"  {marker} {rel}")
         print(
             "\nEvery *.py in a directory that owns an expected/ folder must have a\n"
             f"matching expected/<name>.expected golden, or be listed in\n"
