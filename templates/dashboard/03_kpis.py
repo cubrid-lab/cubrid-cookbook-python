@@ -12,11 +12,59 @@ from sqlalchemy.engine import Engine
 DATABASE_URL = os.environ.get("DATABASE_URL", "cubrid+pycubrid://dba@localhost:33000/testdb")
 PRODUCTS_TABLE = "cookbook_dashboard_products"
 SALES_TABLE = "cookbook_dashboard_sales"
+DEMO_PRODUCT_NAMES = (
+    "Laptop 14",
+    "Wireless Mouse",
+    "Desk Lamp",
+    "Office Chair",
+    "Notebook Pack",
+    "Tea Kettle",
+    "Fitness Band",
+    "Water Bottle",
+    "Monitor 27",
+    "Standing Desk",
+)
 
 
 @st.cache_resource
 def get_engine() -> Engine:
     return create_engine(DATABASE_URL)
+
+
+class DemoDataError(RuntimeError):
+    """The demo products cannot be identified, so sample sales are not seeded."""
+
+
+def _demo_product_ids(connection) -> list[int]:
+    """Return the real IDs of the ten demo products, in the order they are seeded.
+
+    AUTO_INCREMENT values do not restart at 1 after earlier inserts and deletes, so sales
+    must reference the IDs CUBRID actually assigned. The demo products are found by name,
+    so unrelated rows in the table are never used; if a demo product is missing, renamed
+    or ambiguous, nothing is seeded and the error says how to recover.
+    """
+    ids: list[int] = []
+    problems: list[str] = []
+    for name in DEMO_PRODUCT_NAMES:
+        found = [
+            int(row[0])
+            for row in connection.execute(
+                text(f"SELECT product_id FROM {PRODUCTS_TABLE} WHERE product_name = :name"),
+                {"name": name},
+            )
+        ]
+        if len(found) == 1:
+            ids.append(found[0])
+        else:
+            problems.append(f"{name!r} ({'missing' if not found else f'{len(found)} rows'})")
+    if problems:
+        raise DemoDataError(
+            "Cannot seed sample sales: the demo products "
+            + ", ".join(problems)
+            + " cannot be identified in "
+            + f"{PRODUCTS_TABLE}. Restore them or use Reset Demo Data."
+        )
+    return ids
 
 
 def ensure_data(reset: bool = False) -> None:
@@ -131,10 +179,11 @@ def ensure_data(reset: bool = False) -> None:
             connection.execute(text(f"SELECT COUNT(*) FROM {SALES_TABLE}")).scalar_one()
         )
         if sales_total == 0:
+            product_ids = _demo_product_ids(connection)
             start = date(2026, 1, 1)
             sales_rows = [
                 {
-                    "product_id": ((i % 10) + 1),
+                    "product_id": product_ids[i % len(product_ids)],
                     "quantity": ((i % 5) + 1),
                     "sale_date": start + timedelta(days=i),
                 }
@@ -175,10 +224,19 @@ def main() -> None:
     st.title("03 KPIs")
     st.caption("KPI cards using st.metric + SQL COUNT/SUM/AVG from cookbook_ tables.")
 
-    ensure_data(reset=False)
+    seed_error = None
+    try:
+        ensure_data(reset=False)
+    except DemoDataError as exc:
+        # Keep the explicit reset action reachable; nothing is reset automatically.
+        seed_error = exc
     if st.button("Reset Demo Data"):
         ensure_data(reset=True)
+        seed_error = None
         st.success("Demo tables recreated and reseeded.")
+    if seed_error is not None:
+        st.error(str(seed_error))
+        st.stop()
 
     kpis = fetch_kpis()
     col1, col2, col3, col4 = st.columns(4)
