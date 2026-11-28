@@ -17,12 +17,19 @@ Run:
 from __future__ import annotations
 
 import asyncio
+import sys
 
-from sqlalchemy import Integer, String, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import Integer, String, inspect, select
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 DATABASE_URL = "cubrid+aiopycubrid://dba@localhost:33000/testdb"
+TABLE_NAME = "cookbook_async_orm_demo"
 
 
 class Base(DeclarativeBase):
@@ -37,15 +44,46 @@ class CookbookAsyncOrmDemo(Base):
     score: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
-async def main() -> None:
-    print("=== Async SQLAlchemy (cubrid+aiopycubrid) Demo ===")
-    print()
+def _create_demo_table(sync_conn) -> None:
+    """Create the demo table and fail if it already exists.
 
-    engine = create_async_engine(DATABASE_URL, echo=False)
+    ``checkfirst=False`` makes the database itself report a table that another session
+    created after the existence check below, instead of silently reusing it.
+    """
+    CookbookAsyncOrmDemo.__table__.create(sync_conn, checkfirst=False)
+
+
+async def run_demo(engine: AsyncEngine) -> None:
+    """Create the demo table, exercise async CRUD, then drop only what this run created."""
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        # Refuse to touch a table this run did not create: reusing it and then dropping it
+        # would delete someone else's data. This check gives the friendly message; the
+        # creation below still fails if the table appears between the two calls.
+        if await conn.run_sync(lambda sync_conn: inspect(sync_conn).has_table(TABLE_NAME)):
+            raise RuntimeError(
+                f"Table {TABLE_NAME} already exists, so this demo will not modify or drop it. "
+                "Drop it yourself or point DATABASE_URL at a disposable database, then re-run."
+            )
+        await conn.run_sync(_create_demo_table)
     print("[1] Created table cookbook_async_orm_demo")
 
+    failed = False
+    try:
+        await _crud_demo(engine)
+    except BaseException:
+        failed = True
+        raise
+    finally:
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+        except Exception as exc:  # noqa: BLE001 - never mask the error that got us here
+            if not failed:
+                raise
+            print(f"warning: could not drop {TABLE_NAME}: {exc!r}", file=sys.stderr)
+
+
+async def _crud_demo(engine: AsyncEngine) -> None:
     Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     async with Session() as session:
@@ -92,9 +130,28 @@ async def main() -> None:
         await session.execute(CookbookAsyncOrmDemo.__table__.delete())
         await session.commit()
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+
+async def main() -> None:
+    print("=== Async SQLAlchemy (cubrid+aiopycubrid) Demo ===")
+    print()
+
+    engine = create_async_engine(DATABASE_URL, echo=False)
+    failed = False
+    try:
+        await run_demo(engine)
+    except BaseException:
+        failed = True
+        raise
+    finally:
+        # Release pooled connections even when setup, a query, a commit or cleanup failed.
+        # A disposal error must not hide the failure that is already propagating, but
+        # on its own (nothing else failed) it is raised.
+        try:
+            await engine.dispose()
+        except Exception as exc:  # noqa: BLE001 - never mask the error that got us here
+            if not failed:
+                raise
+            print(f"warning: could not dispose the engine: {exc!r}", file=sys.stderr)
     print()
     print("[5] Dropped table and closed engine")
 
