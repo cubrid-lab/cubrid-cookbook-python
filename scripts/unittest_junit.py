@@ -11,10 +11,13 @@ for its unittest suites because ``unittest`` has no JUnit output of its own.
 
 from __future__ import annotations
 
+import re
 import sys
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
+_INVALID_XML_CHARACTERS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
 
 
 def _names(test: unittest.TestCase) -> tuple[str, str]:
@@ -36,7 +39,7 @@ def build_junit(result: unittest.TestResult, ids: list[unittest.TestCase]) -> ET
         ("error", result.errors),
     ):
         for test, detail in entries:
-            outcomes[_names(test)] = (kind, str(detail))
+            outcomes[_names(test)] = (kind, _INVALID_XML_CHARACTERS.sub("\ufffd", str(detail)))
     suite = ET.Element("testsuite", name="unittest", tests=str(len(outcomes)))
     for (classname, name), (kind, detail) in sorted(outcomes.items()):
         case = ET.SubElement(suite, "testcase", classname=classname, name=name)

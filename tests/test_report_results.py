@@ -199,6 +199,23 @@ class UnittestJunitTests(unittest.TestCase):
                     )
                     self.assertFalse(out.exists())
 
+    def test_junit_preserves_failure_and_skip_counts_with_control_characters(self) -> None:
+        code, counts, xml = self.run_runner(
+            r"""
+            import unittest
+            class T(unittest.TestCase):
+                def test_bad(self): self.fail("café < & > " + chr(1))
+                @unittest.skip("理由 " + chr(11))
+                def test_skip(self): pass
+            """
+        )
+        self.assertEqual(code, 1)
+        self.assertIsNotNone(counts)
+        self.assertEqual(counts["failed"], 1)
+        self.assertEqual(counts["skipped"], 1)
+        self.assertIn("café &lt; &amp; &gt;", xml)
+        self.assertIn("理由", xml)
+
     def test_pass_fail_error_skip_are_counted(self) -> None:
         code, counts, _ = self.run_runner(
             """
