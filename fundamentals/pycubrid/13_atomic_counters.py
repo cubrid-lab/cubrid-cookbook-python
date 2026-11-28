@@ -7,9 +7,12 @@ Demonstrates:
 - Top-N rankings query
 
 Adaptation note:
-- If ON DUPLICATE KEY UPDATE fails on your server build, switch to a
-  SELECT-then-INSERT/UPDATE pattern. This script uses ODKU directly because it
-  is supported on standard CUBRID 11.2 setups.
+- If ON DUPLICATE KEY UPDATE fails on your server build, do not fall back to a
+  bare SELECT-then-INSERT/UPDATE. Two writers can both read the same count and
+  overwrite an increment, or race to insert the same key. A safe alternative
+  needs its own transaction, locking, or compare-and-swap design; this recipe
+  does not include one. This script uses ODKU directly because it is supported
+  on standard CUBRID 11.2 setups.
 """
 
 from __future__ import annotations
