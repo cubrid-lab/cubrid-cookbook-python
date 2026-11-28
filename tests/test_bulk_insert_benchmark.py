@@ -144,6 +144,48 @@ def test_all_three_workloads_and_row_checks_are_preserved(benchmark, capsys):
         assert f"{rows} rows" in line
 
 
+@pytest.mark.parametrize("strategy", [1, 2, 3])
+@pytest.mark.parametrize("difference", [-1, 1])
+def test_wrong_persisted_count_stops_benchmark_after_timer(
+    benchmark, monkeypatch, capsys, strategy, difference
+):
+    module, driver = benchmark
+    conn = Connection()
+    driver.connect.return_value = conn
+    events = []
+    ticks = count()
+
+    def clock():
+        events.append("timer")
+        return next(ticks)
+
+    real_fetchone = conn.fetchone
+
+    def reported_count():
+        events.append("count")
+        actual = real_fetchone()[0]
+        return (actual + difference if len(conn.counts) == strategy else actual,)
+
+    monkeypatch.setattr(module.time, "time", clock)
+    monkeypatch.setattr(conn, "fetchone", reported_count)
+    expected = (500, 5000, 5000)[strategy - 1]
+    with pytest.raises(RuntimeError) as error:
+        module.main()
+    assert str(error.value) == (
+        f"Strategy {strategy} row count mismatch: expected {expected}, "
+        f"observed {expected + difference}"
+    )
+    # Every count follows both timer reads; no later workload or timer starts.
+    assert events == ["timer", "timer", "count"] * strategy
+    inserts = [sql for sql, _ in conn.calls if sql.startswith("INSERT INTO")]
+    assert len(inserts) == sum((500, 5000, 5000)[:strategy])
+    assert conn.calls[-1] == (f"DROP TABLE IF EXISTS {TABLE}", None)
+    assert sum(sql.startswith("DROP TABLE") for sql, _ in conn.calls) == 1
+    assert conn.tables == {"cookbook_unrelated": [(1, "keep me")]}
+    assert conn.closed == 1
+    assert "rows/sec" not in capsys.readouterr().out
+
+
 @pytest.mark.parametrize("failure", ["delete", "insert", "fetch", "setup_commit"])
 def test_post_creation_failure_cleans_up_only_owned_table(benchmark, failure):
     module, driver = benchmark

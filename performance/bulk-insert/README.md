@@ -126,7 +126,7 @@ on a name collision, use a fresh lab rather than removing data you need.
 It drops the table only after this invocation successfully creates it, also
 when a later benchmark step fails. A failed CREATE does not trigger a DROP.
 
-The script runs three strategies (500 rows with a COMMIT per row, then 5,000 rows twice); it takes about 45 seconds, most of it the per-row COMMIT run. The row count printed for each strategy is a `SELECT COUNT(*)` taken after its timer stops, so it shows what was actually stored. `make verify-performance` runs it as a live test, including a pre-existing table/row preservation check (see [Testing the benchmarks](../README.md#testing-the-benchmarks)).
+The script runs three strategies (500 rows with a COMMIT per row, then 5,000 rows twice); it takes about 45 seconds, most of it the per-row COMMIT run. The row count printed for each strategy is a `SELECT COUNT(*)` taken after its timer stops, so it shows what was actually stored. A count mismatch raises an error naming the strategy and expected/observed rows before any later strategy or successful comparison is printed. Validation stays outside the timed work. `make verify-performance` runs it as a live test, including a pre-existing table/row preservation check (see [Testing the benchmarks](../README.md#testing-the-benchmarks)).
 
 Offline ownership and workload checks use a fake driver and do not prove live
 CUBRID behavior:

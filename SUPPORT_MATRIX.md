@@ -283,7 +283,8 @@ when a row no longer matches the repository. Verification is split:
   `cookbook_django_items` table and removes only its own table.
 - The **migration and performance** suite (`performance/tests/test_benchmarks.py`:
   the five Java-to-Python migration goldens, the three benchmarks and their cleanup on failure,
-  plus preservation of a pre-existing bulk-insert table;
+  plus preservation of a pre-existing bulk-insert table and failure on incorrect
+  stored row counts in the bulk-insert CLI;
   timings are parsed, never compared) runs in the smoke job's full `make verify`
   (**11.4** on `main` and daily, **11.2 and 11.4** weekly, on manual runs and in
   release verification), and as `make verify-performance` in the CUBRID 11.4 smoke lane

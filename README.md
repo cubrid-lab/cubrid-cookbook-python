@@ -101,7 +101,7 @@ Benchmark-backed optimization patterns:
 | Pattern | Impact |
 |---------|--------|
 | [Fetch optimization](performance/fetch-optimization/) | `fetchall()` vs `fetchone()`, column selection and server-side pagination |
-| [Bulk insert](performance/bulk-insert/) | batch your COMMITs (~28 → ~1,279 rows/s, pycubrid 1.10.0); benchmark preserves existing tables |
+| [Bulk insert](performance/bulk-insert/) | batch your COMMITs (~28 → ~1,279 rows/s, pycubrid 1.10.0); benchmark preserves existing tables and checks stored rows |
 | [Connection pooling](performance/connection-pooling/) | reuse connections (~5.9 ms vs ~0.8 ms per query, pycubrid 1.10.0) |
 
 ### Pitfalls
